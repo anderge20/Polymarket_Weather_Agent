@@ -197,6 +197,17 @@ def test_schema_version_recorded(con):
     assert db.get_schema_version(con) == db.SCHEMA_VERSION
 
 
+def test_dataset_versions_keyed_by_version(con):
+    # The dataset_versions REGISTRY is keyed by `version` (PK); the FACT tables carry a
+    # `dataset_version` FK -> dataset_versions.version. Guards the harness idempotency
+    # counts: dataset_versions must be filtered by `version`, never `dataset_version`.
+    dv_cols = set(db.column_names(con, "dataset_versions"))
+    assert "version" in dv_cols
+    assert "dataset_version" not in dv_cols
+    for t in ("markets", "outcomes", "market_fee_schedule", "data_quality"):
+        assert "dataset_version" in set(db.column_names(con, t)), f"{t} missing dataset_version"
+
+
 def test_init_is_idempotent(con):
     before = set(db.table_names(con))
     db.init_db(con)          # run again on the same connection

@@ -805,7 +805,11 @@ def _discovery_and_checks(con) -> None:
     tables = ("markets", "outcomes", "market_fee_schedule", "data_quality", "dataset_versions")
 
     def _counts():
-        return {t: db.query(con, f"SELECT COUNT(*) c FROM {t} WHERE dataset_version=?", [dsv])[0]["c"]
+        # dataset_versions REGISTRY is keyed by `version` (PK); the fact tables carry
+        # a `dataset_version` FK -> dataset_versions.version. Filter by the real key.
+        def _key(t):
+            return "version" if t == "dataset_versions" else "dataset_version"
+        return {t: db.query(con, f"SELECT COUNT(*) c FROM {t} WHERE {_key(t)}=?", [dsv])[0]["c"]
                 for t in tables}
 
     def _snapshot():
