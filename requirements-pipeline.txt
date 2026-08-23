@@ -18,4 +18,5 @@ requests>=2.32         # sync HTTP (gamma / clob / open-meteo pulls)
 aiohttp>=3.10          # async HTTP (forward collectors)
 websockets>=13.0       # CLOB websocket book/trade stream (forward-only collector)
 python-dateutil>=2.9   # robust UTC/tz parsing
+pytz>=2024.1           # timezone database (needed at runtime by DuckDB timestamp handling)
 pytest>=8.0            # test suite (run on Hetzner; not run here)
