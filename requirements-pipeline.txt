@@ -1,0 +1,21 @@
+# ============================================================
+# PIPELINE / COMPUTE tier requirements  (Phase 2A data layer)
+# ============================================================
+# Runs on the isolated Hetzner box (collectors, DuckDB, ingestion,
+# backtest, paper, scheduler) — NOT on Streamlit Cloud.
+# Install:  pip install -r requirements-pipeline.txt
+#
+# NOTE: pinned as ">=" minimums consistent with the legacy requirements.txt.
+# Nothing in this file was executed in the authoring environment (no Python
+# here); versions/resolves must be verified when you install on Hetzner.
+
+duckdb>=1.1            # embedded columnar DB — the data lake / spine
+pandas>=2.2
+numpy>=2.0
+scipy>=1.13            # distributions (weather °F/°C model)
+scikit-learn>=1.5      # isotonic calibration, metrics
+requests>=2.32         # sync HTTP (gamma / clob / open-meteo pulls)
+aiohttp>=3.10          # async HTTP (forward collectors)
+websockets>=13.0       # CLOB websocket book/trade stream (forward-only collector)
+python-dateutil>=2.9   # robust UTC/tz parsing
+pytest>=8.0            # test suite (run on Hetzner; not run here)

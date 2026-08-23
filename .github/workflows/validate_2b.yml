@@ -1,0 +1,85 @@
+name: PHASE 2B Validation Harness
+
+# Manual only. This runs the ALREADY-APPROVED scripts/validate_2b.py verbatim
+# (no arguments, so paste.rs upload stays OFF and the local report is the source
+# of truth). GitHub Actions does NOT decide any status: the harness computes
+# IMPLEMENTED/TESTED/VALIDATED/FAILED/SKIPPED and the VERDICT from its own
+# evidence rules. No secrets, tokens, wallets or Polymarket credentials are used
+# or required — the discovery smoke only hits the PUBLIC Gamma API.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-2b:
+    name: Run validate_2b.py (real 2A + 2B validation)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the exact commit under test
+        uses: actions/checkout@v4
+
+      - name: Record run context (evidence)
+        run: |
+          echo "commit_sha  = ${GITHUB_SHA}"
+          echo "run_id      = ${GITHUB_RUN_ID}  attempt=${GITHUB_RUN_ATTEMPT}"
+          echo "runner_os   = ${RUNNER_OS}"
+          uname -a
+          echo "git HEAD (as the harness will read it):"
+          git rev-parse HEAD
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pipeline dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-pipeline.txt
+
+      - name: Freeze dependency versions (evidence)
+        run: python -m pip freeze
+
+      - name: Run the approved 2B validation harness
+        id: harness
+        continue-on-error: true
+        run: |
+          set +e
+          mkdir -p results
+          python scripts/validate_2b.py
+          rc=$?
+          set -e
+          echo "harness_exit=${rc}" >> "$GITHUB_OUTPUT"
+          echo "[workflow] harness exit code: ${rc}"
+
+      - name: Print PHASE_2B_VALIDATION_REPORT.md to the job log
+        if: always()
+        run: |
+          echo "===== results/ listing ====="
+          ls -la results/ || true
+          echo "===== PHASE_2B_VALIDATION_REPORT.md ====="
+          cat results/PHASE_2B_VALIDATION_REPORT.md || echo "REPORT NOT FOUND"
+
+      - name: Publish verdict to the run summary
+        if: always()
+        run: |
+          {
+            echo "## PHASE 2B validation run"
+            echo "- commit: \`${GITHUB_SHA}\`"
+            echo "- run_id: \`${GITHUB_RUN_ID}\`"
+            echo "- harness_exit: \`${{ steps.harness.outputs.harness_exit }}\`"
+            echo ""
+            echo '```'
+            grep -iE 'VERDICT|PHASE 2B (NOT )?VALIDATED' results/PHASE_2B_VALIDATION_REPORT.md || echo "verdict line not found in report"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload report + evidence as an artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-2b-validation-report
+          path: results/
+          if-no-files-found: warn
