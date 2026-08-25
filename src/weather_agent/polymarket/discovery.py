@@ -232,7 +232,8 @@ def ensure_dataset_version(con, dataset_version: str, *, source: str = "gamma",
 def ingest_event(con, event: dict, dataset_version: str, *,
                  endpoint: str = f"{GAMMA}/events", params: dict | None = None,
                  discovered_at: str | None = None,
-                 fee_registry: dict | None = None) -> dict:
+                 fee_registry: dict | None = None,
+                 run_id: str | None = None) -> dict:
     """Apply provenance + UPSERT markets/outcomes/market_fee_schedule/data_quality
     for one gamma event, ATOMICALLY. The whole event is written inside ONE DuckDB
     transaction (BEGIN -> market -> outcomes -> fee schedule -> provenance/evidence
@@ -341,6 +342,11 @@ def ingest_event(con, event: dict, dataset_version: str, *,
             }, ["ref", "dataset_version"])
             counts["evidence"] += 1
 
+        # Phase 2C: the checkpoint mark is the LAST write INSIDE this same
+        # transaction, so COMMIT persists {event rows + mark} atomically. A crash
+        # before COMMIT rolls back BOTH (DuckDB WAL recovery) and the event is
+        # retried on the next resume; there is no window where they disagree.
+        db.checkpoint_mark(con, dataset_version, str(event.get("id")), run_id)
         con.execute("COMMIT;")
     except Exception:
         # FULL rollback of the event; revert this event's registry additions so a
@@ -401,7 +407,8 @@ def discover(con, dataset_version: str, *, tag_id: int = TEMP_TAG_ID,
              page_limit: int = 100, max_pages: int = 50,
              end_date_min: str | None = None, end_date_max: str | None = None,
              newest_first: bool = True, session=None,
-             checkpoint: set[str] | None = None) -> dict:
+             checkpoint: set[str] | None = None,
+             run_id: str | None = None) -> dict:
     """Paginate gamma /events (newest-first, optionally date-bounded) and ingest
     each event. Idempotent + resumable via `checkpoint` (set of processed event
     ids). On any error/rate-limit: record it and STOP (partial result returned,
@@ -413,7 +420,13 @@ def discover(con, dataset_version: str, *, tag_id: int = TEMP_TAG_ID,
         import requests
         session = requests.Session()
         session.headers.update({"User-Agent": "weather-agent-2b-discovery/1.0"})
-    checkpoint = checkpoint if checkpoint is not None else set()
+    from .. import database as db
+    if run_id is None:
+        run_id = f"disc_{_now()}"
+    # Phase 2C: the PERSISTED checkpoint (DuckDB discovery_checkpoint) is the source
+    # of truth for resume — a fresh process loads it here. The in-memory `processed`
+    # set is a mirror + accepts any caller-provided ids (backward compatible).
+    processed = db.checkpoint_load(con, dataset_version) | (checkpoint or set())
 
     base = {"tag_id": tag_id, "closed": "true", "limit": page_limit}
     if newest_first:
@@ -444,12 +457,12 @@ def discover(con, dataset_version: str, *, tag_id: int = TEMP_TAG_ID,
             break
         for ev in events:
             eid = str(ev.get("id"))
-            if eid in checkpoint:
+            if eid in processed:
                 continue
             try:
                 c = ingest_event(con, ev, dataset_version,
                                  endpoint=f"{GAMMA}/events", params=params,
-                                 fee_registry=fee_registry)
+                                 fee_registry=fee_registry, run_id=run_id)
             except FeeScheduleConflict as exc:
                 # #3: DATA_ERROR — stop; do NOT infer/collapse.
                 summary["status"] = "DATA_ERROR"
@@ -462,10 +475,16 @@ def discover(con, dataset_version: str, *, tag_id: int = TEMP_TAG_ID,
             summary["markets"] += c["markets"]
             summary["outcomes"] += c["outcomes"]
             summary["fees"] += c["fees"]
-            # Advance the checkpoint ONLY after ingest_event returned, i.e. AFTER
-            # its COMMIT. A rolled-back event (error or fee conflict) raises above
-            # and never reaches this line, so it is retried on the next resume.
-            checkpoint.add(eid)
+            # In-memory mirror only; the DURABLE checkpoint mark was already written
+            # inside ingest_event's transaction (atomic with the rows). A rolled-back
+            # event raised above and never reaches this line, so neither the mark nor
+            # this mirror entry exist → it is retried on the next resume.
+            processed.add(eid)
+            if checkpoint is not None:
+                # backward-compat: if the caller passed an in-memory `checkpoint` set,
+                # keep it in sync after a successful (committed) ingest — exactly the
+                # pre-2C behaviour. The persisted table remains the source of truth.
+                checkpoint.add(eid)
         if len(events) < page_limit:
             break
     return summary

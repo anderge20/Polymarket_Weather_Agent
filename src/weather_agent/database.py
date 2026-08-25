@@ -624,6 +624,11 @@ def init_db(con=None, db_path: str | None = None):
         except Exception:
             con.execute("ROLLBACK;")
             raise
+    # Phase 2C (Alt C): operational discovery checkpoint table, created idempotently
+    # OUTSIDE the numbered MIGRATIONS. SCHEMA_VERSION stays 2 and MIGRATIONS is
+    # untouched (keeps validate_2b.py §11 green). Single init point: discover() /
+    # ingest_event() assume an init_db'd connection.
+    _ensure_checkpoint_table(con)
     return con
 
 
@@ -641,6 +646,51 @@ def column_names(con, table: str) -> list[str]:
         [table],
     ).fetchall()
     return [r[0] for r in rows]
+
+
+# =============================================================================
+# Phase 2C — persistent discovery checkpoint (Alt C)
+# Operational table, NOT a numbered migration, NOT in ALL_TABLES; SCHEMA_VERSION
+# stays 2. The PERSISTED table is the source of truth for resume; discover() keeps
+# an in-memory mirror only for speed. checkpoint_mark() MUST run inside the caller's
+# per-event transaction (last write before COMMIT) so rows + mark are atomic.
+# =============================================================================
+def _ensure_checkpoint_table(con) -> None:
+    con.execute(
+        """
+        CREATE TABLE IF NOT EXISTS discovery_checkpoint (
+            dataset_version VARCHAR NOT NULL,
+            event_id        VARCHAR NOT NULL,
+            committed_at    TIMESTAMPTZ DEFAULT now(),
+            run_id          VARCHAR,
+            PRIMARY KEY (dataset_version, event_id)
+        );
+        """
+    )
+
+
+def checkpoint_load(con, dataset_version: str) -> set:
+    """Set of already-committed event ids for a dataset_version, read from the
+    persisted checkpoint (source of truth for resume). A brand-new process calls
+    this to resume exactly where the last one committed."""
+    rows = con.execute(
+        "SELECT event_id FROM discovery_checkpoint WHERE dataset_version = ?",
+        [dataset_version],
+    ).fetchall()
+    return {r[0] for r in rows}
+
+
+def checkpoint_mark(con, dataset_version: str, event_id: str,
+                    run_id: str | None = None) -> None:
+    """Mark one event as committed. MUST be called INSIDE the caller's per-event
+    transaction, as the LAST write before COMMIT, so the mark is atomic with the
+    event's rows (a crash before COMMIT rolls back both). Idempotent: a retried
+    event keeps its original mark (ON CONFLICT DO NOTHING)."""
+    con.execute(
+        "INSERT INTO discovery_checkpoint (dataset_version, event_id, committed_at, run_id) "
+        "VALUES (?, ?, ?, ?) ON CONFLICT (dataset_version, event_id) DO NOTHING",
+        [dataset_version, event_id, _utcnow_iso(), run_id],
+    )
 
 
 # =============================================================================

@@ -21,6 +21,7 @@ canonical AS_OF_COLUMNS — for weather that is `available_at`, NEVER
 from __future__ import annotations
 
 import pytest
+from weather_agent import database as db
 
 
 # ------------------------------------------------------- RUNNABLE semantic check
@@ -79,16 +80,103 @@ def test_no_lookahead_semantics_on_sample_data(con):
         {"winning_outcome", "resolution_timestamp", "settlement_timestamp", "is_winner"})
 
 
-# ------------------------------------------------------ PENDING (needs 2B+ builder)
-@pytest.mark.skip(reason="PENDING 2B+: real feature builder must set the flag from as-of checks")
-def test_builder_sets_flag_only_after_asof_checks():
-    """The feature builder sets no_lookahead_verified=TRUE only after it verifies
-    every input's as-of time <= prediction_time. Never a manual flag."""
-    raise NotImplementedError("implement with the Phase 2B+ feature builder")
+# ------------------------------------------------------ REAL BUILDER CHECKS
+
+def test_builder_sets_flag_only_after_asof_checks(con):
+    """The real feature builder must set the flag only after as-of guards pass."""
+    from weather_agent.features import build_feature
+
+    dsv = "ds_builder_test"
+
+    db = __import__("weather_agent.database", fromlist=["database"])
+
+    db.insert(con, "price_history", {
+        "observation_time": "2026-08-15T11:00:00Z",
+        "market_id": "m1",
+        "token_id": "tok1",
+        "indicative_price": 0.40,
+        "price_semantics": "MIDPOINT_ESTIMATED",
+        "source_window": "DIRECT",
+        "fidelity": 1,
+        "dataset_version": dsv,
+        "record_version": 1,
+    })
+
+    db.insert(con, "weather_forecasts", {
+        "issue_time": "2026-08-15T00:00:00Z",
+        "forecast_run": "00z",
+        "target_date": "2026-08-16",
+        "city": "London",
+        "station": "EGLC",
+        "model": "ecmwf_ifs025",
+        "forecast_tmax": 26.0,
+        "forecast_p10": 24.0,
+        "forecast_p25": 25.0,
+        "forecast_p50": 26.0,
+        "forecast_p75": 27.0,
+        "forecast_p90": 28.0,
+        "available_at": "2026-08-15T01:00:00Z",
+        "dataset_version": dsv,
+        "record_version": 1,
+    })
+
+    row = build_feature(
+        con,
+        prediction_time="2026-08-15T12:00:00Z",
+        market_id="m1",
+        token_id="tok1",
+        station="EGLC",
+        model="ecmwf_ifs025",
+        target_date="2026-08-16",
+        dataset_version=dsv,
+    )
+
+    assert row is not None
+    assert row["no_lookahead_verified"] is True
 
 
-@pytest.mark.skip(reason="PENDING 2B+: feature builder + labeler not implemented in 2A")
-def test_features_use_no_future_price_or_forecast():
-    """For every features row, all price_history used has observation_time <=
-    prediction_time and the forecast used has available_at <= prediction_time."""
-    raise NotImplementedError("implement with the Phase 2B+ feature builder")
+def test_features_use_no_future_price_or_forecast(con):
+    """Future price/forecast observations must not produce a verified feature."""
+    from weather_agent.features import build_feature
+
+    dsv = "ds_future_test"
+
+    db = __import__("weather_agent.database", fromlist=["database"])
+
+    db.insert(con, "price_history", {
+        "observation_time": "2026-08-15T13:00:00Z",
+        "market_id": "m1",
+        "token_id": "tok1",
+        "indicative_price": 0.40,
+        "price_semantics": "MIDPOINT_ESTIMATED",
+        "source_window": "DIRECT",
+        "fidelity": 1,
+        "dataset_version": dsv,
+        "record_version": 1,
+    })
+
+    db.insert(con, "weather_forecasts", {
+        "issue_time": "2026-08-15T00:00:00Z",
+        "forecast_run": "00z",
+        "target_date": "2026-08-16",
+        "city": "London",
+        "station": "EGLC",
+        "model": "ecmwf_ifs025",
+        "forecast_tmax": 26.0,
+        "available_at": "2026-08-15T13:00:00Z",
+        "dataset_version": dsv,
+        "record_version": 1,
+    })
+
+    row = build_feature(
+        con,
+        prediction_time="2026-08-15T12:00:00Z",
+        market_id="m1",
+        token_id="tok1",
+        station="EGLC",
+        model="ecmwf_ifs025",
+        target_date="2026-08-16",
+        dataset_version=dsv,
+    )
+
+    assert row is None
