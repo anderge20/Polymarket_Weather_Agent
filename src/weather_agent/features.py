@@ -11,6 +11,10 @@ from datetime import datetime
 from typing import Any
 
 from weather_agent import database as db
+from weather_agent.probability import (
+    band_probability,
+    quantiles_to_distribution,
+)
 
 
 # Fields which are labels / settlement facts and therefore forbidden
@@ -43,6 +47,10 @@ def build_feature(
     Forecast:
         latest weather_forecasts available_at <= prediction_time.
 
+    Weather probability:
+        probability mass of this token's temperature band under the
+        forecast-derived discrete temperature distribution.
+
     Observation:
         intentionally NOT used as a predictor at this stage.
 
@@ -62,6 +70,7 @@ def build_feature(
     # ------------------------------------------------------------------
     # 1. MARKET PRICE — market-time as-of
     # ------------------------------------------------------------------
+
     prices = db.latest_asof(
         con,
         "price_history",
@@ -84,6 +93,7 @@ def build_feature(
     # ------------------------------------------------------------------
     # 2. WEATHER FORECAST — SOURCE AVAILABILITY as-of
     # ------------------------------------------------------------------
+
     forecasts = db.latest_asof(
         con,
         "weather_forecasts",
@@ -100,19 +110,66 @@ def build_feature(
     forecast = forecasts[0]
 
     # ------------------------------------------------------------------
-    # 3. Build predictor-only row.
+    # 3. OUTCOME BAND — predictor metadata only
+    #
+    # IMPORTANT:
+    #   We read lo/hi for the requested token, but NEVER read is_winner.
+    #   Resolution remains strictly a training label.
+    # ------------------------------------------------------------------
+
+    outcomes = db.query(
+        con,
+        """
+        SELECT token_id, band_label, lo, hi
+        FROM outcomes
+        WHERE market_id = ?
+          AND token_id = ?
+          AND dataset_version = ?
+        ORDER BY record_version DESC
+        LIMIT 1
+        """,
+        [market_id, token_id, dataset_version],
+    )
+
+    outcome = outcomes[0] if outcomes else None
+
+    # ------------------------------------------------------------------
+    # 4. FORECAST QUANTILES → TEMPERATURE DISTRIBUTION → BAND PROBABILITY
+    # ------------------------------------------------------------------
+
+    distribution = None
+    weather_prob = None
+
+    if outcome is not None:
+        distribution = quantiles_to_distribution(
+            p10=forecast.get("forecast_p10"),
+            p25=forecast.get("forecast_p25"),
+            p50=forecast.get("forecast_p50"),
+            p75=forecast.get("forecast_p75"),
+            p90=forecast.get("forecast_p90"),
+        )
+
+        weather_prob = band_probability(
+            distribution,
+            lo=outcome.get("lo"),
+            hi=outcome.get("hi"),
+        )
+
+    # ------------------------------------------------------------------
+    # 5. Build predictor-only row.
     #
     # IMPORTANT:
     #   Do NOT copy the market row.
-    #   Do NOT copy outcomes.
+    #   Do NOT copy outcomes wholesale.
     #   Do NOT copy resolution fields.
     # ------------------------------------------------------------------
+
     row = {
         "prediction_time": prediction_time,
         "market_id": market_id,
         "token_id": token_id,
         "market_prob": price["indicative_price"],
-        "weather_prob": None,
+        "weather_prob": weather_prob,
         "forecast_tmax": forecast.get("forecast_tmax"),
         "forecast_p10": forecast.get("forecast_p10"),
         "forecast_p25": forecast.get("forecast_p25"),
@@ -123,6 +180,10 @@ def build_feature(
             "price_observation_time": str(price["observation_time"]),
             "forecast_available_at": str(forecast["available_at"]),
             "forecast_issue_time": str(forecast["issue_time"]),
+            "outcome_band_label": outcome.get("band_label") if outcome else None,
+            "outcome_lo": outcome.get("lo") if outcome else None,
+            "outcome_hi": outcome.get("hi") if outcome else None,
+            "weather_distribution": distribution,
         },
         "no_lookahead_verified": False,
         "source": "AS_OF_BUILDER",
@@ -132,8 +193,9 @@ def build_feature(
     }
 
     # ------------------------------------------------------------------
-    # 4. FINAL NO-LOOKAHEAD GUARD
+    # 6. FINAL NO-LOOKAHEAD GUARD
     # ------------------------------------------------------------------
+
     if price["observation_time"] > prediction_time:
         raise AssertionError("price input is after prediction_time")
 
@@ -143,6 +205,12 @@ def build_feature(
     # The feature row itself must not contain settlement facts.
     if FORBIDDEN_FEATURE_FIELDS.intersection(row):
         raise AssertionError("resolution field leaked into features")
+
+    if FORBIDDEN_FEATURE_FIELDS.intersection(row["feature_json"]):
+        raise AssertionError("resolution field leaked into feature_json")
+
+    if weather_prob is not None and not 0.0 <= weather_prob <= 1.0:
+        raise AssertionError("weather_prob must be between 0 and 1")
 
     row["no_lookahead_verified"] = True
 

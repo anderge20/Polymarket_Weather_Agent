@@ -155,3 +155,57 @@ def test_resolution_cannot_be_used_when_prediction_is_after_resolution():
     )
 
     assert label is None
+
+
+def test_feature_builds_weather_probability_from_outcome_band():
+    con, dataset_version, market_id, token_id = _setup_db()
+
+    con.execute(
+        """
+        INSERT INTO outcomes (
+            market_id,
+            token_id,
+            outcome_index,
+            band_label,
+            lo,
+            hi,
+            is_winner,
+            dataset_version,
+            record_version
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        [
+            market_id,
+            token_id,
+            0,
+            "30C",
+            30.0,
+            30.0,
+            None,
+            dataset_version,
+            1,
+        ],
+    )
+
+    row = build_feature(
+        con,
+        prediction_time=PREDICTION_TIME,
+        market_id=market_id,
+        token_id=token_id,
+        station="NYC",
+        model="test-model",
+        target_date="2026-08-24",
+        dataset_version=dataset_version,
+    )
+
+    assert row is not None
+    assert row["weather_prob"] is not None
+    assert abs(row["weather_prob"] - 0.2777777778) < 1e-9
+    assert row["no_lookahead_verified"] is True
+
+    # Resolution information must still be absent.
+    assert "is_winner" not in row
+    assert "winning_outcome" not in row
+    assert "resolution_timestamp" not in row
+    assert "settlement_timestamp" not in row
