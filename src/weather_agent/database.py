@@ -47,7 +47,7 @@ from typing import Any, Iterable, Mapping, Sequence
 
 from .config import DB_PATH
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 # Standard provenance columns present on every fact/derived table.
 PROVENANCE_COLUMNS = (
@@ -527,6 +527,14 @@ _DDL_V2 = [
     "ALTER TABLE market_fee_schedule ADD COLUMN IF NOT EXISTS raw_fee_fields JSON;",
 ]
 
+# Phase 2D additions (idempotent ALTER) — explicit Yes/No identity captured verbatim
+# from gamma outcomes[i]. YES is identified downstream ONLY by outcome_label == "Yes"
+# (never outcome_index, never is_winner). Nullable: pre-v3 rows keep NULL and Strategy A
+# must fail closed on NULL.
+_DDL_V3 = [
+    "ALTER TABLE outcomes ADD COLUMN IF NOT EXISTS outcome_label VARCHAR;",
+]
+
 # Ordered, idempotent migrations. Add a new dict (version+1) for future changes;
 # never edit a shipped migration in place.
 MIGRATIONS: list[dict] = [
@@ -539,6 +547,11 @@ MIGRATIONS: list[dict] = [
         "version": 2,
         "name": "phase2b_market_metadata",
         "statements": _DDL_V2,
+    },
+    {
+        "version": 3,
+        "name": "phase2d_outcome_label",
+        "statements": _DDL_V3,
     },
 ]
 

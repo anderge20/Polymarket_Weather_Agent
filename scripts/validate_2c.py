@@ -257,9 +257,10 @@ def main():
     sv = db.get_schema_version(con)
     tbls = set(db.table_names(con))
     con.close()
-    schema_ok = (sv == 2 and "discovery_checkpoint" in tbls
+    schema_ok = (sv == db.SCHEMA_VERSION and
+                 "discovery_checkpoint" in tbls
                  and "discovery_checkpoint" not in db.ALL_TABLES)
-    log(f"- SCHEMA_VERSION = {sv} (Alt C requires 2)")
+    log(f"- SCHEMA_VERSION = {sv} (expected db.SCHEMA_VERSION = {db.SCHEMA_VERSION})")
     log(f"- discovery_checkpoint present = {'discovery_checkpoint' in tbls}")
     log(f"- discovery_checkpoint NOT in ALL_TABLES = {'discovery_checkpoint' not in db.ALL_TABLES}")
     log(f"- SCHEMA (Alt C): {'OK' if schema_ok else 'FAIL'}")

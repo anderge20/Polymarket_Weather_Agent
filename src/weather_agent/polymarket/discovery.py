@@ -178,6 +178,10 @@ def build_market_records(event: dict) -> list[dict]:
                 "lo": lo,
                 "hi": hi,
                 "outcome_index": i,
+                # Phase 2D: verbatim gamma outcome name, position-aligned with
+                # clobTokenIds[i] (same alignment already used for prices[i]). YES is
+                # identified downstream ONLY by outcome_label == "Yes".
+                "outcome_label": (str(outs[i]) if i < len(outs) else None),
                 "is_winner": bool(is_winner),
             })
 

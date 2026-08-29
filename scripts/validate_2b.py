@@ -589,6 +589,7 @@ def _migration_section() -> None:
         sv_before = db.get_schema_version(cm)                      # expect 1
         RUN["schema_before"] = sv_before
         v2_absent_at_v1 = v2_market.isdisjoint(set(db.column_names(cm, "markets")))
+        v3_absent_at_v1 = "outcome_label" not in set(db.column_names(cm, "outcomes"))
 
         db.insert(cm, "dataset_versions", {"version": "ds_mig", "source": "migration_test"})
         db.insert(cm, "markets", {
@@ -616,7 +617,7 @@ def _migration_section() -> None:
         db.init_db(cm)
         sv_again = db.get_schema_version(cm)
         applied_again = db.query(cm, "SELECT COUNT(*) c FROM schema_version")[0]["c"]
-        mig_idempotent = (sv_again == 2 and applied_again == 2)
+        mig_idempotent = (sv_again == db.SCHEMA_VERSION and applied_again == len(db.MIGRATIONS))
 
         after = db.query(cm, "SELECT market_id, question, city, fee_regime, measurement_rule, "
                              "available_at, available_at_confidence, source_timestamps "
@@ -638,11 +639,23 @@ def _migration_section() -> None:
         pk_row = db.query(cm, "SELECT COUNT(*) c FROM markets WHERE market_id='mig_m1' "
                               "AND dataset_version='ds_mig' AND record_version=1")
         pk_ok = bool(pk_row) and pk_row[0]["c"] == 1
+        # v2 -> v3 (phase2d_outcome_label): additive column on outcomes; old data survives NULL.
+        oc_cols_after = set(db.column_names(cm, "outcomes"))
+        outcome_label_present = "outcome_label" in oc_cols_after
+        old_outcome = db.query(cm, "SELECT outcome_label FROM outcomes "
+                                   "WHERE token_id='mig_tok' AND dataset_version='ds_mig' "
+                                   "AND record_version=1")
+        outcome_label_null_for_old = bool(old_outcome) and old_outcome[0]["outcome_label"] is None
+        chain_ok = ([r["version"] for r in applied]
+                    == [m["version"] for m in db.MIGRATIONS])
         cm.close()
 
-        mig_ok = (sv_before == 1 and v2_absent_at_v1 and sv_after == 2 and len(applied) == 2
-                  and survived and counts_preserved and new_cols_null and fee_survived
-                  and new_cols_present and pk_ok and mig_idempotent)
+        mig_ok = (sv_before == 1 and v2_absent_at_v1 and v3_absent_at_v1
+                  and sv_after == db.SCHEMA_VERSION and len(applied) == len(db.MIGRATIONS)
+                  and chain_ok and survived and counts_preserved and new_cols_null
+                  and fee_survived and new_cols_present
+                  and outcome_label_present and outcome_label_null_for_old
+                  and pk_ok and mig_idempotent)
         sec("11", [
             f"(A) CLEAN INIT V2 (baseline, NOT a migration): fresh init → schema_version={clean_v2}",
             "(B) REAL v1→v2 migration (build v1 → insert v1 data → migrate → verify):",
@@ -650,7 +663,9 @@ def _migration_section() -> None:
             f"v2 columns absent at v1 = {v2_absent_at_v1}",
             "- inserted representative v1 rows (markets/outcomes/market_fee_schedule/dataset_versions)",
             f"- ran db.init_db() (real path) → applied {[(r['version'], r['name']) for r in applied]}",
-            f"- schema_version AFTER = {sv_after} (expect 2); migration idempotent (2nd run no-op) = {mig_idempotent}",
+            f"- schema_version AFTER = {sv_after} (expect {db.SCHEMA_VERSION}); migration idempotent (2nd run no-op) = {mig_idempotent}",
+            f"- v3 additive: outcome_label absent@v1={v3_absent_at_v1}, present@current={outcome_label_present}, "
+            f"NULL for old rows={outcome_label_null_for_old}, chain={[r['version'] for r in applied]}",
             f"- v1 data SURVIVED = {survived}; row counts preserved across migration = {counts_preserved} "
             f"({cnt_before} → {cnt_after})",
             f"- new columns present = {new_cols_present}; NULL-able for old rows = {new_cols_null}; "
