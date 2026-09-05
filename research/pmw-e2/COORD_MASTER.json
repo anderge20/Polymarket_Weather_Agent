@@ -1,0 +1,1720 @@
+[
+ {
+  "icao": "CYYZ",
+  "city": "Toronto",
+  "n_markets": 2129,
+  "site": "Toronto/Pearson Intl",
+  "wmoId": "71624",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "CA",
+  "noaa": [
+   43.679,
+   -79.629
+  ],
+  "oa": [
+   43.675935,
+   -79.629421
+  ],
+  "iem": [
+   43.67722,
+   -79.63056
+  ],
+  "oscar": [
+   43.67666667,
+   -79.63055556
+  ],
+  "oscar_name": "TORONTO LESTER B. PEARSON INT'L A, ONT",
+  "d_noaa_oa": 0.3424900352611588,
+  "d_noaa_iem": 0.2343372461411821,
+  "d_iem_oscar": 0.06152852486536234
+ },
+ {
+  "icao": "DNMM",
+  "city": "Lagos",
+  "n_markets": 385,
+  "site": "Lagos/Muhammed Intl",
+  "wmoId": "65201",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "NG",
+  "noaa": [
+   6.577,
+   3.321
+  ],
+  "oa": [
+   6.57737,
+   3.32116
+  ],
+  "iem": [
+   6.57737,
+   3.32116
+  ],
+  "oscar": [
+   6.59,
+   3.2
+  ],
+  "oscar_name": "LAGOS/IKEJA",
+  "d_noaa_oa": 0.0447777612039421,
+  "d_noaa_iem": 0.0447777612039421,
+  "d_iem_oscar": 13.457015761129469
+ },
+ {
+  "icao": "EDDM",
+  "city": "Munich",
+  "n_markets": 1980,
+  "site": "Munich Intl",
+  "wmoId": "10866",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "DE",
+  "noaa": [
+   48.348,
+   11.813
+  ],
+  "oa": [
+   48.353802,
+   11.7861
+  ],
+  "iem": [
+   48.35833,
+   11.80917
+  ],
+  "oscar": null,
+  "oscar_name": null,
+  "d_noaa_oa": 2.089887398275883,
+  "d_noaa_iem": 1.1829950300349052,
+  "d_iem_oscar": null
+ },
+ {
+  "icao": "EFHK",
+  "city": "Helsinki",
+  "n_markets": 1694,
+  "site": "Helsinki/Vantaa Arpt",
+  "wmoId": "02974",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "FI",
+  "noaa": [
+   60.327,
+   24.957
+  ],
+  "oa": [
+   60.318363,
+   24.963341
+  ],
+  "iem": [
+   60.31722,
+   24.96333
+  ],
+  "oscar": [
+   60.3267,
+   24.95675
+  ],
+  "oscar_name": "VANTAA HELSINKI-VANTAA AIRPORT",
+  "d_noaa_oa": 1.0218709207553207,
+  "d_noaa_iem": 1.1419625796194766,
+  "d_iem_oscar": 1.1146396482866014
+ },
+ {
+  "icao": "EGLC",
+  "city": "London",
+  "n_markets": 2129,
+  "site": "London City Arpt",
+  "wmoId": null,
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "GB",
+  "noaa": [
+   51.505,
+   0.055
+  ],
+  "oa": [
+   51.505299,
+   0.055278
+  ],
+  "iem": [
+   51.50528,
+   0.05528
+  ],
+  "oscar": null,
+  "oscar_name": null,
+  "d_noaa_oa": 0.038413570268390526,
+  "d_noaa_iem": 0.03667327119551002,
+  "d_iem_oscar": null
+ },
+ {
+  "icao": "EHAM",
+  "city": "Amsterdam",
+  "n_markets": 1694,
+  "site": "Amsterdam/Schiphol Arpt",
+  "wmoId": "06240",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "NL",
+  "noaa": [
+   52.315,
+   4.79
+  ],
+  "oa": [
+   52.308601,
+   4.76389
+  ],
+  "iem": [
+   52.31541,
+   4.79016
+  ],
+  "oscar": [
+   52.3172222222,
+   4.7897222222
+  ],
+  "oscar_name": "Schiphol Airport",
+  "d_noaa_oa": 1.9122795589361348,
+  "d_noaa_iem": 0.046869279992811375,
+  "d_iem_oscar": 0.20369522770295695
+ },
+ {
+  "icao": "EPWA",
+  "city": "Warsaw",
+  "n_markets": 1881,
+  "site": "Warsaw/Chopin Arpt",
+  "wmoId": "12375",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "PL",
+  "noaa": [
+   52.163,
+   20.961
+  ],
+  "oa": [
+   52.165699,
+   20.9671
+  ],
+  "iem": [
+   52.16278,
+   20.96111
+  ],
+  "oscar": [
+   52.1627777778,
+   20.9611111111
+  ],
+  "oscar_name": "WARSZAWA-OKECIE",
+  "d_noaa_oa": 0.5130071012522919,
+  "d_noaa_iem": 0.025587645930680983,
+  "d_iem_oscar": 0.00025845854034830374
+ },
+ {
+  "icao": "FACT",
+  "city": "Cape Town",
+  "n_markets": 1606,
+  "site": "Capetown Intl",
+  "wmoId": "68816",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "ZA",
+  "noaa": [
+   -33.965,
+   18.602
+  ],
+  "oa": [
+   -33.97403,
+   18.604333
+  ],
+  "iem": [
+   -33.9666666667,
+   18.6
+  ],
+  "oscar": [
+   -33.9631,
+   18.6023
+  ],
+  "oscar_name": "CAPE TOWN INTNL. AIRPORT",
+  "d_noaa_oa": 1.026880783121515,
+  "d_noaa_iem": 0.2614665920335361,
+  "d_iem_oscar": 0.44975497355148697
+ },
+ {
+  "icao": "KATL",
+  "city": "Atlanta",
+  "n_markets": 2114,
+  "site": "Atlanta/Hartsfield-Jackson Intl",
+  "wmoId": "72219",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "US",
+  "noaa": [
+   33.62972,
+   -84.44223
+  ],
+  "oa": [
+   33.6367,
+   -84.428101
+  ],
+  "iem": [
+   33.6301,
+   -84.4418
+  ],
+  "oscar": [
+   33.65,
+   -84.4166666667
+  ],
+  "oscar_name": "ATLANTA/MUN., GA.",
+  "d_noaa_oa": 1.521005281836292,
+  "d_noaa_iem": 0.0580547014035582,
+  "d_iem_oscar": 3.210894445624926
+ },
+ {
+  "icao": "KAUS",
+  "city": "Austin",
+  "n_markets": 1771,
+  "site": "Austin/Bergstrom Intl",
+  "wmoId": "72254",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "US",
+  "noaa": [
+   30.1831,
+   -97.68063
+  ],
+  "oa": [
+   30.197535,
+   -97.662015
+  ],
+  "iem": [
+   30.18304,
+   -97.67987
+  ],
+  "oscar": [
+   30.3,
+   -97.7
+  ],
+  "oscar_name": "AUSTIN/CTY, TX.",
+  "d_noaa_oa": 2.4036093883005365,
+  "d_noaa_iem": 0.07335484596031569,
+  "d_iem_oscar": 13.148333991661092
+ },
+ {
+  "icao": "KBKF",
+  "city": "Denver",
+  "n_markets": 1782,
+  "site": "Buckley SFB",
+  "wmoId": null,
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "US",
+  "noaa": [
+   39.713,
+   -104.758
+  ],
+  "oa": [
+   39.701698,
+   -104.751999
+  ],
+  "iem": [
+   39.70167,
+   -104.75167
+  ],
+  "oscar": null,
+  "oscar_name": null,
+  "d_noaa_oa": 1.3575297276998706,
+  "d_noaa_iem": 1.3712803954577744,
+  "d_iem_oscar": null
+ },
+ {
+  "icao": "KDAL",
+  "city": "Dallas",
+  "n_markets": 2125,
+  "site": "Dallas/Love Fld",
+  "wmoId": "72258",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "US",
+  "noaa": [
+   32.83836,
+   -96.83584
+  ],
+  "oa": [
+   32.844776,
+   -96.847653
+  ],
+  "iem": [
+   32.84711,
+   -96.85178
+  ],
+  "oscar": [
+   32.8469444444,
+   -96.8511111111
+  ],
+  "oscar_name": "DALLAS, TX, DALLAS LOVE FIELD ARPT",
+  "d_noaa_oa": 1.314124801875544,
+  "d_noaa_iem": 1.778817132449367,
+  "d_iem_oscar": 0.065141087572439
+ },
+ {
+  "icao": "KHOU",
+  "city": "Houston",
+  "n_markets": 1782,
+  "site": "Houston/Hobby Arpt",
+  "wmoId": "72244",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "US",
+  "noaa": [
+   29.64582,
+   -95.28214
+  ],
+  "oa": [
+   29.645336,
+   -95.276812
+  ],
+  "iem": [
+   29.63747,
+   -95.28245
+  ],
+  "oscar": [
+   29.645,
+   -95.2788888889
+  ],
+  "oscar_name": "HOUSTON, TX WILLIAM P HOBBY ARPT",
+  "d_noaa_oa": 0.517701316931068,
+  "d_noaa_iem": 0.9289608676583122,
+  "d_iem_oscar": 0.9052697983520347
+ },
+ {
+  "icao": "KLAX",
+  "city": "Los Angeles",
+  "n_markets": 1782,
+  "site": "Los Angeles Intl",
+  "wmoId": "72295",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "US",
+  "noaa": [
+   33.93817,
+   -118.3866
+  ],
+  "oa": [
+   33.942501,
+   -118.407997
+  ],
+  "iem": [
+   33.93816,
+   -118.38653
+  ],
+  "oscar": [
+   33.9333333333,
+   -118.4
+  ],
+  "oscar_name": "LOS ANGELES /INT.,  CA.",
+  "d_noaa_oa": 2.0317616318414378,
+  "d_noaa_iem": 0.006552662538771926,
+  "d_iem_oscar": 1.3536136707822697
+ },
+ {
+  "icao": "KLGA",
+  "city": "NYC",
+  "n_markets": 2136,
+  "site": "New York/La Guardia Arpt",
+  "wmoId": "72503",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "US",
+  "noaa": [
+   40.77945,
+   -73.88027
+  ],
+  "oa": [
+   40.777199,
+   -73.872597
+  ],
+  "iem": [
+   40.77945,
+   -73.88028
+  ],
+  "oscar": [
+   40.7666666667,
+   -73.9
+  ],
+  "oscar_name": "NEW YORK/LA GUARDIA, NY.",
+  "d_noaa_oa": 0.6928685361715418,
+  "d_noaa_iem": 0.0008420006385031148,
+  "d_iem_oscar": 2.1858726792758287
+ },
+ {
+  "icao": "KMIA",
+  "city": "Miami",
+  "n_markets": 2104,
+  "site": "Miami Intl",
+  "wmoId": "72202",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "US",
+  "noaa": [
+   25.78806,
+   -80.31692
+  ],
+  "oa": [
+   25.796011,
+   -80.289751
+  ],
+  "iem": [
+   25.78805,
+   -80.31693
+  ],
+  "oscar": [
+   25.75,
+   -80.3833333333
+  ],
+  "oscar_name": "MIAMI, FL (72202-0)",
+  "d_noaa_oa": 2.8601695895792996,
+  "d_noaa_iem": 0.001496279377985475,
+  "d_iem_oscar": 7.881372341380192
+ },
+ {
+  "icao": "KORD",
+  "city": "Chicago",
+  "n_markets": 2104,
+  "site": "Chicago/O'Hare Intl",
+  "wmoId": "72530",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "US",
+  "noaa": [
+   41.96017,
+   -87.93161
+  ],
+  "oa": [
+   41.9786,
+   -87.9048
+  ],
+  "iem": [
+   41.9602,
+   -87.9316
+  ],
+  "oscar": [
+   41.9833333333,
+   -87.9
+  ],
+  "oscar_name": "CHICAGO/O'HARE, IL.",
+  "d_noaa_oa": 3.018693760466682,
+  "d_noaa_iem": 0.003436796718544416,
+  "d_iem_oscar": 3.666245937464113
+ },
+ {
+  "icao": "KSEA",
+  "city": "Seattle",
+  "n_markets": 2107,
+  "site": "Seattle-Tacoma Intl",
+  "wmoId": "72793",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "US",
+  "noaa": [
+   47.44467,
+   -122.31442
+  ],
+  "oa": [
+   47.447943,
+   -122.310276
+  ],
+  "iem": [
+   47.44469,
+   -122.31437
+  ],
+  "oscar": [
+   47.45,
+   -122.3
+  ],
+  "oscar_name": "SEATTLE/S.-TACOMA, WA.",
+  "d_noaa_oa": 0.479127298421997,
+  "d_noaa_iem": 0.004368503421113581,
+  "d_iem_oscar": 1.2313798589026674
+ },
+ {
+  "icao": "KSFO",
+  "city": "San Francisco",
+  "n_markets": 1771,
+  "site": "San Francisco Intl",
+  "wmoId": "72494",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "US",
+  "noaa": [
+   37.61961,
+   -122.36561
+  ],
+  "oa": [
+   37.619806,
+   -122.374821
+  ],
+  "iem": [
+   37.61897,
+   -122.37489
+  ],
+  "oscar": [
+   37.6166666667,
+   -122.3833333333
+  ],
+  "oscar_name": "SAN FRANCISCO/INT.,  CA.",
+  "d_noaa_oa": 0.8115537927252939,
+  "d_noaa_iem": 0.8204351383239121,
+  "d_iem_oscar": 0.786535681885939
+ },
+ {
+  "icao": "LEMD",
+  "city": "Madrid",
+  "n_markets": 1881,
+  "site": "Madrid/Barajas Arpt",
+  "wmoId": "08221",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "ES",
+  "noaa": [
+   40.466,
+   -3.555
+  ],
+  "oa": [
+   40.493407,
+   -3.572249
+  ],
+  "iem": [
+   40.46667,
+   -3.55556
+  ],
+  "oscar": [
+   40.4666666667,
+   -3.5555555556
+  ],
+  "oscar_name": "MADRID/BARAJAS",
+  "d_noaa_oa": 3.3787224790963384,
+  "d_noaa_iem": 0.0882870141160861,
+  "d_iem_oscar": 0.0005279544481574128
+ },
+ {
+  "icao": "LFPB",
+  "city": "Paris",
+  "n_markets": 1540,
+  "site": "Paris/Le Bourge Arpt",
+  "wmoId": "07150",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "FR",
+  "noaa": [
+   48.967,
+   2.428
+  ],
+  "oa": [
+   48.962276,
+   2.436539
+  ],
+  "iem": [
+   48.96722,
+   2.42722
+  ],
+  "oscar": [
+   48.9675,
+   2.4275
+  ],
+  "oscar_name": "LE BOURGET",
+  "d_noaa_oa": 0.8151743521073446,
+  "d_noaa_iem": 0.061971539038607595,
+  "d_iem_oscar": 0.03724426651334951
+ },
+ {
+  "icao": "LFPG",
+  "city": "Paris",
+  "n_markets": 575,
+  "site": "Paris/De Gaulle Arpt",
+  "wmoId": "07157",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "FR",
+  "noaa": [
+   49.015,
+   2.534
+  ],
+  "oa": [
+   49.00896,
+   2.554117
+  ],
+  "iem": [
+   49.01528,
+   2.53444
+  ],
+  "oscar": [
+   49.0152777778,
+   2.5344444444
+  ],
+  "oscar_name": "ROISSY",
+  "d_noaa_oa": 1.6136043388950774,
+  "d_noaa_iem": 0.04471050882145786,
+  "d_iem_oscar": 0.00040756817710662334
+ },
+ {
+  "icao": "LIMC",
+  "city": "Milan",
+  "n_markets": 1881,
+  "site": "Milan/Malpensa Arpt",
+  "wmoId": "16066",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "IT",
+  "noaa": [
+   45.631,
+   8.728
+  ],
+  "oa": [
+   45.6306,
+   8.72811
+  ],
+  "iem": [
+   45.63,
+   8.72306
+  ],
+  "oscar": [
+   45.63,
+   8.7230555556
+  ],
+  "oscar_name": "MILANO MALPENSA",
+  "d_noaa_oa": 0.04529290204957328,
+  "d_noaa_iem": 0.39988882168629647,
+  "d_iem_oscar": 0.0003455850128769604
+ },
+ {
+  "icao": "LLBG",
+  "city": "Tel Aviv",
+  "n_markets": 1935,
+  "site": "Tel Aviv/Ben Gurion Arpt",
+  "wmoId": "40180",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "IL",
+  "noaa": [
+   32.011,
+   34.887
+  ],
+  "oa": [
+   32.011398,
+   34.8867
+  ],
+  "iem": [
+   32.01139,
+   34.88667
+  ],
+  "oscar": [
+   32,
+   34.9
+  ],
+  "oscar_name": "BEN-GURION INT. AIRPORT",
+  "d_noaa_oa": 0.0525229667504874,
+  "d_noaa_iem": 0.0533735859443009,
+  "d_iem_oscar": 1.7843495210144433
+ },
+ {
+  "icao": "LTAC",
+  "city": "Ankara",
+  "n_markets": 2115,
+  "site": "Ankara/Esenbo\u011fa Intl",
+  "wmoId": "17128",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "TR",
+  "noaa": [
+   40.128,
+   32.995
+  ],
+  "oa": [
+   40.128101,
+   32.995098
+  ],
+  "iem": [
+   40.12808,
+   32.99508
+  ],
+  "oscar": [
+   40.115921,
+   32.986827
+  ],
+  "oscar_name": "ANKARA ESENBOGA HAVALIMANI",
+  "d_noaa_oa": 0.013983933555046586,
+  "d_noaa_iem": 0.011197932963044424,
+  "d_iem_oscar": 1.5232818882604693
+ },
+ {
+  "icao": "LTFM",
+  "city": "Istanbul",
+  "n_markets": 1738,
+  "site": "Istanbul Arpt",
+  "wmoId": null,
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "TR",
+  "noaa": [
+   41.262,
+   28.74
+  ],
+  "oa": [
+   41.274874,
+   28.732136
+  ],
+  "iem": [
+   41.2629,
+   28.7413
+  ],
+  "oscar": null,
+  "oscar_name": null,
+  "d_noaa_oa": 1.5751946684382085,
+  "d_noaa_iem": 0.14772322537831356,
+  "d_iem_oscar": null
+ },
+ {
+  "icao": "MMMX",
+  "city": "Mexico City",
+  "n_markets": 1716,
+  "site": "Mexico City Intl",
+  "wmoId": null,
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "MX",
+  "noaa": [
+   19.436,
+   -99.072
+  ],
+  "oa": [
+   19.435822,
+   -99.07033
+  ],
+  "iem": [
+   19.4363,
+   -99.0721
+  ],
+  "oscar": null,
+  "oscar_name": null,
+  "d_noaa_oa": 0.17622854782016198,
+  "d_noaa_iem": 0.03496770767325704,
+  "d_iem_oscar": null
+ },
+ {
+  "icao": "MPMG",
+  "city": "Panama City",
+  "n_markets": 1661,
+  "site": "Panama/Gelabert Intl",
+  "wmoId": null,
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "PA",
+  "noaa": [
+   8.967,
+   -79.555
+  ],
+  "oa": [
+   8.97334,
+   -79.555603
+  ],
+  "iem": [
+   8.9833333333,
+   -79.5166666667
+  ],
+  "oscar": null,
+  "oscar_name": null,
+  "d_noaa_oa": 0.7080800841264024,
+  "d_noaa_iem": 4.5853030176120075,
+  "d_iem_oscar": null
+ },
+ {
+  "icao": "NZWN",
+  "city": "Wellington",
+  "n_markets": 2115,
+  "site": "Wellington Intl",
+  "wmoId": "93436",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "NZ",
+  "noaa": [
+   -41.331,
+   174.806
+  ],
+  "oa": [
+   -41.326839,
+   174.806862
+  ],
+  "iem": [
+   -41.3272,
+   174.8053
+  ],
+  "oscar": [
+   -41.3312,
+   174.8056
+  ],
+  "oscar_name": "WELLINGTON AIRPORT",
+  "d_noaa_oa": 0.46824712320292533,
+  "d_noaa_iem": 0.42656420469350453,
+  "d_iem_oscar": 0.44548454527718284
+ },
+ {
+  "icao": "OEJN",
+  "city": "Jeddah",
+  "n_markets": 1628,
+  "site": "Jeddah/King Abdulaziz Intl",
+  "wmoId": "41024",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "SA",
+  "noaa": [
+   21.685,
+   39.166
+  ],
+  "oa": [
+   21.680241,
+   39.157436
+  ],
+  "iem": [
+   21.65983127,
+   39.12220782
+  ],
+  "oscar": [
+   21.657559,
+   39.185749
+  ],
+  "oscar_name": "King AbdulAziz AirPort",
+  "d_noaa_oa": 1.0310514072463195,
+  "d_noaa_iem": 5.320735451366064,
+  "d_iem_oscar": 6.571486765178442
+ },
+ {
+  "icao": "OPKC",
+  "city": "Karachi",
+  "n_markets": 1551,
+  "site": "Karachi/Jinnah Intl",
+  "wmoId": "41780",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "PK",
+  "noaa": [
+   24.902,
+   67.139
+  ],
+  "oa": [
+   24.9065,
+   67.160797
+  ],
+  "iem": [
+   24.84558,
+   67.16137
+  ],
+  "oscar": [
+   24.9,
+   67.1333333333
+  ],
+  "oscar_name": "KARACHI AIRPORT",
+  "d_noaa_oa": 2.254569011442981,
+  "d_noaa_iem": 6.667152238856927,
+  "d_iem_oscar": 6.679596126341946
+ },
+ {
+  "icao": "RCSS",
+  "city": "Taipei",
+  "n_markets": 1672,
+  "site": "Taipei/Songshan Arpt",
+  "wmoId": "46696",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "TW",
+  "noaa": [
+   25.069,
+   121.552
+  ],
+  "oa": [
+   25.067244,
+   121.552822
+  ],
+  "iem": [
+   25.06944,
+   121.55167
+  ],
+  "oscar": null,
+  "oscar_name": null,
+  "d_noaa_oa": 0.21208585383147613,
+  "d_noaa_iem": 0.059147851959301306,
+  "d_iem_oscar": null
+ },
+ {
+  "icao": "RCTP",
+  "city": "Taipei",
+  "n_markets": 132,
+  "site": "Taipei/Taoyuan Arpt",
+  "wmoId": "46686",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "TW",
+  "noaa": [
+   25.078,
+   121.233
+  ],
+  "oa": [
+   25.0777,
+   121.233002
+  ],
+  "iem": [
+   25.07773,
+   121.23282
+  ],
+  "oscar": null,
+  "oscar_name": null,
+  "d_noaa_oa": 0.03335908611416764,
+  "d_noaa_iem": 0.03507127307655829,
+  "d_iem_oscar": null
+ },
+ {
+  "icao": "RJTT",
+  "city": "Tokyo",
+  "n_markets": 1935,
+  "site": "Tokyo/Haneda Intl",
+  "wmoId": "47671",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "JP",
+  "noaa": [
+   35.553,
+   139.781
+  ],
+  "oa": [
+   35.549678,
+   139.786958
+  ],
+  "iem": [
+   35.55333,
+   139.78111
+  ],
+  "oscar": [
+   35.5533333333,
+   139.7811111111
+  ],
+  "oscar_name": "TOKYO INTERNATIONAL AIRPORT",
+  "d_noaa_oa": 0.6534341566263476,
+  "d_noaa_iem": 0.038019733806627994,
+  "d_iem_oscar": 0.0003840338195283384
+ },
+ {
+  "icao": "RKPK",
+  "city": "Busan",
+  "n_markets": 1694,
+  "site": "Busan/Gimhae Intl",
+  "wmoId": "47153",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "KR",
+  "noaa": [
+   35.179,
+   128.938
+  ],
+  "oa": [
+   35.179501,
+   128.938004
+  ],
+  "iem": [
+   35.17953,
+   128.93822
+  ],
+  "oscar": [
+   35.1666666667,
+   128.9333333333
+  ],
+  "oscar_name": "GIMHAE AB",
+  "d_noaa_oa": 0.05570984443461151,
+  "d_noaa_iem": 0.0622328537799257,
+  "d_iem_oscar": 1.497712983622527
+ },
+ {
+  "icao": "RKSI",
+  "city": "Seoul",
+  "n_markets": 2121,
+  "site": "Seoul/Incheon Intl",
+  "wmoId": null,
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "KR",
+  "noaa": [
+   37.469,
+   126.451
+  ],
+  "oa": [
+   37.469101,
+   126.450996
+  ],
+  "iem": [
+   37.4666666667,
+   126.45
+  ],
+  "oscar": null,
+  "oscar_name": null,
+  "d_noaa_oa": 0.011236234352949806,
+  "d_noaa_iem": 0.274054238749008,
+  "d_iem_oscar": null
+ },
+ {
+  "icao": "RPLL",
+  "city": "Manila",
+  "n_markets": 1551,
+  "site": "Manila/Aquino Intl",
+  "wmoId": "98429",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "PH",
+  "noaa": [
+   14.507,
+   121.004
+  ],
+  "oa": [
+   14.5086,
+   121.019997
+  ],
+  "iem": [
+   14.5069,
+   121.0042
+  ],
+  "oscar": [
+   14.5047,
+   121.004751
+  ],
+  "oscar_name": "NINOY AQUINO INTERNATIONAL AIRPORT",
+  "d_noaa_oa": 1.7312320022529373,
+  "d_noaa_iem": 0.0242318318351107,
+  "d_iem_oscar": 0.25171725102068815
+ },
+ {
+  "icao": "SAEZ",
+  "city": "Buenos Aires",
+  "n_markets": 2096,
+  "site": "Buenos Aires/Pistarini Arpt",
+  "wmoId": "87576",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "AR",
+  "noaa": [
+   -34.822,
+   -58.536
+  ],
+  "oa": [
+   -34.8222,
+   -58.5358
+  ],
+  "iem": [
+   -34.82222,
+   -58.53583
+  ],
+  "oscar": [
+   -34.81856,
+   -58.54229
+  ],
+  "oscar_name": "EZEIZA AERO",
+  "d_noaa_oa": 0.028772850832219202,
+  "d_noaa_iem": 0.028969727521931082,
+  "d_iem_oscar": 0.7165019460084848
+ },
+ {
+  "icao": "SBGR",
+  "city": "Sao Paulo",
+  "n_markets": 2083,
+  "site": "Sao Paulo Intl",
+  "wmoId": "83075",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "BR",
+  "noaa": [
+   -23.432,
+   -46.469
+  ],
+  "oa": [
+   -23.431274,
+   -46.469954
+  ],
+  "iem": [
+   -23.43208,
+   -46.46951
+  ],
+  "oscar": [
+   -23.4333333333,
+   -46.4666666667
+  ],
+  "oscar_name": "GUARULHOS",
+  "d_noaa_oa": 0.12645342612969776,
+  "d_noaa_iem": 0.05278764891248878,
+  "d_iem_oscar": 0.32182962652838837
+ },
+ {
+  "icao": "UUWW",
+  "city": "Moscow",
+  "n_markets": 1727,
+  "site": "Moscow/Vnukovo Arpt",
+  "wmoId": null,
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "RU",
+  "noaa": [
+   55.592,
+   37.261
+  ],
+  "oa": [
+   55.591499,
+   37.261501
+  ],
+  "iem": [
+   55.5915,
+   37.2615
+  ],
+  "oscar": null,
+  "oscar_name": null,
+  "d_noaa_oa": 0.0639879352615973,
+  "d_noaa_iem": 0.06386021463447974,
+  "d_iem_oscar": null
+ },
+ {
+  "icao": "VHHH",
+  "city": "Hong Kong",
+  "n_markets": 18,
+  "site": "Hong Kong Intl",
+  "wmoId": "45007",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "HK",
+  "noaa": [
+   22.309,
+   113.922
+  ],
+  "oa": [
+   22.31184,
+   113.914862
+  ],
+  "iem": [
+   22.30944,
+   113.92194
+  ],
+  "oscar": [
+   22.3094,
+   113.9219
+  ],
+  "oscar_name": "HONG KONG INTERNATIONAL AIRPORT",
+  "d_noaa_oa": 0.7993194514794364,
+  "d_noaa_iem": 0.0493135697325046,
+  "d_iem_oscar": 0.006059293157020504
+ },
+ {
+  "icao": "VILK",
+  "city": "Lucknow",
+  "n_markets": 1980,
+  "site": "Lucknow/Singh Arpt",
+  "wmoId": "42369",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "IN",
+  "noaa": [
+   26.761,
+   80.889
+  ],
+  "oa": [
+   26.760599,
+   80.889297
+  ],
+  "iem": [
+   26.76059,
+   80.88934
+  ],
+  "oscar": [
+   26.75,
+   80.8833
+  ],
+  "oscar_name": "LUCKNOW/AMAUSI",
+  "d_noaa_oa": 0.05345764701406814,
+  "d_noaa_iem": 0.056727206069445354,
+  "d_iem_oscar": 1.3214722129467906
+ },
+ {
+  "icao": "WIHH",
+  "city": "Jakarta",
+  "n_markets": 517,
+  "site": "Jakarta/Perdanakusum",
+  "wmoId": null,
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "ID",
+  "noaa": [
+   -6.267,
+   106.891
+  ],
+  "oa": [
+   -6.266989,
+   106.890318
+  ],
+  "iem": [
+   -6.26661,
+   106.89112
+  ],
+  "oscar": null,
+  "oscar_name": null,
+  "d_noaa_oa": 0.07539167335159616,
+  "d_noaa_iem": 0.04534905049298334,
+  "d_iem_oscar": null
+ },
+ {
+  "icao": "WMKK",
+  "city": "Kuala Lumpur",
+  "n_markets": 1694,
+  "site": "Kuala Lumpur Intl",
+  "wmoId": "48650",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "MY",
+  "noaa": [
+   2.747,
+   101.714
+  ],
+  "oa": [
+   2.74558,
+   101.709999
+  ],
+  "iem": [
+   2.71667,
+   101.7
+  ],
+  "oscar": [
+   2.730833,
+   101.7031
+  ],
+  "oscar_name": "KUALA LUMPUR INTERNATIONAL AIRPORT (KLIA)",
+  "d_noaa_oa": 0.47159827129554244,
+  "d_noaa_iem": 3.7137501778325532,
+  "d_iem_oscar": 1.612053669920905
+ },
+ {
+  "icao": "WSSS",
+  "city": "Singapore",
+  "n_markets": 1908,
+  "site": "Singapore/Changi Intl",
+  "wmoId": "48698",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "SG",
+  "noaa": [
+   1.368,
+   103.982
+  ],
+  "oa": [
+   1.35019,
+   103.994003
+  ],
+  "iem": [
+   1.36667,
+   103.98333
+  ],
+  "oscar": [
+   1.3679,
+   103.9824
+  ],
+  "oscar_name": "SINGAPORE/CHANGI AIRPORT",
+  "d_noaa_oa": 2.387940648670048,
+  "d_noaa_iem": 0.20911721200913103,
+  "d_iem_oscar": 0.17144611883570643
+ },
+ {
+  "icao": "ZBAA",
+  "city": "Beijing",
+  "n_markets": 1837,
+  "site": "Beijing Intl",
+  "wmoId": "54511",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "CN",
+  "noaa": [
+   40.082,
+   116.603
+  ],
+  "oa": [
+   40.077349,
+   116.596702
+  ],
+  "iem": [
+   40.07413,
+   116.587
+  ],
+  "oscar": [
+   39.9333333333,
+   116.2833333333
+  ],
+  "oscar_name": "BEIJING",
+  "d_noaa_oa": 0.7447049824732921,
+  "d_noaa_iem": 1.6183361911396095,
+  "d_iem_oscar": 30.234127546529336
+ },
+ {
+  "icao": "ZGGG",
+  "city": "Guangzhou",
+  "n_markets": 1551,
+  "site": "Guangzhou/Baiyun Intl",
+  "wmoId": "59287",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "CN",
+  "noaa": [
+   23.392,
+   113.307
+  ],
+  "oa": [
+   23.392401,
+   113.299004
+  ],
+  "iem": [
+   23.39639,
+   113.30083
+  ],
+  "oscar": [
+   23.2166666667,
+   113.4833333333
+  ],
+  "oscar_name": "GUANGZHOU",
+  "d_noaa_oa": 0.8172544203174188,
+  "d_noaa_iem": 0.7967280529923035,
+  "d_iem_oscar": 27.326361870272184
+ },
+ {
+  "icao": "ZGSZ",
+  "city": "Shenzhen",
+  "n_markets": 1837,
+  "site": "Shenzhen/Boan Intl",
+  "wmoId": "59493",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "CN",
+  "noaa": [
+   22.639,
+   113.803
+  ],
+  "oa": [
+   22.639474,
+   113.803262
+  ],
+  "iem": [
+   22.55,
+   114.1
+  ],
+  "oscar": [
+   22.55,
+   114.1
+  ],
+  "oscar_name": "SHENZHEN",
+  "d_noaa_oa": 0.059168770879088596,
+  "d_noaa_iem": 32.05597564101924,
+  "d_iem_oscar": 0.0
+ },
+ {
+  "icao": "ZHCC",
+  "city": "Zhengzhou",
+  "n_markets": 330,
+  "site": "Zhengzhou/Xinzheng Arpt",
+  "wmoId": "57083",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "CN",
+  "noaa": [
+   34.52,
+   113.834
+  ],
+  "oa": [
+   34.526497,
+   113.849165
+  ],
+  "iem": [
+   34.7166666667,
+   113.65
+  ],
+  "oscar": [
+   34.7166666667,
+   113.65
+  ],
+  "oscar_name": "ZHENGZHOU",
+  "d_noaa_oa": 1.5659180150097278,
+  "d_noaa_iem": 27.59938698120388,
+  "d_iem_oscar": 0.0
+ },
+ {
+  "icao": "ZHHH",
+  "city": "Wuhan",
+  "n_markets": 1837,
+  "site": "Wuhan/Tianhe Intl",
+  "wmoId": "57494",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "CN",
+  "noaa": [
+   30.783,
+   114.205
+  ],
+  "oa": [
+   30.774798,
+   114.213723
+  ],
+  "iem": [
+   30.62,
+   114.13
+  ],
+  "oscar": [
+   30.6,
+   114.05
+  ],
+  "oscar_name": "WUHAN",
+  "d_noaa_oa": 1.2354057103966392,
+  "d_noaa_iem": 19.491708064793496,
+  "d_iem_oscar": 7.972476584009673
+ },
+ {
+  "icao": "ZSJN",
+  "city": "Jinan",
+  "n_markets": 330,
+  "site": "Jinan Yaoqiang Intl",
+  "wmoId": null,
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "CN",
+  "noaa": [
+   36.856,
+   117.206
+  ],
+  "oa": [
+   36.857201,
+   117.216003
+  ],
+  "iem": [
+   36.8555,
+   117.206
+  ],
+  "oscar": null,
+  "oscar_name": null,
+  "d_noaa_oa": 0.8999448446607888,
+  "d_noaa_iem": 0.055597463322134444,
+  "d_iem_oscar": null
+ },
+ {
+  "icao": "ZSPD",
+  "city": "Shanghai",
+  "n_markets": 1908,
+  "site": "Shanghai/Pudong Intl",
+  "wmoId": null,
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "CN",
+  "noaa": [
+   31.146,
+   121.8
+  ],
+  "oa": [
+   31.1434,
+   121.805
+  ],
+  "iem": [
+   31.1166666667,
+   121.766666667
+  ],
+  "oscar": null,
+  "oscar_name": null,
+  "d_noaa_oa": 0.5567810232497831,
+  "d_noaa_iem": 4.550258856109428,
+  "d_iem_oscar": null
+ },
+ {
+  "icao": "ZSQD",
+  "city": "Qingdao",
+  "n_markets": 1452,
+  "site": "Qingdao/Jiaodong Arpt",
+  "wmoId": "54857",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "CN",
+  "noaa": [
+   36.362,
+   120.087
+  ],
+  "oa": [
+   36.361953,
+   120.088171
+  ],
+  "iem": [
+   36.06667,
+   120.33333
+  ],
+  "oscar": [
+   36.0666666667,
+   120.3333333333
+  ],
+  "oscar_name": "QINGDAO",
+  "d_noaa_oa": 0.10498603887867186,
+  "d_noaa_iem": 39.58258160668307,
+  "d_iem_oscar": 0.00047659395738672896
+ },
+ {
+  "icao": "ZUCK",
+  "city": "Chongqing",
+  "n_markets": 1837,
+  "site": "Chongqing/Jiangbei Intl",
+  "wmoId": "57516",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "CN",
+  "noaa": [
+   29.718,
+   106.639
+  ],
+  "oa": [
+   29.712254,
+   106.651895
+  ],
+  "iem": [
+   29.52,
+   106.48
+  ],
+  "oscar": [
+   29.5833333333,
+   106.4666666667
+  ],
+  "oscar_name": "CHONGQING (57516-0)",
+  "d_noaa_oa": 1.3996486610052505,
+  "d_noaa_iem": 26.850693433096687,
+  "d_iem_oscar": 7.159471365499171
+ },
+ {
+  "icao": "ZUUU",
+  "city": "Chengdu",
+  "n_markets": 1826,
+  "site": "Chengdu/Shuangliu Intl",
+  "wmoId": "56294",
+  "siteType": [
+   "METAR",
+   "TAF"
+  ],
+  "country": "CN",
+  "noaa": [
+   30.576,
+   103.95
+  ],
+  "oa": [
+   30.558257,
+   103.945966
+  ],
+  "iem": [
+   30.6666666667,
+   104.016666667
+  ],
+  "oscar": null,
+  "oscar_name": null,
+  "d_noaa_oa": 2.010380386092543,
+  "d_noaa_iem": 11.930432412162311,
+  "d_iem_oscar": null
+ }
+]

@@ -1,0 +1,1370 @@
+[
+ {
+  "icao": "KLGA",
+  "city": "NYC",
+  "n_markets": 2136,
+  "oa": [
+   40.777199,
+   -73.872597
+  ],
+  "iem": [
+   40.77945,
+   -73.88028
+  ],
+  "iem_net": "NY_ASOS",
+  "iem_elev": 9.0,
+  "iem_name": "New York/LaGuardia",
+  "iem_modified": "2025-04-05T12:43:49Z",
+  "iem_begin": "1935-02-22T00:00:00Z",
+  "iem_wigos": "0-20000-0-72503",
+  "v3": null,
+  "d_iem_oa": 0.6936537551808222,
+  "d_iem_v3": null,
+  "dp_lat": 5,
+  "dp_lon": 5
+ },
+ {
+  "icao": "EGLC",
+  "city": "London",
+  "n_markets": 2129,
+  "oa": [
+   51.505299,
+   0.055278
+  ],
+  "iem": [
+   51.50528,
+   0.05528
+  ],
+  "iem_net": "GB__ASOS",
+  "iem_elev": 5.0,
+  "iem_name": "London City",
+  "iem_modified": "2024-03-28T19:36:49Z",
+  "iem_begin": "1988-01-29T00:00:00Z",
+  "iem_wigos": null,
+  "v3": [
+   51.5053,
+   0.0553
+  ],
+  "d_iem_oa": 0.00211723356577779,
+  "d_iem_v3": 0.0026195169627895574,
+  "dp_lat": 5,
+  "dp_lon": 5
+ },
+ {
+  "icao": "CYYZ",
+  "city": "Toronto",
+  "n_markets": 2129,
+  "oa": [
+   43.675935,
+   -79.629421
+  ],
+  "iem": [
+   43.67722,
+   -79.63056
+  ],
+  "iem_net": "CA_ON_ASOS",
+  "iem_elev": 173.0,
+  "iem_name": "LESTER B PEARSON INTL",
+  "iem_modified": "2023-12-04T16:44:56Z",
+  "iem_begin": "1949-12-31T00:00:00Z",
+  "iem_wigos": "0-20000-0-71624",
+  "v3": null,
+  "d_iem_oa": 0.16972587832511624,
+  "d_iem_v3": null,
+  "dp_lat": 5,
+  "dp_lon": 5
+ },
+ {
+  "icao": "KDAL",
+  "city": "Dallas",
+  "n_markets": 2125,
+  "oa": [
+   32.844776,
+   -96.847653
+  ],
+  "iem": [
+   32.84711,
+   -96.85178
+  ],
+  "iem_net": "TX_ASOS",
+  "iem_elev": 148.0,
+  "iem_name": "DALLAS/LOVE FIELD",
+  "iem_modified": "2025-03-24T20:43:06Z",
+  "iem_begin": "1930-01-01T00:00:00Z",
+  "iem_wigos": null,
+  "v3": null,
+  "d_iem_oa": 0.4647522612666981,
+  "d_iem_v3": null,
+  "dp_lat": 5,
+  "dp_lon": 5
+ },
+ {
+  "icao": "RKSI",
+  "city": "Seoul",
+  "n_markets": 2121,
+  "oa": [
+   37.469101,
+   126.450996
+  ],
+  "iem": [
+   37.4666666667,
+   126.45
+  ],
+  "iem_net": "KR__ASOS",
+  "iem_elev": 7.0,
+  "iem_name": "Seoul",
+  "iem_modified": "2023-12-04T16:44:56Z",
+  "iem_begin": "2001-11-26T00:00:00Z",
+  "iem_wigos": "0-20000-0-70699",
+  "v3": [
+   37.4667,
+   126.45
+  ],
+  "d_iem_oa": 0.28460036738883204,
+  "d_iem_v3": 0.003706493848718906,
+  "dp_lat": 10,
+  "dp_lon": 2
+ },
+ {
+  "icao": "LTAC",
+  "city": "Ankara",
+  "n_markets": 2115,
+  "oa": [
+   40.128101,
+   32.995098
+  ],
+  "iem": [
+   40.12808,
+   32.99508
+  ],
+  "iem_net": "TR__ASOS",
+  "iem_elev": 949.0,
+  "iem_name": "Ankara",
+  "iem_modified": "2023-12-04T16:44:56Z",
+  "iem_begin": "1966-12-31T00:00:00Z",
+  "iem_wigos": "0-20000-0-17128",
+  "v3": null,
+  "d_iem_oa": 0.0027918949095676326,
+  "d_iem_v3": null,
+  "dp_lat": 5,
+  "dp_lon": 5
+ },
+ {
+  "icao": "NZWN",
+  "city": "Wellington",
+  "n_markets": 2115,
+  "oa": [
+   -41.326839,
+   174.806862
+  ],
+  "iem": [
+   -41.3272,
+   174.8053
+  ],
+  "iem_net": "NF__ASOS",
+  "iem_elev": 0.0,
+  "iem_name": "Wellington",
+  "iem_modified": "2023-12-04T16:44:56Z",
+  "iem_begin": "2000-01-07T00:00:00Z",
+  "iem_wigos": "0-20000-0-93436",
+  "v3": null,
+  "d_iem_oa": 0.13646759573311648,
+  "d_iem_v3": null,
+  "dp_lat": 4,
+  "dp_lon": 4
+ },
+ {
+  "icao": "KATL",
+  "city": "Atlanta",
+  "n_markets": 2114,
+  "oa": [
+   33.6367,
+   -84.428101
+  ],
+  "iem": [
+   33.6301,
+   -84.4418
+  ],
+  "iem_net": "GA_ASOS",
+  "iem_elev": 315.0,
+  "iem_name": "ATLANTA INTL ARPT",
+  "iem_modified": "2023-12-04T16:44:56Z",
+  "iem_begin": "1945-01-01T00:00:00Z",
+  "iem_wigos": "0-20000-0-72219",
+  "v3": null,
+  "d_iem_oa": 1.4652922932319226,
+  "d_iem_v3": null,
+  "dp_lat": 4,
+  "dp_lon": 4
+ },
+ {
+  "icao": "KSEA",
+  "city": "Seattle",
+  "n_markets": 2107,
+  "oa": [
+   47.447943,
+   -122.310276
+  ],
+  "iem": [
+   47.44469,
+   -122.31437
+  ],
+  "iem_net": "WA_ASOS",
+  "iem_elev": 137.0,
+  "iem_name": "SEATTLE-TACOMA INTL",
+  "iem_modified": "2025-04-03T10:27:08Z",
+  "iem_begin": "1944-07-07T00:00:00Z",
+  "iem_wigos": "0-20000-0-72793",
+  "v3": null,
+  "d_iem_oa": 0.47499462439912826,
+  "d_iem_v3": null,
+  "dp_lat": 5,
+  "dp_lon": 5
+ },
+ {
+  "icao": "KMIA",
+  "city": "Miami",
+  "n_markets": 2104,
+  "oa": [
+   25.796011,
+   -80.289751
+  ],
+  "iem": [
+   25.78805,
+   -80.31693
+  ],
+  "iem_net": "FL_ASOS",
+  "iem_elev": 4.0,
+  "iem_name": "MIAMI INTL AIRPORT",
+  "iem_modified": "2025-03-23T18:43:57Z",
+  "iem_begin": "1932-07-01T00:00:00Z",
+  "iem_wigos": "0-20000-0-72202",
+  "v3": null,
+  "d_iem_oa": 2.8614656569077006,
+  "d_iem_v3": null,
+  "dp_lat": 5,
+  "dp_lon": 5
+ },
+ {
+  "icao": "KORD",
+  "city": "Chicago",
+  "n_markets": 2104,
+  "oa": [
+   41.9786,
+   -87.9048
+  ],
+  "iem": [
+   41.9602,
+   -87.9316
+  ],
+  "iem_net": "IL_ASOS",
+  "iem_elev": 205.0,
+  "iem_name": "Chicago OHare",
+  "iem_modified": "2025-11-03T18:06:09Z",
+  "iem_begin": "1946-10-01T00:00:00Z",
+  "iem_wigos": "0-20000-0-72530",
+  "v3": null,
+  "d_iem_oa": 3.0158223041736387,
+  "d_iem_v3": null,
+  "dp_lat": 4,
+  "dp_lon": 4
+ },
+ {
+  "icao": "SAEZ",
+  "city": "Buenos Aires",
+  "n_markets": 2096,
+  "oa": [
+   -34.8222,
+   -58.5358
+  ],
+  "iem": [
+   -34.82222,
+   -58.53583
+  ],
+  "iem_net": "AR__ASOS",
+  "iem_elev": 20.0,
+  "iem_name": "Buenos Aires",
+  "iem_modified": "2023-12-04T16:44:56Z",
+  "iem_begin": "1957-06-29T00:00:00Z",
+  "iem_wigos": "0-20000-0-87576",
+  "v3": null,
+  "d_iem_oa": 0.0035277550052067895,
+  "d_iem_v3": null,
+  "dp_lat": 5,
+  "dp_lon": 5
+ },
+ {
+  "icao": "SBGR",
+  "city": "Sao Paulo",
+  "n_markets": 2083,
+  "oa": [
+   -23.431274,
+   -46.469954
+  ],
+  "iem": [
+   -23.43208,
+   -46.46951
+  ],
+  "iem_net": "BR__ASOS",
+  "iem_elev": 750.0,
+  "iem_name": "Sao Paulo",
+  "iem_modified": "2022-09-05T06:58:03Z",
+  "iem_begin": "2001-07-21T00:00:00Z",
+  "iem_wigos": null,
+  "v3": [
+   -23.4321,
+   -46.4695
+  ],
+  "d_iem_oa": 0.1004207130936506,
+  "d_iem_v3": 0.0024467596709902553,
+  "dp_lat": 5,
+  "dp_lon": 5
+ },
+ {
+  "icao": "EDDM",
+  "city": "Munich",
+  "n_markets": 1980,
+  "oa": [
+   48.353802,
+   11.7861
+  ],
+  "iem": [
+   48.35833,
+   11.80917
+  ],
+  "iem_net": "DE__ASOS",
+  "iem_elev": 447.0,
+  "iem_name": "Munich",
+  "iem_modified": "2023-12-04T16:44:56Z",
+  "iem_begin": "1929-08-01T00:00:00Z",
+  "iem_wigos": "0-20000-0-10866",
+  "v3": null,
+  "d_iem_oa": 1.777421369327456,
+  "d_iem_v3": null,
+  "dp_lat": 5,
+  "dp_lon": 5
+ },
+ {
+  "icao": "VILK",
+  "city": "Lucknow",
+  "n_markets": 1980,
+  "oa": [
+   26.760599,
+   80.889297
+  ],
+  "iem": [
+   26.76059,
+   80.88934
+  ],
+  "iem_net": "IN__ASOS",
+  "iem_elev": 128.0,
+  "iem_name": "Lucknow",
+  "iem_modified": "2023-12-04T16:44:56Z",
+  "iem_begin": "1944-12-31T00:00:00Z",
+  "iem_wigos": "0-20000-0-42369",
+  "v3": [
+   26.7606,
+   80.8893
+  ],
+  "d_iem_oa": 0.004384999520398962,
+  "d_iem_v3": 0.0041241482685890115,
+  "dp_lat": 5,
+  "dp_lon": 5
+ },
+ {
+  "icao": "RJTT",
+  "city": "Tokyo",
+  "n_markets": 1935,
+  "oa": [
+   35.549678,
+   139.786958
+  ],
+  "iem": [
+   35.55333,
+   139.78111
+  ],
+  "iem_net": "JP__ASOS",
+  "iem_elev": 8.0,
+  "iem_name": "Tokyo",
+  "iem_modified": "2023-12-04T16:44:56Z",
+  "iem_begin": "1946-09-11T00:00:00Z",
+  "iem_wigos": "0-20000-0-47671",
+  "v3": null,
+  "d_iem_oa": 0.6669346135132028,
+  "d_iem_v3": null,
+  "dp_lat": 5,
+  "dp_lon": 5
+ },
+ {
+  "icao": "LLBG",
+  "city": "Tel Aviv",
+  "n_markets": 1935,
+  "oa": [
+   32.011398,
+   34.8867
+  ],
+  "iem": [
+   32.01139,
+   34.88667
+  ],
+  "iem_net": "IL__ASOS",
+  "iem_elev": 49.0,
+  "iem_name": "Tel-aviv",
+  "iem_modified": "2023-12-04T16:44:56Z",
+  "iem_begin": "2001-02-15T00:00:00Z",
+  "iem_wigos": "0-20000-0-40180",
+  "v3": [
+   32.0114,
+   34.8867
+  ],
+  "d_iem_oa": 0.0029651876737243404,
+  "d_iem_v3": 0.003039317849090207,
+  "dp_lat": 5,
+  "dp_lon": 5
+ },
+ {
+  "icao": "WSSS",
+  "city": "Singapore",
+  "n_markets": 1908,
+  "oa": [
+   1.35019,
+   103.994003
+  ],
+  "iem": [
+   1.36667,
+   103.98333
+  ],
+  "iem_net": "SG__ASOS",
+  "iem_elev": 16.0,
+  "iem_name": "Singapore",
+  "iem_modified": "2025-04-01T01:00:34Z",
+  "iem_begin": "1956-01-03T00:00:00Z",
+  "iem_wigos": "0-20000-0-48698",
+  "v3": null,
+  "d_iem_oa": 2.1830464363072153,
+  "d_iem_v3": null,
+  "dp_lat": 5,
+  "dp_lon": 5
+ },
+ {
+  "icao": "ZSPD",
+  "city": "Shanghai",
+  "n_markets": 1908,
+  "oa": [
+   31.1434,
+   121.805
+  ],
+  "iem": [
+   31.1166666667,
+   121.766666667
+  ],
+  "iem_net": "CN__ASOS",
+  "iem_elev": 4.0,
+  "iem_name": "Shanghai",
+  "iem_modified": "2022-08-22T07:01:40Z",
+  "iem_begin": "2001-07-21T00:00:00Z",
+  "iem_wigos": null,
+  "v3": null,
+  "d_iem_oa": 4.7062868143592596,
+  "d_iem_v3": null,
+  "dp_lat": 10,
+  "dp_lon": 9
+ },
+ {
+  "icao": "EPWA",
+  "city": "Warsaw",
+  "n_markets": 1881,
+  "oa": [
+   52.165699,
+   20.9671
+  ],
+  "iem": [
+   52.16278,
+   20.96111
+  ],
+  "iem_net": "PL__ASOS",
+  "iem_elev": 107.0,
+  "iem_name": "Warsaw",
+  "iem_modified": "2023-12-04T16:44:56Z",
+  "iem_begin": "1928-01-02T00:00:00Z",
+  "iem_wigos": "0-20000-0-12375",
+  "v3": null,
+  "d_iem_oa": 0.5217968822026602,
+  "d_iem_v3": null,
+  "dp_lat": 5,
+  "dp_lon": 5
+ },
+ {
+  "icao": "LIMC",
+  "city": "Milan",
+  "n_markets": 1881,
+  "oa": [
+   45.6306,
+   8.72811
+  ],
+  "iem": [
+   45.63,
+   8.72306
+  ],
+  "iem_net": "IT__ASOS",
+  "iem_elev": 211.0,
+  "iem_name": "Milano",
+  "iem_modified": "2023-12-04T16:44:56Z",
+  "iem_begin": "1965-02-03T00:00:00Z",
+  "iem_wigos": "0-20000-0-16066",
+  "v3": [
+   45.63,
+   8.7231
+  ],
+  "d_iem_oa": 0.39830023445858814,
+  "d_iem_v3": 0.0031102962188573734,
+  "dp_lat": 2,
+  "dp_lon": 5
+ },
+ {
+  "icao": "LEMD",
+  "city": "Madrid",
+  "n_markets": 1881,
+  "oa": [
+   40.493407,
+   -3.572249
+  ],
+  "iem": [
+   40.46667,
+   -3.55556
+  ],
+  "iem_net": "ES__ASOS",
+  "iem_elev": 582.0,
+  "iem_name": "Madrid",
+  "iem_modified": "2023-12-04T16:44:56Z",
+  "iem_begin": "1931-01-02T00:00:00Z",
+  "iem_wigos": "0-20000-0-08221",
+  "v3": null,
+  "d_iem_oa": 3.291087381045599,
+  "d_iem_v3": null,
+  "dp_lat": 5,
+  "dp_lon": 5
+ },
+ {
+  "icao": "ZBAA",
+  "city": "Beijing",
+  "n_markets": 1837,
+  "oa": [
+   40.077349,
+   116.596702
+  ],
+  "iem": [
+   40.07413,
+   116.587
+  ],
+  "iem_net": "CN__ASOS",
+  "iem_elev": 30.0,
+  "iem_name": "Beijing",
+  "iem_modified": "2023-12-04T16:44:56Z",
+  "iem_begin": "1945-10-31T00:00:00Z",
+  "iem_wigos": "0-20000-0-54511",
+  "v3": null,
+  "d_iem_oa": 0.899761720878526,
+  "d_iem_v3": null,
+  "dp_lat": 5,
+  "dp_lon": 3
+ },
+ {
+  "icao": "ZUCK",
+  "city": "Chongqing",
+  "n_markets": 1837,
+  "oa": [
+   29.712254,
+   106.651895
+  ],
+  "iem": [
+   29.52,
+   106.48
+  ],
+  "iem_net": "CN__ASOS",
+  "iem_elev": 351.0,
+  "iem_name": "Chongqing",
+  "iem_modified": "2023-12-04T16:44:56Z",
+  "iem_begin": "1944-11-10T00:00:00Z",
+  "iem_wigos": "0-20000-0-57516",
+  "v3": null,
+  "d_iem_oa": 27.076192744795826,
+  "d_iem_v3": null,
+  "dp_lat": 2,
+  "dp_lon": 2
+ },
+ {
+  "icao": "ZGSZ",
+  "city": "Shenzhen",
+  "n_markets": 1837,
+  "oa": [
+   22.639474,
+   113.803262
+  ],
+  "iem": [
+   22.55,
+   114.1
+  ],
+  "iem_net": "CN__ASOS",
+  "iem_elev": 18.0,
+  "iem_name": "Shenzhen",
+  "iem_modified": "2020-09-30T01:21:40Z",
+  "iem_begin": "1957-06-01T00:00:00Z",
+  "iem_wigos": null,
+  "v3": [
+   22.55,
+   114.1
+  ],
+  "d_iem_oa": 32.046667427842536,
+  "d_iem_v3": 0.0,
+  "dp_lat": 2,
+  "dp_lon": 1
+ },
+ {
+  "icao": "ZHHH",
+  "city": "Wuhan",
+  "n_markets": 1837,
+  "oa": [
+   30.774798,
+   114.213723
+  ],
+  "iem": [
+   30.62,
+   114.13
+  ],
+  "iem_net": "CN__ASOS",
+  "iem_elev": 23.0,
+  "iem_name": "Wuhan",
+  "iem_modified": "2023-12-04T16:44:56Z",
+  "iem_begin": "1956-08-19T00:00:00Z",
+  "iem_wigos": "0-20000-0-57494",
+  "v3": null,
+  "d_iem_oa": 18.983149173966897,
+  "d_iem_v3": null,
+  "dp_lat": 2,
+  "dp_lon": 2
+ },
+ {
+  "icao": "ZUUU",
+  "city": "Chengdu",
+  "n_markets": 1826,
+  "oa": [
+   30.558257,
+   103.945966
+  ],
+  "iem": [
+   30.6666666667,
+   104.016666667
+  ],
+  "iem_net": "CN__ASOS",
+  "iem_elev": 508.0,
+  "iem_name": "Chengdu",
+  "iem_modified": "2023-12-04T16:44:56Z",
+  "iem_begin": "1956-08-19T00:00:00Z",
+  "iem_wigos": "0-20000-0-56294",
+  "v3": null,
+  "d_iem_oa": 13.823562568159693,
+  "d_iem_v3": null,
+  "dp_lat": 10,
+  "dp_lon": 9
+ },
+ {
+  "icao": "KBKF",
+  "city": "Denver",
+  "n_markets": 1782,
+  "oa": [
+   39.701698,
+   -104.751999
+  ],
+  "iem": [
+   39.70167,
+   -104.75167
+  ],
+  "iem_net": "CO_ASOS",
+  "iem_elev": 1726.0,
+  "iem_name": "BUCKLEY ANGB/DENVER",
+  "iem_modified": "2021-05-05T10:48:22Z",
+  "iem_begin": "1944-03-01T00:00:00Z",
+  "iem_wigos": null,
+  "v3": null,
+  "d_iem_oa": 0.028318034474602054,
+  "d_iem_v3": null,
+  "dp_lat": 5,
+  "dp_lon": 5
+ },
+ {
+  "icao": "KHOU",
+  "city": "Houston",
+  "n_markets": 1782,
+  "oa": [
+   29.645336,
+   -95.276812
+  ],
+  "iem": [
+   29.63747,
+   -95.28245
+  ],
+  "iem_net": "TX_ASOS",
+  "iem_elev": 14.0,
+  "iem_name": "HOUSTON/WILL HOBBY",
+  "iem_modified": "2025-03-24T20:43:21Z",
+  "iem_begin": "1929-02-01T00:00:00Z",
+  "iem_wigos": null,
+  "v3": null,
+  "d_iem_oa": 1.0304950681025686,
+  "d_iem_v3": null,
+  "dp_lat": 5,
+  "dp_lon": 5
+ },
+ {
+  "icao": "KLAX",
+  "city": "Los Angeles",
+  "n_markets": 1782,
+  "oa": [
+   33.942501,
+   -118.407997
+  ],
+  "iem": [
+   33.93816,
+   -118.38653
+  ],
+  "iem_net": "CA_ASOS",
+  "iem_elev": 32.0,
+  "iem_name": "LOS ANGELES INTL",
+  "iem_modified": "2025-10-14T17:17:17Z",
+  "iem_begin": "1931-06-02T00:00:00Z",
+  "iem_wigos": "0-20000-0-72295",
+  "v3": null,
+  "d_iem_oa": 2.0382988010186964,
+  "d_iem_v3": null,
+  "dp_lat": 5,
+  "dp_lon": 5
+ },
+ {
+  "icao": "KAUS",
+  "city": "Austin",
+  "n_markets": 1771,
+  "oa": [
+   30.197535,
+   -97.662015
+  ],
+  "iem": [
+   30.18304,
+   -97.67987
+  ],
+  "iem_net": "TX_ASOS",
+  "iem_elev": 146.0,
+  "iem_name": "Austin Bergstrom Intl",
+  "iem_modified": "2025-10-14T17:21:10Z",
+  "iem_begin": "1998-04-28T00:00:00Z",
+  "iem_wigos": "0-20000-0-72254",
+  "v3": null,
+  "d_iem_oa": 2.3543070123819287,
+  "d_iem_v3": null,
+  "dp_lat": 5,
+  "dp_lon": 5
+ },
+ {
+  "icao": "KSFO",
+  "city": "San Francisco",
+  "n_markets": 1771,
+  "oa": [
+   37.619806,
+   -122.374821
+  ],
+  "iem": [
+   37.61897,
+   -122.37489
+  ],
+  "iem_net": "CA_ASOS",
+  "iem_elev": 5.0,
+  "iem_name": "SAN FRANCISCO INTL",
+  "iem_modified": "2025-10-14T17:45:29Z",
+  "iem_begin": "1932-01-01T00:00:00Z",
+  "iem_wigos": "0-20000-0-72494",
+  "v3": null,
+  "d_iem_oa": 0.09315739680163623,
+  "d_iem_v3": null,
+  "dp_lat": 5,
+  "dp_lon": 5
+ },
+ {
+  "icao": "LTFM",
+  "city": "Istanbul",
+  "n_markets": 1738,
+  "oa": [
+   41.274874,
+   28.732136
+  ],
+  "iem": [
+   41.2629,
+   28.7413
+  ],
+  "iem_net": "TR__ASOS",
+  "iem_elev": 120.470314,
+  "iem_name": "Istanbul",
+  "iem_modified": "2020-06-01T18:22:33Z",
+  "iem_begin": "2018-11-02T00:00:00Z",
+  "iem_wigos": null,
+  "v3": [
+   41.2629,
+   28.7413
+  ],
+  "d_iem_oa": 1.5360177503140338,
+  "d_iem_v3": 0.0,
+  "dp_lat": 4,
+  "dp_lon": 4
+ },
+ {
+  "icao": "UUWW",
+  "city": "Moscow",
+  "n_markets": 1727,
+  "oa": [
+   55.591499,
+   37.261501
+  ],
+  "iem": [
+   55.5915,
+   37.2615
+  ],
+  "iem_net": "RU__ASOS",
+  "iem_elev": 203.0,
+  "iem_name": "Moscow",
+  "iem_modified": "2020-08-09T10:42:14Z",
+  "iem_begin": "1972-12-31T00:00:00Z",
+  "iem_wigos": null,
+  "v3": [
+   55.5915,
+   37.2615
+  ],
+  "d_iem_oa": 0.00012772062712010227,
+  "d_iem_v3": 0.0,
+  "dp_lat": 4,
+  "dp_lon": 4
+ },
+ {
+  "icao": "MMMX",
+  "city": "Mexico City",
+  "n_markets": 1716,
+  "oa": [
+   19.435822,
+   -99.07033
+  ],
+  "iem": [
+   19.4363,
+   -99.0721
+  ],
+  "iem_net": "MX__ASOS",
+  "iem_elev": 2238.0,
+  "iem_name": "Mexico City",
+  "iem_modified": "2020-07-06T07:04:31Z",
+  "iem_begin": "1973-01-01T00:00:00Z",
+  "iem_wigos": null,
+  "v3": [
+   19.4363,
+   -99.0721
+  ],
+  "d_iem_oa": 0.1930598663437332,
+  "d_iem_v3": 0.0,
+  "dp_lat": 4,
+  "dp_lon": 4
+ },
+ {
+  "icao": "EHAM",
+  "city": "Amsterdam",
+  "n_markets": 1694,
+  "oa": [
+   52.308601,
+   4.76389
+  ],
+  "iem": [
+   52.31541,
+   4.79016
+  ],
+  "iem_net": "NL__ASOS",
+  "iem_elev": 9.0,
+  "iem_name": "Amsterdam",
+  "iem_modified": "2023-12-04T16:44:56Z",
+  "iem_begin": "1932-05-03T00:00:00Z",
+  "iem_wigos": "0-20000-0-06240",
+  "v3": null,
+  "d_iem_oa": 1.9397088616488545,
+  "d_iem_v3": null,
+  "dp_lat": 5,
+  "dp_lon": 5
+ },
+ {
+  "icao": "RKPK",
+  "city": "Busan",
+  "n_markets": 1694,
+  "oa": [
+   35.179501,
+   128.938004
+  ],
+  "iem": [
+   35.17953,
+   128.93822
+  ],
+  "iem_net": "KR__ASOS",
+  "iem_elev": 15.0,
+  "iem_name": "Busan",
+  "iem_modified": "2023-12-04T16:44:56Z",
+  "iem_begin": "1954-07-19T00:00:00Z",
+  "iem_wigos": "0-20000-0-47153",
+  "v3": null,
+  "d_iem_oa": 0.01989430015969206,
+  "d_iem_v3": null,
+  "dp_lat": 5,
+  "dp_lon": 5
+ },
+ {
+  "icao": "EFHK",
+  "city": "Helsinki",
+  "n_markets": 1694,
+  "oa": [
+   60.318363,
+   24.963341
+  ],
+  "iem": [
+   60.31722,
+   24.96333
+  ],
+  "iem_net": "FI__ASOS",
+  "iem_elev": 56.0,
+  "iem_name": "Helsinki",
+  "iem_modified": "2023-12-04T16:44:56Z",
+  "iem_begin": "1951-12-31T00:00:00Z",
+  "iem_wigos": "0-20000-0-02974",
+  "v3": [
+   60.3172,
+   24.9633
+  ],
+  "d_iem_oa": 0.12709724437820621,
+  "d_iem_v3": 0.002770291033348307,
+  "dp_lat": 5,
+  "dp_lon": 5
+ },
+ {
+  "icao": "WMKK",
+  "city": "Kuala Lumpur",
+  "n_markets": 1694,
+  "oa": [
+   2.74558,
+   101.709999
+  ],
+  "iem": [
+   2.71667,
+   101.7
+  ],
+  "iem_net": "MY__ASOS",
+  "iem_elev": 22.0,
+  "iem_name": "Kuala Lumpur",
+  "iem_modified": "2023-12-04T16:44:56Z",
+  "iem_begin": "2000-02-10T00:00:00Z",
+  "iem_wigos": "0-20000-0-48647",
+  "v3": null,
+  "d_iem_oa": 3.4010765633495623,
+  "d_iem_v3": null,
+  "dp_lat": 5,
+  "dp_lon": 1
+ },
+ {
+  "icao": "RCSS",
+  "city": "Taipei",
+  "n_markets": 1672,
+  "oa": [
+   25.067244,
+   121.552822
+  ],
+  "iem": [
+   25.06944,
+   121.55167
+  ],
+  "iem_net": "TW__ASOS",
+  "iem_elev": 6.0,
+  "iem_name": "Taipei",
+  "iem_modified": "2023-12-04T16:44:56Z",
+  "iem_begin": "2000-12-13T00:00:00Z",
+  "iem_wigos": "0-20000-0-46696",
+  "v3": null,
+  "d_iem_oa": 0.2703495396413664,
+  "d_iem_v3": null,
+  "dp_lat": 5,
+  "dp_lon": 5
+ },
+ {
+  "icao": "MPMG",
+  "city": "Panama City",
+  "n_markets": 1661,
+  "oa": [
+   8.97334,
+   -79.555603
+  ],
+  "iem": [
+   8.9833333333,
+   -79.5166666667
+  ],
+  "iem_net": "PA__ASOS",
+  "iem_elev": 13.0,
+  "iem_name": "Panama",
+  "iem_modified": "2023-01-09T08:20:55Z",
+  "iem_begin": "1973-01-02T00:00:00Z",
+  "iem_wigos": null,
+  "v3": [
+   8.9833,
+   -79.5167
+  ],
+  "d_iem_oa": 4.418486228884643,
+  "d_iem_v3": 0.005209724865463963,
+  "dp_lat": 10,
+  "dp_lon": 10
+ },
+ {
+  "icao": "OEJN",
+  "city": "Jeddah",
+  "n_markets": 1628,
+  "oa": [
+   21.680241,
+   39.157436
+  ],
+  "iem": [
+   21.65983127,
+   39.12220782
+  ],
+  "iem_net": "SA__ASOS",
+  "iem_elev": 2.0,
+  "iem_name": "Jeddah",
+  "iem_modified": "2023-12-04T16:44:56Z",
+  "iem_begin": "1981-05-31T00:00:00Z",
+  "iem_wigos": "0-20000-0-41024",
+  "v3": null,
+  "d_iem_oa": 4.2898242067525665,
+  "d_iem_v3": null,
+  "dp_lat": 8,
+  "dp_lon": 8
+ },
+ {
+  "icao": "FACT",
+  "city": "Cape Town",
+  "n_markets": 1606,
+  "oa": [
+   -33.97403,
+   18.604333
+  ],
+  "iem": [
+   -33.9666666667,
+   18.6
+  ],
+  "iem_net": "ZA__ASOS",
+  "iem_elev": 42.0,
+  "iem_name": "Cape Town",
+  "iem_modified": "2023-12-04T16:44:56Z",
+  "iem_begin": "1949-01-01T00:00:00Z",
+  "iem_wigos": "0-20000-0-68816",
+  "v3": [
+   -33.9667,
+   18.6
+  ],
+  "d_iem_oa": 0.911063994633309,
+  "d_iem_v3": 0.003706493848718906,
+  "dp_lat": 10,
+  "dp_lon": 1
+ },
+ {
+  "icao": "ZGGG",
+  "city": "Guangzhou",
+  "n_markets": 1551,
+  "oa": [
+   23.392401,
+   113.299004
+  ],
+  "iem": [
+   23.39639,
+   113.30083
+  ],
+  "iem_net": "CN__ASOS",
+  "iem_elev": 15.0,
+  "iem_name": "Guangzhou",
+  "iem_modified": "2023-12-04T16:44:56Z",
+  "iem_begin": "1945-11-30T00:00:00Z",
+  "iem_wigos": "0-20000-0-59287",
+  "v3": null,
+  "d_iem_oa": 0.48111220759004575,
+  "d_iem_v3": null,
+  "dp_lat": 5,
+  "dp_lon": 5
+ },
+ {
+  "icao": "OPKC",
+  "city": "Karachi",
+  "n_markets": 1551,
+  "oa": [
+   24.9065,
+   67.160797
+  ],
+  "iem": [
+   24.84558,
+   67.16137
+  ],
+  "iem_net": "PK__ASOS",
+  "iem_elev": 18.0,
+  "iem_name": "Karachi",
+  "iem_modified": "2023-12-04T16:44:56Z",
+  "iem_begin": "1942-05-06T00:00:00Z",
+  "iem_wigos": "0-20000-0-41780",
+  "v3": [
+   24.8456,
+   67.1614
+  ],
+  "d_iem_oa": 6.774241547379267,
+  "d_iem_v3": 0.003756197257203098,
+  "dp_lat": 5,
+  "dp_lon": 5
+ },
+ {
+  "icao": "RPLL",
+  "city": "Manila",
+  "n_markets": 1551,
+  "oa": [
+   14.5086,
+   121.019997
+  ],
+  "iem": [
+   14.5069,
+   121.0042
+  ],
+  "iem_net": "PH__ASOS",
+  "iem_elev": 19.242466,
+  "iem_name": "Manila",
+  "iem_modified": "2023-12-04T16:44:56Z",
+  "iem_begin": "1945-03-31T00:00:00Z",
+  "iem_wigos": "0-20000-0-98429",
+  "v3": null,
+  "d_iem_oa": 1.7110107001063297,
+  "d_iem_v3": null,
+  "dp_lat": 4,
+  "dp_lon": 4
+ },
+ {
+  "icao": "LFPB",
+  "city": "Paris",
+  "n_markets": 1540,
+  "oa": [
+   48.962276,
+   2.436539
+  ],
+  "iem": [
+   48.96722,
+   2.42722
+  ],
+  "iem_net": "FR__ASOS",
+  "iem_elev": 65.0,
+  "iem_name": "Paris",
+  "iem_modified": "2023-12-04T16:44:56Z",
+  "iem_begin": "1928-01-04T00:00:00Z",
+  "iem_wigos": "0-20000-0-07150",
+  "v3": null,
+  "d_iem_oa": 0.8746650812948604,
+  "d_iem_v3": null,
+  "dp_lat": 5,
+  "dp_lon": 5
+ },
+ {
+  "icao": "ZSQD",
+  "city": "Qingdao",
+  "n_markets": 1452,
+  "oa": [
+   36.361953,
+   120.088171
+  ],
+  "iem": [
+   36.06667,
+   120.33333
+  ],
+  "iem_net": "CN__ASOS",
+  "iem_elev": 77.0,
+  "iem_name": "Qingdao",
+  "iem_modified": "2023-12-04T16:44:56Z",
+  "iem_begin": "1956-08-19T00:00:00Z",
+  "iem_wigos": "0-20000-0-54857",
+  "v3": [
+   36.0667,
+   120.3333
+  ],
+  "d_iem_oa": 39.519687323770505,
+  "d_iem_v3": 0.0042893881517709126,
+  "dp_lat": 5,
+  "dp_lon": 5
+ },
+ {
+  "icao": "LFPG",
+  "city": "Paris",
+  "n_markets": 575,
+  "oa": [
+   49.00896,
+   2.554117
+  ],
+  "iem": [
+   49.01528,
+   2.53444
+  ],
+  "iem_net": "FR__ASOS",
+  "iem_elev": 109.0,
+  "iem_name": "Paris",
+  "iem_modified": "2023-12-04T16:44:56Z",
+  "iem_begin": "1974-04-18T00:00:00Z",
+  "iem_wigos": "0-20000-0-07157",
+  "v3": null,
+  "d_iem_oa": 1.597924246262857,
+  "d_iem_v3": null,
+  "dp_lat": 5,
+  "dp_lon": 5
+ },
+ {
+  "icao": "WIHH",
+  "city": "Jakarta",
+  "n_markets": 517,
+  "oa": [
+   -6.266989,
+   106.890318
+  ],
+  "iem": [
+   -6.26661,
+   106.89112
+  ],
+  "iem_net": "ID__ASOS",
+  "iem_elev": 25.0,
+  "iem_name": "Jakarta",
+  "iem_modified": "2023-06-20T07:08:36Z",
+  "iem_begin": "2005-12-31T00:00:00Z",
+  "iem_wigos": null,
+  "v3": null,
+  "d_iem_oa": 0.09815312133633297,
+  "d_iem_v3": null,
+  "dp_lat": 5,
+  "dp_lon": 5
+ },
+ {
+  "icao": "DNMM",
+  "city": "Lagos",
+  "n_markets": 385,
+  "oa": [
+   6.57737,
+   3.32116
+  ],
+  "iem": [
+   6.57737,
+   3.32116
+  ],
+  "iem_net": "NG__ASOS",
+  "iem_elev": 38.0,
+  "iem_name": "Lagos",
+  "iem_modified": "2023-12-04T16:44:56Z",
+  "iem_begin": "1949-02-25T00:00:00Z",
+  "iem_wigos": "0-20000-0-65201",
+  "v3": null,
+  "d_iem_oa": 0.0,
+  "d_iem_v3": null,
+  "dp_lat": 5,
+  "dp_lon": 5
+ },
+ {
+  "icao": "ZHCC",
+  "city": "Zhengzhou",
+  "n_markets": 330,
+  "oa": [
+   34.526497,
+   113.849165
+  ],
+  "iem": [
+   34.7166666667,
+   113.65
+  ],
+  "iem_net": "CN__ASOS",
+  "iem_elev": 111.0,
+  "iem_name": "Zhengzhou",
+  "iem_modified": "2023-12-04T16:44:56Z",
+  "iem_begin": "1957-05-31T00:00:00Z",
+  "iem_wigos": "0-20000-0-57083",
+  "v3": null,
+  "d_iem_oa": 27.915634745710435,
+  "d_iem_v3": null,
+  "dp_lat": 10,
+  "dp_lon": 2
+ },
+ {
+  "icao": "ZSJN",
+  "city": "Jinan",
+  "n_markets": 330,
+  "oa": [
+   36.857201,
+   117.216003
+  ],
+  "iem": [
+   36.8555,
+   117.206
+  ],
+  "iem_net": "CN__ASOS",
+  "iem_elev": 23.125294,
+  "iem_name": "Jinan",
+  "iem_modified": "2020-09-30T01:21:40Z",
+  "iem_begin": "2005-06-17T00:00:00Z",
+  "iem_wigos": null,
+  "v3": [
+   36.8555,
+   117.206
+  ],
+  "d_iem_oa": 0.9098607152726919,
+  "d_iem_v3": 0.0,
+  "dp_lat": 4,
+  "dp_lon": 3
+ },
+ {
+  "icao": "RCTP",
+  "city": "Taipei",
+  "n_markets": 132,
+  "oa": [
+   25.0777,
+   121.233002
+  ],
+  "iem": [
+   25.07773,
+   121.23282
+  ],
+  "iem_net": "TW__ASOS",
+  "iem_elev": 33.0,
+  "iem_name": "Taipei",
+  "iem_modified": "2023-12-04T16:44:56Z",
+  "iem_begin": "1999-12-31T00:00:00Z",
+  "iem_wigos": "0-20000-0-46686",
+  "v3": null,
+  "d_iem_oa": 0.01863083913506582,
+  "d_iem_v3": null,
+  "dp_lat": 5,
+  "dp_lon": 5
+ },
+ {
+  "icao": "VHHH",
+  "city": "Hong Kong",
+  "n_markets": 18,
+  "oa": [
+   22.31184,
+   113.914862
+  ],
+  "iem": [
+   22.30944,
+   113.92194
+  ],
+  "iem_net": "HK__ASOS",
+  "iem_elev": 9.0,
+  "iem_name": "Hong Kong",
+  "iem_modified": "2023-12-04T16:44:56Z",
+  "iem_begin": "2000-01-07T00:00:00Z",
+  "iem_wigos": "0-20000-0-45007",
+  "v3": null,
+  "d_iem_oa": 0.7754846007869793,
+  "d_iem_v3": null,
+  "dp_lat": 5,
+  "dp_lon": 5
+ }
+]

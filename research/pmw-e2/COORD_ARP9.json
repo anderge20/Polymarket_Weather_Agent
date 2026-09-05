@@ -1,0 +1,92 @@
+{
+ "LEMD": {
+  "arp": [
+   40.472166666666666,
+   -3.560833333333333
+  ],
+  "d_noaa": 0.84479871796589,
+  "d_oa": 2.5515352434419833,
+  "d_iem": 0.7566738652358155,
+  "veredicto": "NOAA ~ ARP; OurAirports desplazado (ERROR de OA)"
+ },
+ "KORD": {
+  "arp": [
+   41.977,
+   -87.90816666666667
+  ],
+  "d_noaa": 2.6941945410681307,
+  "d_oa": 0.3303065031097605,
+  "d_iem": 2.6912829715087154,
+  "veredicto": "OurAirports = ARP; NOAA desplazado (\u00bfsensor?)"
+ },
+ "KMIA": {
+  "arp": [
+   25.795333333333332,
+   -80.29016666666666
+  ],
+  "d_noaa": 2.797924860883403,
+  "d_oa": 0.08608040925674972,
+  "d_iem": 2.7992049329657416,
+  "veredicto": "OurAirports = ARP; NOAA desplazado (\u00bfsensor?)"
+ },
+ "KAUS": {
+  "arp": [
+   30.1945,
+   -97.66983333333333
+  ],
+  "d_noaa": 1.638202539341945,
+  "d_oa": 0.8237023817144563,
+  "d_iem": 1.5982492112197437,
+  "veredicto": "OurAirports = ARP; NOAA desplazado (\u00bfsensor?)"
+ },
+ "WSSS": {
+  "arp": [
+   1.3591666666666666,
+   103.98933333333333
+  ],
+  "d_noaa": 1.2764436669098203,
+  "d_oa": 1.1250714743866264,
+  "d_iem": 1.0683953953268261,
+  "veredicto": "ambas equidistantes"
+ },
+ "OPKC": {
+  "arp": [
+   24.9085,
+   67.16283333333334
+  ],
+  "d_noaa": 2.5100098488067495,
+  "d_oa": 0.3027108395073844,
+  "d_iem": 6.997941906339005,
+  "veredicto": "OurAirports = ARP; NOAA desplazado (\u00bfsensor?)"
+ },
+ "EDDM": {
+  "arp": [
+   48.353833333333334,
+   11.786166666666666
+  ],
+  "d_noaa": 2.0862821556445588,
+  "d_oa": 0.006033733843274646,
+  "d_iem": 1.7717108271829403,
+  "veredicto": "OurAirports = ARP; NOAA desplazado (\u00bfsensor?)"
+ },
+ "KLAX": {
+  "arp": [
+   33.9425,
+   -118.408
+  ],
+  "d_noaa": 2.0320041560048785,
+  "d_oa": 0.000298245037694422,
+  "d_iem": 2.038541363563697,
+  "veredicto": "OurAirports = ARP; NOAA desplazado (\u00bfsensor?)"
+ },
+ "ZUUU": {
+  "arp": [
+   30.58,
+   103.94833333333334
+  ],
+  "d_noaa": 0.47253167747660585,
+  "d_oa": 2.4283117792240034,
+  "d_iem": 11.645738372270756,
+  "veredicto": "NOAA ~ ARP; OurAirports desplazado (ERROR de OA)"
+ }
+}

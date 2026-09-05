@@ -1,0 +1,170 @@
+{
+ "EGLC": {
+  "tz": "Europe/London",
+  "name": "London City",
+  "elev": 5.0,
+  "net": "GB__ASOS"
+ },
+ "LIMC": {
+  "tz": "Europe/Rome",
+  "name": "Milano",
+  "elev": 211.0,
+  "net": "IT__ASOS"
+ },
+ "ZGSZ": {
+  "tz": "Asia/Shanghai",
+  "name": "Shenzhen",
+  "elev": 18.0,
+  "net": "CN__ASOS"
+ },
+ "ZSJN": {
+  "tz": "Asia/Shanghai",
+  "name": "Jinan",
+  "elev": 23.125294,
+  "net": "CN__ASOS"
+ },
+ "ZSQD": {
+  "tz": "Asia/Shanghai",
+  "name": "Qingdao",
+  "elev": 77.0,
+  "net": "CN__ASOS"
+ },
+ "ZUCK": {
+  "tz": "Asia/Chongqing",
+  "name": "Chongqing",
+  "elev": 351.0,
+  "net": "CN__ASOS"
+ },
+ "EFHK": {
+  "tz": "Europe/Helsinki",
+  "name": "Helsinki",
+  "elev": 56.0,
+  "net": "FI__ASOS"
+ },
+ "FACT": {
+  "tz": "Africa/Johannesburg",
+  "name": "Cape Town",
+  "elev": 42.0,
+  "net": "ZA__ASOS"
+ },
+ "MMMX": {
+  "tz": "America/Mexico_City",
+  "name": "Mexico City",
+  "elev": 2238.0,
+  "net": "MX__ASOS"
+ },
+ "VILK": {
+  "tz": "Asia/Kolkata",
+  "name": "Lucknow",
+  "elev": 128.0,
+  "net": "IN__ASOS"
+ },
+ "UUWW": {
+  "tz": "Europe/Moscow",
+  "name": "Moscow",
+  "elev": 203.0,
+  "net": "RU__ASOS"
+ },
+ "LTFM": {
+  "tz": "Europe/Istanbul",
+  "name": "Istanbul",
+  "elev": 120.470314,
+  "net": "TR__ASOS"
+ },
+ "OPKC": {
+  "tz": "Asia/Karachi",
+  "name": "Karachi",
+  "elev": 18.0,
+  "net": "PK__ASOS"
+ },
+ "RKSI": {
+  "tz": "Asia/Seoul",
+  "name": "Seoul",
+  "elev": 7.0,
+  "net": "KR__ASOS"
+ },
+ "SBGR": {
+  "tz": "America/Sao_Paulo",
+  "name": "Sao Paulo",
+  "elev": 750.0,
+  "net": "BR__ASOS"
+ },
+ "MPMG": {
+  "tz": "America/Panama",
+  "name": "Panama",
+  "elev": 13.0,
+  "net": "PA__ASOS"
+ },
+ "LLBG": {
+  "tz": "Asia/Jerusalem",
+  "name": "Tel-aviv",
+  "elev": 49.0,
+  "net": "IL__ASOS"
+ },
+ "KAUS": {
+  "tz": "America/Chicago",
+  "name": "Austin Bergstrom Intl",
+  "elev": 146.0,
+  "net": "TX_ASOS"
+ },
+ "KDAL": {
+  "tz": "America/Chicago",
+  "name": "DALLAS/LOVE FIELD",
+  "elev": 148.0,
+  "net": "TX_ASOS"
+ },
+ "KHOU": {
+  "tz": "America/Chicago",
+  "name": "HOUSTON/WILL HOBBY",
+  "elev": 14.0,
+  "net": "TX_ASOS"
+ },
+ "KLGA": {
+  "tz": "America/New_York",
+  "name": "New York/LaGuardia",
+  "elev": 9.0,
+  "net": "NY_ASOS"
+ },
+ "KBKF": {
+  "tz": "America/Denver",
+  "name": "BUCKLEY ANGB/DENVER",
+  "elev": 1726.0,
+  "net": "CO_ASOS"
+ },
+ "KMIA": {
+  "tz": "America/New_York",
+  "name": "MIAMI INTL AIRPORT",
+  "elev": 4.0,
+  "net": "FL_ASOS"
+ },
+ "KLAX": {
+  "tz": "America/Los_Angeles",
+  "name": "LOS ANGELES INTL",
+  "elev": 32.0,
+  "net": "CA_ASOS"
+ },
+ "KSFO": {
+  "tz": "America/Los_Angeles",
+  "name": "SAN FRANCISCO INTL",
+  "elev": 5.0,
+  "net": "CA_ASOS"
+ },
+ "KATL": {
+  "tz": "America/New_York",
+  "name": "ATLANTA INTL ARPT",
+  "elev": 315.0,
+  "net": "GA_ASOS"
+ },
+ "KORD": {
+  "tz": "America/Chicago",
+  "name": "Chicago OHare",
+  "elev": 205.0,
+  "net": "IL_ASOS"
+ },
+ "KSEA": {
+  "tz": "America/Los_Angeles",
+  "name": "SEATTLE-TACOMA INTL",
+  "elev": 137.0,
+  "net": "WA_ASOS"
+ }
+}

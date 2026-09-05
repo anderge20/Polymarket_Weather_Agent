@@ -1,0 +1,2807 @@
+{
+ "CYYZ": {
+  "icao": "CYYZ",
+  "city": "Toronto",
+  "n_markets": 2129,
+  "d_noaa_oa": 0.3424900352611588,
+  "d_noaa_iem": 0.2343372461411821,
+  "noaa": {
+   "ecmwf_cell": [
+    43.75,
+    -79.75
+   ],
+   "ecmwf_t": 17.2,
+   "icon_cell": [
+    43.625,
+    -79.625
+   ],
+   "icon_t": 16.8,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    43.75,
+    -79.75
+   ],
+   "ecmwf_t": 17.1,
+   "icon_cell": [
+    43.625,
+    -79.625
+   ],
+   "icon_t": 16.7,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    43.75,
+    -79.75
+   ],
+   "ecmwf_t": 17.2,
+   "icon_cell": [
+    43.625,
+    -79.625
+   ],
+   "icon_t": 16.8,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.1,
+  "spread_t_ecmwf": 0.1
+ },
+ "DNMM": {
+  "icao": "DNMM",
+  "city": "Lagos",
+  "n_markets": 385,
+  "d_noaa_oa": 0.0447777612039421,
+  "d_noaa_iem": 0.0447777612039421,
+  "noaa": {
+   "ecmwf_cell": [
+    6.5,
+    3.25
+   ],
+   "ecmwf_t": 26.8,
+   "icon_cell": [
+    6.625,
+    3.375
+   ],
+   "icon_t": 30.2,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    6.5,
+    3.25
+   ],
+   "ecmwf_t": 26.8,
+   "icon_cell": [
+    6.625,
+    3.375
+   ],
+   "icon_t": 30.2,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    6.5,
+    3.25
+   ],
+   "ecmwf_t": 26.8,
+   "icon_cell": [
+    6.625,
+    3.375
+   ],
+   "icon_t": 30.2,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.0,
+  "spread_t_ecmwf": 0.0
+ },
+ "EDDM": {
+  "icao": "EDDM",
+  "city": "Munich",
+  "n_markets": 1980,
+  "d_noaa_oa": 2.089887398275883,
+  "d_noaa_iem": 1.1829950300349052,
+  "noaa": {
+   "ecmwf_cell": [
+    48.25,
+    11.75
+   ],
+   "ecmwf_t": 21.9,
+   "icon_cell": [
+    48.34,
+    11.82
+   ],
+   "icon_t": 21.1,
+   "component": "icon_d2"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    48.25,
+    11.75
+   ],
+   "ecmwf_t": 21.8,
+   "icon_cell": [
+    48.36,
+    11.78
+   ],
+   "icon_t": 21.5,
+   "component": "icon_d2"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    48.25,
+    11.75
+   ],
+   "ecmwf_t": 21.9,
+   "icon_cell": [
+    48.36,
+    11.8
+   ],
+   "icon_t": 21.3,
+   "component": "icon_d2"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 3,
+  "n_componentes": 1,
+  "spread_t_icon": 0.4,
+  "spread_t_ecmwf": 0.1
+ },
+ "EFHK": {
+  "icao": "EFHK",
+  "city": "Helsinki",
+  "n_markets": 1694,
+  "d_noaa_oa": 1.0218709207553207,
+  "d_noaa_iem": 1.1419625796194766,
+  "noaa": {
+   "ecmwf_cell": [
+    60.25,
+    25.0
+   ],
+   "ecmwf_t": 16.6,
+   "icon_cell": [
+    60.3125,
+    24.9375
+   ],
+   "icon_t": 17.6,
+   "component": "icon_eu"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    60.25,
+    25.0
+   ],
+   "ecmwf_t": 16.6,
+   "icon_cell": [
+    60.3125,
+    24.9375
+   ],
+   "icon_t": 17.6,
+   "component": "icon_eu"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    60.25,
+    25.0
+   ],
+   "ecmwf_t": 16.6,
+   "icon_cell": [
+    60.3125,
+    24.9375
+   ],
+   "icon_t": 17.6,
+   "component": "icon_eu"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.0,
+  "spread_t_ecmwf": 0.0
+ },
+ "EGLC": {
+  "icao": "EGLC",
+  "city": "London",
+  "n_markets": 2129,
+  "d_noaa_oa": 0.038413570268390526,
+  "d_noaa_iem": 0.03667327119551002,
+  "noaa": {
+   "ecmwf_cell": [
+    51.5,
+    0.0
+   ],
+   "ecmwf_t": 20.4,
+   "icon_cell": [
+    51.5,
+    0.06
+   ],
+   "icon_t": 20.2,
+   "component": "icon_d2"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    51.5,
+    0.0
+   ],
+   "ecmwf_t": 20.4,
+   "icon_cell": [
+    51.5,
+    0.06
+   ],
+   "icon_t": 20.2,
+   "component": "icon_d2"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    51.5,
+    0.0
+   ],
+   "ecmwf_t": 20.4,
+   "icon_cell": [
+    51.5,
+    0.06
+   ],
+   "icon_t": 20.2,
+   "component": "icon_d2"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.0,
+  "spread_t_ecmwf": 0.0
+ },
+ "EHAM": {
+  "icao": "EHAM",
+  "city": "Amsterdam",
+  "n_markets": 1694,
+  "d_noaa_oa": 1.9122795589361348,
+  "d_noaa_iem": 0.046869279992811375,
+  "noaa": {
+   "ecmwf_cell": [
+    52.25,
+    4.75
+   ],
+   "ecmwf_t": 17.4,
+   "icon_cell": [
+    52.32,
+    4.8
+   ],
+   "icon_t": 18.8,
+   "component": "icon_d2"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    52.25,
+    4.75
+   ],
+   "ecmwf_t": 17.3,
+   "icon_cell": [
+    52.3,
+    4.76
+   ],
+   "icon_t": 18.8,
+   "component": "icon_d2"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    52.25,
+    4.75
+   ],
+   "ecmwf_t": 17.4,
+   "icon_cell": [
+    52.32,
+    4.8
+   ],
+   "icon_t": 18.8,
+   "component": "icon_d2"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 2,
+  "n_componentes": 1,
+  "spread_t_icon": 0.0,
+  "spread_t_ecmwf": 0.1
+ },
+ "EPWA": {
+  "icao": "EPWA",
+  "city": "Warsaw",
+  "n_markets": 1881,
+  "d_noaa_oa": 0.5130071012522919,
+  "d_noaa_iem": 0.025587645930680983,
+  "noaa": {
+   "ecmwf_cell": [
+    52.25,
+    21.0
+   ],
+   "ecmwf_t": 19.8,
+   "icon_cell": [
+    52.1875,
+    20.9375
+   ],
+   "icon_t": 21.2,
+   "component": "icon_eu"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    52.25,
+    21.0
+   ],
+   "ecmwf_t": 19.8,
+   "icon_cell": [
+    52.1875,
+    20.9375
+   ],
+   "icon_t": 21.2,
+   "component": "icon_eu"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    52.25,
+    21.0
+   ],
+   "ecmwf_t": 19.8,
+   "icon_cell": [
+    52.1875,
+    20.9375
+   ],
+   "icon_t": 21.2,
+   "component": "icon_eu"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.0,
+  "spread_t_ecmwf": 0.0
+ },
+ "FACT": {
+  "icao": "FACT",
+  "city": "Cape Town",
+  "n_markets": 1606,
+  "d_noaa_oa": 1.026880783121515,
+  "d_noaa_iem": 0.2614665920335361,
+  "noaa": {
+   "ecmwf_cell": [
+    -34.0,
+    18.5
+   ],
+   "ecmwf_t": 22.9,
+   "icon_cell": [
+    -34.0,
+    18.625
+   ],
+   "icon_t": 25.4,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    -34.0,
+    18.5
+   ],
+   "ecmwf_t": 23.0,
+   "icon_cell": [
+    -34.0,
+    18.625
+   ],
+   "icon_t": 25.4,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    -34.0,
+    18.5
+   ],
+   "ecmwf_t": 23.0,
+   "icon_cell": [
+    -34.0,
+    18.625
+   ],
+   "icon_t": 25.4,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.0,
+  "spread_t_ecmwf": 0.1
+ },
+ "KATL": {
+  "icao": "KATL",
+  "city": "Atlanta",
+  "n_markets": 2114,
+  "d_noaa_oa": 1.521005281836292,
+  "d_noaa_iem": 0.0580547014035582,
+  "noaa": {
+   "ecmwf_cell": [
+    33.75,
+    -84.5
+   ],
+   "ecmwf_t": 23.8,
+   "icon_cell": [
+    33.625,
+    -84.5
+   ],
+   "icon_t": 23.4,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    33.75,
+    -84.5
+   ],
+   "ecmwf_t": 23.8,
+   "icon_cell": [
+    33.625,
+    -84.375
+   ],
+   "icon_t": 23.4,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    33.75,
+    -84.5
+   ],
+   "ecmwf_t": 23.8,
+   "icon_cell": [
+    33.625,
+    -84.5
+   ],
+   "icon_t": 23.4,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 2,
+  "n_componentes": 1,
+  "spread_t_icon": 0.0,
+  "spread_t_ecmwf": 0.0
+ },
+ "KAUS": {
+  "icao": "KAUS",
+  "city": "Austin",
+  "n_markets": 1771,
+  "d_noaa_oa": 2.4036093883005365,
+  "d_noaa_iem": 0.07335484596031569,
+  "noaa": {
+   "ecmwf_cell": [
+    30.25,
+    -97.75
+   ],
+   "ecmwf_t": 24.8,
+   "icon_cell": [
+    30.125,
+    -97.625
+   ],
+   "icon_t": 25.5,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    30.25,
+    -97.75
+   ],
+   "ecmwf_t": 24.8,
+   "icon_cell": [
+    30.25,
+    -97.625
+   ],
+   "icon_t": 24.8,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    30.25,
+    -97.75
+   ],
+   "ecmwf_t": 24.8,
+   "icon_cell": [
+    30.125,
+    -97.625
+   ],
+   "icon_t": 25.5,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 2,
+  "n_componentes": 1,
+  "spread_t_icon": 0.7,
+  "spread_t_ecmwf": 0.0
+ },
+ "KBKF": {
+  "icao": "KBKF",
+  "city": "Denver",
+  "n_markets": 1782,
+  "d_noaa_oa": 1.3575297276998706,
+  "d_noaa_iem": 1.3712803954577744,
+  "noaa": {
+   "ecmwf_cell": [
+    39.75,
+    -104.75
+   ],
+   "ecmwf_t": 18.1,
+   "icon_cell": [
+    39.75,
+    -104.75
+   ],
+   "icon_t": 16.4,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    39.75,
+    -104.75
+   ],
+   "ecmwf_t": 18.1,
+   "icon_cell": [
+    39.75,
+    -104.75
+   ],
+   "icon_t": 16.3,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    39.75,
+    -104.75
+   ],
+   "ecmwf_t": 18.1,
+   "icon_cell": [
+    39.75,
+    -104.75
+   ],
+   "icon_t": 16.3,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.1,
+  "spread_t_ecmwf": 0.0
+ },
+ "KDAL": {
+  "icao": "KDAL",
+  "city": "Dallas",
+  "n_markets": 2125,
+  "d_noaa_oa": 1.314124801875544,
+  "d_noaa_iem": 1.778817132449367,
+  "noaa": {
+   "ecmwf_cell": [
+    32.75,
+    -96.75
+   ],
+   "ecmwf_t": 25.9,
+   "icon_cell": [
+    32.875,
+    -96.875
+   ],
+   "icon_t": 25.5,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    32.75,
+    -96.75
+   ],
+   "ecmwf_t": 25.9,
+   "icon_cell": [
+    32.875,
+    -96.875
+   ],
+   "icon_t": 25.5,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    32.75,
+    -96.75
+   ],
+   "ecmwf_t": 25.9,
+   "icon_cell": [
+    32.875,
+    -96.875
+   ],
+   "icon_t": 25.5,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.0,
+  "spread_t_ecmwf": 0.0
+ },
+ "KHOU": {
+  "icao": "KHOU",
+  "city": "Houston",
+  "n_markets": 1782,
+  "d_noaa_oa": 0.517701316931068,
+  "d_noaa_iem": 0.9289608676583122,
+  "noaa": {
+   "ecmwf_cell": [
+    29.75,
+    -95.25
+   ],
+   "ecmwf_t": 25.2,
+   "icon_cell": [
+    29.625,
+    -95.25
+   ],
+   "icon_t": 26.0,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    29.75,
+    -95.25
+   ],
+   "ecmwf_t": 25.2,
+   "icon_cell": [
+    29.625,
+    -95.25
+   ],
+   "icon_t": 26.0,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    29.75,
+    -95.25
+   ],
+   "ecmwf_t": 25.2,
+   "icon_cell": [
+    29.625,
+    -95.25
+   ],
+   "icon_t": 26.0,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.0,
+  "spread_t_ecmwf": 0.0
+ },
+ "KLAX": {
+  "icao": "KLAX",
+  "city": "Los Angeles",
+  "n_markets": 1782,
+  "d_noaa_oa": 2.0317616318414378,
+  "d_noaa_iem": 0.006552662538771926,
+  "noaa": {
+   "ecmwf_cell": [
+    34.0,
+    -118.25
+   ],
+   "ecmwf_t": 18.5,
+   "icon_cell": [
+    34.0,
+    -118.375
+   ],
+   "icon_t": 17.5,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    34.0,
+    -118.25
+   ],
+   "ecmwf_t": 18.4,
+   "icon_cell": [
+    34.0,
+    -118.375
+   ],
+   "icon_t": 17.4,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    34.0,
+    -118.25
+   ],
+   "ecmwf_t": 18.5,
+   "icon_cell": [
+    34.0,
+    -118.375
+   ],
+   "icon_t": 17.5,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.1,
+  "spread_t_ecmwf": 0.1
+ },
+ "KLGA": {
+  "icao": "KLGA",
+  "city": "NYC",
+  "n_markets": 2136,
+  "d_noaa_oa": 0.6928685361715418,
+  "d_noaa_iem": 0.0008420006385031148,
+  "noaa": {
+   "ecmwf_cell": [
+    40.75,
+    -74.0
+   ],
+   "ecmwf_t": 20.7,
+   "icon_cell": [
+    40.75,
+    -73.875
+   ],
+   "icon_t": 21.8,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    40.75,
+    -73.75
+   ],
+   "ecmwf_t": 20.6,
+   "icon_cell": [
+    40.75,
+    -73.875
+   ],
+   "icon_t": 21.8,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    40.75,
+    -74.0
+   ],
+   "ecmwf_t": 20.7,
+   "icon_cell": [
+    40.75,
+    -73.875
+   ],
+   "icon_t": 21.8,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 2,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.0,
+  "spread_t_ecmwf": 0.1
+ },
+ "KMIA": {
+  "icao": "KMIA",
+  "city": "Miami",
+  "n_markets": 2104,
+  "d_noaa_oa": 2.8601695895792996,
+  "d_noaa_iem": 0.001496279377985475,
+  "noaa": {
+   "ecmwf_cell": [
+    25.75,
+    -80.25
+   ],
+   "ecmwf_t": 27.2,
+   "icon_cell": [
+    25.75,
+    -80.375
+   ],
+   "icon_t": 26.8,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    25.75,
+    -80.25
+   ],
+   "ecmwf_t": 27.2,
+   "icon_cell": [
+    25.75,
+    -80.25
+   ],
+   "icon_t": 27.6,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    25.75,
+    -80.25
+   ],
+   "ecmwf_t": 27.2,
+   "icon_cell": [
+    25.75,
+    -80.375
+   ],
+   "icon_t": 26.8,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 2,
+  "n_componentes": 1,
+  "spread_t_icon": 0.8,
+  "spread_t_ecmwf": 0.0
+ },
+ "KORD": {
+  "icao": "KORD",
+  "city": "Chicago",
+  "n_markets": 2104,
+  "d_noaa_oa": 3.018693760466682,
+  "d_noaa_iem": 0.003436796718544416,
+  "noaa": {
+   "ecmwf_cell": [
+    42.0,
+    -88.0
+   ],
+   "ecmwf_t": 22.4,
+   "icon_cell": [
+    42.0,
+    -87.875
+   ],
+   "icon_t": 23.9,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    42.0,
+    -88.0
+   ],
+   "ecmwf_t": 22.3,
+   "icon_cell": [
+    42.0,
+    -87.875
+   ],
+   "icon_t": 23.8,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    42.0,
+    -88.0
+   ],
+   "ecmwf_t": 22.4,
+   "icon_cell": [
+    42.0,
+    -87.875
+   ],
+   "icon_t": 23.9,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.1,
+  "spread_t_ecmwf": 0.1
+ },
+ "KSEA": {
+  "icao": "KSEA",
+  "city": "Seattle",
+  "n_markets": 2107,
+  "d_noaa_oa": 0.479127298421997,
+  "d_noaa_iem": 0.004368503421113581,
+  "noaa": {
+   "ecmwf_cell": [
+    47.5,
+    -122.25
+   ],
+   "ecmwf_t": 11.5,
+   "icon_cell": [
+    47.5,
+    -122.375
+   ],
+   "icon_t": 11.5,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    47.5,
+    -122.25
+   ],
+   "ecmwf_t": 11.5,
+   "icon_cell": [
+    47.5,
+    -122.25
+   ],
+   "icon_t": 11.4,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    47.5,
+    -122.25
+   ],
+   "ecmwf_t": 11.5,
+   "icon_cell": [
+    47.5,
+    -122.375
+   ],
+   "icon_t": 11.5,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 2,
+  "n_componentes": 1,
+  "spread_t_icon": 0.1,
+  "spread_t_ecmwf": 0.0
+ },
+ "KSFO": {
+  "icao": "KSFO",
+  "city": "San Francisco",
+  "n_markets": 1771,
+  "d_noaa_oa": 0.8115537927252939,
+  "d_noaa_iem": 0.8204351383239121,
+  "noaa": {
+   "ecmwf_cell": [
+    37.5,
+    -122.25
+   ],
+   "ecmwf_t": 13.1,
+   "icon_cell": [
+    37.5,
+    -122.25
+   ],
+   "icon_t": 15.5,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    37.5,
+    -122.25
+   ],
+   "ecmwf_t": 13.1,
+   "icon_cell": [
+    37.5,
+    -122.25
+   ],
+   "icon_t": 15.5,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    37.5,
+    -122.25
+   ],
+   "ecmwf_t": 13.1,
+   "icon_cell": [
+    37.5,
+    -122.25
+   ],
+   "icon_t": 15.5,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.0,
+  "spread_t_ecmwf": 0.0
+ },
+ "LEMD": {
+  "icao": "LEMD",
+  "city": "Madrid",
+  "n_markets": 1881,
+  "d_noaa_oa": 3.3787224790963384,
+  "d_noaa_iem": 0.0882870141160861,
+  "noaa": {
+   "ecmwf_cell": [
+    40.5,
+    -3.5
+   ],
+   "ecmwf_t": 36.7,
+   "icon_cell": [
+    40.4375,
+    -3.5625
+   ],
+   "icon_t": 36.1,
+   "component": "icon_eu"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    40.5,
+    -3.5
+   ],
+   "ecmwf_t": 36.6,
+   "icon_cell": [
+    40.5,
+    -3.5625
+   ],
+   "icon_t": 35.5,
+   "component": "icon_eu"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    40.5,
+    -3.5
+   ],
+   "ecmwf_t": 36.7,
+   "icon_cell": [
+    40.4375,
+    -3.5625
+   ],
+   "icon_t": 36.1,
+   "component": "icon_eu"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 2,
+  "n_componentes": 1,
+  "spread_t_icon": 0.6,
+  "spread_t_ecmwf": 0.1
+ },
+ "LFPB": {
+  "icao": "LFPB",
+  "city": "Paris",
+  "n_markets": 1540,
+  "d_noaa_oa": 0.8151743521073446,
+  "d_noaa_iem": 0.061971539038607595,
+  "noaa": {
+   "ecmwf_cell": [
+    49.0,
+    2.5
+   ],
+   "ecmwf_t": 21.6,
+   "icon_cell": [
+    48.96,
+    2.42
+   ],
+   "icon_t": 22.5,
+   "component": "icon_d2"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    49.0,
+    2.5
+   ],
+   "ecmwf_t": 21.6,
+   "icon_cell": [
+    48.96,
+    2.44
+   ],
+   "icon_t": 22.4,
+   "component": "icon_d2"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    49.0,
+    2.5
+   ],
+   "ecmwf_t": 21.6,
+   "icon_cell": [
+    48.96,
+    2.42
+   ],
+   "icon_t": 22.5,
+   "component": "icon_d2"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 2,
+  "n_componentes": 1,
+  "spread_t_icon": 0.1,
+  "spread_t_ecmwf": 0.0
+ },
+ "LFPG": {
+  "icao": "LFPG",
+  "city": "Paris",
+  "n_markets": 575,
+  "d_noaa_oa": 1.6136043388950774,
+  "d_noaa_iem": 0.04471050882145786,
+  "noaa": {
+   "ecmwf_cell": [
+    49.0,
+    2.5
+   ],
+   "ecmwf_t": 21.2,
+   "icon_cell": [
+    49.02,
+    2.54
+   ],
+   "icon_t": 21.8,
+   "component": "icon_d2"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    49.0,
+    2.5
+   ],
+   "ecmwf_t": 21.2,
+   "icon_cell": [
+    49.0,
+    2.56
+   ],
+   "icon_t": 22.1,
+   "component": "icon_d2"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    49.0,
+    2.5
+   ],
+   "ecmwf_t": 21.2,
+   "icon_cell": [
+    49.02,
+    2.54
+   ],
+   "icon_t": 21.9,
+   "component": "icon_d2"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 2,
+  "n_componentes": 1,
+  "spread_t_icon": 0.3,
+  "spread_t_ecmwf": 0.0
+ },
+ "LIMC": {
+  "icao": "LIMC",
+  "city": "Milan",
+  "n_markets": 1881,
+  "d_noaa_oa": 0.04529290204957328,
+  "d_noaa_iem": 0.39988882168629647,
+  "noaa": {
+   "ecmwf_cell": [
+    45.75,
+    8.75
+   ],
+   "ecmwf_t": 30.0,
+   "icon_cell": [
+    45.64,
+    8.72
+   ],
+   "icon_t": 30.4,
+   "component": "icon_d2"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    45.75,
+    8.75
+   ],
+   "ecmwf_t": 30.0,
+   "icon_cell": [
+    45.64,
+    8.72
+   ],
+   "icon_t": 30.4,
+   "component": "icon_d2"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    45.75,
+    8.75
+   ],
+   "ecmwf_t": 30.0,
+   "icon_cell": [
+    45.64,
+    8.72
+   ],
+   "icon_t": 30.4,
+   "component": "icon_d2"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.0,
+  "spread_t_ecmwf": 0.0
+ },
+ "LLBG": {
+  "icao": "LLBG",
+  "city": "Tel Aviv",
+  "n_markets": 1935,
+  "d_noaa_oa": 0.0525229667504874,
+  "d_noaa_iem": 0.0533735859443009,
+  "noaa": {
+   "ecmwf_cell": [
+    32.0,
+    35.0
+   ],
+   "ecmwf_t": 33.2,
+   "icon_cell": [
+    32.0,
+    34.875
+   ],
+   "icon_t": 31.7,
+   "component": "icon_eu"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    32.0,
+    35.0
+   ],
+   "ecmwf_t": 33.2,
+   "icon_cell": [
+    32.0,
+    34.875
+   ],
+   "icon_t": 31.7,
+   "component": "icon_eu"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    32.0,
+    35.0
+   ],
+   "ecmwf_t": 33.2,
+   "icon_cell": [
+    32.0,
+    34.875
+   ],
+   "icon_t": 31.7,
+   "component": "icon_eu"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.0,
+  "spread_t_ecmwf": 0.0
+ },
+ "LTAC": {
+  "icao": "LTAC",
+  "city": "Ankara",
+  "n_markets": 2115,
+  "d_noaa_oa": 0.013983933555046586,
+  "d_noaa_iem": 0.011197932963044424,
+  "noaa": {
+   "ecmwf_cell": [
+    40.25,
+    33.0
+   ],
+   "ecmwf_t": 27.6,
+   "icon_cell": [
+    40.125,
+    33.0
+   ],
+   "icon_t": 28.1,
+   "component": "icon_eu"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    40.25,
+    33.0
+   ],
+   "ecmwf_t": 27.6,
+   "icon_cell": [
+    40.125,
+    33.0
+   ],
+   "icon_t": 28.1,
+   "component": "icon_eu"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    40.25,
+    33.0
+   ],
+   "ecmwf_t": 27.6,
+   "icon_cell": [
+    40.125,
+    33.0
+   ],
+   "icon_t": 28.1,
+   "component": "icon_eu"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.0,
+  "spread_t_ecmwf": 0.0
+ },
+ "LTFM": {
+  "icao": "LTFM",
+  "city": "Istanbul",
+  "n_markets": 1738,
+  "d_noaa_oa": 1.5751946684382085,
+  "d_noaa_iem": 0.14772322537831356,
+  "noaa": {
+   "ecmwf_cell": [
+    41.25,
+    28.75
+   ],
+   "ecmwf_t": 27.0,
+   "icon_cell": [
+    41.25,
+    28.75
+   ],
+   "icon_t": 27.0,
+   "component": "icon_eu"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    41.25,
+    28.75
+   ],
+   "ecmwf_t": 27.2,
+   "icon_cell": [
+    41.25,
+    28.75
+   ],
+   "icon_t": 27.3,
+   "component": "icon_eu"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    41.25,
+    28.75
+   ],
+   "ecmwf_t": 27.1,
+   "icon_cell": [
+    41.25,
+    28.75
+   ],
+   "icon_t": 27.1,
+   "component": "icon_eu"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.3,
+  "spread_t_ecmwf": 0.2
+ },
+ "MMMX": {
+  "icao": "MMMX",
+  "city": "Mexico City",
+  "n_markets": 1716,
+  "d_noaa_oa": 0.17622854782016198,
+  "d_noaa_iem": 0.03496770767325704,
+  "noaa": {
+   "ecmwf_cell": [
+    19.5,
+    -99.0
+   ],
+   "ecmwf_t": 13.4,
+   "icon_cell": [
+    19.375,
+    -99.125
+   ],
+   "icon_t": 15.2,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    19.5,
+    -99.0
+   ],
+   "ecmwf_t": 13.4,
+   "icon_cell": [
+    19.375,
+    -99.125
+   ],
+   "icon_t": 15.2,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    19.5,
+    -99.0
+   ],
+   "ecmwf_t": 13.4,
+   "icon_cell": [
+    19.375,
+    -99.125
+   ],
+   "icon_t": 15.2,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.0,
+  "spread_t_ecmwf": 0.0
+ },
+ "MPMG": {
+  "icao": "MPMG",
+  "city": "Panama City",
+  "n_markets": 1661,
+  "d_noaa_oa": 0.7080800841264024,
+  "d_noaa_iem": 4.5853030176120075,
+  "noaa": {
+   "ecmwf_cell": [
+    9.0,
+    -79.5
+   ],
+   "ecmwf_t": 26.8,
+   "icon_cell": [
+    9.0,
+    -79.5
+   ],
+   "icon_t": 27.0,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    9.0,
+    -79.5
+   ],
+   "ecmwf_t": 26.8,
+   "icon_cell": [
+    9.0,
+    -79.5
+   ],
+   "icon_t": 27.0,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    9.0,
+    -79.5
+   ],
+   "ecmwf_t": 26.7,
+   "icon_cell": [
+    9.0,
+    -79.5
+   ],
+   "icon_t": 27.0,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.0,
+  "spread_t_ecmwf": 0.1
+ },
+ "NZWN": {
+  "icao": "NZWN",
+  "city": "Wellington",
+  "n_markets": 2115,
+  "d_noaa_oa": 0.46824712320292533,
+  "d_noaa_iem": 0.42656420469350453,
+  "noaa": {
+   "ecmwf_cell": [
+    -41.25,
+    174.75
+   ],
+   "ecmwf_t": 13.3,
+   "icon_cell": [
+    -41.25,
+    174.75
+   ],
+   "icon_t": 13.1,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    -41.25,
+    174.75
+   ],
+   "ecmwf_t": 13.3,
+   "icon_cell": [
+    -41.25,
+    174.75
+   ],
+   "icon_t": 13.1,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    -41.25,
+    174.75
+   ],
+   "ecmwf_t": 13.3,
+   "icon_cell": [
+    -41.25,
+    174.75
+   ],
+   "icon_t": 13.1,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.0,
+  "spread_t_ecmwf": 0.0
+ },
+ "OEJN": {
+  "icao": "OEJN",
+  "city": "Jeddah",
+  "n_markets": 1628,
+  "d_noaa_oa": 1.0310514072463195,
+  "d_noaa_iem": 5.320735451366064,
+  "noaa": {
+   "ecmwf_cell": [
+    21.75,
+    39.25
+   ],
+   "ecmwf_t": 39.0,
+   "icon_cell": [
+    21.75,
+    39.125
+   ],
+   "icon_t": 37.9,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    21.75,
+    39.25
+   ],
+   "ecmwf_t": 39.0,
+   "icon_cell": [
+    21.75,
+    39.125
+   ],
+   "icon_t": 37.9,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    21.75,
+    39.25
+   ],
+   "ecmwf_t": 39.0,
+   "icon_cell": [
+    21.75,
+    39.125
+   ],
+   "icon_t": 38.0,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.1,
+  "spread_t_ecmwf": 0.0
+ },
+ "OPKC": {
+  "icao": "OPKC",
+  "city": "Karachi",
+  "n_markets": 1551,
+  "d_noaa_oa": 2.254569011442981,
+  "d_noaa_iem": 6.667152238856927,
+  "noaa": {
+   "ecmwf_cell": [
+    25.0,
+    67.25
+   ],
+   "ecmwf_t": 30.0,
+   "icon_cell": [
+    24.875,
+    67.125
+   ],
+   "icon_t": 30.1,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    25.0,
+    67.25
+   ],
+   "ecmwf_t": 30.0,
+   "icon_cell": [
+    24.875,
+    67.125
+   ],
+   "icon_t": 30.1,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    24.75,
+    67.25
+   ],
+   "ecmwf_t": 27.2,
+   "icon_cell": [
+    24.875,
+    67.125
+   ],
+   "icon_t": 30.2,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 2,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.1,
+  "spread_t_ecmwf": 2.8
+ },
+ "RCSS": {
+  "icao": "RCSS",
+  "city": "Taipei",
+  "n_markets": 1672,
+  "d_noaa_oa": 0.21208585383147613,
+  "d_noaa_iem": 0.059147851959301306,
+  "noaa": {
+   "ecmwf_cell": [
+    25.0,
+    121.5
+   ],
+   "ecmwf_t": 25.3,
+   "icon_cell": [
+    25.125,
+    121.5
+   ],
+   "icon_t": 27.0,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    25.0,
+    121.5
+   ],
+   "ecmwf_t": 25.3,
+   "icon_cell": [
+    25.125,
+    121.5
+   ],
+   "icon_t": 27.0,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    25.0,
+    121.5
+   ],
+   "ecmwf_t": 25.3,
+   "icon_cell": [
+    25.125,
+    121.5
+   ],
+   "icon_t": 27.0,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.0,
+  "spread_t_ecmwf": 0.0
+ },
+ "RCTP": {
+  "icao": "RCTP",
+  "city": "Taipei",
+  "n_markets": 132,
+  "d_noaa_oa": 0.03335908611416764,
+  "d_noaa_iem": 0.03507127307655829,
+  "noaa": {
+   "ecmwf_cell": [
+    25.0,
+    121.25
+   ],
+   "ecmwf_t": 25.5,
+   "icon_cell": [
+    25.0,
+    121.25
+   ],
+   "icon_t": 26.2,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    25.0,
+    121.25
+   ],
+   "ecmwf_t": 25.5,
+   "icon_cell": [
+    25.0,
+    121.25
+   ],
+   "icon_t": 26.2,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    25.0,
+    121.25
+   ],
+   "ecmwf_t": 25.5,
+   "icon_cell": [
+    25.0,
+    121.25
+   ],
+   "icon_t": 26.2,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.0,
+  "spread_t_ecmwf": 0.0
+ },
+ "RJTT": {
+  "icao": "RJTT",
+  "city": "Tokyo",
+  "n_markets": 1935,
+  "d_noaa_oa": 0.6534341566263476,
+  "d_noaa_iem": 0.038019733806627994,
+  "noaa": {
+   "ecmwf_cell": [
+    35.75,
+    139.75
+   ],
+   "ecmwf_t": 21.9,
+   "icon_cell": [
+    35.5,
+    139.75
+   ],
+   "icon_t": 23.0,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    35.75,
+    139.75
+   ],
+   "ecmwf_t": 21.9,
+   "icon_cell": [
+    35.5,
+    139.75
+   ],
+   "icon_t": 23.0,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    35.75,
+    139.75
+   ],
+   "ecmwf_t": 21.9,
+   "icon_cell": [
+    35.5,
+    139.75
+   ],
+   "icon_t": 23.0,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.0,
+  "spread_t_ecmwf": 0.0
+ },
+ "RKPK": {
+  "icao": "RKPK",
+  "city": "Busan",
+  "n_markets": 1694,
+  "d_noaa_oa": 0.05570984443461151,
+  "d_noaa_iem": 0.0622328537799257,
+  "noaa": {
+   "ecmwf_cell": [
+    35.25,
+    129.0
+   ],
+   "ecmwf_t": 23.1,
+   "icon_cell": [
+    35.125,
+    129.0
+   ],
+   "icon_t": 24.8,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    35.25,
+    129.0
+   ],
+   "ecmwf_t": 23.1,
+   "icon_cell": [
+    35.125,
+    129.0
+   ],
+   "icon_t": 24.8,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    35.25,
+    129.0
+   ],
+   "ecmwf_t": 23.1,
+   "icon_cell": [
+    35.125,
+    129.0
+   ],
+   "icon_t": 24.8,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.0,
+  "spread_t_ecmwf": 0.0
+ },
+ "RKSI": {
+  "icao": "RKSI",
+  "city": "Seoul",
+  "n_markets": 2121,
+  "d_noaa_oa": 0.011236234352949806,
+  "d_noaa_iem": 0.274054238749008,
+  "noaa": {
+   "ecmwf_cell": [
+    37.5,
+    126.5
+   ],
+   "ecmwf_t": 22.6,
+   "icon_cell": [
+    37.625,
+    126.5
+   ],
+   "icon_t": 22.7,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    37.5,
+    126.5
+   ],
+   "ecmwf_t": 22.6,
+   "icon_cell": [
+    37.625,
+    126.5
+   ],
+   "icon_t": 22.7,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    37.5,
+    126.5
+   ],
+   "ecmwf_t": 22.6,
+   "icon_cell": [
+    37.625,
+    126.5
+   ],
+   "icon_t": 22.7,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.0,
+  "spread_t_ecmwf": 0.0
+ },
+ "RPLL": {
+  "icao": "RPLL",
+  "city": "Manila",
+  "n_markets": 1551,
+  "d_noaa_oa": 1.7312320022529373,
+  "d_noaa_iem": 0.0242318318351107,
+  "noaa": {
+   "ecmwf_cell": [
+    14.5,
+    121.0
+   ],
+   "ecmwf_t": 26.2,
+   "icon_cell": [
+    14.625,
+    121.0
+   ],
+   "icon_t": 25.9,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    14.5,
+    121.0
+   ],
+   "ecmwf_t": 26.2,
+   "icon_cell": [
+    14.5,
+    121.125
+   ],
+   "icon_t": 26.1,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    14.5,
+    121.0
+   ],
+   "ecmwf_t": 26.2,
+   "icon_cell": [
+    14.625,
+    121.0
+   ],
+   "icon_t": 25.9,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 2,
+  "n_componentes": 1,
+  "spread_t_icon": 0.2,
+  "spread_t_ecmwf": 0.0
+ },
+ "SAEZ": {
+  "icao": "SAEZ",
+  "city": "Buenos Aires",
+  "n_markets": 2096,
+  "d_noaa_oa": 0.028772850832219202,
+  "d_noaa_iem": 0.028969727521931082,
+  "noaa": {
+   "ecmwf_cell": [
+    -34.75,
+    -58.5
+   ],
+   "ecmwf_t": 7.1,
+   "icon_cell": [
+    -34.875,
+    -58.5
+   ],
+   "icon_t": 5.8,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    -34.75,
+    -58.5
+   ],
+   "ecmwf_t": 7.1,
+   "icon_cell": [
+    -34.875,
+    -58.5
+   ],
+   "icon_t": 5.8,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    -34.75,
+    -58.5
+   ],
+   "ecmwf_t": 7.1,
+   "icon_cell": [
+    -34.875,
+    -58.5
+   ],
+   "icon_t": 5.8,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.0,
+  "spread_t_ecmwf": 0.0
+ },
+ "SBGR": {
+  "icao": "SBGR",
+  "city": "Sao Paulo",
+  "n_markets": 2083,
+  "d_noaa_oa": 0.12645342612969776,
+  "d_noaa_iem": 0.05278764891248878,
+  "noaa": {
+   "ecmwf_cell": [
+    -23.5,
+    -46.5
+   ],
+   "ecmwf_t": 18.5,
+   "icon_cell": [
+    -23.375,
+    -46.5
+   ],
+   "icon_t": 18.1,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    -23.5,
+    -46.5
+   ],
+   "ecmwf_t": 18.5,
+   "icon_cell": [
+    -23.375,
+    -46.5
+   ],
+   "icon_t": 18.1,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    -23.5,
+    -46.5
+   ],
+   "ecmwf_t": 18.5,
+   "icon_cell": [
+    -23.375,
+    -46.5
+   ],
+   "icon_t": 18.1,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.0,
+  "spread_t_ecmwf": 0.0
+ },
+ "UUWW": {
+  "icao": "UUWW",
+  "city": "Moscow",
+  "n_markets": 1727,
+  "d_noaa_oa": 0.0639879352615973,
+  "d_noaa_iem": 0.06386021463447974,
+  "noaa": {
+   "ecmwf_cell": [
+    55.5,
+    37.25
+   ],
+   "ecmwf_t": 19.1,
+   "icon_cell": [
+    55.5625,
+    37.25
+   ],
+   "icon_t": 17.7,
+   "component": "icon_eu"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    55.5,
+    37.25
+   ],
+   "ecmwf_t": 19.2,
+   "icon_cell": [
+    55.5625,
+    37.25
+   ],
+   "icon_t": 17.7,
+   "component": "icon_eu"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    55.5,
+    37.25
+   ],
+   "ecmwf_t": 19.2,
+   "icon_cell": [
+    55.5625,
+    37.25
+   ],
+   "icon_t": 17.7,
+   "component": "icon_eu"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.0,
+  "spread_t_ecmwf": 0.1
+ },
+ "VHHH": {
+  "icao": "VHHH",
+  "city": "Hong Kong",
+  "n_markets": 18,
+  "d_noaa_oa": 0.7993194514794364,
+  "d_noaa_iem": 0.0493135697325046,
+  "noaa": {
+   "ecmwf_cell": [
+    22.25,
+    114.0
+   ],
+   "ecmwf_t": 26.9,
+   "icon_cell": [
+    22.375,
+    114.0
+   ],
+   "icon_t": 27.6,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    22.25,
+    114.0
+   ],
+   "ecmwf_t": 26.9,
+   "icon_cell": [
+    22.375,
+    114.0
+   ],
+   "icon_t": 27.6,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    22.25,
+    114.0
+   ],
+   "ecmwf_t": 26.9,
+   "icon_cell": [
+    22.375,
+    114.0
+   ],
+   "icon_t": 27.6,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.0,
+  "spread_t_ecmwf": 0.0
+ },
+ "VILK": {
+  "icao": "VILK",
+  "city": "Lucknow",
+  "n_markets": 1980,
+  "d_noaa_oa": 0.05345764701406814,
+  "d_noaa_iem": 0.056727206069445354,
+  "noaa": {
+   "ecmwf_cell": [
+    26.75,
+    81.0
+   ],
+   "ecmwf_t": 29.3,
+   "icon_cell": [
+    26.75,
+    80.875
+   ],
+   "icon_t": 29.1,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    26.75,
+    81.0
+   ],
+   "ecmwf_t": 29.3,
+   "icon_cell": [
+    26.75,
+    80.875
+   ],
+   "icon_t": 29.1,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    26.75,
+    81.0
+   ],
+   "ecmwf_t": 29.3,
+   "icon_cell": [
+    26.75,
+    80.875
+   ],
+   "icon_t": 29.1,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.0,
+  "spread_t_ecmwf": 0.0
+ },
+ "WIHH": {
+  "icao": "WIHH",
+  "city": "Jakarta",
+  "n_markets": 517,
+  "d_noaa_oa": 0.07539167335159616,
+  "d_noaa_iem": 0.04534905049298334,
+  "noaa": {
+   "ecmwf_cell": [
+    -6.25,
+    107.0
+   ],
+   "ecmwf_t": 29.5,
+   "icon_cell": [
+    -6.25,
+    106.875
+   ],
+   "icon_t": 28.7,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    -6.25,
+    107.0
+   ],
+   "ecmwf_t": 29.5,
+   "icon_cell": [
+    -6.25,
+    106.875
+   ],
+   "icon_t": 28.7,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    -6.25,
+    107.0
+   ],
+   "ecmwf_t": 29.5,
+   "icon_cell": [
+    -6.25,
+    106.875
+   ],
+   "icon_t": 28.7,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.0,
+  "spread_t_ecmwf": 0.0
+ },
+ "WMKK": {
+  "icao": "WMKK",
+  "city": "Kuala Lumpur",
+  "n_markets": 1694,
+  "d_noaa_oa": 0.47159827129554244,
+  "d_noaa_iem": 3.7137501778325532,
+  "noaa": {
+   "ecmwf_cell": [
+    2.75,
+    101.75
+   ],
+   "ecmwf_t": 28.1,
+   "icon_cell": [
+    2.75,
+    101.75
+   ],
+   "icon_t": 28.7,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    2.75,
+    101.75
+   ],
+   "ecmwf_t": 28.1,
+   "icon_cell": [
+    2.75,
+    101.75
+   ],
+   "icon_t": 28.7,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    2.75,
+    101.75
+   ],
+   "ecmwf_t": 28.2,
+   "icon_cell": [
+    2.75,
+    101.75
+   ],
+   "icon_t": 28.8,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.1,
+  "spread_t_ecmwf": 0.1
+ },
+ "WSSS": {
+  "icao": "WSSS",
+  "city": "Singapore",
+  "n_markets": 1908,
+  "d_noaa_oa": 2.387940648670048,
+  "d_noaa_iem": 0.20911721200913103,
+  "noaa": {
+   "ecmwf_cell": [
+    1.5,
+    104.0
+   ],
+   "ecmwf_t": 28.9,
+   "icon_cell": [
+    1.375,
+    104.0
+   ],
+   "icon_t": 28.3,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    1.5,
+    104.0
+   ],
+   "ecmwf_t": 29.0,
+   "icon_cell": [
+    1.375,
+    104.0
+   ],
+   "icon_t": 28.4,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    1.5,
+    104.0
+   ],
+   "ecmwf_t": 29.0,
+   "icon_cell": [
+    1.375,
+    104.0
+   ],
+   "icon_t": 28.4,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.1,
+  "spread_t_ecmwf": 0.1
+ },
+ "ZBAA": {
+  "icao": "ZBAA",
+  "city": "Beijing",
+  "n_markets": 1837,
+  "d_noaa_oa": 0.7447049824732921,
+  "d_noaa_iem": 1.6183361911396095,
+  "noaa": {
+   "ecmwf_cell": [
+    40.0,
+    116.5
+   ],
+   "ecmwf_t": 27.6,
+   "icon_cell": [
+    40.125,
+    116.625
+   ],
+   "icon_t": 24.8,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    40.0,
+    116.5
+   ],
+   "ecmwf_t": 27.6,
+   "icon_cell": [
+    40.125,
+    116.625
+   ],
+   "icon_t": 24.7,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    40.0,
+    116.5
+   ],
+   "ecmwf_t": 27.6,
+   "icon_cell": [
+    40.125,
+    116.625
+   ],
+   "icon_t": 24.7,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.1,
+  "spread_t_ecmwf": 0.0
+ },
+ "ZGGG": {
+  "icao": "ZGGG",
+  "city": "Guangzhou",
+  "n_markets": 1551,
+  "d_noaa_oa": 0.8172544203174188,
+  "d_noaa_iem": 0.7967280529923035,
+  "noaa": {
+   "ecmwf_cell": [
+    23.5,
+    113.25
+   ],
+   "ecmwf_t": 27.1,
+   "icon_cell": [
+    23.375,
+    113.25
+   ],
+   "icon_t": 27.7,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    23.5,
+    113.25
+   ],
+   "ecmwf_t": 27.1,
+   "icon_cell": [
+    23.375,
+    113.25
+   ],
+   "icon_t": 27.7,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    23.5,
+    113.25
+   ],
+   "ecmwf_t": 27.1,
+   "icon_cell": [
+    23.375,
+    113.25
+   ],
+   "icon_t": 27.7,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.0,
+  "spread_t_ecmwf": 0.0
+ },
+ "ZGSZ": {
+  "icao": "ZGSZ",
+  "city": "Shenzhen",
+  "n_markets": 1837,
+  "d_noaa_oa": 0.059168770879088596,
+  "d_noaa_iem": 32.05597564101924,
+  "noaa": {
+   "ecmwf_cell": [
+    22.75,
+    113.75
+   ],
+   "ecmwf_t": 28.2,
+   "icon_cell": [
+    22.625,
+    113.875
+   ],
+   "icon_t": 28.1,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    22.75,
+    113.75
+   ],
+   "ecmwf_t": 28.2,
+   "icon_cell": [
+    22.625,
+    113.875
+   ],
+   "icon_t": 28.1,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    22.5,
+    114.0
+   ],
+   "ecmwf_t": 27.5,
+   "icon_cell": [
+    22.5,
+    114.125
+   ],
+   "icon_t": 27.3,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 2,
+  "n_celdas_icon": 2,
+  "n_componentes": 1,
+  "spread_t_icon": 0.8,
+  "spread_t_ecmwf": 0.7
+ },
+ "ZHCC": {
+  "icao": "ZHCC",
+  "city": "Zhengzhou",
+  "n_markets": 330,
+  "d_noaa_oa": 1.5659180150097278,
+  "d_noaa_iem": 27.59938698120388,
+  "noaa": {
+   "ecmwf_cell": [
+    34.5,
+    113.75
+   ],
+   "ecmwf_t": 23.8,
+   "icon_cell": [
+    34.5,
+    113.875
+   ],
+   "icon_t": 24.5,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    34.5,
+    113.75
+   ],
+   "ecmwf_t": 23.8,
+   "icon_cell": [
+    34.5,
+    113.875
+   ],
+   "icon_t": 24.5,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    34.75,
+    113.75
+   ],
+   "ecmwf_t": 26.9,
+   "icon_cell": [
+    34.75,
+    113.625
+   ],
+   "icon_t": 26.5,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 2,
+  "n_celdas_icon": 2,
+  "n_componentes": 1,
+  "spread_t_icon": 2.0,
+  "spread_t_ecmwf": 3.1
+ },
+ "ZHHH": {
+  "icao": "ZHHH",
+  "city": "Wuhan",
+  "n_markets": 1837,
+  "d_noaa_oa": 1.2354057103966392,
+  "d_noaa_iem": 19.491708064793496,
+  "noaa": {
+   "ecmwf_cell": [
+    30.75,
+    114.25
+   ],
+   "ecmwf_t": 26.3,
+   "icon_cell": [
+    30.75,
+    114.25
+   ],
+   "icon_t": 27.5,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    30.75,
+    114.25
+   ],
+   "ecmwf_t": 26.3,
+   "icon_cell": [
+    30.75,
+    114.25
+   ],
+   "icon_t": 27.5,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    30.5,
+    114.25
+   ],
+   "ecmwf_t": 25.1,
+   "icon_cell": [
+    30.625,
+    114.125
+   ],
+   "icon_t": 28.1,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 2,
+  "n_celdas_icon": 2,
+  "n_componentes": 1,
+  "spread_t_icon": 0.6,
+  "spread_t_ecmwf": 1.2
+ },
+ "ZSJN": {
+  "icao": "ZSJN",
+  "city": "Jinan",
+  "n_markets": 330,
+  "d_noaa_oa": 0.8999448446607888,
+  "d_noaa_iem": 0.055597463322134444,
+  "noaa": {
+   "ecmwf_cell": [
+    36.75,
+    117.25
+   ],
+   "ecmwf_t": 26.5,
+   "icon_cell": [
+    36.875,
+    117.25
+   ],
+   "icon_t": 23.9,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    36.75,
+    117.25
+   ],
+   "ecmwf_t": 26.5,
+   "icon_cell": [
+    36.875,
+    117.25
+   ],
+   "icon_t": 23.9,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    36.75,
+    117.25
+   ],
+   "ecmwf_t": 26.5,
+   "icon_cell": [
+    36.875,
+    117.25
+   ],
+   "icon_t": 23.9,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 1,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.0,
+  "spread_t_ecmwf": 0.0
+ },
+ "ZSPD": {
+  "icao": "ZSPD",
+  "city": "Shanghai",
+  "n_markets": 1908,
+  "d_noaa_oa": 0.5567810232497831,
+  "d_noaa_iem": 4.550258856109428,
+  "noaa": {
+   "ecmwf_cell": [
+    31.25,
+    121.75
+   ],
+   "ecmwf_t": 26.8,
+   "icon_cell": [
+    31.125,
+    121.875
+   ],
+   "icon_t": 26.4,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    31.25,
+    121.75
+   ],
+   "ecmwf_t": 26.8,
+   "icon_cell": [
+    31.125,
+    121.875
+   ],
+   "icon_t": 26.4,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    31.0,
+    121.75
+   ],
+   "ecmwf_t": 25.7,
+   "icon_cell": [
+    31.125,
+    121.875
+   ],
+   "icon_t": 26.4,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 2,
+  "n_celdas_icon": 1,
+  "n_componentes": 1,
+  "spread_t_icon": 0.0,
+  "spread_t_ecmwf": 1.1
+ },
+ "ZSQD": {
+  "icao": "ZSQD",
+  "city": "Qingdao",
+  "n_markets": 1452,
+  "d_noaa_oa": 0.10498603887867186,
+  "d_noaa_iem": 39.58258160668307,
+  "noaa": {
+   "ecmwf_cell": [
+    36.25,
+    120.0
+   ],
+   "ecmwf_t": 24.9,
+   "icon_cell": [
+    36.375,
+    120.125
+   ],
+   "icon_t": 24.1,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    36.25,
+    120.0
+   ],
+   "ecmwf_t": 24.9,
+   "icon_cell": [
+    36.375,
+    120.125
+   ],
+   "icon_t": 24.1,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    36.25,
+    120.25
+   ],
+   "ecmwf_t": 24.4,
+   "icon_cell": [
+    36.125,
+    120.375
+   ],
+   "icon_t": 25.0,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 2,
+  "n_celdas_icon": 2,
+  "n_componentes": 1,
+  "spread_t_icon": 0.9,
+  "spread_t_ecmwf": 0.5
+ },
+ "ZUCK": {
+  "icao": "ZUCK",
+  "city": "Chongqing",
+  "n_markets": 1837,
+  "d_noaa_oa": 1.3996486610052505,
+  "d_noaa_iem": 26.850693433096687,
+  "noaa": {
+   "ecmwf_cell": [
+    29.75,
+    106.75
+   ],
+   "ecmwf_t": 29.5,
+   "icon_cell": [
+    29.75,
+    106.625
+   ],
+   "icon_t": 31.3,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    29.75,
+    106.75
+   ],
+   "ecmwf_t": 29.5,
+   "icon_cell": [
+    29.75,
+    106.625
+   ],
+   "icon_t": 31.3,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    29.5,
+    106.5
+   ],
+   "ecmwf_t": 30.8,
+   "icon_cell": [
+    29.5,
+    106.5
+   ],
+   "icon_t": 32.5,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 2,
+  "n_celdas_icon": 2,
+  "n_componentes": 1,
+  "spread_t_icon": 1.2,
+  "spread_t_ecmwf": 1.3
+ },
+ "ZUUU": {
+  "icao": "ZUUU",
+  "city": "Chengdu",
+  "n_markets": 1826,
+  "d_noaa_oa": 2.010380386092543,
+  "d_noaa_iem": 11.930432412162311,
+  "noaa": {
+   "ecmwf_cell": [
+    30.5,
+    104.0
+   ],
+   "ecmwf_t": 27.7,
+   "icon_cell": [
+    30.625,
+    104.0
+   ],
+   "icon_t": 30.7,
+   "component": "icon_global"
+  },
+  "oa": {
+   "ecmwf_cell": [
+    30.5,
+    104.0
+   ],
+   "ecmwf_t": 27.7,
+   "icon_cell": [
+    30.5,
+    104.0
+   ],
+   "icon_t": 29.0,
+   "component": "icon_global"
+  },
+  "iem": {
+   "ecmwf_cell": [
+    30.75,
+    104.0
+   ],
+   "ecmwf_t": 30.0,
+   "icon_cell": [
+    30.625,
+    104.0
+   ],
+   "icon_t": 30.6,
+   "component": "icon_global"
+  },
+  "n_celdas_ecmwf": 2,
+  "n_celdas_icon": 2,
+  "n_componentes": 1,
+  "spread_t_icon": 1.7,
+  "spread_t_ecmwf": 2.3
+ }
+}

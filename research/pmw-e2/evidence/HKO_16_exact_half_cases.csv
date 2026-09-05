@@ -1,0 +1,17 @@
+event_id,city,rule,target_date,source_value,completeness,band,lo,hi,floor,ceil,half_up,half_even,c_floor,c_ceil,c_half_up,c_half_even,frac
+356098,Hong Kong,P_HKO_AbsDailyMax,2026-04-12,28.5,C,28°C,28.0,28.0,28,29,29,28,True,False,False,True,0.5
+512230,Hong Kong,P_HKO_AbsDailyMax,2026-05-24,31.5,C,31°C,31.0,31.0,31,32,32,32,True,False,False,False,0.5
+825629,Hong Kong,P_HKO_AbsDailyMax,2026-08-12,34.5,C,34°C,34.0,34.0,34,35,35,34,True,False,False,True,0.5
+384030,Hong Kong,P_HKO_AbsDailyMax,2026-04-18,28.5,C,28°C,28.0,28.0,28,29,29,28,True,False,False,True,0.5
+686638,Hong Kong,P_HKO_AbsDailyMax,2026-07-12,34.5,C,34°C,34.0,34.0,34,35,35,34,True,False,False,True,0.5
+708824,Hong Kong,P_HKO_AbsDailyMax,2026-07-18,30.5,C,30°C,30.0,30.0,30,31,31,30,True,False,False,True,0.5
+607140,Hong Kong,P_HKO_AbsDailyMax,2026-06-20,31.5,C,31°C,31.0,31.0,31,32,32,32,True,False,False,False,0.5
+736355,Hong Kong,P_HKO_AbsDailyMax,2026-07-25,34.5,C,34°C,34.0,34.0,34,35,35,34,True,False,False,True,0.5
+750603,Hong Kong,P_HKO_AbsDailyMax,2026-07-28,29.5,C,29°C,29.0,29.0,29,30,30,30,True,False,False,False,0.5
+784717,Hong Kong,P_HKO_AbsDailyMax,2026-08-04,32.5,C,32°C,32.0,32.0,32,33,33,32,True,False,False,True,0.5
+929252,Hong Kong,P_HKO_AbsDailyMax,2026-08-31,29.5,C,29°C,29.0,29.0,29,30,30,30,True,False,False,False,0.5
+408592,Hong Kong,P_HKO_AbsDailyMax,2026-04-25,26.5,C,26°C,26.0,26.0,26,27,27,26,True,False,False,True,0.5
+500684,Hong Kong,P_HKO_AbsDailyMax,2026-05-21,31.5,C,31°C,31.0,31.0,31,32,32,32,True,False,False,False,0.5
+585974,Hong Kong,P_HKO_AbsDailyMax,2026-06-14,29.5,C,29°C,29.0,29.0,29,30,30,30,True,False,False,False,0.5
+646490,Hong Kong,P_HKO_AbsDailyMax,2026-07-01,33.5,C,33°C,33.0,33.0,33,34,34,34,True,False,False,False,0.5
+874082,Hong Kong,P_HKO_AbsDailyMax,2026-08-21,31.5,C,31°C,31.0,31.0,31,32,32,32,True,False,False,False,0.5
