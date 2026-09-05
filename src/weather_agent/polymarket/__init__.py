@@ -14,6 +14,7 @@ Modules:
                     winning_outcome). Ported from phase1_5/resolution_discovery.py.
   * fees.py       — map gamma fee / tick / min fields -> market_fee_schedule
                     (fee_status KNOWN where read, UNKNOWN if absent).
+  * prices.py     — historical CLOB indicative-price ingestion; no L2/trade fallback.
 
 NOTE (migration): this package supersedes the legacy flat module
 `weather_agent/polymarket.py`. On a Python runtime the package shadows the flat
