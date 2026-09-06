@@ -318,3 +318,45 @@ corregida y `cell_depends_on_source` aclarado (sólo respecto a IEM). Delta para
 "no ejecutada"; y no aceptar una resolución por convergencia numérica sin comprobar qué representa
 cada coordenada (aquí "sensor" era un mástil de viento).
 **Estado:** ADOPTADO.
+
+## D16 — R26 + R6 + R25 implementados; PR #1; política de fusión a `main` · 2026-09-06 · Claude (sesión A)
+**Qué:** rama `feat/r26-open-discovery` (12 commits, base `main@5287122`, worktree propio):
+descubrimiento de mercados **abiertos** con `available_at` = instante de la petición (captura
+prospectiva, `OBSERVED_AT_DISCOVERY`), claves de checkpoint por modo, `markets` en `AS_OF_COLUMNS`,
+fixture `OPEN_EVENT` y 16 tests; higiene R6 (sólo comentarios); `PHASES.md` (R25).
+**Revisión adversarial (2 revisores, `WF_r26_results.json`):** 2 BLOQUEANTES (misma causa: un
+re-descubrimiento en modo cerrado sobrescribía con NULL el `available_at` observado) y 4 IMPORTANTES,
+**todos corregidos con test** (commits `21d19a9`…`c40d6fc`). MENORES aceptados como deuda documentada
+en el PR. **Verificado por la sesión A:** `143 passed, 4 skipped` (main 127/4).
+**PR:** https://github.com/anderge20/Polymarket_Weather_Agent/pull/1 (base `main`). No validado contra Gamma en vivo.
+**Política de fusión (nueva, para las dos sesiones):** un PR se fusiona a `main` sólo si (a) pasó
+revisión adversarial con hallazgos bloqueantes/importantes corregidos, (b) pytest verde verificado
+por la sesión que fusiona, (c) la otra sesión ha tenido **≥ 2 h** desde el registro aquí para objetar
+en este fichero, y (d) la fusión es por PR (merge commit), nunca push directo. Conflictos: quien
+fusiona segundo rebasa. **PR #1 no se fusiona antes de 2026-09-06 12:30 UTC.** Solapes conocidos con
+`feat/ingest-2b`: `polymarket/__init__.py` (comentario) y `config.py` (comentarios) — triviales.
+**Estado:** ADOPTADO. Tareas #10 (R26) y #11 (R25) cerradas; R6 hecho.
+
+## D17 — Y para entrenamiento/evaluación: Y_final (A) + captura prospectiva (C) · 2026-09-06 · Claude (sesión A)
+**Decisión pendiente desde `REVISION_IMPACT_AUDIT.md` §74-85** (alternativas A/B/C), bloqueante de R13/R14/R16.
+**Qué:** se adopta **A + C**:
+- **Histórico (entrenamiento M2 y backtest):** `Y_final` retrospectivo desde IEM/METAR, con la
+  limitación declarada en cada informe: el impacto de las revisiones medido es **NEGLIGIBLE sólo
+  para IEM/METAR** (0/578 station-days cambian el máximo; MAE 0,00000 °C; cota sup. 95 % = 0,519 %),
+  en 23/53 estaciones y 20 días; **no medido en Wunderground** (fuente contractual del 85,6 % del
+  catálogo), HKO ni CWA, que quedan **UNKNOWN**.
+- **Operación (desde que exista ingestión de observaciones):** **captura prospectiva** de
+  `Y_asof_T` — cada observación METAR se ingiere con `available_at` = instante real de descarga y
+  `record_version` por revisión (COR/AMD), sin sobrescribir. Es la única vía a un as-of demostrado
+  con cobertura completa y produce, con el tiempo, el histórico as-of que hoy no existe.
+- **B descartada:** excluir el 64,7 % de station-days con revisión de nivel A no tiene ganancia
+  demostrable, porque ese nivel no se propaga al Tmax.
+**Regla de etiquetado por fuente contractual (para R12/R14):** los labels de mercados WU/HKO/CWA se
+construyen con el proxy IEM/METAR **sólo bajo una auditoría de compatibilidad declarada** (E2: 54/57
+casos compatibles en día civil local; HKO floor `[N, N+1)` STRONGLY SUPPORTED); cada label lleva
+`label_source` (IEM_METAR) y `contract_source` (WU/NOAA/HKO/CWA) y `compat_status`. Un mercado cuya
+regla de settlement no tenga operador auditado queda **fail-closed** (sin label, no entra en backtest).
+**Por qué:** A usa todo el histórico con impacto medido nulo donde se pudo medir; C es lo único que
+cierra F-3 y RECORD_VERSION_ASOF hacia delante; juntas no se contradicen.
+**Reversibilidad:** alta (política de datos; nada se borra).
+**Estado:** ADOPTADO. Referenciado por R13, R14, R16, R18.

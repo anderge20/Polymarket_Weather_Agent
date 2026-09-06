@@ -291,3 +291,5 @@ Cada ítem evaluativo (R4, R16, R18/R21, R24) lleva preregistro hasheado antes d
 
 **Reparto vigente (D13):** B → ingestión (R9/R10/R15) y M2 (R16); A → R26/R6/R25, R8, roadmap/tareas, preregistros.
 **Regla:** cada sesión en su propio worktree; nunca cambiar la rama del workspace canónico; sólo anexar en `DECISIONS.md`.
+| R26, R6, R25 | **HECHO** — `feat/r26-open-discovery`, PR #1, 143/4; revisión adversarial con 6 correcciones | D16 |
+| R11 | **EN CURSO por A** — investigación de la semántica de fees + propuesta de modelo de coste preregistrado | workflow |
