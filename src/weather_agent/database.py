@@ -638,9 +638,10 @@ def init_db(con=None, db_path: str | None = None):
             con.execute("ROLLBACK;")
             raise
     # Phase 2C (Alt C): operational discovery checkpoint table, created idempotently
-    # OUTSIDE the numbered MIGRATIONS. SCHEMA_VERSION stays 2 and MIGRATIONS is
-    # untouched (keeps validate_2b.py §11 green). Single init point: discover() /
-    # ingest_event() assume an init_db'd connection.
+    # OUTSIDE the numbered MIGRATIONS. It does NOT bump SCHEMA_VERSION (currently 3,
+    # bumped by the Phase 2D outcome_label migration, not by this table) and does not
+    # touch MIGRATIONS (keeps validate_2b.py §11 green). Single init point:
+    # discover() / ingest_event() assume an init_db'd connection.
     _ensure_checkpoint_table(con)
     return con
 
@@ -663,8 +664,9 @@ def column_names(con, table: str) -> list[str]:
 
 # =============================================================================
 # Phase 2C — persistent discovery checkpoint (Alt C)
-# Operational table, NOT a numbered migration, NOT in ALL_TABLES; SCHEMA_VERSION
-# stays 2. The PERSISTED table is the source of truth for resume; discover() keeps
+# Operational table, NOT a numbered migration, NOT in ALL_TABLES; it does not bump
+# SCHEMA_VERSION (= 3 since Phase 2D; the checkpoint table is version-independent).
+# The PERSISTED table is the source of truth for resume; discover() keeps
 # an in-memory mirror only for speed. checkpoint_mark() MUST run inside the caller's
 # per-event transaction (last write before COMMIT) so rows + mark are atomic.
 # =============================================================================

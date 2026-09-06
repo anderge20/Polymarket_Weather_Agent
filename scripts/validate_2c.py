@@ -6,7 +6,8 @@ scripts/validate_2c.py — Phase 2C validation harness (Blocker 1: checkpoint/re
 Same discipline as the 2B harness: IMPLEMENTED != TESTED != VALIDATED; NOTHING is
 VALIDATED without this REAL run. `scripts/validate_2b.py` is NOT touched.
 
-What it does (Blocker 1 only; Blocker 2 stays an open BLOCKER):
+What it does (Blocker 1 checkpoint/resume; Blocker 2 no-look-ahead is checked in
+§5b `validate_no_lookahead` via the adversarial pytest suite):
   * PREFLIGHT (python, duckdb, pytest, project structure, runner present).
   * Deterministic cross-process evidence via tests/support/checkpoint_runner.py:
       - before_event2 : REAL subprocess; child signals EVENT_1_COMMITTED then blocks;

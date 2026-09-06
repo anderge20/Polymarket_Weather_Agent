@@ -11,7 +11,8 @@ Modules:
                     markets + outcomes (+ market_fee_schedule) with provenance.
   * resolution.py — per-market resolution rule parsing (station, ICAO, source,
                     unit, rounding_rule, measurement_rule, resolution_timestamp,
-                    winning_outcome). Ported from phase1_5/resolution_discovery.py.
+                    winning_outcome). Ported from the pre-2A resolution-discovery
+                    probe (legacy repo, not in this tree).
   * fees.py       — map gamma fee / tick / min fields -> market_fee_schedule
                     (fee_status KNOWN where read, UNKNOWN if absent).
 
