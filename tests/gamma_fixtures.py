@@ -182,3 +182,53 @@ ANKARA_EVENT = {
         },
     ],
 }
+
+
+# ---------------------------------------------------------------- OPEN (R26) --------
+def _make_open_event() -> dict:
+    """An OPEN temperature event (R26 open-market discovery), DERIVED from the real
+    ANKARA_EVENT so the resolution chain / fee epoch / station parsing stay real:
+      * endDate in the FUTURE (2030-08-20T12:00:00Z), closed=false, active=true;
+      * NO winning outcome: outcomePrices are mid-market ("0.5"/"0.5"), no
+        umaResolutionStatus / umaEndDate / closedTime (not yet resolved);
+      * distinct event/market/condition/token ids and slugs (synthetic, prefixed
+        'open-') so it can coexist with ANKARA_EVENT in one dataset_version;
+      * same feeType='weather_fees' + feeSchedule as Ankara -> NO fee-schedule
+        conflict when both are ingested under one dataset_version.
+    The date inside title/description is shifted to '30 to keep the text honest.
+    Built with deepcopy at import time — never mutates ANKARA_EVENT."""
+    import copy
+    ev = copy.deepcopy(ANKARA_EVENT)
+    ev.update({
+        "id": "9990001",
+        "title": "Highest temperature in Ankara on August 20?",
+        "slug": "highest-temperature-in-ankara-on-august-20-2030",
+        "description": _ANKARA_DESC.replace("20 Aug '26", "20 Aug '30"),
+        "startDate": "2030-08-18T04:56:35Z",
+        "endDate": "2030-08-20T12:00:00Z",
+        "createdAt": "2030-08-18T04:56:14.394785Z",
+        "closed": False,
+        "active": True,
+    })
+    ev.pop("closedTime", None)
+    m = ev["markets"][0]
+    m.update({
+        "id": "9990101",
+        "question": "Will the highest temperature in Ankara be 25°C or below on August 20?",
+        "conditionId": "0x0000000000000000000000000000000000000000000000000000000000099901",
+        "slug": "highest-temperature-in-ankara-on-august-20-2030-25corbelow",
+        "description": _ANKARA_DESC.replace("20 Aug '26", "20 Aug '30"),
+        "outcomePrices": "[\"0.5\", \"0.5\"]",
+        "clobTokenIds": "[\"99901000000000000000000000000000000000000000000000000000000000000000000001\", \"99901000000000000000000000000000000000000000000000000000000000000000000002\"]",
+        "createdAt": "2030-08-18T04:56:24.504607Z",
+        "startDate": "2030-08-18T04:56:35Z",
+        "endDate": "2030-08-20T12:00:00Z",
+        "closed": False,
+        "active": True,
+    })
+    for k in ("umaResolutionStatus", "umaResolutionStatuses", "umaEndDate", "closedTime"):
+        m.pop(k, None)
+    return ev
+
+
+OPEN_EVENT = _make_open_event()
