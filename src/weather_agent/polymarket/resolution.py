@@ -1,8 +1,9 @@
 """
 weather_agent.polymarket.resolution — per-market resolution discovery (Phase 2B)
 ================================================================================
-STATUS: IMPLEMENTED. Authored WITHOUT Python execution — not tested/validated
-here. Pure parsing (no network, no DB). Ported + extended from the pre-2A
+STATUS: IMPLEMENTED + TESTED (tests/test_resolution.py, offline fixtures). NOT
+VALIDATED against live gamma from this tree. Pure parsing (no network, no DB).
+Ported + extended from the pre-2A
 resolution-discovery probe (legacy repo, not in this tree), grounded in the REAL
 gamma description template
 (verified live 2026-08-21 for Ankara/Wellington markets).

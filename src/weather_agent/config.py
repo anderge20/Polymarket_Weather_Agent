@@ -1,9 +1,9 @@
 """
 weather_agent.config  —  central settings for the MVP 3.0 platform (Phase 2A)
 =============================================================================
-STATUS: IMPLEMENTED (authored without Python execution — NOT tested/validated
-here). Stdlib-only so BOTH the pipeline tier and the thin dashboard tier can
-import it cheaply.
+STATUS: IMPLEMENTED + TESTED (imported by the whole pytest suite; no live
+network from tests). Stdlib-only so BOTH the pipeline tier and the thin
+dashboard tier can import it cheaply.
 
 WHAT CHANGED vs the legacy config (deliberate, per the 2A spec):
   * The hardcoded `STATIONS` dict (4 US airports) is RETIRED. Resolution station,

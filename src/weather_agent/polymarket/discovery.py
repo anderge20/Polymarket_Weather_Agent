@@ -1,8 +1,10 @@
 """
 weather_agent.polymarket.discovery — temperature-market discovery (Phase 2B)
 ============================================================================
-STATUS: IMPLEMENTED. Authored WITHOUT Python execution — NOT tested/validated
-here. Run on Hetzner (off the Enel firewall) to actually populate the lake.
+STATUS: IMPLEMENTED + TESTED (tests/test_discovery.py, test_discovery_open.py,
+test_ingest_atomic.py, test_checkpoint_resume.py — offline fixtures/stubs, no
+live gamma). NOT VALIDATED against live gamma from this tree: run on Hetzner
+(off the Enel firewall) to actually populate the lake.
 
 WHAT IT DOES (scope 2B only — discovery + resolution + catalog normalization):
   * Pages gamma /events for the temperature tag (newest-first; optional

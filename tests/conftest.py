@@ -1,12 +1,13 @@
 """Shared pytest fixtures for the Phase 2A data-layer tests.
 
-These tests were AUTHORED WITHOUT PYTHON EXECUTION. Run them on a machine with
-Python + the pipeline requirements installed (see PHASE_2A_DATA_MODEL.md):
+Run on a machine with Python + the pipeline requirements installed (see
+PHASE_2A_DATA_MODEL.md):
 
     pip install -r requirements-pipeline.txt
-    pytest -q
+    PYTHONPATH=src pytest tests/ -q
 
-Nothing in this suite is "validated" until you run it against DuckDB.
+The suite is offline (fixtures/stubs, real in-memory DuckDB). A green run is
+TESTED, never VALIDATED (see scripts/HARNESS_CHANGELOG.md, PHASES.md).
 """
 from __future__ import annotations
 

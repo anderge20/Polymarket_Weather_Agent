@@ -21,6 +21,26 @@ nunca es VALIDATED. Este índice sólo refleja evidencia que vive en git: los in
 Los identificadores R\* remiten a `~/pmw-e2/ROADMAP.md` §2–§3 (orden topológico y criterios
 de hecho).
 
+### R6 (higiene de comentarios) — hecho y diferido
+
+Corregido (solo texto, sin cambio de comportamiento): `SCHEMA_VERSION stays 2` en `database.py`;
+rutas `phase1_5/...` inexistentes en `config.py`, `polymarket/__init__.py`, `resolution.py`;
+docstring de `validate_2c.py` (Blocker 2 se valida en §5b); cabeceras `STATUS: ... authored
+without Python execution — NOT tested` de `discovery.py`, `resolution.py`, `fees.py`, `config.py`,
+`polymarket/__init__.py`, `strategy_a.py` y `tests/conftest.py` → `IMPLEMENTED + TESTED
+(<tests>)`, `NOT VALIDATED` contra Gamma en vivo.
+
+**Diferido, deliberadamente:**
+
+* `scripts/validate_2b.py:1094-1095` (BLOCKER "checkpoint/resume only stub-tested", anterior a
+  2C): el harness 2B se trata como **congelado** (PHASE_2C_DESIGN.md §4, Alt A); el texto es
+  histórico del informe 2B y su superación queda registrada en 2C (`test_checkpoint_resume.py`,
+  `validate_2c.py`). No se edita para no alterar un harness ya ejecutado.
+* `PHASE_2B_FINAL_BUNDLE.txt` (checksums `PENDING-compute-post-reconstruction`): el bundle es un
+  **snapshot histórico** de la Rev 3 de 2B (nº de líneas de entonces); calcular sha256 sobre el
+  árbol actual no reproduciría aquel estado. Se conserva tal cual como documento histórico; no
+  se recalcula.
+
 ## Nomenclatura
 
 Fijada por R25 (ROADMAP) para deshacer dos ambigüedades:
