@@ -1,6 +1,7 @@
 """V5.2 — re-extracción de f con coordenadas canónicas (D1). Reanudable; 429 = guardar y salir.
 Misma muestra, mismos run, misma ventana W(m) y misma regla de f que V3 (geoval3.py)."""
-import json, urllib.request, ssl, certifi, time, os
+import json, urllib.request, ssl, certifi, time, os, sys
+SMOKE=int(sys.argv[sys.argv.index("--smoke")+1]) if "--smoke" in sys.argv else None
 from datetime import datetime, timedelta, date, timezone
 from zoneinfo import ZoneInfo
 CTX=ssl.create_default_context(cafile=certifi.where()); UA={"User-Agent":"Mozilla/5.0"}
@@ -37,11 +38,14 @@ def sr(model,lat,lon,run):
 OUT=json.load(open('V5_EXTRACT.json')) if os.path.exists('V5_EXTRACT.json') else {}
 cache={}   # (model, icao, run) -> respuesta; un run sirve a un solo lead en V3, pero se cachea por seguridad
 def save(): json.dump(OUT,open('V5_EXTRACT.json','w'),indent=1)
-print(f"reanudando extracción: {len(OUT)}/{len(KEYS)} claves",flush=True)
+print(f"reanudando extracción: {len(OUT)}/{len(KEYS)} claves" + (f"  [SMOKE: sólo {SMOKE} claves nuevas]" if SMOKE else ""),flush=True)
+nuevas=0
 try:
     for i,((icao,run,lead),meta) in enumerate(sorted(KEYS.items())):
         k=f"{icao}|{run}|{lead}"
         if k in OUT: continue
+        if SMOKE is not None and nuevas>=SMOKE: break
+        nuevas+=1
         la,lo=SNAP[icao]; rt=run.replace("Z","")
         td=date.fromisoformat(meta['target_date']); Z=ZoneInfo(meta['tz'])
         ws=datetime(td.year,td.month,td.day,tzinfo=Z); we=ws+timedelta(days=1)
@@ -74,4 +78,13 @@ try:
         if len(OUT)%25==0: save(); print(f"  {len(OUT)}/{len(KEYS)}",flush=True)
 except Quota as e:
     save(); print(f"CUOTA_AGOTADA tras {len(OUT)}/{len(KEYS)} -> {e}",flush=True); raise SystemExit(3)
-save(); print("LISTO_EXTRACT n=",len(OUT))
+save()
+if SMOKE is not None:
+    smoke=[OUT[k] for k in list(OUT)[-nuevas:]] if nuevas else []
+    comps=[r.get('component') for r in smoke if 'icon_seamless' in r]
+    fs=[(m,r[m].get('f')) for r in smoke for m in r['models_fetched'] if r[m].get('status')=='ok']
+    print("SMOKE:",len(smoke),"claves;","componentes:",comps,"; f no nulos:",sum(1 for _,f in fs if f is not None),"/",len(fs))
+    if comps and all(c=='UNKNOWN' for c in comps): print("SMOKE_FALLO: todos los componentes UNKNOWN — revisar regla antes de gastar cuota"); raise SystemExit(4)
+    if fs and all(f is None for _,f in fs): print("SMOKE_FALLO: ningún f — revisar ventana"); raise SystemExit(4)
+    print("SMOKE_OK"); raise SystemExit(0)
+print("LISTO_EXTRACT n=",len(OUT))

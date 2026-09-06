@@ -50,5 +50,53 @@
     "Elevaciones discrepantes: AIP (ARP) 6.66 m; OSCAR 14 m (hp 15.1 m); NOAA 17 m; ISD 6.7 m. No se resolvió."
    ]
   }
+ },
+ {
+  "key": "opkc",
+  "result": {
+   "icao": "OPKC",
+   "aip_accesible": true,
+   "estado": "RESUELTA_POR_AIP",
+   "arp_oficial": {
+    "lat": 24.908558,
+    "lon": 67.162761,
+    "fuente": "AIP Pakistan, AD 2 OPKC-1, sección OPKC AD 2.2 'AERODROME GEOGRAPHICAL AND ADMINISTRATIVE DATA', ítem 1: \"ARP coordinates and site at AD 245430.81N 0670945.94E Centre of RWY 25R/ 07L\" (Pakistan Airports Authority, eAIP ciclo 02-26)",
+    "fecha_documento": "AIRAC AMDT 01/26, efectiva 19 FEB 26 (página AD 2 OPKC-1)",
+    "url": "https://paawebadmin.paa.gov.pk/media/eaip/02-26/eAIP/AD/karachi_data.pdf"
+   },
+   "sensor_metar_oficial": {
+    "lat": 24.8989,
+    "lon": 67.139347,
+    "descripcion": "OBSERVADO: la AIP publica DOS emplazamientos MET en la tabla de obstáculos de AD 2.10 (página AD 2 OPKC-22, AIRAC AMDT 02/26, 11 JUN 26): 'AWOS 37.19 M / 122 FT 245447.97N 0671027.00E' (= 24.913325, 67.174167; extremo E, a 0.40 km del THR 25R) y 'Anemometer 27.13 M / 89 FT 245356.04N 0670821.65E' (= 24.898900, 67.139347; extremo W, a 0.38 km del THR 07R). AD 2.11 dice: 'Associated MET Office Karachi/ Jinnah International' y 'Automatic weather observing system (AWOS) available and not lighted', pero NO especifica qué instrumento alimenta el METAR. INFERIDO: la estación WMO 41780 'KARACHI AIRPORT' (OSCAR: 24.9, 67.1333, elev 21 m; PMD RMC Karachi: 24°54' 67°08', 21 m, est. 1928) está en el extremo W del aeródromo (elevación 21 m = THR 07R 21.62 m), a 0.6 km del anemómetro AIP y a 4 km del AWOS; por ello se toma el emplazamiento W (anemómetro AIP, coordenada de precisión) como la mejor estimación de la ubicación del observatorio que emite el METAR OPKC.",
+    "fuente": "AIP Pakistan AD 2 OPKC-22 (Pakistan Airports Authority, AIRAC AMDT 02/26, 11 JUN 26) + WMO OSCAR/Surface 0-20000-0-41780 + PMD Regional Meteorological Centre Karachi (Network)",
+    "url": "https://paawebadmin.paa.gov.pk/media/eaip/02-26/eAIP/AD/karachi_data.pdf"
+   },
+   "d_noaa_arp_km": 2.505,
+   "d_noaa_sensor_km": 0.346,
+   "coordenada_recomendada": {
+    "lat": 24.8989,
+    "lon": 67.139347,
+    "justificacion": "Criterio = ubicación física del sensor que genera el METAR. La AIP (oficial, PAA) fija el ARP en 24.908558, 67.162761 (centro de la RWY 25R/07L), pero el ARP no es el sensor. La AIP publica dos sensores MET: AWOS en el extremo E (24.913325, 67.174167) y anemómetro en el extremo W (24.898900, 67.139347). El registro oficial de la estación 41780 'KARACHI AIRPORT' (WMO OSCAR 24.9/67.1333, 21 m; PMD 24°54'/67°08', 21 m) sitúa el observatorio en el extremo W, coincidente en elevación con el THR 07R (21.62 m) y a 0.6 km del anemómetro AIP, y a ~4 km del AWOS. Por tanto la coordenada NOAA (24.902, 67.139), a solo 0.346 km del anemómetro AIP y ~0.6 km del punto WMO/PMD, es coherente con el emplazamiento real del observatorio y NO es un error: no debe sustituirse por el ARP (2.5 km al ENE). Se recomienda usar la coordenada AIP del anemómetro (precisión de centésimas de segundo) como station_lat/lon; en la práctica NOAA y AIP-W caen a 0.35 km y muy probablemente en la misma celda ECMWF. Si el pipeline exige una coordenada de fuente única, mantener NOAA es aceptable. Usar el ARP o OurAirports (=ARP) desplazaría la posición 2.3-2.6 km hacia el E respecto al sensor. INFERIDO: que el METAR (T/Td/QNH) se genere en el observatorio W y no en el AWOS E; la AIP no lo explicita."
+   },
+   "evidencia": [
+    "AIP Pakistan eAIP ciclo 02-26 accesible en https://paawebadmin.paa.gov.pk/media/eaip/02-26/eAIP/index.htm (título de página: 'Pakistan Civil Aviation Authority'; pie de página de los PDF: 'Pakistan Airports Authority'). PDF de datos OPKC: https://paawebadmin.paa.gov.pk/media/eaip/02-26/eAIP/AD/karachi_data.pdf (30 páginas, 5.3 MB), descargado a /Users/mariaaleu/.claude/jobs/324ffe40/tmp/karachi_data.pdf; texto extraído en karachi_data.txt; páginas renderizadas p1.png y p22.png (verificadas visualmente).",
+    "OBSERVADO (AD 2 OPKC-1, 19 FEB 26, AIRAC AMDT 01/26): 'OPKC AD 2.2 AERODROME GEOGRAPHICAL AND ADMINISTRATIVE DATA | 1. ARP coordinates and site at AD 245430.81N 0670945.94E Centre of RWY 25R/ 07L | 2. Direction and distance from (city) 8.7 NM E NE of Karachi. | 3. Elevation/Reference temperature 102 FT / 35.5 °C (MAY)'. Decimal: 24.908558, 67.162761. Comprobación: punto medio de THR 07L (245414.30N 0670840.71E) y THR 25R (245444.71N 0671040.89E) = 24.9082, 67.1613, coherente con el ARP.",
+    "OBSERVADO (AD 2 OPKC-22, 11 JUN 26, AIRAC AMDT 02/26, tabla de obstáculos 'In circling area and at AD'): 'AWOS | 37.19 M / 122 FT | 245447.97N 0671027.00E' y 'Anemometer | 27.13 M / 89 FT | 245356.04N 0670821.65E'. Decimal: AWOS 24.913325, 67.174167; Anemómetro 24.898900, 67.139347. Asignación de coordenadas verificada con extracción en modo layout y con la imagen de la página.",
+    "OBSERVADO (AD 2 OPKC-23, 19 FEB 26): 'OPKC AD 2.11 METEOROLOGICAL INFORMATION PROVIDED | 1. Associated MET Office Karachi/ Jinnah International | 2. Hours of service H24 | 4. Type of landing forecast METAR, 1/2 HR. TREND, 2 HR | 8. Supplementary equipment ... Automatic weather observing system (AWOS) available and not lighted. | 9. ATS units provided with information Karachi ACC/ TWR | 10. Phone: (+92 21) 99071302, 99071322, 99071300'.",
+    "OBSERVADO (AD 2 OPKC-23, AD 2.12): THR 07L 245414.30N 0670840.71E 'THR 23.769 M / 78 FT'; THR 25R 245444.71N 0671040.89E 'THR 30.985 M / 102 FT'; THR 07R 245402.15N 0670833.56E 'THR 21.62 M / 70.93 FT'; THR 25L 245431.79N 0671030.20E 'THR 27.25 M / 89.40 FT'.",
+    "OBSERVADO (WMO OSCAR/Surface, API https://oscar.wmo.int/surface/rest/api/search/station, registro filtrado localmente): {\"name\": \"KARACHI AIRPORT\", \"territory\": \"Pakistan\", \"declaredStatus\": \"Operational\", \"latitude\": 24.9, \"longitude\": 67.1333333333, \"elevation\": 21, \"hp\": 22, \"stationTypeName\": \"Land (fixed)\", \"wigosId\": \"0-20000-0-41780\", \"dateEstablished\": \"1931-01-01\", programas GBON/GUAN/RBON Operational}. Precisión de minuto de arco (24°54'N 67°08'E).",
+    "OBSERVADO (PMD Regional Meteorological Centre Karachi, https://rmcsindh.pmd.gov.pk/Network.html): fila 12 'KARACHI | 41780 | Karachi | 24° 54' | 67° 08' | 21 meter | ... | 1928'; dirección del centro: 'Near NathaKhan, Airport Colony Karachi, Pakistan'.",
+    "Haversine (R=6371.0088 km): NOAA(24.902,67.139)->ARP 2.505 km; NOAA->Anemómetro AIP 0.346 km; NOAA->AWOS AIP 3.764 km; NOAA->THR 07R 0.400 km. OurAirports(24.9065,67.1608)->ARP 0.302 km; SkyVector(24.9085,67.1628)->ARP 0.008 km (=ARP); IEM(24.8456,67.1614)->ARP 7.002 km, ->anemómetro 6.330 km (no coincide con ningún emplazamiento oficial). AWOS->ARP 1.266 km; Anemómetro->ARP 2.594 km; AWOS<->Anemómetro 3.861 km.",
+    "INFERIDO: elevaciones de los obstáculos MET (AWOS 37.19 m sobre terreno ~31 m en el extremo E; anemómetro 27.13 m sobre terreno ~21.6 m en el extremo W) equivalen a mástiles de ~5.5-6 m, consistentes con sensores de superficie; la elevación 21 m de la estación WMO/PMD 41780 coincide con el terreno del extremo W (THR 07R 21.62 m), no con el E (~31 m)."
+   ],
+   "limitaciones": [
+    "La AIP publica coordenadas de AWOS y de anemómetro pero no declara cuál de ellos (o si el observatorio manual del PMD) genera los valores del METAR OPKC; la asignación del METAR al emplazamiento W es INFERIDA a partir de la posición/elevación registrada de la estación WMO 41780 (precisión de minuto de arco).",
+    "El plano de aeródromo (karachi_chart.pdf, 60 páginas, ráster) no se analizó visualmente; su texto no contenía 'AWOS'/'MET'. Podría mostrar la posición de los sensores con más detalle.",
+    "El sitio web del PMD (metkhi.pmd.gov.pk/AWS.php) devolvió HTTP 500; WebFetch a rmcsindh.pmd.gov.pk dio 403 y se leyó con curl -A Mozilla. OSCAR requirió curl -k (fallo de cadena de certificados local); el endpoint stationReport devolvió 404, por lo que no se obtuvo la ficha completa (historial de coordenadas) de 41780.",
+    "No se verificó la celda ECMWF (Open-Meteo con HTTP 429, no consultado): la afirmación de que NOAA y el anemómetro AIP (0.35 km) comparten celda es probable pero no comprobada.",
+    "La coordenada IEM/WMO (24.8456, 67.1614) no coincide con OSCAR ni con PMD (ambos 24.9, 67.133); parece un dato erróneo del índice IEM, no una posición oficial.",
+    "El pie de página del eAIP es 'Pakistan Airports Authority' (PAA, proveedor AIS desde la reestructuración de 2024) mientras que el index.htm se titula 'Pakistan Civil Aviation Authority'; se trata de la AIP Pakistan oficial, pero la entidad editora ya no es la PCAA."
+   ]
+  }
  }
 ]

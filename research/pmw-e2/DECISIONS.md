@@ -129,3 +129,192 @@ la reutiliza tal cual y es el contenido, no el hash, lo que entra en el análisi
 ## Corrección a D4 · 2026-09-05 18:00 UTC
 El inventario detectó que `v5uni.py` seguía usando coordenadas IEM/OurAirports. Alineado con el
 snapshot D1; enmienda V5.3 al §14 del preregistro; hash vigente en `PREREG_MODELSEL_V5.sha256`.
+
+## D9 — Cuota restablecida: cadena V5 lanzada · 2026-09-06 · Claude (rol desarrollador + revisor)
+**Disparador:** 2026-09-06 07:20 UTC, sondeo de 1 petición por endpoint → `single-runs-api` **HTTP 200**
+y `historical-forecast-api` **HTTP 200**. La cuota diaria se restableció. `quota_watch.sh` ya no estaba
+vivo (salió con 0 al detectar el 200, como está diseñado) y **nadie recogió el disparador**: ningún
+artefacto V5 existía y nada se había modificado en `pmw-e2` en 3 h. D4 quedó armado pero sin ejecutar.
+**Defecto encontrado y corregido antes de gastar cuota (rol revisor):** `v5run.sh` hace
+`python3 v5extract.py --smoke 3 2>&1 | tee -a log; rc=$?`. En una tubería `$?` es el estado de `tee`,
+no el de Python, así que **el guardián del smoke test nunca dispara**: con el smoke fallando se
+lanzaría igual la extracción completa (~4 000 peticiones). Se añade `v5run2.sh` (aditivo, no se toca
+el original) con `set -o pipefail` y `PIPESTATUS`. D0 prohíbe malgastar cuota externa; este fallo
+la exponía entera.
+**Qué se hizo:** smoke ejecutado aparte y verificado → `SMOKE_OK` (3 claves, componente `icon_eu`,
+`f` no nulos 8/8). Con el smoke verde se lanzó `v5run2.sh` en segundo plano:
+`v5extract.py` (1 200 claves) → `v5uni.py` (§14) → `v5eval.py` (contrastes A/B/C).
+**Estado:** EN EJECUCIÓN desde 07:22 UTC. Ritmo medido ≈ 0,24 claves/s → ETA extracción ≈ 80 min.
+Reanudable: si vuelve el 429, relanzar `./v5run2.sh` continúa donde quedó.
+**Reversibilidad:** alta — sólo produce artefactos nuevos; ninguna métrica se ha calculado aún.
+
+## D10 — V5 ejecutada; categoría B; M1 NO seleccionado (§16 opción 5) · 2026-09-06 · Claude
+**Qué:** cadena V5 completa (07:22–07:37 UTC): 1 200/1 200 claves, 4 000 respuestas
+(2 779 ok + 1 221 out_of_domain por diseño). Informe en `MODELSEL_V5_REPORT.md` (+ `.sha256`).
+**Resultado §13:** `icon_eu` CONCLUYENTE a favor de ICON (Δ=−0.150, IC95 [−0.246,−0.037], LOSO
+estable); `icon_global` INCONCLUSO (IC incluye 0 **y** LOSO invierte el signo al excluir MMMX);
+`icon_d2` INCONCLUSO_POR_DISEÑO (2 estaciones).
+**Categoría §15 = B.** A descartada (icon_global con 9 est no es concluyente), C descartada
+(icon_eu sí lo es), D descartada (Δ<0 en el componente dominante y sin inversión frente a V3).
+**Por qué importa:** el universo operativo §14 es 75.1 % `icon_global` (68 515 de 91 285 mercados),
+donde la evidencia es inconcluyente; el estrato concluyente cubre el 14.2 %.
+**Hallazgo crítico (rol revisor):** la conclusividad de `icon_eu` procede íntegramente del lead de
+24 h (Δ=−0.240), y es exactamente el lead donde ICON usa un run **6 h** frente a **12 h** de ECMWF.
+A 9 h, con edades iguales (9 h/9 h), `icon_eu` es INCONCLUSO (Δ=−0.060, IC incluye 0). El control
+`same_run` del preregistro sólo existe a 9 h. No se reclasifica nada (§18); se declara como
+limitación y pesa en la recomendación §16, que es juicio y no clasificación.
+**Recomendación M1 = §16 opción 5, continuar investigación.** Descartadas 1 (extendería al 75 %
+una conclusión probada en el 14 %), 2 (nada favorece a ECMWF), 3 (dejaría indefinido el 75 %),
+4 (consagraría un artefacto de frescura de run).
+**Experimento decisivo especificado:** control `same_run` a 24 h para los 78 pares de `icon_eu`
+(~156 peticiones). Exige enmienda **V5.4** congelada y hasheada antes de ejecutar. Lecturas
+declaradas por adelantado: si la ventaja persiste → M1 por componente; si desaparece → categoría D
+de facto y `M1 = ecmwf_ifs025`.
+**Estado:** ADOPTADA. M1 NO seleccionado, NO escrito en el proyecto. Ninguna prohibición de §18 violada.
+
+## D11 — Corrección: la frescura del run no es confusor, es latencia · 2026-09-06 · Claude (rol revisor)
+**Qué:** `MODELSEL_V5_CORRECTION_01.md` (sha `1a7a0275…`) corrige §4 y §9 de
+`MODELSEL_V5_REPORT.md`. Verificado en `availability_safe_at` del propio dataset: a T=12:00Z
+(lead 24 h) ICON usa el run 06Z (disponible 10:45Z, latencia ~4h45) y ECMWF el 00Z (disponible
+08:46Z, latencia ~8h46). El run de ECMWF de 06Z **no existe todavía** a las 12:00Z. La diferencia
+de edad es **latencia de diseminación**, no confusor de muestreo, e idéntica en los 69 eventos.
+**Consecuencia 1:** la enmienda V5.4 (control `same_run` a 24 h) que el informe proponía usaría
+información del futuro — la fuga que `test_no_future_information.py` existe para impedir.
+**RETIRADA antes de redactarse**; no se ejecuta, no se gasta cuota.
+**Consecuencia 2:** categoría §15 = **B** se mantiene (la ventaja no es de familia de modelo).
+Cambia sólo la recomendación §16, que es decisión operativa: en producción la latencia cuenta.
+**Lección de método registrada:** antes de declarar confusor una diferencia sistemática entre dos
+fuentes, verificar si es una restricción operativa real del sistema. El dato estaba en el dataset.
+**Estado:** ADOPTADA.
+
+## D12 — M1 ADOPTADO = icon_seamless · 2026-09-06 · Claude
+**Qué:** se adopta `M1 = icon_seamless` (§16 opción 1) y se autoriza escribirlo en el proyecto.
+§16 decía "M1 no se escribe en el proyecto" como prohibición **de la fase de estudio V5**; el
+estudio ha concluido y esta decisión, bajo el mandato de autonomía, lo adopta explícitamente.
+**Justificación por componente, ponderada por el universo §14:**
+- `icon_eu` (14.2 % de mercados): ICON mejor, CONCLUYENTE por §13 (IC95 excluye 0, LOSO estable).
+- `icon_global` (75.1 %): empate estadístico — IC95 incluye 0 **y** |Δ|=0.0427 < 0.05 °C, que es
+  exactamente el antecedente que §17 congeló para autorizar el desempate por frescura operativa.
+  ICON dispone de run de 6 h frente a 12 h de ECMWF a 24 h; empate a 9 h. → ICON.
+- `icon_d2` (10.7 %): INCONCLUSO_POR_DISEÑO (2 est), estimación puntual −0.111 a favor de ICON.
+Aplicar §17 no es cambiar criterios tras ver resultados (§18): es ejecutar una regla congelada
+cuyo antecedente se ha verificado.
+**Lo que NO afirma:** que ICON sea más preciso en el 75 % del universo (ahí hay empate), ni que la
+ventaja sea de física del modelo, ni transportabilidad a leads largos (icon_seamless cambia de
+componente hacia +45 h).
+**Vigilancia declarada:** ASIA_SUR (Δ=+0.141) y HEM_SUR (Δ=+0.112 / +0.294) tienen estimación
+puntual a favor de ECMWF, ninguna concluyente. Candidato a override por región en M2/M3.
+**Revisión:** si alguna región acumula evidencia concluyente pro-ECMWF, o si cambian las latencias
+de diseminación (deja de cumplirse el antecedente de §17).
+**Reversibilidad:** alta — es configuración, no estructura.
+**Estado:** ADOPTADA. Habilita la pista de implementación (ingesta de forecasts con M1).
+
+**Nota añadida a D11 (2026-09-06):** el criterio ya estaba **preregistrado desde V2**.
+`PREREG_MODELSEL_ASOF_V2.md` §2 dice literalmente: *"La disponibilidad NO se iguala entre
+modelos: la publicación más rápida es una ventaja operativa real y forma parte de la
+comparación."* El §4 del informe V5 contradecía una regla congelada tres fases antes. D11 no
+introduce criterio nuevo: restaura la conformidad con el preregistro.
+
+## D13 — Dos sesiones de Claude en paralelo: reparto y reglas de convivencia · 2026-09-06 · Claude (sesión A, 324ffe40)
+**Hecho:** existen dos sesiones de Claude sobre este proyecto. **Sesión B** (`43deec01`, rol
+desarrollador+revisor) ejecutó V5 (D9), redactó el informe, corrigió D11, adoptó M1 (D12) y está
+implementando ingestión en `feat/ingest-2b` (workspace canónico en esa rama, `scripts/backfill_prices.py`).
+**Sesión A** (`324ffe40`, esta): mandato, roadmap (D9-bis abajo), coordenadas, rescate de Codex,
+preregistros, tablero de tareas.
+**Concurrencia de la sesión A con D11 y D12:** revisadas y **aceptadas**. D11 es correcta (latencia de
+diseminación, no confusor; V2 §2 lo preregistraba). D12 aplica una regla congelada (§17) cuyo
+antecedente se verificó (IC incluye 0 y |Δ| < 0,05 en `icon_global`). Reserva ya declarada por D12:
+no transportable a leads > ~45 h; vigilancia ASIA_SUR/HEM_SUR.
+**Reparto (hasta que Codex vuelva el 2026-10-05):**
+- Sesión B: R9/R10/R15 ingestión (precios CLOB, catálogo real, forecasts con M1), luego R16 (M2).
+- Sesión A: R7+R27 `station_registry` + migración v4, R8 ancla temporal, R25 `PHASES.md`, R26
+  descubrimiento de mercados abiertos, R6 higiene, mantenimiento de `ROADMAP.md` y tareas.
+**Reglas de convivencia:** (1) **nunca cambiar la rama del workspace canónico** — cada sesión
+trabaja en su propio `git worktree` (`git worktree add ../wt-<rama>`); (2) ramas propias, PR a `main`,
+nunca push a `main`; (3) `DECISIONS.md`: releer antes de añadir, numerar con el siguiente D libre,
+sólo anexar; (4) ningún fichero de `pmw-e2` se reescribe in situ si otra sesión puede estar leyéndolo
+— versiones nuevas con sufijo; (5) los defectos que una sesión encuentre en la otra se registran
+aquí con evidencia, como hizo D9 con `v5run.sh` (bug real, `rc=$?` tras tubería; corregido con
+`set -o pipefail` en el original además de `v5run2.sh`).
+**Estado:** ADOPTADO.
+
+## D9-bis — Roadmap hasta COMPLETO adoptado; custodia de artefactos · 2026-09-05 · Claude (sesión A)
+*(Redactado el 05 como "D9"; renumerado porque la sesión B usó D9 para el lanzamiento de V5.)*
+**Qué:** `ROADMAP.md` (sha `840c0cb0…`), generado por workflow (4 inventarios + síntesis) y corregido
+con las 14 enmiendas del crítico de completitud (`WF_critica.md` §F): 29 ítems R0–R28; definición de
+COMPLETO ampliada (descubrimiento de mercados abiertos, captura prospectiva, criterios de parada,
+fees como modelo preregistrado, evidencia en git). Orden inmediato sin cuota: R25, R28, R7+R27, R8,
+R26, R6.
+**Custodia:** `STATION_COORDS_SNAPSHOT_v1.0.json` reconstruido bit a bit (sha `ebe21014…` verificado;
+el v1 había sido sobrescrito in situ); en adelante cada revisión es fichero nuevo (v1.2 con OPKC
+resuelta: `STATION_COORDS_SNAPSHOT_v1.2.sha256`). `~/pmw-e2` (131 ficheros, 10 MB) y
+`PHASE_2E_LEAD_HOURS_ANCHOR.md` versionados en `origin/research/modelsel-artifacts@fe09aef`.
+**Plan de cuota (R28):** prioridad a V5 (cumplida); ingestión operativa por **captura prospectiva
+diaria** (alternativa C de `REVISION_IMPACT_AUDIT.md`); backfill sólo para la ventana que M2 necesite
+(≥ 2026-06-03 por F-3), presupuesto 3 500 peticiones/día; **clave de pago de Open-Meteo NO se
+contrata sin decisión explícita del usuario**.
+**Hecho nuevo del catálogo (R8):** `endDate = 12:00:00Z` en 8 557/8 557 eventos (P1 cerrada);
+existencia del evento en T = endDate − lead: 99,3 % a ≤ 9 h, 98,2 % a 24 h, **81,2 % a 36 h, 79,2 % a
+48 h, 11,1 % a 60 h**. Rango operativo de `lead_hours`: ≤ 24 h seguro; 36–48 h con ~20 % de
+mercados inexistentes en T; > 48 h inviable.
+**Estado:** ADOPTADO.
+
+## D14 — OPKC resuelta; snapshot v1.2; R27 aparcado a favor de `stations.py` (sesión B) · 2026-09-06 · Claude (sesión A)
+**OPKC (excepción abierta de D1):** **RESUELTA POR AIP.** AIP Pakistán (PAA eAIP ciclo 02-26, AD 2
+OPKC, AIRAC 01/26 y 02/26, `https://paawebadmin.paa.gov.pk/media/eaip/02-26/eAIP/AD/karachi_data.pdf`):
+ARP `245430.81N 0670945.94E` = 24.908558, 67.162761 (centro RWY 25R/07L); sensores MET publicados en
+AD 2.10: AWOS `24.913325, 67.174167` (extremo E) y anemómetro `24.898900, 67.139347` (extremo W).
+La estación WMO 41780 "KARACHI AIRPORT" (OSCAR 24.9/67.1333, elev 21 m; PMD 24°54'/67°08', 21 m)
+está en el extremo W (elev = THR 07R 21,62 m). **NOAA (24.902, 67.139) queda a 0,346 km del sitio
+MET oeste**: es consistente con el observatorio, no un error. El ARP está a 2,505 km y es otra
+magnitud. **Se mantiene NOAA.** INFERIDO (declarado): que T/Td del METAR se generen en el sitio W;
+la AIP no lo explicita. Refutadores no ejecutados (límite de sesión); pendiente.
+**Snapshot v1.2** (`STATION_COORDS_SNAPSHOT_v1.2.json`, sha `552e8dfe38968f1f…`): 55/55 CANONICA;
+verificadas por documentación oficial **12/55** (10 ASOS CM + WSSS + OPKC); 43 por inferencia declarada.
+**Delta para `src/weather_agent/stations.py` (rama `feat/ingest-2b`, sesión B) — no lo edito yo:**
+`SNAPSHOT_SHA256 = "552e8dfe…"` (fichero v1.2 completo), `OPEN_EXCEPTIONS = frozenset()`,
+`VERIFIED_SENSOR` += `"OPKC"` (12), docstring "KNOWN OPEN CASE: OPKC" → resuelto por AIP.
+**R27 (tabla `station_registry` con `valid_from/valid_to` + migración v4): APARCADO.** El registro en
+código con hash congelado de la sesión B cubre el periodo del proyecto (ningún ICAO se reubica en
+2025-12-30 → 2026-09-04, D8 de `COORDINATE_UNIVERSE_AUDIT`). Se retoma sólo si un ICAO cambia de
+emplazamiento o si el backtest necesita coordenadas por fecha.
+**Estado:** ADOPTADO. **Corregido por D15** (semántica y trazabilidad).
+
+## D15 — Corrección de D14 tras refutación adversarial (OPKC) · 2026-09-06 · Claude (sesión A)
+**Refutación ejecutada:** `REFUTATION_D14_OPKC.json` (workflow `wf_47c34b88-835`, 3 lentes):
+fuente PASA, cálculo PASA, **semántica REFUTADA**. La decisión operativa (mantener NOAA) **sobrevive
+y sale reforzada**; lo que cae es mi descripción de por qué.
+**Error propio que reconozco:** D14 decía *"Refutadores no ejecutados (límite de sesión); pendiente"*.
+Falso: en el workflow original (`wf_a9bba251-cb9`) los dos refutadores de OPKC **sí terminaron** y el
+segundo refutó (`sobrevive=false`) por este mismo punto semántico; los que fallaron por límite de
+sesión fueron los de WSSS. Adopté en D14 una conclusión que no había superado su refutación,
+afirmando que ésta no se había ejecutado. Queda registrado.
+**Semántica corregida (AIP Pakistán, PAA eAIP):**
+- El punto W de AD 2.10 (`245356.04N 0670821.65E` = 24.898900, 67.139347) es el **anemómetro de
+  cabecera 07R** listado en la tabla *AERODROME OBSTACLES* (AD 2.15: *"Anemometer location … 375M
+  West of THR RWY 07R"*; 383 m calculados), **no** la estación MET. Las elevaciones 37,19 / 27,13 m
+  son cotas de cima de obstáculo — el argumento "21 m = THR 07R" de D14 se retira.
+- **La AIP sí publica la oficina MET:** AD 2 OPKC-38 (AIRAC AMDT 03/26, efectiva 01 OCT 26, ya en el
+  eAIP): *"KC1043 MET Office ANTENNA 37 N 24° 54' 07.2800'' E 067° 08' 21.1200''"* =
+  **24.902022, 67.139200 — a 0,020 km de NOAA/AWC (24.902, 67.139)**. NOAA es la oficina MET.
+- El AWOS está en el extremo E (GEN 3.5 tabla 3.5.3.1: *"AWOS installed at 500M north of threshold
+  RWY 25L"*), a 3,76 km de NOAA.
+- Sobre qué genera el METAR: GEN 3.5 §3.5.3 iv: *"Thermometers … are located on the aerodrome close
+  to the anemometer sites"* (= W); 59 METAR OPKC de 30 h, cadencia semihoraria, **ninguno `AUTO`**;
+  el "Automatic MET Report generated by AWOS System" figura como producto suplementario, distinto de
+  METAR/SPECI. **INFERIDO** (así se mantiene): T/Td del METAR se observan en el MET Office W; la AIP
+  no excluye que el observador use datos del AWOS-E.
+**Geometría (regla vecino-más-próximo de `ARCH_AUDIT_OPENMETEO` §3, sin consultar Open-Meteo):**
+NOAA, MET Office, anemómetro-W, AWOS-E, ARP, OSCAR y OurAirports caen **todos** en la celda ECMWF
+0,25° (25.0, 67.25) y en la ICON 0,125° (24.875, 67.125). **Sólo el legado IEM** (24.8456, 67.1614)
+cambia de celda ECMWF → (24.75, 67.25). La inferencia W/E es operativamente inerte; el "ΔT 2,8 °C"
+de OPKC en las auditorías era IEM vs resto, no NOAA vs AIP. Margen de NOAA a la frontera de celda: 1,41 km.
+**Fuente etiquetada con precisión:** "AWC `stationinfo`" (aviationweather.gov). NCEI ISD da ≈ ARP.
+**Consecuencias:** OPKC pasa a **OBSERVADA** con la evidencia más fuerte del universo (20 m contra AIP);
+alcance verificado **12/55**; snapshot **v1.3** (`STATION_COORDS_SNAPSHOT_v1.3.sha256`) con la nota
+corregida y `cell_depends_on_source` aclarado (sólo respecto a IEM). Delta para `stations.py` (sesión B):
+`VERIFIED_SENSOR` += OPKC, `OPEN_EXCEPTIONS = ∅`, hash del snapshot v1.3.
+**Lección de método:** verificar en el journal qué agentes terminaron antes de declarar una fase
+"no ejecutada"; y no aceptar una resolución por convergencia numérica sin comprobar qué representa
+cada coordenada (aquí "sensor" era un mástil de viento).
+**Estado:** ADOPTADO.

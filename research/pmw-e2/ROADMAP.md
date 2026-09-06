@@ -273,3 +273,21 @@ La cuota diaria compartida (single-runs + historical) se agota con ~4-5k peticio
 3. Después: R10 → R9 → R13/R14 → R12 → R11 → R15/R16 → R17 → R18 → R19 → R20 → R21 → R22 → R23 → R24.
 
 Cada ítem evaluativo (R4, R16, R18/R21, R24) lleva preregistro hasheado antes de ejecutarse (D0).
+---
+
+## 6. Delta 2026-09-06 (estado tras la madrugada de la sesión B)
+
+| Ítem | Cambio de estado | Evidencia |
+|---|---|---|
+| R4 | **HECHO** — V5 ejecutada 07:22–07:37 UTC (`v5run2.sh`, 1 200/1 200) | D9 (sesión B) |
+| R5 | **HECHO** — categoría B; **M1 = icon_seamless ADOPTADO** por regla §17 congelada; V5.4 retirada (frescura = latencia, V2 §2) | D10, D11, D12; sesión A concurre en D13 |
+| R7 | **HECHO por B** — `stations.py` + `data/station_coords_v1.json` (v1.1, hash congelado, `VERIFIED_SENSOR`=11) | `feat/ingest-2b@dcbad88` |
+| R27 | **APARCADO** — tabla DB con `valid_from/valid_to` innecesaria en el periodo | D14 |
+| R9, R15 | **EN CURSO por B** — `prices.py` (286 l.), `weather.py` (364 l., M1, `available_at = issue + L_max`, guardia de horas pico), tests reales | `feat/ingest-2b@c56de9c`, `scripts/backfill_prices.py` untracked |
+| R8 | **PARCIAL** — P1 cerrada; tabla de existencia por lead; falta preregistrar el rango de `lead_hours` | `R8_LEAD_EXISTENCE.json`, D9-bis |
+| OPKC | **RESUELTA** por AIP Pakistán; snapshot v1.2, 0 excepciones | D14 |
+| R26, R6, R25 | **EN CURSO por A** — workflow `wf_a45d52e2-88a` en worktree `feat/r26-open-discovery` | — |
+| R28 | **DECIDIDO** — captura prospectiva diaria; sin clave de pago sin el usuario | D9-bis |
+
+**Reparto vigente (D13):** B → ingestión (R9/R10/R15) y M2 (R16); A → R26/R6/R25, R8, roadmap/tareas, preregistros.
+**Regla:** cada sesión en su propio worktree; nunca cambiar la rama del workspace canónico; sólo anexar en `DECISIONS.md`.

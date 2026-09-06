@@ -1,0 +1,827 @@
+[
+ {
+  "icao": "KLGA",
+  "city": "NYC",
+  "lat": 40.77945,
+  "lon": -73.88027,
+  "tz": "America/New_York",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 2136,
+  "n_events": 200,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "EGLC",
+  "city": "London",
+  "lat": 51.505,
+  "lon": 0.055,
+  "tz": "Europe/London",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 2129,
+  "n_events": 199,
+  "per_run": {
+   "2026-06-02T18:00": "icon_d2",
+   "2026-08-14T18:00": "icon_d2"
+  },
+  "component": "icon_d2"
+ },
+ {
+  "icao": "CYYZ",
+  "city": "Toronto",
+  "lat": 43.679,
+  "lon": -79.629,
+  "tz": "America/Toronto",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 2129,
+  "n_events": 199,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "KDAL",
+  "city": "Dallas",
+  "lat": 32.83836,
+  "lon": -96.83584,
+  "tz": "America/Chicago",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 2125,
+  "n_events": 199,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "RKSI",
+  "city": "Seoul",
+  "lat": 37.469,
+  "lon": 126.451,
+  "tz": "Asia/Seoul",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 2121,
+  "n_events": 199,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "LTAC",
+  "city": "Ankara",
+  "lat": 40.128,
+  "lon": 32.995,
+  "tz": "Europe/Istanbul",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 2115,
+  "n_events": 197,
+  "per_run": {
+   "2026-06-02T18:00": "icon_eu",
+   "2026-08-14T18:00": "icon_eu"
+  },
+  "component": "icon_eu"
+ },
+ {
+  "icao": "NZWN",
+  "city": "Wellington",
+  "lat": -41.331,
+  "lon": 174.806,
+  "tz": "Pacific/Auckland",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 2115,
+  "n_events": 197,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "KATL",
+  "city": "Atlanta",
+  "lat": 33.62972,
+  "lon": -84.44223,
+  "tz": "America/New_York",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 2114,
+  "n_events": 198,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "KSEA",
+  "city": "Seattle",
+  "lat": 47.44467,
+  "lon": -122.31442,
+  "tz": "America/Los_Angeles",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 2107,
+  "n_events": 197,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "KMIA",
+  "city": "Miami",
+  "lat": 25.78806,
+  "lon": -80.31692,
+  "tz": "America/New_York",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 2104,
+  "n_events": 196,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "KORD",
+  "city": "Chicago",
+  "lat": 41.96017,
+  "lon": -87.93161,
+  "tz": "America/Chicago",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 2104,
+  "n_events": 196,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "SAEZ",
+  "city": "Buenos Aires",
+  "lat": -34.822,
+  "lon": -58.536,
+  "tz": "America/Argentina/Buenos_Aires",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 2096,
+  "n_events": 196,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "SBGR",
+  "city": "Sao Paulo",
+  "lat": -23.432,
+  "lon": -46.469,
+  "tz": "America/Sao_Paulo",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 2083,
+  "n_events": 195,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "EDDM",
+  "city": "Munich",
+  "lat": 48.348,
+  "lon": 11.813,
+  "tz": "Europe/Berlin",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1980,
+  "n_events": 182,
+  "per_run": {
+   "2026-06-02T18:00": "icon_d2",
+   "2026-08-14T18:00": "icon_d2"
+  },
+  "component": "icon_d2"
+ },
+ {
+  "icao": "VILK",
+  "city": "Lucknow",
+  "lat": 26.761,
+  "lon": 80.889,
+  "tz": "Asia/Kolkata",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1980,
+  "n_events": 182,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "RJTT",
+  "city": "Tokyo",
+  "lat": 35.553,
+  "lon": 139.781,
+  "tz": "Asia/Tokyo",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1935,
+  "n_events": 177,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "LLBG",
+  "city": "Tel Aviv",
+  "lat": 32.011,
+  "lon": 34.887,
+  "tz": "Asia/Jerusalem",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1935,
+  "n_events": 177,
+  "per_run": {
+   "2026-06-02T18:00": "icon_eu",
+   "2026-08-14T18:00": "icon_eu"
+  },
+  "component": "icon_eu"
+ },
+ {
+  "icao": "WSSS",
+  "city": "Singapore",
+  "lat": 1.368,
+  "lon": 103.982,
+  "tz": "Asia/Singapore",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1908,
+  "n_events": 174,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "ZSPD",
+  "city": "Shanghai",
+  "lat": 31.146,
+  "lon": 121.8,
+  "tz": "Asia/Shanghai",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1908,
+  "n_events": 174,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "EPWA",
+  "city": "Warsaw",
+  "lat": 52.163,
+  "lon": 20.961,
+  "tz": "Europe/Warsaw",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1881,
+  "n_events": 171,
+  "per_run": {
+   "2026-06-02T18:00": "icon_eu",
+   "2026-08-14T18:00": "icon_eu"
+  },
+  "component": "icon_eu"
+ },
+ {
+  "icao": "LIMC",
+  "city": "Milan",
+  "lat": 45.631,
+  "lon": 8.728,
+  "tz": "Europe/Rome",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1881,
+  "n_events": 171,
+  "per_run": {
+   "2026-06-02T18:00": "icon_d2",
+   "2026-08-14T18:00": "icon_d2"
+  },
+  "component": "icon_d2"
+ },
+ {
+  "icao": "LEMD",
+  "city": "Madrid",
+  "lat": 40.466,
+  "lon": -3.555,
+  "tz": "Europe/Madrid",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1881,
+  "n_events": 171,
+  "per_run": {
+   "2026-06-02T18:00": "icon_eu",
+   "2026-08-14T18:00": "icon_eu"
+  },
+  "component": "icon_eu"
+ },
+ {
+  "icao": "ZBAA",
+  "city": "Beijing",
+  "lat": 40.082,
+  "lon": 116.603,
+  "tz": "Asia/Shanghai",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1837,
+  "n_events": 167,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "ZUCK",
+  "city": "Chongqing",
+  "lat": 29.718,
+  "lon": 106.639,
+  "tz": "Asia/Shanghai",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1837,
+  "n_events": 167,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "ZGSZ",
+  "city": "Shenzhen",
+  "lat": 22.639,
+  "lon": 113.803,
+  "tz": "Asia/Shanghai",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1837,
+  "n_events": 167,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "ZHHH",
+  "city": "Wuhan",
+  "lat": 30.783,
+  "lon": 114.205,
+  "tz": "Asia/Shanghai",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1837,
+  "n_events": 167,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "ZUUU",
+  "city": "Chengdu",
+  "lat": 30.576,
+  "lon": 103.95,
+  "tz": "Asia/Shanghai",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1826,
+  "n_events": 166,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "KBKF",
+  "city": "Denver",
+  "lat": 39.713,
+  "lon": -104.758,
+  "tz": "America/Denver",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1782,
+  "n_events": 162,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "KHOU",
+  "city": "Houston",
+  "lat": 29.64582,
+  "lon": -95.28214,
+  "tz": "America/Chicago",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1782,
+  "n_events": 162,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "KLAX",
+  "city": "Los Angeles",
+  "lat": 33.93817,
+  "lon": -118.3866,
+  "tz": "America/Los_Angeles",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1782,
+  "n_events": 162,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "KAUS",
+  "city": "Austin",
+  "lat": 30.1831,
+  "lon": -97.68063,
+  "tz": "America/Chicago",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1771,
+  "n_events": 161,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "KSFO",
+  "city": "San Francisco",
+  "lat": 37.61961,
+  "lon": -122.36561,
+  "tz": "America/Los_Angeles",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1771,
+  "n_events": 161,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "LTFM",
+  "city": "Istanbul",
+  "lat": 41.262,
+  "lon": 28.74,
+  "tz": "Europe/Istanbul",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1738,
+  "n_events": 158,
+  "per_run": {
+   "2026-06-02T18:00": "icon_eu",
+   "2026-08-14T18:00": "icon_eu"
+  },
+  "component": "icon_eu"
+ },
+ {
+  "icao": "UUWW",
+  "city": "Moscow",
+  "lat": 55.592,
+  "lon": 37.261,
+  "tz": "Europe/Moscow",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1727,
+  "n_events": 157,
+  "per_run": {
+   "2026-06-02T18:00": "icon_eu",
+   "2026-08-14T18:00": "icon_eu"
+  },
+  "component": "icon_eu"
+ },
+ {
+  "icao": "MMMX",
+  "city": "Mexico City",
+  "lat": 19.436,
+  "lon": -99.072,
+  "tz": "America/Mexico_City",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1716,
+  "n_events": 156,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "EHAM",
+  "city": "Amsterdam",
+  "lat": 52.315,
+  "lon": 4.79,
+  "tz": "Europe/Amsterdam",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1694,
+  "n_events": 154,
+  "per_run": {
+   "2026-06-02T18:00": "icon_d2",
+   "2026-08-14T18:00": "icon_d2"
+  },
+  "component": "icon_d2"
+ },
+ {
+  "icao": "RKPK",
+  "city": "Busan",
+  "lat": 35.179,
+  "lon": 128.938,
+  "tz": "Asia/Seoul",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1694,
+  "n_events": 154,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "EFHK",
+  "city": "Helsinki",
+  "lat": 60.327,
+  "lon": 24.957,
+  "tz": "Europe/Helsinki",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1694,
+  "n_events": 154,
+  "per_run": {
+   "2026-06-02T18:00": "icon_eu",
+   "2026-08-14T18:00": "icon_eu"
+  },
+  "component": "icon_eu"
+ },
+ {
+  "icao": "WMKK",
+  "city": "Kuala Lumpur",
+  "lat": 2.747,
+  "lon": 101.714,
+  "tz": "Asia/Kuala_Lumpur",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1694,
+  "n_events": 154,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "RCSS",
+  "city": "Taipei",
+  "lat": 25.069,
+  "lon": 121.552,
+  "tz": "Asia/Taipei",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1672,
+  "n_events": 152,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "MPMG",
+  "city": "Panama City",
+  "lat": 8.967,
+  "lon": -79.555,
+  "tz": "America/Panama",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1661,
+  "n_events": 151,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "OEJN",
+  "city": "Jeddah",
+  "lat": 21.685,
+  "lon": 39.166,
+  "tz": "Asia/Riyadh",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1628,
+  "n_events": 148,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "FACT",
+  "city": "Cape Town",
+  "lat": -33.965,
+  "lon": 18.602,
+  "tz": "Africa/Johannesburg",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1606,
+  "n_events": 146,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "ZGGG",
+  "city": "Guangzhou",
+  "lat": 23.392,
+  "lon": 113.307,
+  "tz": "Asia/Shanghai",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1551,
+  "n_events": 141,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "OPKC",
+  "city": "Karachi",
+  "lat": 24.902,
+  "lon": 67.139,
+  "tz": "Asia/Karachi",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1551,
+  "n_events": 141,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "RPLL",
+  "city": "Manila",
+  "lat": 14.507,
+  "lon": 121.004,
+  "tz": "Asia/Manila",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1551,
+  "n_events": 141,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "LFPB",
+  "city": "Paris",
+  "lat": 48.967,
+  "lon": 2.428,
+  "tz": "Europe/Paris",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1540,
+  "n_events": 140,
+  "per_run": {
+   "2026-06-02T18:00": "icon_d2",
+   "2026-08-14T18:00": "icon_d2"
+  },
+  "component": "icon_d2"
+ },
+ {
+  "icao": "ZSQD",
+  "city": "Qingdao",
+  "lat": 36.362,
+  "lon": 120.087,
+  "tz": "Asia/Shanghai",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 1452,
+  "n_events": 132,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "LFPG",
+  "city": "Paris",
+  "lat": 49.015,
+  "lon": 2.534,
+  "tz": "Europe/Paris",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 575,
+  "n_events": 57,
+  "per_run": {
+   "2026-06-02T18:00": "icon_d2",
+   "2026-08-14T18:00": "icon_d2"
+  },
+  "component": "icon_d2"
+ },
+ {
+  "icao": "WIHH",
+  "city": "Jakarta",
+  "lat": -6.267,
+  "lon": 106.891,
+  "tz": "Asia/Jakarta",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 517,
+  "n_events": 47,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "DNMM",
+  "city": "Lagos",
+  "lat": 6.577,
+  "lon": 3.321,
+  "tz": "Africa/Lagos",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 385,
+  "n_events": 35,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "ZHCC",
+  "city": "Zhengzhou",
+  "lat": 34.52,
+  "lon": 113.834,
+  "tz": "Asia/Shanghai",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 330,
+  "n_events": 30,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "ZSJN",
+  "city": "Jinan",
+  "lat": 36.856,
+  "lon": 117.206,
+  "tz": "Asia/Shanghai",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 330,
+  "n_events": 30,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "RCTP",
+  "city": "Taipei",
+  "lat": 25.078,
+  "lon": 121.233,
+  "tz": "Asia/Taipei",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 132,
+  "n_events": 12,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ },
+ {
+  "icao": "VHHH",
+  "city": "Hong Kong",
+  "lat": 22.309,
+  "lon": 113.922,
+  "tz": "Asia/Hong_Kong",
+  "coord_src": "STATION_COORDS_SNAPSHOT_v1",
+  "n_markets": 18,
+  "n_events": 2,
+  "per_run": {
+   "2026-06-02T18:00": "icon_global",
+   "2026-08-14T18:00": "icon_global"
+  },
+  "component": "icon_global"
+ }
+]
