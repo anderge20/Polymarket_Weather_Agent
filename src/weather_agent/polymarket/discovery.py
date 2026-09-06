@@ -25,7 +25,7 @@ SOURCE/PROVENANCE SEMANTICS (documented in PHASE_2B_MARKET_DISCOVERY.md):
   * source = 'gamma'
   * source_timestamp = market.createdAt (when the market record was CREATED at the
     source). This is provenance, NOT an availability guarantee.
-  * ingestion_timestamp / discovered_at = our clock at write time.
+  * ingestion_timestamp = our clock at write time.
   * markets.available_at — TWO policies, chosen by the discovery mode (R26):
       - closed=True  (historical): stays NULL with available_at_confidence='UNKNOWN'.
         Gamma metadata does not tell us when a past market became knowable to an
@@ -36,7 +36,11 @@ SOURCE/PROVENANCE SEMANTICS (documented in PHASE_2B_MARKET_DISCOVERY.md):
         we observed it ourselves at that instant), available_at_confidence =
         'OBSERVED_AT_DISCOVERY'. On re-discovery the EARLIEST observed instant is
         kept (never overwritten by a later one).
+      - a closed-mode re-ingest of a row discovered open earlier (same PK) KEEPS
+        the observed available_at: NULL never overwrites an observation
+        (evidence: available_at_policy='PRESERVED_FROM_OPEN_DISCOVERY').
     In both modes ingestion_timestamp remains a separate clock (our write time).
+  * discovered_at = first discovery of the row (earliest persisted value wins).
   * markets.source_timestamps = verbatim JSON of ALL gamma timestamps for the row.
 """
 from __future__ import annotations
@@ -64,6 +68,11 @@ ERROR_STATUSES = (S_RATE_LIMITED, S_HTTP_ERROR, S_TIMEOUT, S_NETWORK, S_PARSE)
 # read from a gamma field and not inferred from createdAt/updatedAt. Closed-mode
 # rows keep resolution.UNKNOWN. See docs/DISCOVERY_OPEN_MARKETS.md.
 AVAILABLE_AT_OBSERVED = "OBSERVED_AT_DISCOVERY"
+# data_quality.market_data_quality.available_at_policy for a CLOSED-mode ingest that
+# found the row already carrying an observed available_at (discovered open earlier):
+# the observation is preserved, not re-derived. markets.available_at_confidence stays
+# AVAILABLE_AT_OBSERVED (the value itself is still the first-hand observation).
+AVAILABLE_AT_PRESERVED = "PRESERVED_FROM_OPEN_DISCOVERY"
 OPEN_CHECKPOINT_SUFFIX = ":open"
 
 
@@ -288,6 +297,16 @@ def ingest_event(con, event: dict, dataset_version: str, *,
         (market_id, dataset_version, record_version) already carries a non-NULL
         available_at, the EARLIEST instant is kept: availability is 'first time we
         could have known', never 'last time we looked'.
+      * PRESERVATION (R26 review, H1): a NULL never overwrites an observation. When
+        observed_at is None (closed mode) but the row already carries a non-NULL
+        available_at — the market was discovered OPEN earlier and is now being
+        re-processed from the CLOSED catalogue under the same dataset_version,
+        exactly the paper flow (see docs/DISCOVERY_OPEN_MARKETS.md §3) — the
+        existing available_at / available_at_confidence are KEPT and the evidence
+        row records available_at_policy = 'PRESERVED_FROM_OPEN_DISCOVERY'. All the
+        other columns (winning_outcome, close_time, ...) ARE refreshed from the
+        closed payload. Same rule for discovered_at ('first discovery',
+        database.py): the earliest persisted value wins over this run's clock.
       * `checkpoint_key` — key under which this event is marked in
         discovery_checkpoint; defaults to `dataset_version` (pre-R26 behaviour).
         discover() passes checkpoint_key(dataset_version, closed) so the closed
@@ -322,26 +341,42 @@ def ingest_event(con, event: dict, dataset_version: str, *,
                       "record_version": 1})
             evidence = dict(rec["evidence"])
             evidence["available_at_policy"] = res.UNKNOWN
+            # R26: the prior persisted row (same PK) is consulted in BOTH modes.
+            # db.upsert is ON CONFLICT DO UPDATE over EVERY column, so anything we
+            # want to survive a re-ingest must be carried forward explicitly here.
+            prior = db.query(
+                con,
+                "SELECT available_at, discovered_at FROM markets "
+                "WHERE market_id = ? AND dataset_version = ? AND record_version = ?",
+                [m["market_id"], dataset_version, 1])
+            prior_avail = _parse_ts(prior[0]["available_at"]) if prior else None
+            prior_disc = _parse_ts(prior[0]["discovered_at"]) if prior else None
+            # discovered_at = 'first discovery' (database.py): never pushed forward
+            # by a later re-ingest (daily paper polling re-ingests the same row).
+            if prior_disc is not None and prior_disc < _parse_ts(m["discovered_at"]):
+                m["discovered_at"] = prior_disc
             if observed_at is not None:
                 # R26 open mode: prospective capture. available_at is the instant we
                 # OBSERVED the market (request instant), never createdAt/updatedAt/
                 # ingestion. Keep the EARLIEST observation if this exact row was
                 # already discovered open in an earlier run (re-discovery must not
                 # push availability later).
-                prior = db.query(
-                    con,
-                    "SELECT available_at FROM markets WHERE market_id = ? "
-                    "AND dataset_version = ? AND record_version = ? "
-                    "AND available_at IS NOT NULL",
-                    [m["market_id"], dataset_version, 1])
-                keep = observed_at
-                if prior and prior[0]["available_at"] is not None:
-                    prior_iso = _parse_ts(prior[0]["available_at"])
-                    if prior_iso is not None and prior_iso < _parse_ts(observed_at):
-                        keep = prior_iso
+                keep = _parse_ts(observed_at)
+                if prior_avail is not None and prior_avail < keep:
+                    keep = prior_avail
                 m["available_at"] = keep
                 m["available_at_confidence"] = AVAILABLE_AT_OBSERVED
                 evidence["available_at_policy"] = AVAILABLE_AT_OBSERVED
+                evidence["unknown_fields"] = [
+                    f for f in evidence["unknown_fields"] if f != "available_at"]
+                evidence["observed_fields"] = ["available_at"]
+            elif prior_avail is not None:
+                # H1: closed-mode re-ingest of a row that was discovered OPEN. A NULL
+                # (= 'we do not know') must never destroy a first-hand observation.
+                # Keep the observed instant + confidence; refresh everything else.
+                m["available_at"] = prior_avail
+                m["available_at_confidence"] = AVAILABLE_AT_OBSERVED
+                evidence["available_at_policy"] = AVAILABLE_AT_PRESERVED
                 evidence["unknown_fields"] = [
                     f for f in evidence["unknown_fields"] if f != "available_at"]
                 evidence["observed_fields"] = ["available_at"]

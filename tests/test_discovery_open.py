@@ -146,6 +146,68 @@ def test_open_rediscovery_keeps_earliest_available_at(con):
     assert db.query(con, "SELECT COUNT(*) c FROM markets WHERE dataset_version='ds_re'")[0]["c"] == 1
 
 
+def test_closed_rerun_same_dsv_preserves_open_available_at(con):
+    """H1 (R26 review): the paper flow. A market discovered OPEN (available_at
+    observed) is re-processed from the CLOSED catalogue under the SAME
+    dataset_version once it resolves (separate checkpoint keys => it is NOT
+    skipped). The closed payload must refresh the resolution but a NULL must
+    never destroy the first-hand observation of available_at."""
+    import copy
+    import json
+    dsv = "ds_h1"
+    resolved = copy.deepcopy(OPEN_EVENT)          # same market, now closed/resolved
+    resolved["closed"] = True
+    resolved["markets"][0]["closed"] = True
+    resolved["markets"][0]["outcomePrices"] = "[\"1\", \"0\"]"
+    resolved["markets"][0]["closedTime"] = "2030-08-20 15:00:00+00"
+
+    s1 = discovery.discover(con, dsv, session=_Session(open_events=[OPEN_EVENT]), closed=False)
+    assert s1["events"] == 1
+    before = _market(con, "9990101", dsv)
+    assert before["available_at"] is not None and before["available_at_confidence"] == OBS
+    assert before["winning_outcome"] is None
+
+    s2 = discovery.discover(con, dsv, session=_Session(closed_events=[resolved]), closed=True)
+    assert s2["events"] == 1                       # re-processed (separate checkpoint)
+    after = _market(con, "9990101", dsv)
+    assert after["winning_outcome"] is not None    # resolution DID arrive
+    assert after["close_time"] is not None
+    # INVARIANT: NULL never overwrites an observation
+    assert after["available_at"] is not None
+    assert _utc(after["available_at"]) == _utc(before["available_at"])
+    assert after["available_at_confidence"] == OBS
+    # evidence says the value was preserved, not re-observed and not unknown
+    mdq = db.query(con, "SELECT market_data_quality FROM data_quality WHERE ref='9990101' "
+                        "AND dataset_version=?", [dsv])[0]["market_data_quality"]
+    mdq = json.loads(mdq) if isinstance(mdq, str) else mdq
+    assert mdq["available_at_policy"] == discovery.AVAILABLE_AT_PRESERVED
+    assert "available_at" not in mdq["unknown_fields"]
+    assert mdq["observed_fields"] == ["available_at"]
+    # and the as-of read still returns the market after its discovery instant
+    got = db.latest_asof(con, "markets", asof=_utc(before["available_at"]) + timedelta(days=1),
+                         partition_cols=["market_id"])
+    assert [g["market_id"] for g in got] == ["9990101"]
+    assert got[0]["winning_outcome"] == after["winning_outcome"]
+    # both checkpoint keys hold the event
+    assert db.checkpoint_load(con, dsv) == {"9990001"}
+    assert db.checkpoint_load(con, dsv + ":open") == {"9990001"}
+
+
+def test_discovered_at_is_first_discovery_across_reingests(con):
+    """database.py documents discovered_at as 'first discovery': daily paper
+    polling re-ingests the same row and must not push it forward."""
+    import time
+    discovery.ingest_event(con, OPEN_EVENT, "ds_disc", observed_at="2026-09-06T08:00:00+00:00")
+    first = _market(con, "9990101", "ds_disc")["discovered_at"]
+    time.sleep(0.01)
+    discovery.ingest_event(con, OPEN_EVENT, "ds_disc", observed_at="2026-09-06T09:00:00+00:00")
+    time.sleep(0.01)
+    discovery.ingest_event(con, OPEN_EVENT, "ds_disc")                  # closed-mode re-ingest
+    row = _market(con, "9990101", "ds_disc")
+    assert _utc(row["discovered_at"]) == _utc(first)
+    assert _utc(row["ingestion_timestamp"]) > _utc(first)               # write clock DOES advance
+
+
 # ------------------------------------------------------------------ (b) closed mode
 def test_discover_closed_default_keeps_available_at_null(con):
     sess = _Session()
