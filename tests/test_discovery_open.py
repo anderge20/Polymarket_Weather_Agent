@@ -294,6 +294,27 @@ def test_dataset_version_records_every_mode_run(con):
     assert v[discovery.CLOSED_MODES_SEEN] == ["false"]
 
 
+def test_in_memory_checkpoint_set_is_refused_in_open_mode(con):
+    """H4: the 2B in-memory `checkpoint` set is not keyed by mode. Reusing one
+    set across modes would make the open run skip events seen closed; instead
+    of skipping silently the open mode refuses the argument. Closed mode keeps
+    the pre-R26 behaviour (set accepted and kept in sync)."""
+    ck: set = set()
+    discovery.discover(con, "ds_h4", session=_Session(), closed=True, checkpoint=ck)
+    assert ck == {"128661", "869074"}
+    with pytest.raises(ValueError):
+        discovery.discover(con, "ds_h4", session=_Session(open_events=[ANKARA_EVENT]),
+                           closed=False, checkpoint=ck)
+    # nothing was written by the refused call
+    assert db.checkpoint_load(con, "ds_h4:open") == set()
+    # without the set, the open run resumes from the persisted key only and does
+    # NOT skip the event checkpointed as closed
+    s = discovery.discover(con, "ds_h4", session=_Session(open_events=[ANKARA_EVENT]), closed=False)
+    assert s["events"] == 1
+    assert db.checkpoint_load(con, "ds_h4:open") == {"869074"}
+    assert ck == {"128661", "869074"}                  # untouched by the open run
+
+
 def test_open_checkpoint_persists_and_resumes(con):
     sess = _Session()
     discovery.discover(con, "ds_res", session=sess, page_limit=100, max_pages=2, closed=False)

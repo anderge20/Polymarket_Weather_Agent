@@ -606,9 +606,21 @@ def discover(con, dataset_version: str, *, tag_id: int = TEMP_TAG_ID,
         key = dataset_version + ':open' (see checkpoint_key()), so open and closed
         runs under one dataset_version never skip each other's events. The
         summary carries 'closed' and 'checkpoint_key'.
+      * `checkpoint` (in-memory set, 2B compatibility API) is accepted ONLY in
+        closed mode. The set carries no mode: a caller reusing one set across a
+        closed run and an open run would make the open run skip every event
+        already seen closed (and vice versa) — precisely the cross-contamination
+        checkpoint_key() exists to prevent. Passing it with closed=False raises
+        ValueError (H4). The persisted discovery_checkpoint is the source of
+        truth in both modes; open-mode callers resume from it alone.
 
     NOTE: `session` must be a requests.Session (created by the caller so this
     module needs no network at import time)."""
+    if checkpoint is not None and not closed:
+        raise ValueError(
+            "discover(closed=False) does not accept the in-memory `checkpoint` set: "
+            "it is not keyed by mode and would skip events checkpointed as CLOSED "
+            "(see checkpoint_key()); resume from the persisted discovery_checkpoint.")
     if session is None:
         import requests
         session = requests.Session()
@@ -618,7 +630,8 @@ def discover(con, dataset_version: str, *, tag_id: int = TEMP_TAG_ID,
         run_id = f"disc_{_now()}"
     # Phase 2C: the PERSISTED checkpoint (DuckDB discovery_checkpoint) is the source
     # of truth for resume — a fresh process loads it here. The in-memory `processed`
-    # set is a mirror + accepts any caller-provided ids (backward compatible).
+    # set is a mirror + accepts any caller-provided ids (backward compatible,
+    # closed mode only — see the ValueError above).
     ckpt_key = checkpoint_key(dataset_version, closed)
     processed = db.checkpoint_load(con, ckpt_key) | (checkpoint or set())
 
