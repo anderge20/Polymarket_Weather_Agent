@@ -244,3 +244,24 @@ def test_verified_sensor_scope_is_eleven_stations():
     assert len(stations.VERIFIED_SENSOR) == 11
     assert not stations.get("ZSQD").verified_sensor
     assert stations.get("KATL").verified_sensor
+
+
+def test_run_missing_the_local_afternoon_fails_closed():
+    """A window that omits the peak hours yields a lower max indistinguishable
+    from a real forecast, so it must raise rather than return."""
+    # only local morning hours (06:00-10:00 local = 03:00-07:00 UTC in June)
+    series = {
+        f"2026-06-21T{h:02d}:00": 12.0 for h in range(3, 8)
+    }
+    with pytest.raises(weather.WeatherIngestError, match="omits the afternoon"):
+        weather.tmax_from_series(series, TARGET, TZ)
+
+
+def test_partial_but_peak_covering_window_is_accepted():
+    """A 06z run misses the local night but covers the afternoon: that is fine."""
+    series = {
+        f"2026-06-21T{h:02d}:00": (25.0 if h == 12 else 15.0) for h in range(6, 21)
+    }
+    tmax, n = weather.tmax_from_series(series, TARGET, TZ)
+    assert tmax == 25.0
+    assert n == 15
