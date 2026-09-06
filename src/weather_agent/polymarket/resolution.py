@@ -33,6 +33,31 @@ REAL description template (verbatim excerpt, Ankara 2026-08-20):
    in degrees Celsius on 20 Aug '26 ... available here:
    https://www.wunderground.com/history/daily/tr/%C3%A7ubuk/LTAC ... measures
    temperatures to whole degrees Celsius (eg, 9°C)."
+
+R29 — CONTRACT SOURCE / MEASUREMENT RULE FROM THE PRIMARY CLAUSE (refutation R12):
+  The pre-R29 parser classified `measurement_rule` by the MERE PRESENCE of phrases
+  ('Daily Observations', 'by the Forecast', 'Day High & Low') anywhere in the
+  description. NOAA-sourced markets carry a FALLBACK clause ("If NOAA data for the
+  observation date is unavailable by 11:59 PM ET ..., the Weather Underground
+  Daily Observations table will be used as the resolution source.") and were
+  therefore mislabelled as Wunderground 'Daily Observations' (3 333 markets in
+  CATALOG_V2, same defect fixed in the catalogue's v3.primary_rule in round 9).
+  Now:
+    * the description is split into the PRIMARY clause (the first sentence
+      "information from <source>, specifically ..." / "according to <source>")
+      and the FALLBACK sentence(s) ("If <source> data ... unavailable/missing ...
+      <other source> will be used ...");
+    * `contract_source` in {WU, NOAA, HKO, CWA, UNKNOWN} is read from the primary
+      clause ONLY; `fallback_source` (same enum, or None) from the fallback clause;
+    * `measurement_rule_code` (P_* label, identical to v3.primary_rule of the
+      catalogue) + the human `measurement_rule` string are derived from the primary
+      source + the non-fallback text (the 'Daily Observations' preamble of the
+      recent WU template is NOT a fallback and still qualifies WU markets).
+  `measurement_rule` for NOAA markets therefore CHANGES value with respect to the
+  pre-R29 parser (they were "'Daily Observations' table ..." — that was the bug);
+  WU markets keep the exact pre-R29 strings. Markets with the generic WU clause
+  (no table qualifier), NOAA, HKO and CWA markets — pre-R29 measurement_rule None —
+  now carry a rule string; their P_* code makes the epoch explicit.
 """
 from __future__ import annotations
 
@@ -57,6 +82,69 @@ _STATION_RE = re.compile(r"recorded at the (.+?) Station", re.I)
 _CITY_TITLE_RE = re.compile(r"temperature in ([A-Za-z .,'\-]+?) on ", re.I)
 _CITY_SLUG_RE = re.compile(r"temperature-in-([a-z0-9\-]+?)-on-", re.I)
 
+# R29 — contract-source enum (v3.primary_source of CATALOG_V2 uses the same labels,
+# except that v3 has 'SIN_CLAUSULA' where this parser says CWA: see
+# scripts/validate_r29_catalog.py for the explained residual).
+SRC_WU = "WU"          # Weather Underground / wunderground.com history page
+SRC_NOAA = "NOAA"      # weather.gov/wrh/timeseries "Temp" column
+SRC_HKO = "HKO"        # Hong Kong Observatory "Absolute Daily Max"
+SRC_CWA = "CWA"        # Taipei Central Weather Administration "Temperature" column
+SRC_UNKNOWN = "UNKNOWN"
+CONTRACT_SOURCES = (SRC_WU, SRC_NOAA, SRC_HKO, SRC_CWA, SRC_UNKNOWN)
+
+# R29 — measurement-rule codes. The first six are BYTE-IDENTICAL to the catalogue's
+# v3.primary_rule labels; P_CWA_TemperatureColumn is new (v3 says P_UNKNOWN for the
+# 77 CWA markets because their SOURCE is inaccessible, not because the clause lacks
+# a rule — the clause names the "Temperature" column explicitly).
+P_WU_DAILYOBS = "P_WU_DailyObservations"
+P_BY_FORECAST = "P_byForecast"
+P_WU_GENERIC = "P_WU_GENERIC_sin_calificador"
+P_NOAA_TEMPCOL = "P_NOAA_TempColumn"
+P_NOAA_HOURLY = "P_NOAA_HourlyData"
+P_HKO_ABSMAX = "P_HKO_AbsDailyMax"
+P_CWA_TEMPCOL = "P_CWA_TemperatureColumn"
+P_WU_DAYHIGHLOW = "P_WU_DayHighLow"     # defensive: never seen in CATALOG_V2
+P_UNKNOWN = "P_UNKNOWN"
+
+# Human strings. The WU ones are the pre-R29 strings, verbatim (stored in
+# markets.measurement_rule since 2B — DO NOT reword without a migration note).
+MEASUREMENT_RULE_TEXT = {
+    P_WU_DAILYOBS: "highest temperature in the 'Daily Observations' table (not Day High & Low)",
+    P_BY_FORECAST: "highest temperature 'by the Forecast', once data finalized (legacy template)",
+    P_WU_DAYHIGHLOW: "Day High & Low summary value",
+    P_WU_GENERIC: "highest temperature recorded for all times on this day (Wunderground, no table qualifier)",
+    P_NOAA_TEMPCOL: "highest reading under the NOAA 'Temp' column for all times on this day (weather.gov timeseries)",
+    P_NOAA_HOURLY: "highest reading under the NOAA 'Temp' column, Hourly Data only ('Show Hourly Data')",
+    P_HKO_ABSMAX: "HKO 'Absolute Daily Max (deg. C)' from the Daily Extract",
+    P_CWA_TEMPCOL: "highest reading under the CWA 'Temperature' column for all hours on that date",
+}
+
+# A FALLBACK sentence: starts with 'If', says some data is unavailable/missing, and
+# ends at the next sentence boundary (a period followed by whitespace/end, or a
+# newline). The '11:59 PM ET' inside the NOAA sentence carries no period, and URLs
+# never occur in fallback sentences, so this boundary is safe on the whole catalogue.
+_FALLBACK_RE = re.compile(
+    r"\bIf\b[^\n.]*?\b(?:unavailable|missing|not available)\b[^\n]*?(?:\.(?=\s|$)|(?=\n)|$)",
+    re.I,
+)
+# The PRIMARY clause: first "information from <X> ..." / "according to <X> ..."
+# sentence (searched on the text with fallback sentences removed). group(1) starts
+# with the source name; the sentence ends at a period followed by whitespace/end
+# (so 'wunderground.com/...' inside the URL does not end it) or at a newline.
+_PRIMARY_RE = re.compile(
+    r"\b(?:information from|according to)\s+(.+?)(?:\.(?=\s|$)|(?=\n)|$)",
+    re.I | re.S,
+)
+# Source name -> enum, tried IN ORDER against the HEAD of the primary clause (up to
+# the first comma), so "from Wunderground, ... for the Hong Kong International
+# Airport Station" is WU, never HKO.
+_SOURCE_NAME_RES: tuple[tuple[str, re.Pattern], ...] = (
+    (SRC_WU, re.compile(r"Wunderground|Weather\s+Underground|wunderground\.com", re.I)),
+    (SRC_NOAA, re.compile(r"\bNOAA\b|weather\.gov", re.I)),
+    (SRC_HKO, re.compile(r"Hong\s+Kong\s+Observatory|weather\.gov\.hk", re.I)),
+    (SRC_CWA, re.compile(r"Central\s+Weather\s+Administration|\bCWA\b|cwa\.gov\.tw", re.I)),
+)
+
 
 @dataclass
 class ResolutionRule:
@@ -65,7 +153,10 @@ class ResolutionRule:
     resolution_source: str | None = None       # Wunderground history URL
     station: str | None = None                  # station NAME (e.g. 'Esenboğa Intl Airport')
     station_identifier: str | None = None       # ICAO tail of the URL (e.g. 'LTAC')
-    measurement_rule: str | None = None         # e.g. 'Daily Observations table high'
+    measurement_rule: str | None = None         # human string (MEASUREMENT_RULE_TEXT)
+    measurement_rule_code: str | None = None    # R29 P_* code (== v3.primary_rule)
+    contract_source: str | None = None          # R29 primary-clause source (CONTRACT_SOURCES)
+    fallback_source: str | None = None          # R29 fallback-clause source, or None
     unit: str | None = None                     # 'C' | 'F'
     rounding_rule: str | None = None            # 'whole degree' | 'tenths'
     resolution_timestamp: str | None = None     # ISO-8601 UTC (from umaEndDate)
@@ -123,24 +214,142 @@ def parse_city(title: str | None, slug: str | None) -> str | None:
     return None
 
 
-def parse_measurement_rule(desc: str) -> str | None:
-    """The measurement rule stated in the description (#2/#8). The template CHANGED
-    over time: recent markets cite the 'Daily Observations' table; legacy markets
-    (e.g. NYC Dec 2025) cite 'the Forecast ... once information is finalized'. Both
-    are captured so the epoch difference is visible and never conflated."""
+def split_fallback_clauses(desc: str) -> tuple[str, list[str]]:
+    """Split a description into (text WITHOUT fallback sentences, [fallback sentences]).
+    A fallback sentence is an "If <source> data ... unavailable/missing ..." sentence
+    (see _FALLBACK_RE). Pure. Both catalogue variants are captured:
+      "If NOAA data for the observation date is unavailable by 11:59 PM ET on the day
+       following the observation date, the Weather Underground Daily Observations
+       table will be used as the resolution source."            (3 333 markets)
+      "If NOAA data is unavailable or missing for the observation period, Weather
+       Underground will be used as the secondary resolution source." (1 584 markets)"""
     d = desc or ""
-    if re.search(r"Daily Observations", d, re.I):
-        return "highest temperature in the 'Daily Observations' table (not Day High & Low)"
-    if re.search(r"by the Forecast", d, re.I):
-        return "highest temperature 'by the Forecast', once data finalized (legacy template)"
-    if re.search(r"Day High\s*&\s*Low", d, re.I):
-        return "Day High & Low summary value"
+    fallbacks = [m.group(0).strip() for m in _FALLBACK_RE.finditer(d)]
+    return _FALLBACK_RE.sub(" ", d), fallbacks
+
+
+def primary_clause(desc: str) -> str | None:
+    """The PRIMARY resolution clause: the first "information from <source> ..." /
+    "according to <source> ..." sentence, searched AFTER removing the fallback
+    sentences (so a fallback that itself says 'information from' can never win).
+    Returns the sentence text from the source name onward, or None when the
+    description has no such clause (truncated excerpts, non-template markets)."""
+    body, _ = split_fallback_clauses(desc)
+    m = _PRIMARY_RE.search(body)
+    return m.group(1).strip() if m else None
+
+
+def classify_source(text: str | None, *, head_only: bool = True) -> str:
+    """Map a clause to a CONTRACT_SOURCES label. With head_only (default) only the
+    text UP TO THE FIRST COMMA is inspected — the source name is the first thing after
+    'information from'; what follows the comma ("specifically ... for the Hong Kong
+    International Airport Station") names the station, not the source. With
+    head_only=False the whole text is searched in _SOURCE_NAME_RES order (used for
+    fallback sentences and for descriptions lacking a primary clause)."""
+    t = text or ""
+    if head_only:
+        t = t.split(",", 1)[0]
+    for label, rx in _SOURCE_NAME_RES:
+        if rx.search(t):
+            return label
+    return SRC_UNKNOWN
+
+
+def classify_fallback_source(fallbacks: list[str], primary: str) -> str | None:
+    """Source named by the fallback sentence(s) as the SECONDARY source: the first
+    source mentioned in a fallback sentence that differs from `primary`
+    ("If NOAA data ... the Weather Underground ... will be used" -> WU). None when
+    there is no fallback sentence or it names no other known source."""
+    for sent in fallbacks:
+        for label, rx in _SOURCE_NAME_RES:
+            if label != primary and rx.search(sent):
+                return label
     return None
+
+
+def classify_measurement_rule(desc: str) -> dict:
+    """R29 classifier. Returns a dict with keys
+        contract_source        CONTRACT_SOURCES label from the PRIMARY clause
+        measurement_rule_code  P_* code (== CATALOG_V2 v3.primary_rule, except CWA)
+        measurement_rule       human string (MEASUREMENT_RULE_TEXT) or None
+        fallback_source        CONTRACT_SOURCES label from the fallback clause, or None
+        fallback_clauses       the verbatim fallback sentence(s) (list, maybe empty)
+        primary_clause         the verbatim primary clause, or None
+        source_confidence      VERIFIED (primary clause found) | INFERRED (source named
+                               elsewhere in the non-fallback text) | UNKNOWN
+    Decision table (source first, then the qualifier in the NON-fallback text):
+      WU   : 'by the Forecast' in the primary clause -> P_byForecast (legacy template)
+             'Daily Observations' anywhere outside fallback -> P_WU_DailyObservations
+             'Day High & Low' only (defensive)             -> P_WU_DayHighLow
+             otherwise                                     -> P_WU_GENERIC_sin_calificador
+      NOAA : 'Hourly Data' outside fallback -> P_NOAA_HourlyData ; "Temp" column ->
+             P_NOAA_TempColumn
+      HKO  : 'Absolute Daily Max' -> P_HKO_AbsDailyMax
+      CWA  : "Temperature" column -> P_CWA_TemperatureColumn
+      any other combination -> P_UNKNOWN (measurement_rule None: never guessed).
+    Fallback sentences NEVER contribute a qualifier: that is the R12 defect."""
+    d = desc or ""
+    body, fallbacks = split_fallback_clauses(d)
+    pc = primary_clause(d)
+    if pc is not None:
+        source = classify_source(pc)
+        src_conf = VERIFIED if source != SRC_UNKNOWN else UNKNOWN
+    else:
+        source = classify_source(body, head_only=False)
+        src_conf = INFERRED if source != SRC_UNKNOWN else UNKNOWN
+    scope = pc if pc is not None else body      # where 'by the Forecast' is looked for
+
+    code = P_UNKNOWN
+    if source == SRC_WU:
+        if re.search(r"by the Forecast", scope, re.I):
+            code = P_BY_FORECAST
+        elif re.search(r"Daily Observations", body, re.I):
+            code = P_WU_DAILYOBS
+        elif re.search(r"Day High\s*&\s*Low", body, re.I):
+            code = P_WU_DAYHIGHLOW
+        else:
+            code = P_WU_GENERIC
+    elif source == SRC_NOAA:
+        if re.search(r"Hourly Data", body, re.I):
+            code = P_NOAA_HOURLY
+        elif re.search(r"[\"\u201c']Temp[\"\u201d']\s+column", body, re.I):
+            code = P_NOAA_TEMPCOL
+    elif source == SRC_HKO:
+        if re.search(r"Absolute Daily Max", body, re.I):
+            code = P_HKO_ABSMAX
+    elif source == SRC_CWA:
+        if re.search(r"[\"\u201c']Temperature[\"\u201d']\s+column", body, re.I):
+            code = P_CWA_TEMPCOL
+
+    return {
+        "contract_source": source,
+        "measurement_rule_code": code,
+        "measurement_rule": MEASUREMENT_RULE_TEXT.get(code),
+        "fallback_source": classify_fallback_source(fallbacks, source),
+        "fallback_clauses": fallbacks,
+        "primary_clause": pc,
+        "source_confidence": src_conf,
+    }
+
+
+def parse_measurement_rule(desc: str) -> str | None:
+    """The measurement rule stated in the PRIMARY clause of the description (#2/#8),
+    as a human string (MEASUREMENT_RULE_TEXT) or None. Kept for API compatibility;
+    since R29 it is classify_measurement_rule(desc)['measurement_rule'] — i.e. it
+    no longer fires on the 'Daily Observations' wording of a NOAA market's FALLBACK
+    sentence. The template CHANGED over time: recent WU markets cite the 'Daily
+    Observations' table; legacy markets (e.g. NYC Dec 2025) cite 'the Forecast ...
+    once information is finalized'. Both are captured so the epoch difference is
+    visible and never conflated."""
+    return classify_measurement_rule(desc)["measurement_rule"]
 
 
 def parse_resolution_text(desc: str) -> dict:
     """Extract station / source / unit / rounding_rule / measurement_rule from a
-    market description. Values are VERIFIED (explicitly stated) when found."""
+    market description. Values are VERIFIED (explicitly stated) when found.
+    R29 adds (always present): measurement_rule_code (P_*), contract_source
+    (CONTRACT_SOURCES), fallback_source (label or None), primary_clause (verbatim
+    or None), contract_source_confidence (VERIFIED/INFERRED/UNKNOWN)."""
     out: dict = {}
     d = desc or ""
     m = _STATION_RE.search(d)
@@ -167,9 +376,17 @@ def parse_resolution_text(desc: str) -> dict:
         out["rounding_rule"] = "whole degree"
     elif re.search(r"tenths|one decimal", d, re.I):
         out["rounding_rule"] = "tenths"
-    mr = parse_measurement_rule(d)
-    if mr:
-        out["measurement_rule"] = mr
+    # R29: contract source / rule from the PRIMARY clause (fallback clause ignored).
+    # New keys are ADDED; every pre-R29 key keeps its name. `measurement_rule` is
+    # still only set when a rule was classified (None -> key absent, as before).
+    cls = classify_measurement_rule(d)
+    if cls["measurement_rule"]:
+        out["measurement_rule"] = cls["measurement_rule"]
+    out["measurement_rule_code"] = cls["measurement_rule_code"]
+    out["contract_source"] = cls["contract_source"]
+    out["fallback_source"] = cls["fallback_source"]
+    out["primary_clause"] = cls["primary_clause"]
+    out["contract_source_confidence"] = cls["source_confidence"]
     return out
 
 
@@ -285,6 +502,9 @@ def discover_rule(market: dict, event: dict, resolution_timestamp: str | None = 
     r.unit = p.get("unit")
     r.rounding_rule = p.get("rounding_rule")
     r.measurement_rule = p.get("measurement_rule")
+    r.measurement_rule_code = p.get("measurement_rule_code")
+    r.contract_source = p.get("contract_source")
+    r.fallback_source = p.get("fallback_source")
     r.city = parse_city(event.get("title") or market.get("question"),
                         event.get("slug") or market.get("slug"))
     r.resolution_timestamp = resolution_timestamp
@@ -297,6 +517,12 @@ def discover_rule(market: dict, event: dict, resolution_timestamp: str | None = 
         "station_identifier": base if r.station_identifier else UNKNOWN,
         "resolution_source": VERIFIED if (market.get("resolutionSource") or p.get("resolution_source")) else (INFERRED if r.resolution_source else UNKNOWN),
         "measurement_rule": base if r.measurement_rule else UNKNOWN,
+        # R29: VERIFIED only when the primary clause itself named the source
+        # (INFERRED when the source was found elsewhere in the non-fallback text).
+        "contract_source": (UNKNOWN if p.get("contract_source_confidence") == UNKNOWN
+                            else (INFERRED if (used_event_desc or
+                                               p.get("contract_source_confidence") == INFERRED)
+                                  else VERIFIED)),
         "unit": base if r.unit else UNKNOWN,
         "rounding_rule": base if r.rounding_rule else UNKNOWN,
         "resolution_timestamp": VERIFIED if r.resolution_timestamp else UNKNOWN,
@@ -332,6 +558,11 @@ GROUND_TRUTH_FIXTURES = [
             "unit": "C",
             "rounding_rule": "whole degree",
             "measurement_rule": "highest temperature in the 'Daily Observations' table (not Day High & Low)",
+            # excerpt has NO 'information from' clause -> source INFERRED from the
+            # non-fallback text ('Weather Underground'), still WU / DailyObservations
+            "contract_source": "WU",
+            "measurement_rule_code": "P_WU_DailyObservations",
+            "fallback_source": None,
         },
     },
     {
