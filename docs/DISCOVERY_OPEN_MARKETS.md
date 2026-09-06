@@ -10,9 +10,13 @@ no se ha ejecutado contra Gamma en vivo. Prerrequisito del modo paper (2H / R23)
 | histórico (por defecto) | `discover(con, dsv)` / `closed=True` | `/events?...&closed=true` | mercados cerrados/resueltos | `dsv` (idéntica a pre-R26) | `NULL`, `available_at_confidence='UNKNOWN'` |
 | abierto (paper) | `discover(con, dsv, closed=False)` | `/events?...&closed=false` | mercados con `endDate` futuro | `dsv + ':open'` (`discovery.checkpoint_key`) | instante UTC de la petición, `available_at_confidence='OBSERVED_AT_DISCOVERY'` |
 
-`closed` se escribe también en `dataset_versions.query_parameters`, de modo que cada
-`dataset_version` deja constancia de la población de la que se construyó. El resumen de
-`discover()` devuelve `closed` y `checkpoint_key`.
+`closed` se escribe también en `dataset_versions.query_parameters`. Como `ensure_dataset_version`
+hace upsert en cada run, `query_parameters.closed` es el valor del **último** run; la constancia
+de todas las poblaciones que han alimentado un `dataset_version` está en
+`query_parameters.closed_modes_seen` (`discovery.CLOSED_MODES_SEEN`), unión ordenada de todos los
+`closed` ejecutados bajo ese dsv (p.ej. `["false", "true"]` tras abierto→cerrado). La población
+de cada **fila** se lee en `markets.available_at_confidence` (`OBSERVED_AT_DISCOVERY` = vino del
+feed abierto). El resumen de `discover()` devuelve `closed` y `checkpoint_key`.
 
 ## 2. Semántica de `available_at`
 

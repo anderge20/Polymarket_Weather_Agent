@@ -254,16 +254,46 @@ def build_market_records(event: dict) -> list[dict]:
 # =============================================================================
 # DB writes (idempotent upserts with provenance)
 # =============================================================================
+# dataset_versions.query_parameters key that ACCUMULATES the discovery modes run
+# under one dataset_version (R26 review): 'closed' alone is the LAST run's value.
+CLOSED_MODES_SEEN = "closed_modes_seen"
+
+
 def ensure_dataset_version(con, dataset_version: str, *, source: str = "gamma",
                            query_parameters: dict | None = None,
                            description: str | None = None,
                            code_version: str | None = None) -> None:
+    """Upsert the dataset_versions row. query_parameters is the LATEST run's
+    query, except `closed_modes_seen` (CLOSED_MODES_SEEN), which is the sorted
+    UNION of every 'closed' value ever run under this dataset_version: a dsv
+    that was built from the open feed and later re-processed from the closed
+    catalogue (paper flow, docs/DISCOVERY_OPEN_MARKETS.md §3) keeps the record
+    that BOTH populations contributed rows, instead of the last run silently
+    relabelling the whole dataset. Callers must be in charge of the transaction
+    (this runs plain statements, no BEGIN/COMMIT)."""
     from .. import database as db
+    qp = dict(query_parameters or {})
+    if "closed" in qp:
+        seen = {str(qp["closed"])}
+        prior = db.query(con, "SELECT query_parameters FROM dataset_versions WHERE version = ?",
+                         [dataset_version])
+        if prior and prior[0]["query_parameters"] is not None:
+            prev = prior[0]["query_parameters"]
+            if isinstance(prev, str):
+                try:
+                    prev = json.loads(prev)
+                except ValueError:
+                    prev = {}
+            if isinstance(prev, dict):
+                seen.update(str(v) for v in (prev.get(CLOSED_MODES_SEEN) or []))
+                if prev.get("closed") is not None:
+                    seen.add(str(prev["closed"]))
+        qp[CLOSED_MODES_SEEN] = sorted(seen)
     db.upsert(con, "dataset_versions", {
         "version": dataset_version,
         "created_at": _now(),
         "source": source,
-        "query_parameters": query_parameters or {},
+        "query_parameters": qp,
         "description": description or "phase2b market discovery",
         "code_version": code_version,
         "git_commit": None,
@@ -593,8 +623,10 @@ def discover(con, dataset_version: str, *, tag_id: int = TEMP_TAG_ID,
     processed = db.checkpoint_load(con, ckpt_key) | (checkpoint or set())
 
     # `closed` is ALSO written into `base` (not only passed to fetch_events_page)
-    # so dataset_versions.query_parameters records which population this
-    # dataset_version was built from.
+    # so dataset_versions.query_parameters records which population this run
+    # queried; ensure_dataset_version accumulates every mode ever run under the
+    # dsv in query_parameters['closed_modes_seen'] (a dsv may hold rows from both
+    # populations; the per-ROW population is markets.available_at_confidence).
     base = {"tag_id": tag_id, "closed": ("true" if closed else "false"),
             "limit": page_limit}
     if newest_first:

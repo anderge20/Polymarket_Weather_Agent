@@ -118,6 +118,7 @@ def test_discover_open_sets_available_at_observed(con):
     qp = dv["query_parameters"]
     qp = json.loads(qp) if isinstance(qp, str) else qp
     assert qp["closed"] == "false"
+    assert qp[discovery.CLOSED_MODES_SEEN] == ["false"]
 
     # evidence row documents the policy and moves available_at out of unknown_fields
     dq = db.query(con, "SELECT market_data_quality FROM data_quality WHERE ref='9990101'")[0]
@@ -258,6 +259,39 @@ def test_checkpoint_keys_are_separate_per_mode(con):
     # resume within a mode still skips
     s4 = discovery.discover(con, "ds_ck", session=sess, page_limit=100, max_pages=2, closed=False)
     assert s4["events"] == 0
+
+
+def test_dataset_version_records_every_mode_run(con):
+    """A dsv built from BOTH populations must say so: query_parameters['closed']
+    is the last run only, closed_modes_seen accumulates (review finding on
+    docs §1 'deja constancia de la población')."""
+    import json
+
+    def qp():
+        v = db.query(con, "SELECT query_parameters FROM dataset_versions WHERE version='ds_mix'")[0]
+        v = v["query_parameters"]
+        return json.loads(v) if isinstance(v, str) else v
+
+    discovery.discover(con, "ds_mix", session=_Session(), closed=True)
+    assert qp()["closed"] == "true" and qp()[discovery.CLOSED_MODES_SEEN] == ["true"]
+    discovery.discover(con, "ds_mix", session=_Session(), closed=False)
+    assert qp()["closed"] == "false"
+    assert qp()[discovery.CLOSED_MODES_SEEN] == ["false", "true"]
+    discovery.discover(con, "ds_mix", session=_Session(), closed=True)      # idempotent union
+    assert qp()[discovery.CLOSED_MODES_SEEN] == ["false", "true"]
+    # per-row population is visible through available_at_confidence
+    rows = db.query(con, "SELECT available_at_confidence c, COUNT(*) n FROM markets "
+                         "WHERE dataset_version='ds_mix' GROUP BY 1 ORDER BY 1")
+    assert [(r["c"], r["n"]) for r in rows] == [(OBS, 1), ("UNKNOWN", 4)]
+    # a pre-R26 dataset_versions row (no 'closed' key at all) is merged, not crashed on
+    db.upsert(con, "dataset_versions", {"version": "ds_old", "created_at": "2026-01-01T00:00:00+00:00",
+                                        "source": "gamma", "query_parameters": {"tag_id": 1},
+                                        "description": None, "code_version": None, "git_commit": None},
+              ["version"])
+    discovery.discover(con, "ds_old", session=_Session(), closed=False)
+    v = db.query(con, "SELECT query_parameters FROM dataset_versions WHERE version='ds_old'")[0]["query_parameters"]
+    v = json.loads(v) if isinstance(v, str) else v
+    assert v[discovery.CLOSED_MODES_SEEN] == ["false"]
 
 
 def test_open_checkpoint_persists_and_resumes(con):
