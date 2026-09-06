@@ -57,7 +57,19 @@ PRICE_SOURCE = "CLOB_PRICES_HISTORY"
 SOURCE_WINDOW_DIRECT = "DIRECT"
 
 _UA = {"User-Agent": "pmw-agent/2b (+research)"}
-_CTX = ssl.create_default_context()
+
+
+def _ssl_context() -> ssl.SSLContext:
+    """Prefer certifi's CA bundle; see weather._ssl_context for why."""
+    try:
+        import certifi
+
+        return ssl.create_default_context(cafile=certifi.where())
+    except ImportError:  # pragma: no cover - depends on the install
+        return ssl.create_default_context()
+
+
+_CTX = _ssl_context()
 
 
 class PriceIngestError(RuntimeError):

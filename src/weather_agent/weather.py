@@ -67,7 +67,25 @@ L_MAX_HOURS: dict[str, float] = {
 M1_MODEL = "icon_seamless"
 
 _UA = {"User-Agent": "pmw-agent/2b (+research)"}
-_CTX = ssl.create_default_context()
+
+
+def _ssl_context() -> ssl.SSLContext:
+    """Prefer certifi's CA bundle.
+
+    Python installs from python.org on macOS ship without the system trust store
+    wired up, so the default context fails every HTTPS call with
+    CERTIFICATE_VERIFY_FAILED. certifi arrives with `requests` (see
+    requirements-pipeline.txt) and is what the research scripts used.
+    """
+    try:
+        import certifi
+
+        return ssl.create_default_context(cafile=certifi.where())
+    except ImportError:  # pragma: no cover - depends on the install
+        return ssl.create_default_context()
+
+
+_CTX = _ssl_context()
 
 
 class WeatherIngestError(RuntimeError):
@@ -135,17 +153,27 @@ def target_day_window(target_date: date, tz: str) -> tuple[datetime, datetime]:
     return start_local.astimezone(timezone.utc), end_local.astimezone(timezone.utc)
 
 
+#: Local hours the run must cover for a daily high to be meaningful. Maxima
+#: essentially always fall inside this band; a run that misses part of the local
+#: night still gives the right high, one that misses the afternoon does not.
+PEAK_LOCAL_HOURS = range(11, 19)
+
+
 def tmax_from_series(
     series: dict[str, float], target_date: date, tz: str
 ) -> tuple[float, int]:
     """The daily high over the local target day, and how many hours backed it.
 
-    Returns (tmax, n_hours). Raises if the run does not cover the day at all —
-    a partial window silently produces a *lower* high, which would look like a
-    forecast rather than a gap.
+    Returns (tmax, n_hours). A run need not cover the whole local day — a 06z run
+    legitimately starts after the local night — but it MUST cover the hours where
+    the high actually occurs. A window missing the afternoon silently yields a
+    lower maximum that is indistinguishable from a genuine forecast, so that case
+    raises instead.
     """
     start, end = target_day_window(target_date, tz)
-    vals = []
+    zone = ZoneInfo(tz)
+    vals: list[float] = []
+    covered_local: set[int] = set()
     for ts, v in series.items():
         if v is None:
             continue
@@ -154,9 +182,16 @@ def tmax_from_series(
             t = t.replace(tzinfo=timezone.utc)
         if start <= t < end:
             vals.append(float(v))
+            covered_local.add(t.astimezone(zone).hour)
     if not vals:
         raise WeatherIngestError(
             f"run does not cover the local day of {target_date} in {tz}: no hours in window"
+        )
+    missing = sorted(set(PEAK_LOCAL_HOURS) - covered_local)
+    if missing:
+        raise WeatherIngestError(
+            f"run misses local hours {missing} of {target_date} in {tz}; the daily high "
+            "cannot be read from a window that omits the afternoon"
         )
     return max(vals), len(vals)
 
