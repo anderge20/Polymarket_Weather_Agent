@@ -246,6 +246,17 @@ def build_market_records(event: dict) -> list[dict]:
             "uma_resolution_statuses": uma_statuses,
             "disputed": any("disput" in str(s).lower() for s in uma_statuses),
             "event_winning_band": event_winning_band,
+            # R29: contract source / rule code from the PRIMARY clause (fallback
+            # clause ignored). markets has NO contract_source column yet (R27/v4
+            # will add it — no migration here); the values are persisted in the
+            # data_quality.resolution_quality JSON and, when a later schema does
+            # carry markets.contract_source, ingest_event copies it there too.
+            "resolution_contract": {
+                "contract_source": rule.contract_source,
+                "measurement_rule_code": rule.measurement_rule_code,
+                "fallback_source": rule.fallback_source,
+                "contract_source_confidence": rule.confidence.get("contract_source"),
+            },
         }
 
         records.append({"market": market_row, "outcomes": outcome_rows,
@@ -364,6 +375,9 @@ def ingest_event(con, event: dict, dataset_version: str, *,
     # fee_regime keys this event added to the SHARED registry, so a later resume
     # can retry the event cleanly (and re-detect a genuine conflict).
     registry_added: list[str] = []
+    # R29: write markets.contract_source ONLY if the schema has that column (it does
+    # not in v3; R27/v4 adds it). Checked once per event, outside the transaction.
+    markets_has_contract_source = "contract_source" in db.column_names(con, "markets")
     con.execute("BEGIN TRANSACTION;")
     try:
         for rec in records:
@@ -372,6 +386,8 @@ def ingest_event(con, event: dict, dataset_version: str, *,
                       "ingestion_timestamp": now, "dataset_version": dataset_version,
                       "record_version": 1})
             evidence = dict(rec["evidence"])
+            if markets_has_contract_source:
+                m["contract_source"] = evidence["resolution_contract"]["contract_source"]
             evidence["available_at_policy"] = res.UNKNOWN
             # R26: the prior persisted row (same PK) is consulted in BOTH modes.
             # db.upsert is ON CONFLICT DO UPDATE over EVERY column, so anything we
@@ -487,7 +503,8 @@ def ingest_event(con, event: dict, dataset_version: str, *,
                 "resolution_quality": {k: evidence[k] for k in
                                        ("resolution_confidence", "resolution_warnings",
                                         "uma_resolution_status", "uma_resolution_statuses",
-                                        "disputed", "event_winning_band")},
+                                        "disputed", "event_winning_band",
+                                        "resolution_contract")},          # R29
                 "weather_data_quality": None,
                 "orderbook_quality": None,
                 "checked_at": now, "source": "gamma", "ingestion_timestamp": now,
