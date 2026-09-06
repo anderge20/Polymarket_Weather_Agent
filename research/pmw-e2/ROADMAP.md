@@ -296,3 +296,5 @@ Cada ítem evaluativo (R4, R16, R18/R21, R24) lleva preregistro hasheado antes d
 | PR #1 | **FUSIONADO** (`dfdc73e`), 143/4 en `main`; B debe rebasar `feat/ingest-2b` | D18 |
 | R11 | **HECHO** — `FEES_SEMANTICS.md` (sha 4dbad3ab…), modelo de coste H1 + sensibilidad H2/H3; refutado | D19 |
 | R18 | **EN CURSO por A** — preregistro del backtest (workflow con 2 refutadores) | — |
+| R18 | **BORRADOR REFUTADO** — 3 refutadores, 31 hallazgos (3 bloqueantes: `measurement_rule` NULL en `mk` → usar `v3.primary_rule`; universo por enumeración cerrada alineado con R12; `quantiles_available_at` para M2). Revisión v2 tras la refutación de R12 | `WF_r18_refutations.json` |
+| **Aviso a B (R17)** | `features.py:74-105` y `strategy_a.py:204-213` **no filtran por `dataset_version`/`record_version`**; `closedTime` puede ser < `endDate` (Panamá 936283, −14,75 h) → stage `closed_before_T` | refutación R18 |

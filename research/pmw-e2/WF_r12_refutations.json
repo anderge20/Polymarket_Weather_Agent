@@ -1,0 +1,192 @@
+[
+ {
+  "refutada": true,
+  "hallazgos": [
+   {
+    "seccion": "§2 fila 9 (NOAA / P_NOAA_HourlyData) + §4.3 + totales derivados",
+    "problema": "SOBRE-EXTRAPOLACIÓN. La fila declara 'Y es el valor horario, no el máximo de todas las observaciones' STRONGLY SUPPORTED N=4 y el estado HABILITADO_CON_PROXY en ambas columnas, pero los ficheros no contienen ese cómputo. OBSERVADO en /Users/mariaaleu/pmw-e2/NOAA_DIRECT.json (Houston KHOU 2026-09-01): nws_maxC_local=31.0, nws_maxF_local=87.8, n_local=251, iem_tmpf=87.0, iem_tg=30.6, iem_body=31; NOAA_DIRECT_EXACT.json: nws_maxC=31, n=312. Ningún artefacto calcula un máximo 'sólo horario' de api.weather.gov; las observaciones crudas de KHOU no están en disco (nq.json contiene sólo KLGA 2026-09-03, 300 features). El caso 'decisivo' es igualmente explicable por 'grupo T en décimas (30,6→87) vs cuerpo entero (31→87,8)', hipótesis no separada de 'horario vs todas'. La categoría procede de los informes de timeline (WF_r12_results.json:169), no de los ficheros. Además la tabla contradice al §4.3 ('la fila 9 se comporta como FAIL_CLOSED' hasta verificar el filtro de serie) y los totales (settle 20.383 = 21,9 %; p_weather 3.421 = 3,67 %) incluyen los 1.441 mercados de la fila 9.",
+    "correccion": "Reclasificar 'Y es el valor horario' como INFERIDO (N=4, 1 caso, dos hipótesis no separadas) y poner la fila 9 en FAIL_CLOSED (`PROXY_AUDITED_PENDING_SERIES_FILTER`) en las dos columnas hasta que exista un artefacto con el recómputo horario-vs-todas sobre datos en disco. Recalcular totales: settle 18.942 (20,3 %) y p_weather 1.980 (2,12 %), con 1.441 'pendientes' reportados aparte.",
+    "severidad": "BLOQUEANTE"
+   },
+   {
+    "seccion": "§2 fila 10 (HKO) y §6.6 ('81 casos discriminantes' vs '77 reproducibles')",
+    "problema": "Números sobre-afirmados y corrección invertida. Recomputado sobre /Users/mariaaleu/pmw-e2/HKO_OPERATOR_TEST.json (sha256 093e5891…, 166 casos): casos con floor≠half_up = 81; floor 81/81 (Wilson 0,955–1,0); half-up 4/81 (0,019–0,120). Los 4 que faltan en evidence/HKO_77_discriminating_floor_vs_round.csv son 426244 (26,7→'25°C or higher'), 497005 (30,7→'30°C or higher'), 439958 (27,6→'26°C or higher') y 469205 (31,6→'31°C or higher'): bandas abiertas donde ambos operadores son compatibles. El '77' es el subconjunto 'bandas cerradas' (informe 2), es decir, una restricción por tipo de banda ganadora = selección sobre el resultado. La propia definición de §6.3 ('n_disc = casos donde el candidato y la alternativa difieren') da 81, no 77. WF_inventario_results.json:290 ('81 casos discriminantes floor 81/81') es la cifra correcta; §6.6 propone corregirla en sentido contrario. Otros recuentos de la fila verificados exactos: 164/166, ceil 34, half-up 87, half-even 95, 16 mitades exactas floor 16/16, excepciones 490245/493669, ventana 16:00Z→16:00Z, closedTime−window_end mín 10,795 h en 168/168 (493669 sin closedTime), 503637 = 26,4→26 °C.",
+    "correccion": "Reportar n_disc=81, floor 81/81 vs half-up 4/81 (y vs half-even: 73 casos, floor 73/73, half-even 4/73); mantener el 77 sólo como sensibilidad 'bandas cerradas' declarada. Eliminar o invertir la 'corrección documental' de §6.6. El veredicto (ICs disjuntos) no cambia.",
+    "severidad": "IMPORTANTE"
+   },
+   {
+    "seccion": "§2 transversal (ventana) + fila 8 + §3.1 + §7",
+    "problema": "SOBRE-EXTRAPOLACIÓN de la ventana a EE. UU. contra la propia política. OBSERVADO en E2_DISCRIMINATION_EVIDENCE.json (sha 9d925bf3…): los 57 casos son Wellington 35, Tokyo 10, Chengdu 5, Beijing 3, Seoul 2, Taipei 1, Guangzhou 1, todos °C. OBSERVADO en E2_RESULTS.json: los 6 eventos de la fila 8 (NOAA TempColumn °F: KHOU, KATL, KSFO, KORD, KAUS, KSEA) y los 8 de la fila 9 tienen H_UTC y H_LOCAL idénticas y compatibles bajo ambas (no separables). §7 lo reconoce ('su extensión a EE. UU./Europa es INFERIDA'), pero §3.1 exige evidencia STRONGLY_SUPPORTED/DEMONSTRATED para CADA componente (ventana incluida) en la unidad del mercado, y la fila 8 queda HABILITADO_CON_PROXY (NEAREST) en p_weather con ventana INFERIDA.",
+    "correccion": "O bien (a) fila 8 band_probability = FAIL_CLOSED (`window_not_discriminated_US_F`) hasta disponer de al menos un caso discriminante local/UTC en estación EE. UU./°F, o bien (b) reescribir §3.1 para admitir explícitamente la categoría 'ventana no separable en la muestra pero compatible bajo ambas hipótesis' con su justificación y su riesgo (forecast de Tmax del día local vs settlement UTC). No dejar la contradicción implícita.",
+    "severidad": "IMPORTANTE"
+   },
+   {
+    "seccion": "§4.2 condición 1 y recuentos n=14 (fila 5) / n=25 (fila 7)",
+    "problema": "'Auditoría de compatibilidad preregistrada' se atribuye a dos artefactos, pero sólo E2 lo está: PREREG_E2.md (sha c7f031ec…, coincide con PREREG_E2.sha256) cubre los 38 eventos de E2_RESULTS.json. El set de discriminación (B_CANDIDATES.json 618 → B_DISCRIMINATING.json/E2_DISCRIMINATION_EVIDENCE 57) no tiene preregistro (grep 'discrimin|B_CANDIDATES' en DECISIONS.md, ROADMAP.md, PREREG_*.md: sin resultado) y 41/57 pertenecen a P_WU_GENERIC, regla que PREREG_E2.md:7 excluía. Los n=14 (7/7 E2 + 7/7 discriminación) y n=25 (16/16 + 8/9) suman muestra preregistrada y muestra post-hoc (sin solapamiento de event_id, verificado).",
+    "correccion": "Separar en la tabla y en EvidenceRef: 'preregistrado (E2): 7/7 · 16/16' y 'discriminación no preregistrada: 7/7 · 8/9'. Reformular §4.2.1 como 'al menos una auditoría preregistrada (E2) y, si se usa, la de discriminación declarada como no preregistrada'.",
+    "severidad": "IMPORTANTE"
+   },
+   {
+    "seccion": "§4.2 condición 4 ('timezone por estación DEMONSTRATED 91.285; UNKNOWN 1.936')",
+    "problema": "No hay fichero que lo soporte. OBSERVADO: STATIONS_TZ.json contiene 28 ICAO de los 55 del universo (V5_UNIVERSE_STATIONS.json, 55 estaciones, sin campo tz); STATION_COORDS_SNAPSHOT_v1.3.json no tiene tz (0/55); B_DISCRIMINATING.json aporta tz para 7 ciudades. La etiqueta 'DEMONSTRATED' para timezone sólo aparece en el propio borrador (WF_r12_results.json), no en el inventario (WF_inventario_results.json) ni en informe 3.",
+    "correccion": "Reclasificar: tz OBSERVADO para 28 estaciones (STATIONS_TZ.json) + las 7 ciudades de discriminación; resto UNKNOWN hasta el registro de estaciones (R7). La condición 4 se verifica por estación en tiempo de ejecución con fail-closed `station_tz_unknown`; no afirmar cobertura de 91.285 mercados.",
+    "severidad": "IMPORTANTE"
+   },
+   {
+    "seccion": "§6.4 Q-test y DP-Q",
+    "problema": "Se presenta como test pendiente, pero los ficheros ya lo cierran: en E2_RESULTS.json H_LOCAL_tg es null en 24/24 eventos °C (informe 2: 'grupo T ausente 0/23 estaciones °C'). Con IEM no existe serie en décimas para estaciones °C, luego el Q-test es NOT_TESTABLE hoy y las filas 5/7 no tienen vía de desbloqueo con los datos actuales.",
+    "correccion": "Declarar §6.4 como NOT_TESTABLE con los artefactos existentes y que cualquier serie alternativa en décimas (no IEM) deberá preregistrarse aparte. Mantener filas 5/7 FAIL_CLOSED en p_weather (coherente con DP-Q) sin sugerir un test ejecutable.",
+    "severidad": "MENOR"
+   },
+   {
+    "seccion": "§5 paso 1 (ForecastCDF_v0 'sin cambiar sus colas' + test_forecast_cdf_is_proper)",
+    "problema": "Contradicción con el código. OBSERVADO en origin/main src/weather_agent/probability.py:66-68: la cola inferior es `0.10 * (x - (values[0] - 1.0)) / 1.0` sin recorte, por lo que F(x) < 0 para x < p10−1 (la cola superior sí satura en 1 en :82-85). Extraer la CDF 'sin cambiar colas' produce una función que no es CDF propia; el test propuesto (F→0, monótona) fallaría o exigiría un cambio (clamp) que el paso 1 prohíbe.",
+    "correccion": "Definir ForecastCDF_v0 como la CDF actual con recorte explícito a [0,1] y documentarlo como único cambio respecto a probability.py:66-85; o eliminar la frase 'sin cambiar sus colas'.",
+    "severidad": "MENOR"
+   },
+   {
+    "seccion": "§2 transversal ('2.894/2.913 eventos resuelven tras cerrar la ventana local, timeline 108 §4.3') y controles ±1 día ('14–36 %')",
+    "problema": "No reproducible desde los artefactos: la cifra 2.894/2.913 sólo aparece en el propio borrador (grep en pmw-e2/*.json,*.md,evidence/*); procede de un informe de timeline no incluido en disco. Los controles ±1 día recomputados sobre E2_RESULTS.json (37 eventos con datos) dan H_LOCAL_M1 10/37 = 27 % y H_LOCAL_P1 6/37 = 16 %; el rango '14–36 %' no se reproduce tal cual (posiblemente por estrato, no indicado).",
+    "correccion": "Marcar 2.894/2.913 como 'citado del informe, sin artefacto' o eliminarlo; sustituir '14–36 %' por los valores reproducibles (27 % / 16 %) o indicar el estrato de origen.",
+    "severidad": "MENOR"
+   },
+   {
+    "seccion": "§2 fila 10 compat_status=DIRECT frente a §3.1 (componente ventana)",
+    "problema": "La fila 10 no asigna categoría al componente 'ventana' ('construida y consistente pero NO probada por discriminación, 0 casos HKO'); por la literalidad de §3.1 (cada componente SS/DEMONSTRATED) p_weather HKO no debería estar HABILITADO. La justificación implícita (el operador no calcula ventana: lee el valor diario CLMMAXT de target_date, y el mapeo target_date→fila queda cubierto por 164/166) no está escrita.",
+    "correccion": "Añadir en la fila 10 y en §3.1 que para HKO el componente ventana está subsumido en la serie diaria de la fuente (CLMMAXT) y validado por los 164/166, con window_kind='SOURCE_DAILY_ROW' o equivalente, para que la política no se contradiga.",
+    "severidad": "MENOR"
+   },
+   {
+    "seccion": "§2 filas 8-9 (NEAREST en °F)",
+    "problema": "Consistente con los ficheros pero con evidencia más fina de lo que la frase sugiere: tmpf = round(tg→F) en 14/14 (verificado caso a caso); floor en °F sólo lo refutan 2 casos (NYC 940515 73,94→73; SF/Chicago 75,92→75) y ceil sólo 1 (Houston 87,08→88); ningún caso está cerca de un empate .5; y lo evidenciado es la derivación de IEM (tmpf), no el proceso del observador/NOAA. La nota de empate UNKNOWN es correcta.",
+    "correccion": "Indicar en la fila que NEAREST vs floor/ceil se discrimina en 2 y 1 casos respectivamente y que la serie es una derivación de IEM (PROXY), no una regla de la fuente.",
+    "severidad": "MENOR"
+   },
+   {
+    "seccion": "Fuentes / §4.1 (DECISIONS.md D17 :354-358)",
+    "problema": "Cadena de hashes rota: DECISIONS.sha256 (ec320702…, 09:51) no coincide con DECISIONS.md en disco (d36749bf…, 14:38, incluye D19). La cita de D17 es correcta en contenido, pero el sha citable no es el vigente.",
+    "correccion": "Referenciar D17 por el sha del fichero actual o regenerar DECISIONS.sha256 antes de congelar la spec.",
+    "severidad": "MENOR"
+   },
+   {
+    "seccion": "§2 recuentos de catálogo y IC Wilson",
+    "problema": "Verificado sin discrepancias (no es un hallazgo negativo): las 11 filas coinciden exactamente con CATALOG_V2.duckdb v3 (read_only): HKO 1.859/169; HourlyData F 1.441/131; TempColumn C 9.966/906, F 121/11; CWA 77/7; WU DailyObs C 6.996/636, F 2.057/187; GENERIC C 26.763/2.433, F 8.459/769; byForecast C 25.982/2.412, F 9.500/896; winning_outcome NULL 39; R1 fallback 2.497 TempColumn / 836 HourlyData. Los IC Wilson citados coinciden con el recómputo (54/57, 2/57, 164/166, 34/166, 87/166, 95/166, 14/14, 6/6, 8/8, 4/4, 24/25, 41/41); 77/77 da 0,952 (spec 0,953).",
+    "correccion": "Ninguna salvo ajustar 0,953→0,952.",
+    "severidad": "MENOR"
+   }
+  ]
+ },
+ {
+  "refutada": true,
+  "hallazgos": [
+   {
+    "seccion": "§3.1 (política fail-closed, regla 1) vs §2 filas 8, 9, 10 y §7 límites",
+    "problema": "Contradicción interna que decide el universo de p_weather. §3.1 exige evidencia STRONGLY_SUPPORTED/DEMONSTRATED «para cada componente (ventana, agregación, cuantización, serie) en la unidad del mercado». Pero el propio §2 declara para la ventana «0 casos discriminantes para NOAA HourlyData, HKO, CWA ni estaciones EE. UU./Europa» y §7 dice «su extensión a EE. UU./Europa es INFERIDA». OBSERVADO en E2_DISCRIMINATION_EVIDENCE.json: los 57 casos son Wellington 35, Tokyo 10, Chengdu 5, Beijing 3, Seoul 2, Taipei 1, Guangzhou 1; por regla: P_WU_GENERIC 41, P_NOAA_TempColumn 9, P_WU_DailyObservations 7; ninguno en °F ni en EE. UU. En E2_RESULTS.json las 14 filas °F (KHOU, KDAL, KLGA, KDEN, KMIA, KLAX, KATL, KSFO, KORD, KAUS, KSEA) tienen H_LOCAL == H_UTC en 14/14 (no separable). Fila 10: el propio texto dice «Ventana … NO probada por discriminación (0 casos HKO)». Aplicando §3.1 literalmente, las filas 8, 9 y 10 no cumplen el componente ventana → p_weather habilitado = 0 mercados, no 3.421. Además EvidenceRef (§1.3) sólo tiene una `category` global, no por componente, así que la regla 1 no es implementable tal cual.",
+    "correccion": "Elegir y declarar una de dos: (a) redefinir §3.1 como evidencia end-to-end del operador (k/n de compatibilidad band_key vs winning_outcome en la misma (fuente, regla, unidad)), añadiendo a EvidenceRef un campo `components: dict[str, category]` donde ventana quede `INFERIDO_POR_TRANSFERENCIA` para EE. UU./°F y `CONSTRUIDA_NO_DISCRIMINADA` para HKO, y registrar esa transferencia como decisión DP-W1 a ratificar; o (b) mantener §3.1 y pasar filas 8 y 9 a FAIL_CLOSED en p_weather (universo p_weather = fila 10, 1.859 mercados) y justificar por qué HKO sí cumple (agregación/ventana las realiza la fuente contractual, 164/166 end-to-end). Recalcular los totales derivados en ambos casos.",
+    "severidad": "BLOQUEANTE"
+   },
+   {
+    "seccion": "§2 fila 9, §4.3, §1.2/§1.3 enum compat_status y totales derivados",
+    "problema": "Estado de la fila 9 inconsistente en cuatro sitios: la tabla la marca HABILITADO_CON_PROXY y los totales la cuentan (20.383 settle / 3.421 p_weather incluyen sus 1.441); §4.3 dice `compat_status = PROXY_AUDITED_PENDING_SERIES_FILTER` y «se comporta como FAIL_CLOSED»; §5 paso 4 dice «(9, tras §4.3)». El valor PROXY_AUDITED_PENDING_SERIES_FILTER no existe en el enum de §1.2 ('DIRECT'|'PROXY_AUDITED'|'PROXY_NOT_AUDITED'|'NONE') ni en el del protocolo §1.3 ('DIRECT'|'PROXY_AUDITED'). Además la hipótesis que motiva la precondición («Y es el valor horario») no es la única compatible con el artefacto: OBSERVADO en NOAA_DIRECT.json (Houston KHOU 2026-09-01): nws_maxC_local = 31.0 = iem_body = 31 mientras iem_tg = 30.6 → 87.0 °F; 87,8 °F es exactamente 31,0 °C convertido, con n_local = 251 obs del API frente a H_LOCAL_n = 25 en IEM (E2_RESULTS.json). Tanto «filtro horario» como «cuerpo METAR vs grupo T» explican el caso; el spec sólo enuncia la primera.",
+    "correccion": "Fijar el estado de la fila 9 como FAIL_CLOSED (settle y p_weather) con `compat_status='PROXY_NOT_AUDITED'` y `excluded_reason='series_filter_unverified'` (añadir al enum §3.4) hasta cerrar §4.3; recalcular totales: settle 18.942 (20,3 %), p_weather 1.980 (2,12 %). Reescribir §4.3 como verificación preregistrada de dos hipótesis alternativas (H_hourly: máx sobre obs rutinarias; H_series: tmpf = round(F(grupo T)) sobre todas las obs) con métrica y criterio 6.5, y añadir el valor PENDING al enum si se conserva.",
+    "severidad": "BLOQUEANTE"
+   },
+   {
+    "seccion": "§5 paso 0 y paso 3 (MarketContext en build_feature; tests que cambian)",
+    "problema": "El paso 3 exige `build_feature(..., operator)` y `operator.applies_to(ctx)`, pero el documento no dice de dónde obtiene build_feature el MarketContext. OBSERVADO en origin/main: `markets` tiene unit/rounding_rule/measurement_rule (database.py:159-160, migración :522, esta última por regex resolution.py:126-138), pero no primary_source/primary_rule P_* ni station_tz; `station_identifier` sólo se extrae de URLs wunderground (resolution.py:53, :153-158) → NULL para NOAA y HKO; el rule-map del paso 0 (`market_rule_map(market_id, contract_source, measurement_rule, unit, rounding_rule, sha)`) no incluye station_icao ni station_tz, que `settle` necesita para LOCAL_CIVIL_DAY; STATIONS_TZ.json cubre 28/55 ICAO del catálogo (OBSERVADO). Consecuencia sobre tests: las fixtures de test_no_future_information.py:93-121, test_no_lookahead_adversarial.py:17-53 y test_resolution_not_in_features.py:23-76 no insertan filas en `markets` ni en ningún rule-map; si build_feature construye ctx y falla cerrado al no encontrarlo, rompen seis aserciones `row is not None` (test_no_future_information.py:134; test_no_lookahead_adversarial.py:124, :171; test_resolution_not_in_features.py:93, :140, :202) que el spec no lista; si en cambio TestOnlyOperator ignora ctx, «applies_to sólo a fixtures» queda indefinido. Además, si build_feature leyera `markets` para el ctx, en test_no_lookahead_adversarial.py:148-158 esa fila contiene winning_outcome/resolution_timestamp — hoy build_feature no lee `markets` (features.py:57 «Resolution: intentionally NOT read»).",
+    "correccion": "Definir en el paso 0 la fuente única del ctx: tabla `market_rule_map` con columnas (market_id, contract_source, measurement_rule_P, unit, rounding_rule, station_icao, station_tz, target_date_contractual, clause_lowest_bracket, fallback_R1, sha) y artefacto de tz para las 55 estaciones con sha; declarar que build_feature lee SOLO esa tabla con lista SELECT explícita (test `test_build_feature_never_selects_markets_resolution_columns`), y que ctx ausente → `excluded_reason='rule_map_missing'` (añadir al enum). Listar explícitamente en el paso 3 las seis aserciones afectadas y la fixture mínima (fila de rule-map) que cada test debe sembrar; especificar TestOnlyOperator como `applies_to(ctx) := ctx.contract_source == 'TEST'` y que el rule-map de producción prohíba ese valor.",
+    "severidad": "BLOQUEANTE"
+   },
+   {
+    "seccion": "§3.4 (registro de exclusiones), §5 paso 3, 2D §L LOCKED",
+    "problema": "El spec quiere que Strategy A registre `no_settlement_operator` y un enum cerrado de `excluded_reason`, pero no define el mecanismo. OBSERVADO strategy_a.py:190-198: `build_feature` devuelve None → reason 'missing_feature'; lanza ValueError → 'executable_or_invalid_price'. Sin cambiar ese except/None, cualquier exclusión por operador se registrará con un motivo erróneo y `test_strategy_a_excludes_without_operator` / `test_markets_excluded_reasons_enum` no pueden pasar; 2D §L LOCKED dice «banda NONE si build_feature devuelve None». Además §3.4 describe `markets_excluded(market_id, event_id, contract_source, measurement_rule, unit, operator_id, excluded_reason, spec_version, excluded_at)`: OBSERVADO database.py:487-498 la tabla real es (market_id, reason, excluded_at, stage, details JSON, …) con PK (market_id, reason, dataset_version); 2D:10-12 y §V prohíben cambios de schema y DP-L1 dice «sin columna nueva».",
+    "correccion": "Especificar: build_feature lanza `SettlementOperatorUnavailable(excluded_reason)` (subclase propia, NO de ValueError) y strategy_a añade un `except SettlementOperatorUnavailable as e: reason = e.reason`; `markets_excluded.reason` = valor del enum y el resto (event_id, contract_source, measurement_rule, unit, operator_id, spec_version) va en `details` JSON; declarar esto como parte de DP-L1 y del desbloqueo DP-2D (§L y §V de 2D).",
+    "severidad": "IMPORTANTE"
+   },
+   {
+    "seccion": "§1.1/§1.3 Observation y settle (fugas temporales) vs D17-C, schema y R16",
+    "problema": "`Observation(ts_utc, value, unit, series)` no lleva `available_at` ni `record_version`, y `settle` no admite un corte as-of. D17 (DECISIONS.md:348-351) adopta la captura prospectiva «cada observación METAR se ingiere con available_at = instante real de descarga y record_version por revisión»; el schema `weather_observations` tiene `available_at` y es su columna as-of (database.py:322, AS_OF_COLUMNS :89); test_no_future_information.py:17 fija la invariante «NO observation with available_at > prediction_time is used». Como §3.2 dirige la salida de settle al entrenamiento de M2/M3 y ROADMAP.md:174 exige que los cuantiles «usen solo observaciones con available_at < fecha de cálculo», la interfaz no puede expresar esa guarda: un Y_final sin disponibilidad puede alimentar cuantiles p10..p90 usados en T (vector de fuga por construcción, no detectable por las guardas de features.py:199-203 que sólo miran precio y forecast).",
+    "correccion": "Añadir a Observation `available_at: datetime | None` y `record_version: int`; añadir a `settle(obs, ctx, asof: datetime | None)` el contrato: con `asof` dado, cualquier obs con available_at None o > asof → `excluded_reason='observations_not_available_asof'`; `asof=None` = Y_final retrospectivo, declarado en SettlementResult como `availability='Y_FINAL_UNKNOWN_ASOF'`. Test nuevo `test_settle_rejects_obs_available_after_asof`. Declarar en §0.2 que Y_final sólo puede usarse como label de evaluación y en M2 sólo bajo el preregistro de R16.",
+    "severidad": "IMPORTANTE"
+   },
+   {
+    "seccion": "§1.3 applies_to(ctx) y §4.2.5 / §3.5 (excepciones)",
+    "problema": "`MarketContext` incluye `market_id` y `applies_to` recibe el ctx completo, de modo que un operador puede excluir por identidad los eventos-excepción (322448, 490245, 493669), que se identificaron precisamente por su winning_outcome: sería una selección del universo de features condicionada al resultado (misma clase de fuga que PHASE_2E_LEAD_HOURS_ANCHOR.md:86-89 describe: «fuga en la selección…, no en las features», invisible a las guardas as-of). §3.5 prohíbe filtros post-hoc para elevar la evidencia, pero no prohíbe filtros de aplicabilidad por mercado.",
+    "correccion": "Contrato explícito: `applies_to` es función pura de (contract_source, measurement_rule, unit, rounding_rule) y nunca de market_id/event_id/target_date; test `test_applies_to_is_identity_blind` (mismo ctx con market_id distinto → mismo resultado, incluidos los tres event_ids de excepción). Las excepciones permanecen dentro del universo y se reportan en la validación §6.",
+    "severidad": "IMPORTANTE"
+   },
+   {
+    "seccion": "§2 «Subcasos que la tabla no separa» y §7 límites (cláusula lowest bracket)",
+    "problema": "El spec afirma «55 WU DailyObs … y 11 HKO llevan la cláusula» y en §7 «66 mercados sep-26». OBSERVADO en CATALOG_V2.duckdb (read_only, v3.descr ~ 'lowest bracket'): NOAA P_NOAA_TempColumn 1.815 mercados / 165 eventos, P_NOAA_HourlyData 594 / 54, WU DailyObs 55 / 5, HKO 11 / 1 → 2.475 mercados, endDate 2026-08-31..09-04 (texto NOAA: «In the event which there is no data for the observation date by 11:59 PM ET … this market will resolve to the lowest bracket»). La cláusula hace que el settlement dependa de la disponibilidad de datos en la fuente contractual (UNKNOWN por mercado): IEM puede tener observaciones (n_obs > 0) cuando WU/NOAA no las tuvo, y el label del proxy divergiría del pago real; registrar `no_data_clause_possible` sólo si n_obs = 0 deja ese hueco abierto para las filas 5, 7, 8, 9.",
+    "correccion": "Corregir los recuentos (2.475 mercados; por regla como arriba). Añadir `clause_lowest_bracket` al rule-map; para esos mercados el label lleva `compat_status='PROXY_AUDITED'` sólo si el estrato (regla, unidad, con cláusula) tiene casos auditados reportados aparte (E2 incluye eventos de sep-26 como 935131, 952455, 940515: contar cuántos), y en otro caso `PROXY_NOT_AUDITED`; declararlo en §4.2 como condición 6.",
+    "severidad": "IMPORTANTE"
+   },
+   {
+    "seccion": "§5 paso 0 y 2D §M LOCKED (clave de aplicabilidad vs `markets.measurement_rule`)",
+    "problema": "El spec dice que `applies_to` usa v3.primary_rule y «nunca cls2.resolution_source», pero no advierte que la columna del repo `markets.measurement_rule` (regex resolution.py:132: `Daily Observations`) clasifica la frase de fallback NOAA como regla WU. OBSERVADO en CATALOG_V2 cls2 (mismo parser): 2.497 P_NOAA_TempColumn y 836 P_NOAA_HourlyData tienen measurement_rule = \"highest temperature in the 'Daily Observations' table\". 2D §M LOCKED obliga a segmentar por `markets.measurement_rule`. Cualquier ruta que use esa columna como clave (segmentación, un applies_to provisional antes del paso 0, o la migración parcial) admitiría 3.333 mercados NOAA en el operador de la fila 5 (WU DailyObs °C): hueco de fail-closed.",
+    "correccion": "Declarar en §5 paso 0 que `markets.measurement_rule` NO es clave de aplicabilidad ni de segmentación para el operador; test `test_rule_map_disagrees_with_regex_column_on_noaa_fallback` (exactamente 3.333 desacuerdos sobre el catálogo congelado); registrar en DP-2D que la segmentación de 2D §M pasa a usar `market_rule_map.measurement_rule_P`.",
+    "severidad": "IMPORTANTE"
+   },
+   {
+    "seccion": "§6.4 Q-test y filas 5/7 (cuantización °C)",
+    "problema": "El Q-test se presenta como pendiente («Sólo si existe una serie en décimas»), pero los artefactos fuente ya muestran que no existe para las estaciones °C: OBSERVADO E2_RESULTS.json H_LOCAL_tg = None en 24/24 filas °C (P_NOAA_TempColumn_A/B y P_WU_DailyObservations); el informe de ronda 11 citado por informe 2 dice «grupo T ausente 0/23 en estaciones °C». Por tanto §6.4 es NOT_TESTABLE de partida y las filas 5 y 7 (16.962 mercados) quedan sin p_weather sin vía prevista; el documento no lo declara.",
+    "correccion": "Declarar §6.4 como NOT_TESTABLE con la evidencia actual (cita E2_RESULTS.json), mantener filas 5/7 FAIL_CLOSED en p_weather y añadir a §7 la incógnita «fuente alternativa en décimas para estaciones °C: ninguna identificada»; si se propone alguna, preregistrarla antes (nueva spec_version).",
+    "severidad": "IMPORTANTE"
+   },
+   {
+    "seccion": "§6.3/§6.5 (n_disc) y §6.6 («81 vs 77»)",
+    "problema": "El spec trata «81 casos discriminantes» (WF_inventario_results.json:290) frente a 77 como discrepancia documental a corregir. Recomputado sobre HKO_OPERATOR_TEST.json (166 filas): floor ≠ half_up en VALOR en 81 casos (floor 81/81, half_up 4/81: los 4 son bandas abiertas compatibles con ambos); floor y half_up difieren en VEREDICTO de compatibilidad en 77 (77/77 vs 0/77, = evidence/HKO_77_discriminating_floor_vs_round.csv, 77 filas). Ambas cifras son reproducibles; la diferencia es de definición, y §6.5 criterio 2 («n_disc casos donde el candidato y la alternativa difieren») no fija cuál.",
+    "correccion": "Definir n_disc = casos con band_key distinto entre candidato y alternativa (81 en HKO) y reportar k_disc de cada uno (81 vs 4), más el subconjunto con veredicto distinto (77, 77 vs 0) como descriptivo; retirar la «corrección» de WF_inventario:290 y sustituirla por esta aclaración.",
+    "severidad": "IMPORTANTE"
+   },
+   {
+    "seccion": "§4.1 y §5.5 (D17 y 2D LOCKED no declarados)",
+    "problema": "(a) D17 (DECISIONS.md:354-358) dice que los labels WU/HKO/CWA se construyen «con el proxy IEM/METAR» y que cada label lleva `label_source (IEM_METAR)`; Hong Kong no tiene METAR (ROADMAP.md:260; STATION_COORDS_SNAPSHOT_v1.3 excluded_no_icao «settlement HKO, no METAR»). El spec usa `hko_clmmaxt` con `compat_status='DIRECT'` y `label_source='HKO_CLMMAXT'`: es una extensión de D17 no declarada como tal. (b) Para labels DIRECT no se define `revision_status`: OBSERVADO RECORD_VERSION_ASOF_AUDIT.md:57-61 «CLMMAXT devuelve solo el estado actual» y el contrato distingue «published» (1.078) de «finalized» (781); §4.4 sólo cubre labels vía proxy. (c) 2D §V («cualquier cambio a features.py/probability.py/labeling.py/database.py o sus tests … PARAR y reportar antes») no figura en la lista de desbloqueo de §5.5, que sólo desbloquea la expresión de §F.",
+    "correccion": "Añadir en §4.1 «Extensión de D17: fuente contractual directa (HKO_CLMMAXT) admitida como label_source con compat_status=DIRECT»; en §4.4 definir `revision_status='UNKNOWN_PUBLISHED_VS_FINALIZED'` para labels DIRECT HKO; en §5.5 incluir explícitamente 2D §V y §L en DP-2D.",
+    "severidad": "IMPORTANTE"
+   },
+   {
+    "seccion": "§5 paso 1 (ForecastCDF_v0 «sin cambiar sus colas») y §0.1",
+    "problema": "El cdf actual (probability.py:66-68) devuelve valores negativos para x < values[0]−1 (`0.10*(x-(values[0]-1))` sin acotar) y sólo queda enmascarado por `max(0, min(1, upper-lower))` (:95) y la renormalización (:100-109); el caso degenerado (cuantiles iguales) devuelve `{minimum: 1.0}` (:62-63) mientras el cdf crudo daría F(26)=0,10. Extraerlo «sin cambiar» produce una CDF impropia que falla `test_forecast_cdf_is_proper`; acotarla a [0,1] y decidir el caso degenerado SON decisiones sobre la forma de la CDF, que §0.1 dice no tomar.",
+    "correccion": "Definir ForecastCDF_v0 = clamp(cdf_legacy, 0, 1) con soporte declarado [values[0]−1, values[-1]+1] y caso degenerado explícito, registrarlo como DP-CDF0 a ratificar, y anotar los valores esperados recalculados (p. ej. test_resolution_not_in_features.py:204: 0,2777… → 0,25 tanto con INTERVAL_FLOOR como con NEAREST para banda (30,30) y cuantiles 28..32).",
+    "severidad": "IMPORTANTE"
+   },
+   {
+    "seccion": "§3.2/§3.3 (label de entrenamiento vs verdad de validación)",
+    "problema": "Para mercados CON operador no se dice cuál es el label de entrenamiento: `settle().band_key` o `winning_outcome`. Difieren exactamente en las excepciones (322448, 490245, 493669) y en los casos con cláusula/fallback. Además el único gate temporal de labels del repo es `build_label` (labeling.py:56, `prediction_time < resolution_timestamp`); los labels derivados de settle no tienen gate equivalente definido.",
+    "correccion": "Fijar: label de entrenamiento y de pago = winning_outcome vía build_label (gate temporal intacto); `settle()` produce `Y_source_value/band_key` como covariable de auditoría (§6) y como target de M2 (con la guarda as-of del hallazgo sobre Observation), nunca como sustituto del label de pago; test `test_training_label_is_winning_outcome_not_band_key`.",
+    "severidad": "IMPORTANTE"
+   },
+   {
+    "seccion": "§6.5 (alternativa obligatoria «nearest legacy») y §1.3 «Suma exacta»",
+    "problema": "`legacy_nearest_distribution` es un mapeo CDF→bandas, no un operador de settle: no hay forma definida de calcular su tasa de compatibilidad sobre observaciones. Para series ya enteras (`metar_body_c`) INTERVAL_FLOOR y NEAREST son indistinguibles → n_disc = 0 e ICs idénticos → NO_DECIDIDO permanente para filas 5/7, coherente con FAIL_CLOSED pero no declarado. La «suma exacta … 1.0 sin renormalización» no es exacta en coma flotante (sumas telescópicas F(b)−F(a)).",
+    "correccion": "Definir la alternativa obligatoria como operador de settle (p. ej. `round_half_up(valor)` sobre la misma serie) y declarar que para series enteras el criterio es no decidible; en el test de partición usar tolerancia 1e-12 y conservar `weather_sum_tolerance` como guarda de Strategy A.",
+    "severidad": "MENOR"
+   },
+   {
+    "seccion": "§2 fila 10 (HKO: agregación, excepciones arch-)",
+    "problema": "`aggregation: Literal['MAX']` y `n_obs` no describen a HKO (valor diario ya agregado por la fuente; n_obs = 1). OBSERVADO en cls2: las DOS excepciones son eventos `arch-` (490245 slug 'arch-highest-temperature-in-hong-kong-on-may-18-2026-27c'; 493669 'arch-…-22corbelow'), el spec sólo marca 493669 como arch-.",
+    "correccion": "Añadir `aggregation='SOURCE_DAILY'` para HKO_ABSMAX; anotar que ambas excepciones son arch- y mantener la prohibición §3.5 de filtrarlas.",
+    "severidad": "MENOR"
+   },
+   {
+    "seccion": "§2 transversal, §6.6 y §7 (provenance de citas)",
+    "problema": "Citas «timeline 108 §4.3» (2.894/2.913), «timeline 99», «ronda 13», «B-7 19/647» no están en /Users/mariaaleu/pmw-e2 (grep sin resultado en ROADMAP/DECISIONS/WF_critica); según WF_r12_results.json viven en ~/.claude/jobs/324ffe40/timeline.jsonl (entradas 67, 77, 81, 92, 99, 108, 110), fuera de los artefactos versionados. «timezone por estación DEMONSTRATED 91.285» no tiene artefacto: STATIONS_TZ.json cubre 28/55 ICAO.",
+    "correccion": "Reproducir en docs/research/SETTLEMENT_OPERATOR_AUDIT.md (§6.6) las cifras citadas con su cálculo y sha, y publicar un STATIONS_TZ v2 con las 55 estaciones antes de habilitar settle para filas 5-9.",
+    "severidad": "MENOR"
+   },
+   {
+    "seccion": "§1.1/§1.3 (unidad UNKNOWN; serie tmpf) y TestOnlyOperator",
+    "problema": "`markets.unit` admite 'UNKNOWN' (database.py:182) pero `MarketContext.unit` es Literal['C','F'] y el enum §3.4 no tiene motivo para ello. `metar_tgroup_tmpf` es un producto derivado por IEM (round(F(grupo T))); si la ingestión prospectiva D17-C parte del METAR crudo, calcular tmpf en casa es una «conversión C→F sobre observaciones» que §1.3/§3.5 prohíben. «TestOnlyOperator … applies_to sólo a fixtures» no está definido y, si vive en src/, es un bypass potencial.",
+    "correccion": "Añadir `unit_unknown` al enum; declarar `metar_tgroup_tmpf` como serie IEM-derivada y, para ingestión propia, preregistrar la fórmula como parte de la serie (no del operador); ubicar TestOnlyOperator en tests/ y añadir `test_feature_json_has_no_evidence_fields` (sin `evidence`, `exceptions`, `n_agree`).",
+    "severidad": "MENOR"
+   },
+   {
+    "seccion": "§2 estados HABILITADO vs §6.5 VALIDADO",
+    "problema": "Los estados de la tabla se basan en muestras de selección in-sample (§6.2 lo reconoce); §6.5 define VALIDADO en holdout pero el documento no dice qué cambia al alcanzarlo ni qué ocurre si es NO_DECIDIDO; el holdout HKO (target_date ≥ 2026-09-01) hoy es 1 evento / 11 mercados con cláusula lowest-bracket.",
+    "correccion": "Añadir columna «estado de validación» (SELECCION_IN_SAMPLE | VALIDADO | NO_DECIDIDO) a la tabla §2 y declarar que HABILITADO es provisional (spec_version) hasta VALIDADO, con la regla de qué se rebaja (nada) o se eleva.",
+    "severidad": "MENOR"
+   }
+  ]
+ }
+]

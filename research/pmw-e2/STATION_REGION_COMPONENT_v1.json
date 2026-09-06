@@ -1,0 +1,592 @@
+{
+ "schema": "station_region_component/v1",
+ "date": "2026-09-06",
+ "rule": "region = partición cerrada por país NOAA (tabla REG en este fichero); component = V5_UNIVERSE_COMPONENTS.json (Single Runs, 2 runs, regla V5.1 §4bis); coords = STATION_COORDS_SNAPSHOT_v1.3",
+ "region_map": {
+  "US": "NORTEAMERICA",
+  "CA": "NORTEAMERICA",
+  "MX": "LATAM_NORTE",
+  "PA": "LATAM_NORTE",
+  "BR": "HEM_SUR",
+  "AR": "HEM_SUR",
+  "ZA": "HEM_SUR",
+  "NZ": "HEM_SUR",
+  "GB": "EUROPA",
+  "FR": "EUROPA",
+  "DE": "EUROPA",
+  "NL": "EUROPA",
+  "ES": "EUROPA",
+  "IT": "EUROPA",
+  "PL": "EUROPA",
+  "FI": "EUROPA",
+  "RU": "EUROPA",
+  "TR": "ORIENTE_MEDIO",
+  "IL": "ORIENTE_MEDIO",
+  "SA": "ORIENTE_MEDIO",
+  "CN": "ASIA_ESTE",
+  "KR": "ASIA_ESTE",
+  "JP": "ASIA_ESTE",
+  "TW": "ASIA_ESTE",
+  "HK": "ASIA_ESTE",
+  "IN": "ASIA_SUR",
+  "PK": "ASIA_SUR",
+  "SG": "SUDESTE_ASIA",
+  "MY": "SUDESTE_ASIA",
+  "ID": "SUDESTE_ASIA",
+  "PH": "SUDESTE_ASIA",
+  "NG": "AFRICA_OESTE"
+ },
+ "v3_conflicts": [],
+ "stations": [
+  {
+   "icao": "DNMM",
+   "city": "Lagos",
+   "country": "NG",
+   "region": "AFRICA_OESTE",
+   "component": "icon_global",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": false,
+   "n_markets": 385
+  },
+  {
+   "icao": "RCSS",
+   "city": "Taipei",
+   "country": "TW",
+   "region": "ASIA_ESTE",
+   "component": "icon_global",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": false,
+   "n_markets": 1672
+  },
+  {
+   "icao": "RCTP",
+   "city": "Taipei",
+   "country": "TW",
+   "region": "ASIA_ESTE",
+   "component": "icon_global",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": false,
+   "n_markets": 132
+  },
+  {
+   "icao": "RJTT",
+   "city": "Tokyo",
+   "country": "JP",
+   "region": "ASIA_ESTE",
+   "component": "icon_global",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": false,
+   "n_markets": 1935
+  },
+  {
+   "icao": "RKPK",
+   "city": "Busan",
+   "country": "KR",
+   "region": "ASIA_ESTE",
+   "component": "icon_global",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": false,
+   "n_markets": 1694
+  },
+  {
+   "icao": "RKSI",
+   "city": "Seoul",
+   "country": "KR",
+   "region": "ASIA_ESTE",
+   "component": "icon_global",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": true,
+   "n_markets": 2121
+  },
+  {
+   "icao": "VHHH",
+   "city": "Hong Kong",
+   "country": "HK",
+   "region": "ASIA_ESTE",
+   "component": "icon_global",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": false,
+   "n_markets": 18
+  },
+  {
+   "icao": "ZBAA",
+   "city": "Beijing",
+   "country": "CN",
+   "region": "ASIA_ESTE",
+   "component": "icon_global",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": false,
+   "n_markets": 1837
+  },
+  {
+   "icao": "ZGGG",
+   "city": "Guangzhou",
+   "country": "CN",
+   "region": "ASIA_ESTE",
+   "component": "icon_global",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": false,
+   "n_markets": 1551
+  },
+  {
+   "icao": "ZGSZ",
+   "city": "Shenzhen",
+   "country": "CN",
+   "region": "ASIA_ESTE",
+   "component": "icon_global",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": true,
+   "n_markets": 1837
+  },
+  {
+   "icao": "ZHCC",
+   "city": "Zhengzhou",
+   "country": "CN",
+   "region": "ASIA_ESTE",
+   "component": "icon_global",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": false,
+   "n_markets": 330
+  },
+  {
+   "icao": "ZHHH",
+   "city": "Wuhan",
+   "country": "CN",
+   "region": "ASIA_ESTE",
+   "component": "icon_global",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": false,
+   "n_markets": 1837
+  },
+  {
+   "icao": "ZSJN",
+   "city": "Jinan",
+   "country": "CN",
+   "region": "ASIA_ESTE",
+   "component": "icon_global",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": true,
+   "n_markets": 330
+  },
+  {
+   "icao": "ZSPD",
+   "city": "Shanghai",
+   "country": "CN",
+   "region": "ASIA_ESTE",
+   "component": "icon_global",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": false,
+   "n_markets": 1908
+  },
+  {
+   "icao": "ZSQD",
+   "city": "Qingdao",
+   "country": "CN",
+   "region": "ASIA_ESTE",
+   "component": "icon_global",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": true,
+   "n_markets": 1452
+  },
+  {
+   "icao": "ZUCK",
+   "city": "Chongqing",
+   "country": "CN",
+   "region": "ASIA_ESTE",
+   "component": "icon_global",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": true,
+   "n_markets": 1837
+  },
+  {
+   "icao": "ZUUU",
+   "city": "Chengdu",
+   "country": "CN",
+   "region": "ASIA_ESTE",
+   "component": "icon_global",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": false,
+   "n_markets": 1826
+  },
+  {
+   "icao": "OPKC",
+   "city": "Karachi",
+   "country": "PK",
+   "region": "ASIA_SUR",
+   "component": "icon_global",
+   "verification_scope": "OBSERVADA",
+   "in_modelsel": true,
+   "n_markets": 1551
+  },
+  {
+   "icao": "VILK",
+   "city": "Lucknow",
+   "country": "IN",
+   "region": "ASIA_SUR",
+   "component": "icon_global",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": true,
+   "n_markets": 1980
+  },
+  {
+   "icao": "EDDM",
+   "city": "Munich",
+   "country": "DE",
+   "region": "EUROPA",
+   "component": "icon_d2",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": false,
+   "n_markets": 1980
+  },
+  {
+   "icao": "EFHK",
+   "city": "Helsinki",
+   "country": "FI",
+   "region": "EUROPA",
+   "component": "icon_eu",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": true,
+   "n_markets": 1694
+  },
+  {
+   "icao": "EGLC",
+   "city": "London",
+   "country": "GB",
+   "region": "EUROPA",
+   "component": "icon_d2",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": true,
+   "n_markets": 2129
+  },
+  {
+   "icao": "EHAM",
+   "city": "Amsterdam",
+   "country": "NL",
+   "region": "EUROPA",
+   "component": "icon_d2",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": false,
+   "n_markets": 1694
+  },
+  {
+   "icao": "EPWA",
+   "city": "Warsaw",
+   "country": "PL",
+   "region": "EUROPA",
+   "component": "icon_eu",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": false,
+   "n_markets": 1881
+  },
+  {
+   "icao": "LEMD",
+   "city": "Madrid",
+   "country": "ES",
+   "region": "EUROPA",
+   "component": "icon_eu",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": false,
+   "n_markets": 1881
+  },
+  {
+   "icao": "LFPB",
+   "city": "Paris",
+   "country": "FR",
+   "region": "EUROPA",
+   "component": "icon_d2",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": false,
+   "n_markets": 1540
+  },
+  {
+   "icao": "LFPG",
+   "city": "Paris",
+   "country": "FR",
+   "region": "EUROPA",
+   "component": "icon_d2",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": false,
+   "n_markets": 575
+  },
+  {
+   "icao": "LIMC",
+   "city": "Milan",
+   "country": "IT",
+   "region": "EUROPA",
+   "component": "icon_d2",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": true,
+   "n_markets": 1881
+  },
+  {
+   "icao": "UUWW",
+   "city": "Moscow",
+   "country": "RU",
+   "region": "EUROPA",
+   "component": "icon_eu",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": true,
+   "n_markets": 1727
+  },
+  {
+   "icao": "FACT",
+   "city": "Cape Town",
+   "country": "ZA",
+   "region": "HEM_SUR",
+   "component": "icon_global",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": true,
+   "n_markets": 1606
+  },
+  {
+   "icao": "NZWN",
+   "city": "Wellington",
+   "country": "NZ",
+   "region": "HEM_SUR",
+   "component": "icon_global",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": false,
+   "n_markets": 2115
+  },
+  {
+   "icao": "SAEZ",
+   "city": "Buenos Aires",
+   "country": "AR",
+   "region": "HEM_SUR",
+   "component": "icon_global",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": false,
+   "n_markets": 2096
+  },
+  {
+   "icao": "SBGR",
+   "city": "Sao Paulo",
+   "country": "BR",
+   "region": "HEM_SUR",
+   "component": "icon_global",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": true,
+   "n_markets": 2083
+  },
+  {
+   "icao": "MMMX",
+   "city": "Mexico City",
+   "country": "MX",
+   "region": "LATAM_NORTE",
+   "component": "icon_global",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": true,
+   "n_markets": 1716
+  },
+  {
+   "icao": "MPMG",
+   "city": "Panama City",
+   "country": "PA",
+   "region": "LATAM_NORTE",
+   "component": "icon_global",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": true,
+   "n_markets": 1661
+  },
+  {
+   "icao": "CYYZ",
+   "city": "Toronto",
+   "country": "CA",
+   "region": "NORTEAMERICA",
+   "component": "icon_global",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": false,
+   "n_markets": 2129
+  },
+  {
+   "icao": "KATL",
+   "city": "Atlanta",
+   "country": "US",
+   "region": "NORTEAMERICA",
+   "component": "icon_global",
+   "verification_scope": "OBSERVADA",
+   "in_modelsel": true,
+   "n_markets": 2114
+  },
+  {
+   "icao": "KAUS",
+   "city": "Austin",
+   "country": "US",
+   "region": "NORTEAMERICA",
+   "component": "icon_global",
+   "verification_scope": "OBSERVADA",
+   "in_modelsel": false,
+   "n_markets": 1771
+  },
+  {
+   "icao": "KBKF",
+   "city": "Denver",
+   "country": "US",
+   "region": "NORTEAMERICA",
+   "component": "icon_global",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": true,
+   "n_markets": 1782
+  },
+  {
+   "icao": "KDAL",
+   "city": "Dallas",
+   "country": "US",
+   "region": "NORTEAMERICA",
+   "component": "icon_global",
+   "verification_scope": "OBSERVADA",
+   "in_modelsel": true,
+   "n_markets": 2125
+  },
+  {
+   "icao": "KHOU",
+   "city": "Houston",
+   "country": "US",
+   "region": "NORTEAMERICA",
+   "component": "icon_global",
+   "verification_scope": "OBSERVADA",
+   "in_modelsel": true,
+   "n_markets": 1782
+  },
+  {
+   "icao": "KLAX",
+   "city": "Los Angeles",
+   "country": "US",
+   "region": "NORTEAMERICA",
+   "component": "icon_global",
+   "verification_scope": "OBSERVADA",
+   "in_modelsel": true,
+   "n_markets": 1782
+  },
+  {
+   "icao": "KLGA",
+   "city": "NYC",
+   "country": "US",
+   "region": "NORTEAMERICA",
+   "component": "icon_global",
+   "verification_scope": "OBSERVADA",
+   "in_modelsel": true,
+   "n_markets": 2136
+  },
+  {
+   "icao": "KMIA",
+   "city": "Miami",
+   "country": "US",
+   "region": "NORTEAMERICA",
+   "component": "icon_global",
+   "verification_scope": "OBSERVADA",
+   "in_modelsel": true,
+   "n_markets": 2104
+  },
+  {
+   "icao": "KORD",
+   "city": "Chicago",
+   "country": "US",
+   "region": "NORTEAMERICA",
+   "component": "icon_global",
+   "verification_scope": "OBSERVADA",
+   "in_modelsel": false,
+   "n_markets": 2104
+  },
+  {
+   "icao": "KSEA",
+   "city": "Seattle",
+   "country": "US",
+   "region": "NORTEAMERICA",
+   "component": "icon_global",
+   "verification_scope": "OBSERVADA",
+   "in_modelsel": false,
+   "n_markets": 2107
+  },
+  {
+   "icao": "KSFO",
+   "city": "San Francisco",
+   "country": "US",
+   "region": "NORTEAMERICA",
+   "component": "icon_global",
+   "verification_scope": "OBSERVADA",
+   "in_modelsel": false,
+   "n_markets": 1771
+  },
+  {
+   "icao": "LLBG",
+   "city": "Tel Aviv",
+   "country": "IL",
+   "region": "ORIENTE_MEDIO",
+   "component": "icon_eu",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": true,
+   "n_markets": 1935
+  },
+  {
+   "icao": "LTAC",
+   "city": "Ankara",
+   "country": "TR",
+   "region": "ORIENTE_MEDIO",
+   "component": "icon_eu",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": false,
+   "n_markets": 2115
+  },
+  {
+   "icao": "LTFM",
+   "city": "Istanbul",
+   "country": "TR",
+   "region": "ORIENTE_MEDIO",
+   "component": "icon_eu",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": true,
+   "n_markets": 1738
+  },
+  {
+   "icao": "OEJN",
+   "city": "Jeddah",
+   "country": "SA",
+   "region": "ORIENTE_MEDIO",
+   "component": "icon_global",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": false,
+   "n_markets": 1628
+  },
+  {
+   "icao": "RPLL",
+   "city": "Manila",
+   "country": "PH",
+   "region": "SUDESTE_ASIA",
+   "component": "icon_global",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": false,
+   "n_markets": 1551
+  },
+  {
+   "icao": "WIHH",
+   "city": "Jakarta",
+   "country": "ID",
+   "region": "SUDESTE_ASIA",
+   "component": "icon_global",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": false,
+   "n_markets": 517
+  },
+  {
+   "icao": "WMKK",
+   "city": "Kuala Lumpur",
+   "country": "MY",
+   "region": "SUDESTE_ASIA",
+   "component": "icon_global",
+   "verification_scope": "INFERIDA",
+   "in_modelsel": false,
+   "n_markets": 1694
+  },
+  {
+   "icao": "WSSS",
+   "city": "Singapore",
+   "country": "SG",
+   "region": "SUDESTE_ASIA",
+   "component": "icon_global",
+   "verification_scope": "OBSERVADA",
+   "in_modelsel": false,
+   "n_markets": 1908
+  }
+ ]
+}
