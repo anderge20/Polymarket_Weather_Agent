@@ -1,5 +1,7 @@
 # PHASE 2D — STRATEGY A — DESIGN (proposal, DESIGN ONLY)
 
+> Índice de fases: [`PHASES.md`](PHASES.md) (estados IMPLEMENTED / TESTED / VALIDATED y nomenclatura).
+
 Baseline inmutable = commit **8162b9c** ("Phase 2D: add explicit outcome label contract"),
 que es exactamente `d9c167d` (Phase 2C VALIDATED) **+ el contrato preparatorio
 `outcome_label` / migración de schema v3**, ya en el repo. Este es el estado sobre el que se

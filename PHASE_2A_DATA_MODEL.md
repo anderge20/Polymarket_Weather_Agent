@@ -1,5 +1,7 @@
 # PHASE 2A — DATA MODEL (DuckDB)
 
+> Índice de fases: [`PHASES.md`](PHASES.md) (estados IMPLEMENTED / TESTED / VALIDATED y nomenclatura).
+
 **Scope:** Phase **2A only** (data model / DuckDB). No market discovery, no
 collectors, no ingestion, no features/models/backtest — those are **2B+** and are
 **not** built here.

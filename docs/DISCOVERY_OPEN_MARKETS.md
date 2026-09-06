@@ -1,5 +1,7 @@
 # Descubrimiento de mercados ABIERTOS y `markets.available_at` (R26)
 
+> Índice de fases: [`PHASES.md`](../PHASES.md) (estados IMPLEMENTED / TESTED / VALIDATED y nomenclatura).
+
 **Estado:** IMPLEMENTED + TESTED (`tests/test_discovery_open.py`, stub offline). NO VALIDATED:
 no se ha ejecutado contra Gamma en vivo. Prerrequisito del modo paper (2H / R23).
 
