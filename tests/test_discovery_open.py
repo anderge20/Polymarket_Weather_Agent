@@ -147,6 +147,38 @@ def test_open_rediscovery_keeps_earliest_available_at(con):
     assert db.query(con, "SELECT COUNT(*) c FROM markets WHERE dataset_version='ds_re'")[0]["c"] == 1
 
 
+def _mdq(con, market_id, dsv):
+    import json
+    v = db.query(con, "SELECT market_data_quality FROM data_quality WHERE ref=? "
+                      "AND dataset_version=?", [market_id, dsv])[0]["market_data_quality"]
+    return json.loads(v) if isinstance(v, str) else v
+
+
+def test_evidence_observed_at_matches_row_after_rediscovery(con):
+    """H5: after a re-discovery the row keeps the EARLIEST instant; the evidence
+    must not claim a later one. observed_at == markets.available_at always;
+    observed_at_this_run is this ingest's request instant."""
+    early, later = "2026-09-06T08:00:00+00:00", "2026-09-06T09:00:00+00:00"
+    discovery.ingest_event(con, OPEN_EVENT, "ds_h5", observed_at=early)
+    discovery.ingest_event(con, OPEN_EVENT, "ds_h5", observed_at=later)
+    m = _market(con, "9990101", "ds_h5")
+    mdq = _mdq(con, "9990101", "ds_h5")
+    assert _utc(mdq["observed_at"]) == _utc(m["available_at"]) == _utc(early)
+    assert _utc(mdq["observed_at_this_run"]) == _utc(later)
+    assert mdq["available_at_policy"] == OBS
+    # closed-mode re-ingest: preserved value, no observation this run
+    discovery.ingest_event(con, OPEN_EVENT, "ds_h5")
+    mdq = _mdq(con, "9990101", "ds_h5")
+    assert _utc(mdq["observed_at"]) == _utc(early)
+    assert mdq["observed_at_this_run"] is None
+    assert mdq["available_at_policy"] == discovery.AVAILABLE_AT_PRESERVED
+    # plain closed ingest of a never-observed row: both None, UNKNOWN
+    discovery.ingest_event(con, ANKARA_EVENT, "ds_h5")
+    mdq = _mdq(con, str(ANKARA_EVENT["markets"][0]["id"]), "ds_h5")
+    assert mdq["observed_at"] is None and mdq["observed_at_this_run"] is None
+    assert mdq["available_at_policy"] == "UNKNOWN" and "available_at" in mdq["unknown_fields"]
+
+
 def test_closed_rerun_same_dsv_preserves_open_available_at(con):
     """H1 (R26 review): the paper flow. A market discovered OPEN (available_at
     observed) is re-processed from the CLOSED catalogue under the SAME

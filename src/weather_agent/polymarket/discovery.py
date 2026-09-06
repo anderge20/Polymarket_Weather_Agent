@@ -471,10 +471,16 @@ def ingest_event(con, event: dict, dataset_version: str, *,
                                         "derived_fields": evidence["derived_fields"],
                                         "unknown_fields": evidence["unknown_fields"],
                                         # R26: which available_at policy produced
-                                        # this row + the observed fields (open mode)
+                                        # this row + the observed fields (open mode).
+                                        # H5: 'observed_at' is the instant that ENDED
+                                        # UP in markets.available_at (earliest kept /
+                                        # preserved), so evidence == row; the instant
+                                        # of THIS ingest is 'observed_at_this_run'
+                                        # (None in closed mode).
                                         "observed_fields": evidence.get("observed_fields", []),
                                         "available_at_policy": evidence["available_at_policy"],
-                                        "observed_at": observed_at,
+                                        "observed_at": m["available_at"],
+                                        "observed_at_this_run": observed_at,
                                         "fee_confidence": evidence["fee_confidence"]},
                 "resolution_quality": {k: evidence[k] for k in
                                        ("resolution_confidence", "resolution_warnings",

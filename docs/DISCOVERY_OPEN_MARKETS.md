@@ -36,11 +36,23 @@ existía?". Es la columna as-of canónica de `markets` (`database.AS_OF_COLUMNS[
 * **Re-descubrimiento**: si la misma fila `(market_id, dataset_version, record_version)` ya
   tenía `available_at` no nulo, se conserva el instante **más temprano**. Disponibilidad =
   "primera vez que pudimos saberlo", nunca "última vez que miramos".
-* `ingestion_timestamp` sigue siendo un reloj distinto (momento de escritura). Nunca se
-  copia a `available_at`.
+* **Un `NULL` nunca sobrescribe una observación (H1)**: una re-ingesta en modo histórico
+  (`closed=True`) de una fila que ya tenía `available_at` observado (descubierta abierta
+  antes, bajo el mismo `dataset_version`) conserva `available_at` y
+  `available_at_confidence='OBSERVED_AT_DISCOVERY'`; el resto de columnas
+  (`winning_outcome`, `close_time`, …) sí se refrescan con el payload cerrado. La evidencia
+  lo marca con `available_at_policy='PRESERVED_FROM_OPEN_DISCOVERY'`
+  (`discovery.AVAILABLE_AT_PRESERVED`). Es el flujo paper real: el mercado se ve abierto hoy y
+  cerrado tras resolverse (§3), y la lectura as-of debe seguir devolviéndolo.
+* `discovered_at` = primera vez que la fila entró en el lago (se conserva el valor más
+  temprano persistido); `ingestion_timestamp` sigue siendo un reloj distinto (momento de
+  escritura de **esta** ingesta). Ninguno se copia a `available_at`.
 * La fila `data_quality.market_data_quality` documenta la política aplicada
-  (`available_at_policy`, `observed_fields`, `observed_at`) y saca `available_at` de
-  `unknown_fields` en modo abierto.
+  (`available_at_policy`, `observed_fields`) y saca `available_at` de `unknown_fields` cuando
+  hay observación. `observed_at` es **el instante que quedó en la fila** (`markets.available_at`,
+  el más temprano conservado o preservado), de modo que evidencia y fila coinciden siempre;
+  `observed_at_this_run` es el instante de la petición de **esta** ingesta (`NULL` en modo
+  histórico) (H5).
 
 ## 3. Checkpoints separados
 
