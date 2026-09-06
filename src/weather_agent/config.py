@@ -1,22 +1,22 @@
 """
 weather_agent.config  —  central settings for the MVP 3.0 platform (Phase 2A)
 =============================================================================
-STATUS: IMPLEMENTED (authored without Python execution — NOT tested/validated
-here). Stdlib-only so BOTH the pipeline tier and the thin dashboard tier can
-import it cheaply.
+STATUS: IMPLEMENTED + TESTED (imported by the whole pytest suite; no live
+network from tests). Stdlib-only so BOTH the pipeline tier and the thin
+dashboard tier can import it cheaply.
 
 WHAT CHANGED vs the legacy config (deliberate, per the 2A spec):
   * The hardcoded `STATIONS` dict (4 US airports) is RETIRED. Resolution station,
     coordinates, unit and rounding rule are per-market facts DISCOVERED at
-    ingestion (see phase1_5/resolution_discovery.py) and stored in the `markets`
+    ingestion (see src/weather_agent/polymarket/resolution.py) and stored in the `markets`
     table — never hand-typed here. `city_registry` below only lists the *target
     city universe* (configurable / expandable) plus civil hints for matching.
   * Endpoints are DOCUMENTED (not assumed). Each entry carries a `status` flag so
     an unverified host/path is never silently trusted.
 
 BACKWARD-COMPAT: the base URL names GAMMA / CLOB / HIST_FORECAST are kept so any
-code that imported them keeps resolving. (The legacy flat modules that imported
-`STATIONS` will need porting in 2B+ — that is expected by the migration plan.)
+code that imports them keeps resolving. (`STATIONS` has no consumer in this tree:
+station facts come from src/weather_agent/polymarket/resolution.py per market.)
 """
 from __future__ import annotations
 
@@ -116,7 +116,8 @@ ENDPOINTS: dict[str, dict] = {
 #   civil_unit_hint  — the civil unit of the country ('F' US / 'C' EU); the market's
 #                      actual resolution unit is discovered per-market (may differ)
 #   country, enabled
-# Aliases seeded from phase1_5/phase1_5b_probe.py CITY_PATTERNS (not invented).
+# Aliases seeded from the pre-2A Phase 1.5B probe's CITY_PATTERNS (legacy repo, not
+# in this tree; not invented). City parsing lives in polymarket/resolution.py.
 DEFAULT_CITY_REGISTRY: dict[str, dict] = {
     "New York": {
         "aliases": ["new-york", "new york", "nyc"],

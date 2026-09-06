@@ -1,5 +1,7 @@
 # PHASE 2B — MARKET DISCOVERY + RESOLUTION DISCOVERY
 
+> Índice de fases: [`PHASES.md`](PHASES.md) (estados IMPLEMENTED / TESTED / VALIDATED y nomenclatura).
+
 **Scope (strict, reconfirmed):** market discovery + resolution discovery + catalog
 normalization ONLY — `markets`, `outcomes`, market metadata, `tick_size`/
 `min_order_size` (when really present), fee-regime discovery. **NOT** in 2B:

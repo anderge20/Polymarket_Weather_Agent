@@ -1,12 +1,17 @@
 """
 weather_agent.polymarket.discovery — temperature-market discovery (Phase 2B)
 ============================================================================
-STATUS: IMPLEMENTED. Authored WITHOUT Python execution — NOT tested/validated
-here. Run on Hetzner (off the Enel firewall) to actually populate the lake.
+STATUS: IMPLEMENTED + TESTED (tests/test_discovery.py, test_discovery_open.py,
+test_ingest_atomic.py, test_checkpoint_resume.py — offline fixtures/stubs, no
+live gamma). NOT VALIDATED against live gamma from this tree: run on Hetzner
+(off the Enel firewall) to actually populate the lake.
 
 WHAT IT DOES (scope 2B only — discovery + resolution + catalog normalization):
   * Pages gamma /events for the temperature tag (newest-first; optional
-    date-bounding to cover market ages), READ-ONLY GET.
+    date-bounding to cover market ages), READ-ONLY GET. Two populations
+    (R26, docs/DISCOVERY_OPEN_MARKETS.md): closed=True (default, historical
+    catalogue: closed=true) and closed=False (OPEN markets with a future endDate,
+    the paper-mode feed: closed=false). Each mode has its OWN checkpoint key.
   * For each event/market: extracts metadata, parses the per-market resolution
     chain (resolution.py) and fee/tick/min (fees.py), and UPSERTs markets +
     outcomes + market_fee_schedule with full provenance and dataset_version.
@@ -22,10 +27,22 @@ SOURCE/PROVENANCE SEMANTICS (documented in PHASE_2B_MARKET_DISCOVERY.md):
   * source = 'gamma'
   * source_timestamp = market.createdAt (when the market record was CREATED at the
     source). This is provenance, NOT an availability guarantee.
-  * ingestion_timestamp / discovered_at = our clock at write time.
-  * markets.available_at stays NULL with available_at_confidence='UNKNOWN' — gamma
-    metadata does not tell us when the market became knowable/observable to an
-    external agent; we do NOT equate it to createdAt/updatedAt/ingestion (#1).
+  * ingestion_timestamp = our clock at write time.
+  * markets.available_at — TWO policies, chosen by the discovery mode (R26):
+      - closed=True  (historical): stays NULL with available_at_confidence='UNKNOWN'.
+        Gamma metadata does not tell us when a past market became knowable to an
+        external agent; we do NOT equate it to createdAt/updatedAt/ingestion (#1)
+        and we never invent retrospective availability.
+      - closed=False (open markets): available_at = the UTC instant at which the
+        HTTP request that RETURNED the market was issued (prospective capture:
+        we observed it ourselves at that instant), available_at_confidence =
+        'OBSERVED_AT_DISCOVERY'. On re-discovery the EARLIEST observed instant is
+        kept (never overwritten by a later one).
+      - a closed-mode re-ingest of a row discovered open earlier (same PK) KEEPS
+        the observed available_at: NULL never overwrites an observation
+        (evidence: available_at_policy='PRESERVED_FROM_OPEN_DISCOVERY').
+    In both modes ingestion_timestamp remains a separate clock (our write time).
+  * discovered_at = first discovery of the row (earliest persisted value wins).
   * markets.source_timestamps = verbatim JSON of ALL gamma timestamps for the row.
 """
 from __future__ import annotations
@@ -47,6 +64,28 @@ S_TIMEOUT = "TIMEOUT"
 S_NETWORK = "NETWORK_ERROR"
 S_PARSE = "PARSE_ERROR"
 ERROR_STATUSES = (S_RATE_LIMITED, S_HTTP_ERROR, S_TIMEOUT, S_NETWORK, S_PARSE)
+
+# markets.available_at_confidence for markets discovered while OPEN (closed=False):
+# the value was OBSERVED by us at the request instant (prospective capture), not
+# read from a gamma field and not inferred from createdAt/updatedAt. Closed-mode
+# rows keep resolution.UNKNOWN. See docs/DISCOVERY_OPEN_MARKETS.md.
+AVAILABLE_AT_OBSERVED = "OBSERVED_AT_DISCOVERY"
+# data_quality.market_data_quality.available_at_policy for a CLOSED-mode ingest that
+# found the row already carrying an observed available_at (discovered open earlier):
+# the observation is preserved, not re-derived. markets.available_at_confidence stays
+# AVAILABLE_AT_OBSERVED (the value itself is still the first-hand observation).
+AVAILABLE_AT_PRESERVED = "PRESERVED_FROM_OPEN_DISCOVERY"
+OPEN_CHECKPOINT_SUFFIX = ":open"
+
+
+def checkpoint_key(dataset_version: str, closed: bool = True) -> str:
+    """discovery_checkpoint key for one (dataset_version, mode). The closed
+    (historical) mode keeps the bare dataset_version — byte-identical to the
+    pre-R26 key, so existing checkpoints resume unchanged. The open mode appends
+    ':open' so a paper-mode run under the same dataset_version can never be
+    skipped because the same event id was already processed as CLOSED (and vice
+    versa): an event seen open today is legitimately re-seen closed later."""
+    return dataset_version if closed else f"{dataset_version}{OPEN_CHECKPOINT_SUFFIX}"
 
 
 class FeeScheduleConflict(Exception):
@@ -217,16 +256,46 @@ def build_market_records(event: dict) -> list[dict]:
 # =============================================================================
 # DB writes (idempotent upserts with provenance)
 # =============================================================================
+# dataset_versions.query_parameters key that ACCUMULATES the discovery modes run
+# under one dataset_version (R26 review): 'closed' alone is the LAST run's value.
+CLOSED_MODES_SEEN = "closed_modes_seen"
+
+
 def ensure_dataset_version(con, dataset_version: str, *, source: str = "gamma",
                            query_parameters: dict | None = None,
                            description: str | None = None,
                            code_version: str | None = None) -> None:
+    """Upsert the dataset_versions row. query_parameters is the LATEST run's
+    query, except `closed_modes_seen` (CLOSED_MODES_SEEN), which is the sorted
+    UNION of every 'closed' value ever run under this dataset_version: a dsv
+    that was built from the open feed and later re-processed from the closed
+    catalogue (paper flow, docs/DISCOVERY_OPEN_MARKETS.md §3) keeps the record
+    that BOTH populations contributed rows, instead of the last run silently
+    relabelling the whole dataset. Callers must be in charge of the transaction
+    (this runs plain statements, no BEGIN/COMMIT)."""
     from .. import database as db
+    qp = dict(query_parameters or {})
+    if "closed" in qp:
+        seen = {str(qp["closed"])}
+        prior = db.query(con, "SELECT query_parameters FROM dataset_versions WHERE version = ?",
+                         [dataset_version])
+        if prior and prior[0]["query_parameters"] is not None:
+            prev = prior[0]["query_parameters"]
+            if isinstance(prev, str):
+                try:
+                    prev = json.loads(prev)
+                except ValueError:
+                    prev = {}
+            if isinstance(prev, dict):
+                seen.update(str(v) for v in (prev.get(CLOSED_MODES_SEEN) or []))
+                if prev.get("closed") is not None:
+                    seen.add(str(prev["closed"]))
+        qp[CLOSED_MODES_SEEN] = sorted(seen)
     db.upsert(con, "dataset_versions", {
         "version": dataset_version,
         "created_at": _now(),
         "source": source,
-        "query_parameters": query_parameters or {},
+        "query_parameters": qp,
         "description": description or "phase2b market discovery",
         "code_version": code_version,
         "git_commit": None,
@@ -237,7 +306,9 @@ def ingest_event(con, event: dict, dataset_version: str, *,
                  endpoint: str = f"{GAMMA}/events", params: dict | None = None,
                  discovered_at: str | None = None,
                  fee_registry: dict | None = None,
-                 run_id: str | None = None) -> dict:
+                 run_id: str | None = None,
+                 observed_at: str | None = None,
+                 checkpoint_key: str | None = None) -> dict:
     """Apply provenance + UPSERT markets/outcomes/market_fee_schedule/data_quality
     for one gamma event, ATOMICALLY. The whole event is written inside ONE DuckDB
     transaction (BEGIN -> market -> outcomes -> fee schedule -> provenance/evidence
@@ -247,10 +318,36 @@ def ingest_event(con, event: dict, dataset_version: str, *,
     events; pass a SHARED dict (discover does) to guard the whole dataset. Raises
     FeeScheduleConflict on a conflicting feeSchedule (no silent collapse) — which,
     like any failure, rolls the event back so the caller's checkpoint does NOT
-    advance and the event can be retried on resume."""
+    advance and the event can be retried on resume.
+
+    R26 (open-market discovery):
+      * `observed_at` — None (default, closed/historical mode): markets.available_at
+        stays NULL / 'UNKNOWN' exactly as in 2B. An ISO-8601 UTC instant (open
+        mode): the caller OBSERVED this event in a gamma response whose request was
+        issued at that instant, so available_at = observed_at and
+        available_at_confidence = 'OBSERVED_AT_DISCOVERY'. If the SAME market row
+        (market_id, dataset_version, record_version) already carries a non-NULL
+        available_at, the EARLIEST instant is kept: availability is 'first time we
+        could have known', never 'last time we looked'.
+      * PRESERVATION (R26 review, H1): a NULL never overwrites an observation. When
+        observed_at is None (closed mode) but the row already carries a non-NULL
+        available_at — the market was discovered OPEN earlier and is now being
+        re-processed from the CLOSED catalogue under the same dataset_version,
+        exactly the paper flow (see docs/DISCOVERY_OPEN_MARKETS.md §3) — the
+        existing available_at / available_at_confidence are KEPT and the evidence
+        row records available_at_policy = 'PRESERVED_FROM_OPEN_DISCOVERY'. All the
+        other columns (winning_outcome, close_time, ...) ARE refreshed from the
+        closed payload. Same rule for discovered_at ('first discovery',
+        database.py): the earliest persisted value wins over this run's clock.
+      * `checkpoint_key` — key under which this event is marked in
+        discovery_checkpoint; defaults to `dataset_version` (pre-R26 behaviour).
+        discover() passes checkpoint_key(dataset_version, closed) so the closed
+        and open modes never share a checkpoint."""
     from .. import database as db
     now = _now()
     discovered_at = discovered_at or now
+    if checkpoint_key is None:
+        checkpoint_key = dataset_version
     counts = {"markets": 0, "outcomes": 0, "fees": 0, "evidence": 0}
     if fee_registry is None:
         fee_registry = {}
@@ -274,6 +371,47 @@ def ingest_event(con, event: dict, dataset_version: str, *,
             m.update({"discovered_at": discovered_at, "source": "gamma",
                       "ingestion_timestamp": now, "dataset_version": dataset_version,
                       "record_version": 1})
+            evidence = dict(rec["evidence"])
+            evidence["available_at_policy"] = res.UNKNOWN
+            # R26: the prior persisted row (same PK) is consulted in BOTH modes.
+            # db.upsert is ON CONFLICT DO UPDATE over EVERY column, so anything we
+            # want to survive a re-ingest must be carried forward explicitly here.
+            prior = db.query(
+                con,
+                "SELECT available_at, discovered_at FROM markets "
+                "WHERE market_id = ? AND dataset_version = ? AND record_version = ?",
+                [m["market_id"], dataset_version, 1])
+            prior_avail = _parse_ts(prior[0]["available_at"]) if prior else None
+            prior_disc = _parse_ts(prior[0]["discovered_at"]) if prior else None
+            # discovered_at = 'first discovery' (database.py): never pushed forward
+            # by a later re-ingest (daily paper polling re-ingests the same row).
+            if prior_disc is not None and prior_disc < _parse_ts(m["discovered_at"]):
+                m["discovered_at"] = prior_disc
+            if observed_at is not None:
+                # R26 open mode: prospective capture. available_at is the instant we
+                # OBSERVED the market (request instant), never createdAt/updatedAt/
+                # ingestion. Keep the EARLIEST observation if this exact row was
+                # already discovered open in an earlier run (re-discovery must not
+                # push availability later).
+                keep = _parse_ts(observed_at)
+                if prior_avail is not None and prior_avail < keep:
+                    keep = prior_avail
+                m["available_at"] = keep
+                m["available_at_confidence"] = AVAILABLE_AT_OBSERVED
+                evidence["available_at_policy"] = AVAILABLE_AT_OBSERVED
+                evidence["unknown_fields"] = [
+                    f for f in evidence["unknown_fields"] if f != "available_at"]
+                evidence["observed_fields"] = ["available_at"]
+            elif prior_avail is not None:
+                # H1: closed-mode re-ingest of a row that was discovered OPEN. A NULL
+                # (= 'we do not know') must never destroy a first-hand observation.
+                # Keep the observed instant + confidence; refresh everything else.
+                m["available_at"] = prior_avail
+                m["available_at_confidence"] = AVAILABLE_AT_OBSERVED
+                evidence["available_at_policy"] = AVAILABLE_AT_PRESERVED
+                evidence["unknown_fields"] = [
+                    f for f in evidence["unknown_fields"] if f != "available_at"]
+                evidence["observed_fields"] = ["available_at"]
             db.upsert(con, "markets", m,
                       ["market_id", "dataset_version", "record_version"])
             counts["markets"] += 1
@@ -331,11 +469,22 @@ def ingest_event(con, event: dict, dataset_version: str, *,
                 "ref": m["market_id"],
                 "market_data_quality": {"endpoint": endpoint, "params": params or {},
                                         "fetched_at": now,
-                                        "direct_fields": rec["evidence"]["direct_fields"],
-                                        "derived_fields": rec["evidence"]["derived_fields"],
-                                        "unknown_fields": rec["evidence"]["unknown_fields"],
-                                        "fee_confidence": rec["evidence"]["fee_confidence"]},
-                "resolution_quality": {k: rec["evidence"][k] for k in
+                                        "direct_fields": evidence["direct_fields"],
+                                        "derived_fields": evidence["derived_fields"],
+                                        "unknown_fields": evidence["unknown_fields"],
+                                        # R26: which available_at policy produced
+                                        # this row + the observed fields (open mode).
+                                        # H5: 'observed_at' is the instant that ENDED
+                                        # UP in markets.available_at (earliest kept /
+                                        # preserved), so evidence == row; the instant
+                                        # of THIS ingest is 'observed_at_this_run'
+                                        # (None in closed mode).
+                                        "observed_fields": evidence.get("observed_fields", []),
+                                        "available_at_policy": evidence["available_at_policy"],
+                                        "observed_at": m["available_at"],
+                                        "observed_at_this_run": observed_at,
+                                        "fee_confidence": evidence["fee_confidence"]},
+                "resolution_quality": {k: evidence[k] for k in
                                        ("resolution_confidence", "resolution_warnings",
                                         "uma_resolution_status", "uma_resolution_statuses",
                                         "disputed", "event_winning_band")},
@@ -350,7 +499,10 @@ def ingest_event(con, event: dict, dataset_version: str, *,
         # transaction, so COMMIT persists {event rows + mark} atomically. A crash
         # before COMMIT rolls back BOTH (DuckDB WAL recovery) and the event is
         # retried on the next resume; there is no window where they disagree.
-        db.checkpoint_mark(con, dataset_version, str(event.get("id")), run_id)
+        # R26: the mark is keyed by `checkpoint_key` (== dataset_version in closed
+        # mode; dataset_version + ':open' in open mode) so the two modes never
+        # skip each other's events.
+        db.checkpoint_mark(con, checkpoint_key, str(event.get("id")), run_id)
         con.execute("COMMIT;")
     except Exception:
         # FULL rollback of the event; revert this event's registry additions so a
@@ -368,25 +520,57 @@ def ingest_event(con, event: dict, dataset_version: str, *,
 # network (gamma only; lazy requests import) + orchestration
 # =============================================================================
 def fetch_events_page(session, params: dict, *, timeout: int = 30,
-                      max_retries: int = 4) -> tuple[str, list]:
+                      max_retries: int = 4, closed: bool = True,
+                      meta: dict | None = None) -> tuple[str, list]:
     """GET gamma /events. Returns (status, events). status in {OK, EMPTY,
     RATE_LIMITED, HTTP_ERROR, TIMEOUT, NETWORK_ERROR, PARSE_ERROR}. Never raises
     for ordinary API errors; the caller must treat any ERROR_STATUS as
-    'UNVERIFIED - RATE LIMIT'/error and STOP (no silent inference, #5)."""
+    'UNVERIFIED - RATE LIMIT'/error and STOP (no silent inference, #5).
+
+    R26:
+      * `closed` selects the population: True -> closed=true (historical, the
+        pre-R26 default), False -> closed=false (OPEN markets, future endDate).
+        It is written into the query as params['closed'] ONLY when the caller did
+        not set that key; an explicit params['closed'] that CONTRADICTS `closed`
+        raises ValueError (never silently query the wrong population). `params`
+        is not mutated.
+      * `meta` (optional out-dict) receives the request provenance of the LAST
+        attempt: {'requested_at': ISO-UTC instant immediately BEFORE the HTTP
+        request that produced the returned status was sent, 'responded_at': ISO-UTC
+        instant after the response/exception, 'attempts': n, 'params': as sent}.
+        discover(closed=False) uses meta['requested_at'] as markets.available_at
+        (prospective capture). The return type is unchanged for existing callers."""
     import time
     import requests
     url = f"{GAMMA}/events"
+    want = "true" if closed else "false"
+    params = dict(params or {})
+    have = params.get("closed")
+    if have is None:
+        params["closed"] = want
+    elif str(have).strip().lower() != want:
+        raise ValueError(
+            f"fetch_events_page: params['closed']={have!r} contradicts closed={closed}")
+    if meta is None:
+        meta = {}
+    meta.update({"requested_at": None, "responded_at": None, "attempts": 0,
+                 "params": dict(params)})
     for attempt in range(max_retries + 1):
+        meta["attempts"] = attempt + 1
+        meta["requested_at"] = _now()   # instant the request is issued (per attempt)
         try:
             r = session.get(url, params=params, timeout=timeout)
         except requests.Timeout:
+            meta["responded_at"] = _now()
             if attempt < max_retries:
                 time.sleep(2 ** attempt); continue
             return S_TIMEOUT, []
         except requests.RequestException:
+            meta["responded_at"] = _now()
             if attempt < max_retries:
                 time.sleep(2 ** attempt); continue
             return S_NETWORK, []
+        meta["responded_at"] = _now()
         if r.status_code == 429:
             ra = r.headers.get("Retry-After")
             try:
@@ -412,14 +596,39 @@ def discover(con, dataset_version: str, *, tag_id: int = TEMP_TAG_ID,
              end_date_min: str | None = None, end_date_max: str | None = None,
              newest_first: bool = True, session=None,
              checkpoint: set[str] | None = None,
-             run_id: str | None = None) -> dict:
+             run_id: str | None = None,
+             closed: bool = True) -> dict:
     """Paginate gamma /events (newest-first, optionally date-bounded) and ingest
     each event. Idempotent + resumable via `checkpoint` (set of processed event
     ids). On any error/rate-limit: record it and STOP (partial result returned,
     marked). Returns a run summary. USER-RUN on Hetzner.
 
+    R26 `closed`:
+      * True (default) — historical catalogue (gamma closed=true). Behaviour,
+        query and checkpoint key are byte-identical to pre-R26: available_at NULL
+        / 'UNKNOWN'.
+      * False — OPEN markets (gamma closed=false, endDate in the future; the
+        paper-mode feed). Every market is persisted with available_at = the UTC
+        instant the page request that returned it was issued (prospective
+        capture) and available_at_confidence='OBSERVED_AT_DISCOVERY'. Checkpoint
+        key = dataset_version + ':open' (see checkpoint_key()), so open and closed
+        runs under one dataset_version never skip each other's events. The
+        summary carries 'closed' and 'checkpoint_key'.
+      * `checkpoint` (in-memory set, 2B compatibility API) is accepted ONLY in
+        closed mode. The set carries no mode: a caller reusing one set across a
+        closed run and an open run would make the open run skip every event
+        already seen closed (and vice versa) — precisely the cross-contamination
+        checkpoint_key() exists to prevent. Passing it with closed=False raises
+        ValueError (H4). The persisted discovery_checkpoint is the source of
+        truth in both modes; open-mode callers resume from it alone.
+
     NOTE: `session` must be a requests.Session (created by the caller so this
     module needs no network at import time)."""
+    if checkpoint is not None and not closed:
+        raise ValueError(
+            "discover(closed=False) does not accept the in-memory `checkpoint` set: "
+            "it is not keyed by mode and would skip events checkpointed as CLOSED "
+            "(see checkpoint_key()); resume from the persisted discovery_checkpoint.")
     if session is None:
         import requests
         session = requests.Session()
@@ -429,10 +638,18 @@ def discover(con, dataset_version: str, *, tag_id: int = TEMP_TAG_ID,
         run_id = f"disc_{_now()}"
     # Phase 2C: the PERSISTED checkpoint (DuckDB discovery_checkpoint) is the source
     # of truth for resume — a fresh process loads it here. The in-memory `processed`
-    # set is a mirror + accepts any caller-provided ids (backward compatible).
-    processed = db.checkpoint_load(con, dataset_version) | (checkpoint or set())
+    # set is a mirror + accepts any caller-provided ids (backward compatible,
+    # closed mode only — see the ValueError above).
+    ckpt_key = checkpoint_key(dataset_version, closed)
+    processed = db.checkpoint_load(con, ckpt_key) | (checkpoint or set())
 
-    base = {"tag_id": tag_id, "closed": "true", "limit": page_limit}
+    # `closed` is ALSO written into `base` (not only passed to fetch_events_page)
+    # so dataset_versions.query_parameters records which population this run
+    # queried; ensure_dataset_version accumulates every mode ever run under the
+    # dsv in query_parameters['closed_modes_seen'] (a dsv may hold rows from both
+    # populations; the per-ROW population is markets.available_at_confidence).
+    base = {"tag_id": tag_id, "closed": ("true" if closed else "false"),
+            "limit": page_limit}
     if newest_first:
         base["order"] = "endDate"; base["ascending"] = "false"
     if end_date_min:
@@ -442,14 +659,20 @@ def discover(con, dataset_version: str, *, tag_id: int = TEMP_TAG_ID,
 
     summary = {"dataset_version": dataset_version, "pages": 0, "events": 0,
                "markets": 0, "outcomes": 0, "fees": 0, "status": S_OK,
-               "errors": [], "stopped_early": False}
+               "errors": [], "stopped_early": False,
+               "closed": closed, "checkpoint_key": ckpt_key}
     ensure_dataset_version(con, dataset_version, source="gamma", query_parameters=base)
     fee_registry: dict = {}   # shared across events for the #3 fee-identity guard
 
     for page in range(max_pages):
         params = dict(base, offset=page * page_limit)
-        status, events = fetch_events_page(session, params)
+        meta: dict = {}
+        status, events = fetch_events_page(session, params, closed=closed, meta=meta)
         summary["pages"] += 1
+        # Open mode: every event on this page becomes knowable to us at the instant
+        # THIS page's request was issued (per page, not per run: page N+1 is
+        # requested later than page N and its markets are stamped accordingly).
+        observed_at = None if closed else meta.get("requested_at")
         if status in ERROR_STATUSES:
             # #5: do NOT infer; mark and stop.
             summary["status"] = status
@@ -466,7 +689,8 @@ def discover(con, dataset_version: str, *, tag_id: int = TEMP_TAG_ID,
             try:
                 c = ingest_event(con, ev, dataset_version,
                                  endpoint=f"{GAMMA}/events", params=params,
-                                 fee_registry=fee_registry, run_id=run_id)
+                                 fee_registry=fee_registry, run_id=run_id,
+                                 observed_at=observed_at, checkpoint_key=ckpt_key)
             except FeeScheduleConflict as exc:
                 # #3: DATA_ERROR — stop; do NOT infer/collapse.
                 summary["status"] = "DATA_ERROR"

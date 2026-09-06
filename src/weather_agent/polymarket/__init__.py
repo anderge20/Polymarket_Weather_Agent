@@ -1,8 +1,9 @@
 """
 weather_agent.polymarket — Phase 2B Market Discovery package
 ============================================================
-STATUS: IMPLEMENTED (authored without Python execution — NOT tested/validated
-here). Scope 2B = market discovery + resolution discovery + catalog
+STATUS: IMPLEMENTED + TESTED (tests/test_discovery*.py, test_resolution.py,
+test_fees_*.py; offline fixtures). NOT VALIDATED against live gamma from this
+tree. Scope 2B = market discovery + resolution discovery + catalog
 normalization ONLY. NO feature builder, NO Strategy A, NO models/backtest/paper/
 execution/L2 strategy (those are later subphases).
 
@@ -11,7 +12,8 @@ Modules:
                     markets + outcomes (+ market_fee_schedule) with provenance.
   * resolution.py — per-market resolution rule parsing (station, ICAO, source,
                     unit, rounding_rule, measurement_rule, resolution_timestamp,
-                    winning_outcome). Ported from phase1_5/resolution_discovery.py.
+                    winning_outcome). Ported from the pre-2A resolution-discovery
+                    probe (legacy repo, not in this tree).
   * fees.py       — map gamma fee / tick / min fields -> market_fee_schedule
                     (fee_status KNOWN where read, UNKNOWN if absent).
 

@@ -1,5 +1,7 @@
 # PHASE 2C — DESIGN (Blocker 1: checkpoint/resume → VALIDATED)
 
+> Índice de fases: [`PHASES.md`](PHASES.md) (estados IMPLEMENTED / TESTED / VALIDATED y nomenclatura).
+
 STATUS: DESIGN ONLY. No code modified. Nothing committed. Same evidence discipline as
 2B (IMPLEMENTED ≠ TESTED ≠ VALIDATED; nothing VALIDATED without a real run).
 Scope of THIS document: **Blocker 1 (checkpoint/resume)**. Blocker 2 (no-look-ahead) is

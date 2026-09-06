@@ -1,8 +1,9 @@
 """
 weather_agent.polymarket.fees — gamma fee / tick / min mapping (Phase 2B)
 =========================================================================
-STATUS: IMPLEMENTED. Authored WITHOUT Python execution — not tested/validated
-here. Pure functions (no network, no DB).
+STATUS: IMPLEMENTED + TESTED (tests/test_fees_mapping.py,
+test_fee_schedule_identity.py, offline fixtures). NOT VALIDATED against live
+gamma from this tree. Pure functions (no network, no DB).
 
 Grounded in REAL gamma market objects (verified live 2026-08-21):
   * RECENT markets (e.g. Ankara 2026-08-20) carry:

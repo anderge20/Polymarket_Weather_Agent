@@ -33,7 +33,8 @@ V1 contracts (all taken from the versioned design; none invented here):
   * edge_net / net_edge = NULL ; confidence = NULL ; timestamp = prediction_time.
   * Deterministic: identical inputs -> identical rows (ingestion_timestamp aside).
 
-STATUS: IMPLEMENTED (authored without Python execution). TESTED/VALIDATED are USER-RUN.
+STATUS: IMPLEMENTED + TESTED (tests/test_strategy_a.py, offline). VALIDATED is
+USER-RUN (scripts/validate_2d.py against a real catalogue).
 """
 from __future__ import annotations
 
