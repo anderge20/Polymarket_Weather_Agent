@@ -360,3 +360,29 @@ regla de settlement no tenga operador auditado queda **fail-closed** (sin label,
 cierra F-3 y RECORD_VERSION_ASOF hacia delante; juntas no se contradicen.
 **Reversibilidad:** alta (política de datos; nada se borra).
 **Estado:** ADOPTADO. Referenciado por R13, R14, R16, R18.
+
+## D19 — Semántica de fees y modelo de coste preregistrado (R11) · 2026-09-06 · Claude (sesión A)
+**Entregable:** `FEES_SEMANTICS.md` (sha `4dbad3ab090ea926…`), workflow `wf_81c10776-eaa` + refutación
+(fuente PASA; datos refutación parcial acotada a IDs ilustrativos, corregidos). Confianza: STRONGLY_SUPPORTED.
+**Semántica (OBSERVADO en docs.polymarket.com):** `fee = C · rate · p · (1 − p)` en USDC, **sólo taker**
+(*"Makers are never charged fees"*); Weather: `rate 0.05`, maker 0, rebate 25 %; fuente canónica de
+parámetros = `feeSchedule` del mercado (changelog 31-mar-2026); redondeo a 5 decimales, lo menor
+redondea a 0. `makerBaseFee/takerBaseFee = 1000` = puntos básicos del tope on-chain (CLOB OpenAPI:
+*"base fee in basis points"*); su relación con `rate` **no está documentada** (INFERIDO: tope V1 + reembolso).
+**Épocas (catálogo, por mercado):** `feesEnabled=false` 8 770 mercados (endDate 2025-12-30 → 2026-03-30);
+`feesEnabled=true` 84 451 con `feeSchedule` único {exponent 1, rate 0.05, takerOnly, rebate 0.25}
+(2026-03-30 → 2026-09-04). El 30-mar está mezclado (275/143) y la activación fue **por lote**, no por
+orden de creación (primer mercado con fees: Toronto 1779469). **Regla: leer `feesEnabled`/`feeSchedule`
+por mercado; nunca inferir por fecha.**
+**Modelo de coste congelado:** H1 principal `c_taker(p) = rate·(p·(1−p))^exponent` USDC/share
+(0.05·p·(1−p); máx 0.0125 en p=0.5; 4,5 % del notional en p=0.10, 2,5 % en 0.50); `fees_disabled` → 0;
+`fee_status≠KNOWN` o `exponent≠1` → `edge_net = None` (fail-closed). H2 alternativa (1000 bps íntegro:
+0.10·min(p,1−p)) y H3 (2×H1) como **columnas de sensibilidad**, nunca como métrica de decisión.
+Parámetros a priori: `exit_mode = hold_to_resolution` (redención sin fee, supuesto declarado),
+`x_exec = 0` primario con estrés 0.5·tick y 1 pt, rebate maker 0 (0.25 es cota superior de pool, no
+ingreso por trade), sizing 1 unidad. `predictions.edge_net`/`signals.net_edge` se rellenan con H1.
+**Incógnitas que se mantienen:** relación 1000 bps ↔ 0.05; ningún fill real verificado en weather;
+vigencia histórica del `feeSchedule` (Gamma sólo expone el valor actual); unidad de `orderMinSize`;
+regla del `tick_size = 0.01` en 411 mercados.
+**Desbloquea:** R18 (preregistro backtest), R20 (edge_net/sizing), R21.
+**Estado:** ADOPTADO.

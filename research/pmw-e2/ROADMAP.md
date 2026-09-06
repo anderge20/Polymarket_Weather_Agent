@@ -293,3 +293,6 @@ Cada ítem evaluativo (R4, R16, R18/R21, R24) lleva preregistro hasheado antes d
 **Regla:** cada sesión en su propio worktree; nunca cambiar la rama del workspace canónico; sólo anexar en `DECISIONS.md`.
 | R26, R6, R25 | **HECHO** — `feat/r26-open-discovery`, PR #1, 143/4; revisión adversarial con 6 correcciones | D16 |
 | R11 | **EN CURSO por A** — investigación de la semántica de fees + propuesta de modelo de coste preregistrado | workflow |
+| PR #1 | **FUSIONADO** (`dfdc73e`), 143/4 en `main`; B debe rebasar `feat/ingest-2b` | D18 |
+| R11 | **HECHO** — `FEES_SEMANTICS.md` (sha 4dbad3ab…), modelo de coste H1 + sensibilidad H2/H3; refutado | D19 |
+| R18 | **EN CURSO por A** — preregistro del backtest (workflow con 2 refutadores) | — |

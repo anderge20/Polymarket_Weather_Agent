@@ -1,0 +1,498 @@
+[
+ {
+  "resumen": "CARACTERIZACIÓN EMPÍRICA DE FEES EN CATALOG_V2.duckdb (read_only, 93.221 mercados / 8.557 eventos, tag_id 104596, endDate 2025-12-30..2026-09-04; mk y cls2 tienen columnas de fees idénticas fila a fila: 93.221/93.221 coinciden).\n\nT1. Combinaciones de fees observadas (globales, sólo existen DOS):\n| feesEnabled | makerBaseFee | takerBaseFee | feeSchedule | n | min endDate | max endDate |\n| true | 1000 | 1000 | {\"exponent\":1,\"rate\":0.05,\"takerOnly\":true,\"rebateRate\":0.25} | 84.451 | 2026-03-30 | 2026-09-04 |\n| false | NULL | NULL | NULL | 8.770 | 2025-12-30 | 2026-03-30 |\nNo hay ninguna otra combinación: nunca aparece feesEnabled=true sin feeSchedule, ni feeSchedule sin makerBaseFee/takerBaseFee=1000, ni valores distintos de 1000/0.05/0.25/exponent 1. Los NULL son exactamente los 8.770 mercados feesEnabled=false (feesEnabled nunca es NULL).\n\nT2. Distribución por mes de endDate:\n| mes | feesEnabled | n |\n| 2025-12 | false | 77 |\n| 2026-01 | false | 56 |\n| 2026-02 | false | 1.386 |\n| 2026-03 | false | 7.251 |\n| 2026-03 | true | 176 |\n| 2026-04 | true | 14.553 |\n| 2026-05 | true | 17.593 |\n| 2026-06 | true | 15.972 |\n| 2026-07 | true | 16.687 |\n| 2026-08 | true | 17.259 |\n| 2026-09 | true | 2.211 |\n\nT3. Frontera del régimen (día a día):\n| endDate | feesEnabled | n | closedTime min..max |\n| 2026-03-27 | false | 385 | 03-26 13:37 .. 03-30 05:43 |\n| 2026-03-28 | false | 385 | 03-27 13:06 .. 03-30 05:53 |\n| 2026-03-29 | false | 385 | 03-28 13:27 .. 03-30 12:29 |\n| 2026-03-30 | false | 275 | 03-29 21:33 .. 03-31 05:51 |\n| 2026-03-30 | true | 143 | 03-30 07:33 .. 03-31 13:22 |\n| 2026-03-31 | true | 33 | 03-31 01:03 .. 04-01 00:01 |\n| 2026-04-01 | true | 418 | 03-31 13:14 .. 04-02 12:44 |\nPrimer mercado con fees: market_id 1779513 (highest-temperature-in-atlanta-on-march-30-2026-57forbelow, endDate 2026-03-30T12:00:00Z, closedTime 2026-03-30 07:33:04+00, createdAt vía Gamma live 2026-03-29T18:09:47Z). Último sin fees: market_id 1779683 (taipei march-30, closedTime 2026-03-31 05:51:53+00, createdAt 2026-03-29T18:11:35Z). Ambos se crearon con 2 minutos de diferencia, así que la frontera NO es por fecha de creación ni por endDate: el 2026-03-30 el corte es POR EVENTO/CIUDAD (13 ciudades con fees: Atlanta, Austin, Chicago, Dallas, Denver, Houston, Los Angeles, Mexico City, Miami, NYC, San Francisco, Seattle, Toronto, 11 mercados cada una; 25 ciudades sin fees, todas fuera de Norteamérica: Ankara, Beijing, Buenos Aires, ..., Wellington, Wuhan). Desde endDate 2026-03-31 en adelante el 100% tiene fees (Istanbul, NYC, Toronto el 03-31; 418/418 el 04-01). En ningún evento conviven mercados con y sin fees (0 eventos mixtos de 8.557). Coincide con el changelog oficial: \"Mar 30, 2026 – Fee Structure V2 ... Fees now apply to Crypto, Sports, Finance, Politics, Economics, Culture, Weather, Tech, Mentions, and Other / General markets\" y \"Mar 31, 2026 – REST API Fee Fields Update: Fees should now be calculated using the `feeSchedule` object within a market\" (https://docs.polymarket.com/changelog).\n\nT4. tick_size × min_order_size:\n| tick_size | min_order_size | n | min endDate | max endDate |\n| 0.001 | 5 | 92.810 (99,56%) | 2025-12-30 | 2026-09-04 |\n| 0.01 | 5 | 411 (0,44%) | 2026-03-13 | 2026-09-01 |\nmin_order_size es 5 en el 100% de los mercados. Los 411 con tick 0.01: 2 sin fees (Hong Kong 13/14-mar), 409 con fees; por mes: 03→2, 04→2, 05→365 (95 eventos, incl. 343 con prefijo slug 'arch-'), 06→24, 08→10, 09→8. Los mercados con prefijo 'arch-' (1.639, endDate 2026-05-17..05-19) tienen todos fees; 343 de ellos tick 0.01 y 1.296 tick 0.001. tick_size no es por época: el mismo régimen weather_fees contiene ambos ticks.\n\nT5. Coherencia feeSchedule ↔ docs oficiales (https://docs.polymarket.com/trading/fees y /programs/maker-rebates): fila Weather = \"Taker Fee Rate 0.05, Maker Rebate 25%\"; fórmula \"fee = C × feeRate × p × (1 - p)\"; ejemplo 100 shares a $0.50 → $1.25 de fee. Verificado numéricamente: 100×0.05×0.5×0.5 = 1.25 ✓ y a $0.10: 100×0.05×0.1×0.9 = 0.45 ✓ (tabla oficial). Por tanto feeSchedule.rate=0.05, rebateRate=0.25, exponent=1 (fórmula lineal en p(1-p)), takerOnly=true (\"Makers are never charged fees. Only takers pay fees\") son coherentes con la documentación.\n\nT6. makerBaseFee/takerBaseFee=1000: el CLOB confirma en vivo GET https://clob.polymarket.com/fee-rate?token_id=<token Atlanta 1779513> → {\"base_fee\":1000} y para el token Taipei sin fees → {\"base_fee\":0}; GET /markets/<condition_id> devuelve maker_base_fee=1000, taker_base_fee=1000. La referencia oficial (https://docs.polymarket.com/api-reference/market-data/get-fee-rate) define `base_fee` como \"Base fee in basis points\" (ejemplo 30). 1000 bps = 10% NO reproduce los ejemplos oficiales con la fórmula documentada (100×0.10×0.25 = $2.50 ≠ $1.25), así que makerBaseFee/takerBaseFee=1000 NO es el rate efectivo; en el catálogo funciona sólo como flag binario 1000/NULL perfectamente colineal con feesEnabled (ver T1) y el changelog del 31-mar indica que el cálculo debe hacerse con feeSchedule. makerBaseFee=1000 tampoco es coherente con 'makers never pay' salvo como valor nominal heredado (ver incógnitas).\n\nIMPLICACIÓN PARA fees.py / strategy_a: (1) fee_regime es efectivamente binario en el catálogo (weather_fees con hash único vs fees_disabled), sin variación intra-régimen → el guard de fee_schedule_hash no dispara; (2) el corte de época es por mercado (usar feesEnabled/feeSchedule por fila, no por fecha), pero para endDate ≥ 2026-03-31 se puede asumir 100% weather_fees; (3) para edge neto taker: fee_por_share = 0.05 × p × (1−p) (en USDC, redondeado a 5 decimales, mínimo 0.00001 USDC); (4) la afirmación de fees.py \"BOTH epochs carry orderPriceMinTickSize=0.001\" es falsa para 411 mercados (tick 0.01).",
+  "hallazgos": [
+   {
+    "afirmacion": "En el catálogo sólo existen dos combinaciones de fees: (feesEnabled=true, makerBaseFee=1000, takerBaseFee=1000, feeSchedule={exponent:1,rate:0.05,takerOnly:true,rebateRate:0.25}) en 84.451 mercados, y (feesEnabled=false, NULL, NULL, NULL) en 8.770. No hay feeSchedule con rate≠0.05, rebate≠0.25 ni exponent≠1, ni base fees ≠1000.",
+    "tipo": "OBSERVADO",
+    "fuente": "/Users/mariaaleu/pmw-catalog-v2/CATALOG_V2.duckdb tabla mk (y cls2, idéntica en fees 93.221/93.221), consulta GROUP BY feesEnabled, makerBaseFee, takerBaseFee, feeSchedule",
+    "cita": "true | 1000.0 | 1000.0 | {\"exponent\": 1, \"rate\": 0.05, \"takerOnly\": true, \"rebateRate\": 0.25} | 84451 | 2026-03-30T12:00:00Z | 2026-09-04T12:00:00Z ; false | NULL | NULL | NULL | 8770 | 2025-12-30T12:00:00Z | 2026-03-30T12:00:00Z"
+   },
+   {
+    "afirmacion": "Distribución por mes de endDate: 2025-12→77 sin fees; 2026-01→56 sin; 2026-02→1.386 sin; 2026-03→7.251 sin + 176 con; 2026-04→14.553 con; 05→17.593; 06→15.972; 07→16.687; 08→17.259; 09→2.211 (todos con fees a partir de abril).",
+    "tipo": "OBSERVADO",
+    "fuente": "CATALOG_V2.duckdb mk, GROUP BY substr(endDate,1,7), feesEnabled"
+   },
+   {
+    "afirmacion": "El primer mercado con fees es market_id 1779513 (event 322394, slug highest-temperature-in-atlanta-on-march-30-2026-57forbelow), endDate 2026-03-30T12:00:00Z, closedTime 2026-03-30 07:33:04+00; el último sin fees es market_id 1779683 (Taipei 30-mar, closedTime 2026-03-31 05:51:53+00). Gamma en vivo da createdAt 2026-03-29T18:09:47Z y 2026-03-29T18:11:35Z respectivamente: fueron creados con 2 minutos de diferencia.",
+    "tipo": "OBSERVADO",
+    "fuente": "CATALOG_V2.duckdb mk (ORDER BY endDate, closedTime) + GET https://gamma-api.polymarket.com/markets/1779513 y /markets/1779683",
+    "cita": "1779513: 'createdAt': '2026-03-29T18:09:47.128891Z', 'feesEnabled': True, 'feeType': 'weather_fees' ... 1779683: 'createdAt': '2026-03-29T18:11:35.208852Z', 'feesEnabled': False, 'feeType': None, 'feeSchedule': None, 'makerBaseFee': None, 'takerBaseFee': None"
+   },
+   {
+    "afirmacion": "El 2026-03-30 (endDate) el régimen se parte por evento/ciudad: 13 ciudades con fees (Atlanta, Austin, Chicago, Dallas, Denver, Houston, Los Angeles, Mexico City, Miami, NYC, San Francisco, Seattle, Toronto; 143 mercados, 11 por evento) y 25 ciudades sin fees (Ankara, Beijing, Buenos Aires, Chengdu, Chongqing, Hong Kong, Istanbul, London, Lucknow, Madrid, Milan, Moscow, Munich, Paris, Sao Paulo, Seoul, Shanghai, Shenzhen, Singapore, Taipei, Tel Aviv, Tokyo, Warsaw, Wellington, Wuhan; 275 mercados). Desde endDate 2026-03-31 el 100% tiene fees (33/33 el 03-31; 418/418 el 04-01). Cero eventos mixtos en todo el catálogo (0 de 8.557).",
+    "tipo": "OBSERVADO",
+    "fuente": "CATALOG_V2.duckdb mk, GROUP BY city, unit, feesEnabled WHERE endDate='2026-03-30'/'2026-03-31'; conteo de eventos con nt>0 AND nf>0"
+   },
+   {
+    "afirmacion": "La fecha del cambio de régimen en el catálogo (30/31-mar-2026) coincide con el changelog oficial de Polymarket.",
+    "tipo": "OBSERVADO",
+    "fuente": "https://docs.polymarket.com/changelog",
+    "cita": "Mar 30, 2026 – Fee Structure V2: \"Fees now apply to Crypto, Sports, Finance, Politics, Economics, Culture, Weather, Tech, Mentions, and Other / General markets with updated rates per category.\" / Mar 31, 2026 – REST API Fee Fields Update: \"Fees should now be calculated using the `feeSchedule` object within a market.\""
+   },
+   {
+    "afirmacion": "feeSchedule.rate=0.05 y rebateRate=0.25 son exactamente la fila Weather de la tabla oficial de tarifas; la fórmula oficial es lineal en p(1-p) (coherente con exponent=1) y takerOnly=true coincide con 'Makers are never charged fees'.",
+    "tipo": "OBSERVADO",
+    "fuente": "https://docs.polymarket.com/trading/fees ; https://docs.polymarket.com/programs/maker-rebates",
+    "cita": "\"fee = C × feeRate × p × (1 - p)\" where C = number of shares traded and p = price of the shares. | Weather | 0.05 | 25% | ... \"Makers are never charged fees. Only takers pay fees.\" ... \"Fees are rounded to 5 decimal places. The smallest fee charged is 0.00001 USDC.\" ... Maker rebates: \"Finance, Politics, Economics, Culture, Weather, Other / General, Mentions, Tech [25%]\"; \"Rebates are calculated and distributed every day\"; \"calculated per market, so you only compete with other makers in the same market\"; \"minimum accrued rebate of $1 pUSD is required for a payout\""
+   },
+   {
+    "afirmacion": "Los ejemplos numéricos oficiales para categorías de rate 0.05 (Sports = Weather) se reproducen con exponent=1: 100 shares a $0.50 → $1.25 (100×0.05×0.5×0.5), a $0.10 → $0.45 (100×0.05×0.1×0.9), a $0.30 → $1.05.",
+    "tipo": "OBSERVADO",
+    "fuente": "https://docs.polymarket.com/trading/fees (tabla 100 shares) y verificación aritmética propia",
+    "cita": "Sports (0.05 rate): $0.10: $10 trade → $0.45 fee; $0.30: $30 trade → $1.05 fee; $0.50: $50 trade → $1.25 fee ... Economics/Culture/Weather/Other (0.05 rate): Same as Sports table above."
+   },
+   {
+    "afirmacion": "El CLOB expone makerBaseFee/takerBaseFee=1000 como `base_fee` en basis points y lo devuelve 1000 para un token con fees y 0 para un token sin fees; la referencia oficial define base_fee como 'Base fee in basis points' sin relacionarlo con feeSchedule.",
+    "tipo": "OBSERVADO",
+    "fuente": "GET https://clob.polymarket.com/fee-rate?token_id=1151536756...964596 (Atlanta 1779513) → {\"base_fee\":1000}; GET ...token_id=477553809...033907 (Taipei 1779683) → {\"base_fee\":0}; GET https://clob.polymarket.com/markets/0x3eac9275...bd1b → maker_base_fee 1000, taker_base_fee 1000, minimum_tick_size 0.001, minimum_order_size 5; https://docs.polymarket.com/api-reference/market-data/get-fee-rate",
+    "cita": "`base_fee` (integer, int64): \"Base fee in basis points\" with example value of `30`"
+   },
+   {
+    "afirmacion": "makerBaseFee/takerBaseFee=1000 NO es el rate efectivo: 1000 bps = 10% aplicado a la fórmula documentada daría 100×0.10×0.5×0.5 = $2.50 por 100 shares a $0.50, frente a los $1.25 oficiales. En el catálogo el campo es un flag binario (1000 ↔ feesEnabled=true, NULL ↔ false, colinealidad 100%) y el cálculo debe hacerse con feeSchedule (changelog 31-mar). El valor 1000 en makerBaseFee es además nominal: los makers no pagan fee según la documentación.",
+    "tipo": "INFERIDO",
+    "fuente": "Combinación de T1 (catálogo), tabla oficial de ejemplos en https://docs.polymarket.com/trading/fees y changelog 2026-03-31"
+   },
+   {
+    "afirmacion": "En CLOB V2 la fee ya no va en la orden firmada (feeRateBps eliminado) sino que la determina el protocolo al matchear; la fórmula dinámica por mercado es la misma fee = C × feeRate × p × (1 - p); cutover 2026-04-28.",
+    "tipo": "OBSERVADO",
+    "fuente": "https://docs.polymarket.com/v2-migration",
+    "cita": "\"Fees are now determined by the protocol at match time, not embedded in your signed order.\" ... \"`feeRateBps` removed\" ... \"Platform fees are dynamic per market: `fee = C × feeRate × p × (1 - p)`\" ... \"Makers are never charged fees — only takers pay.\""
+   },
+   {
+    "afirmacion": "tick_size/min_order_size: 92.810 mercados (99,56%) tick 0.001 y 411 (0,44%) tick 0.01; min_order_size=5 en el 100%. Los 411 con tick 0.01 van de endDate 2026-03-13 a 2026-09-01 (2 sin fees: Hong Kong 13/14-mar; 409 con fees; 365 en mayo, de los cuales 343 con prefijo slug 'arch-'). tick_size no está ligado a la época de fees: el régimen weather_fees contiene ambos ticks.",
+    "tipo": "OBSERVADO",
+    "fuente": "CATALOG_V2.duckdb mk, GROUP BY tick_size, min_order_size / por mes / por prefijo 'arch-'",
+    "cita": "0.001 | 5.0 | 92810 | 2025-12-30T12:00:00Z | 2026-09-04T12:00:00Z ; 0.01 | 5.0 | 411 | 2026-03-13T12:00:00Z | 2026-09-01T12:00:00Z"
+   },
+   {
+    "afirmacion": "La afirmación de fees.py 'BOTH epochs carry: orderPriceMinTickSize=0.001, orderMinSize=5' es incompleta: 411 mercados (ambas épocas) tienen orderPriceMinTickSize=0.01 (confirmado en vivo para 1557782 y 2274126).",
+    "tipo": "OBSERVADO",
+    "fuente": "/Users/mariaaleu/workspace/Polymarket_Weather_Agent/src/weather_agent/polymarket/fees.py (docstring) vs CATALOG_V2.duckdb + GET gamma-api /markets/1557782 ('orderPriceMinTickSize': 0.01) y /markets/2274126 ('orderPriceMinTickSize': 0.01)",
+    "cita": "fees.py: \"* BOTH epochs carry: orderPriceMinTickSize=0.001, orderMinSize=5.\""
+   },
+   {
+    "afirmacion": "El catálogo (JSONL y DuckDB) NO conserva feeType, createdAt, startDate, rewardsMinSize ni rewardsMaxSpread; feeType='weather_fees' sólo es verificable en Gamma en vivo (1779513 y 2274126 lo devuelven; los sin fees devuelven feeType None). Todos los endDate son T12:00:00Z.",
+    "tipo": "OBSERVADO",
+    "fuente": "/Users/mariaaleu/pmw-catalog-v2/CATALOG_V2_markets.jsonl (claves: city, clobTokenIds, closedTime, condition_id, endDate, ..., feeSchedule, feesEnabled, makerBaseFee, takerBaseFee, tick_size, min_order_size, ...) + GET gamma-api"
+   },
+   {
+    "afirmacion": "Todos los mercados fee-enabled en el catálogo comparten un único feeSchedule, por lo que fee_schedule_hash es constante dentro del régimen weather_fees y el guard #3 de 2B no se activa con estos datos. Para endDate ≥ 2026-03-31 se puede asumir weather_fees al 100%; para endDate = 2026-03-30 hay que leer feesEnabled por fila.",
+    "tipo": "INFERIDO",
+    "fuente": "T1 y T3 del catálogo; PHASE_2B_MARKET_DISCOVERY.md:172-179"
+   }
+  ],
+  "incognitas": [
+   "Semántica exacta de base_fee=1000 bps: la documentación sólo dice 'Base fee in basis points' y no lo relaciona con feeSchedule.rate=0.05; la hipótesis 1000 bps = 10% contradice los ejemplos oficiales ($1.25 vs $2.50). Posible campo heredado de CLOB V1 (feeRateBps de la orden firmada) — no confirmado en docs.",
+   "Fórmula con exponent: la documentación pública sólo muestra fee = C × feeRate × p × (1-p) (equivale a exponent=1); no se ha encontrado la forma general con exponent≠1 ni cómo se aplicaría (¿(p(1-p))^e?). Irrelevante para el catálogo actual (exponent=1 en el 100%) pero importante si cambia el schedule.",
+   "En qué activo se descuenta la fee para BUY (¿shares?) vs SELL (¿USDC?): docs dicen 'Taker fees are calculated in USDC' pero no especifican la deducción por lado; afecta al cálculo de PnL neto por share recibido.",
+   "Si feeSchedule/makerBaseFee de Gamma reflejan el valor VIGENTE en el momento de cada trade histórico o el valor actual del mercado (Gamma no expone rango de vigencia; changelog Jul-10-2026 muestra que rates pueden cambiar retroactivamente en el objeto). Para weather no consta cambio posterior al 30-mar, pero no se puede excluir desde el catálogo.",
+   "Por qué el 30-mar-2026 el corte fue por ciudad (13 ciudades norteamericanas + Mexico City/Toronto con fees vs resto sin) pese a crearse todos los mercados el 29-mar con minutos de diferencia; probable activación manual/por lote — no documentado.",
+   "Por qué 411 mercados tienen tick 0.01 (concentrados en mayo y en slugs 'arch-'); no se ha determinado la regla que fija orderPriceMinTickSize.",
+   "Rebate efectivo real para un maker: rebateRate=0.25 es la fracción del pool de fees del mercado repartida pro-rata diario ('your_fee_equivalent / total_fee_equivalent × rebate_pool', mínimo $1 pUSD para pago), no un 25% garantizado sobre la propia fee-equivalente; la fracción efectiva depende de la competencia de makers y no es estimable desde el catálogo.",
+   "Builder fees ('Applicable platform fees and builder taker fees are charged on top', docs create-order) no aparecen en el catálogo; si se opera vía builder podría haber fee adicional.",
+   "No se ha verificado empíricamente con trades reales (fee_rate_bps en /trades) que la fee cobrada en mercados weather coincida con 0.05·p·(1-p); sólo se verificó contra la tabla oficial."
+  ]
+ },
+ {
+  "resumen": "DOCUMENTACIÓN OFICIAL (docs.polymarket.com, sep-2026): la fee taker se define como `fee = C × feeRate × p × (1 - p)` con C = nº de shares y p = precio; se calcula en USDC, sólo la paga el taker (\"Makers are never charged fees\"), y para la categoría Weather la tabla oficial da Taker Fee Rate 0.05 / Maker 0 / Maker Rebate 25 %. Desde el changelog del 31-mar-2026 la fuente canónica de parámetros es el objeto `feeSchedule` del mercado (Gamma) — {rate, exponent, takerOnly, rebateRate} — cuyas definiciones literales están en market-data/market-details (\"rate: Base rate used in the fee calculation\", \"rebateRate: Fraction of taker fees rebated back to the resting maker. Example: 0.25 = 25% rebate\"). Es decir, `feeSchedule.rate=0.05` ES la feeRate de la fórmula y `rebateRate=0.25` es la fracción de la fee taker que va al pool de rebates de makers. Para weather `exponent=1`, así que la fórmula documentada aplica tal cual: fee_USDC/share = 0.05·p·(1−p); máximo 0,0125 USDC/share en p=0.5 (1,25 $ por 100 shares, que coincide con la tabla oficial \"Economics/Other $1.25\").\n\n`makerBaseFee/takerBaseFee=1000` de Gamma NO son la fee efectiva: el OpenAPI de Gamma los declara como `integer` sin descripción, pero el OpenAPI del CLOB define los mismos campos (`mbf`/`tbf` en /clob-markets/{condition_id} y `base_fee` en /fee-rate) como \"Maker/Taker base fee in basis points\", o sea 1000 bps = 10 %. Verificado en vivo: un mercado weather nuevo (London 4-sep) devuelve `{\"base_fee\":1000}`, `mbf:1000, tbf:1000, fd:{r:0.05,e:1,to:true}`; los legacy (NYC 30-dic-2025, Paris 30-mar-2026) devuelven `base_fee:0` y sin `fd`. La relación 1000 bps ↔ rate 0.05 NO está documentada en ningún sitio oficial; la inferencia mejor soportada es que 1000 bps es el `feeRateBps` on-chain del CTF Exchange V1 (\"Fee rate, in basis points, charged to the order maker, charged on proceeds\"), un TOPE que firma el usuario y sobre el que el FeeModule devuelve la diferencia, mientras la fee realmente cobrada sigue la curva `feeSchedule`. Evidencia empírica pública (issue #326 de py-clob-client, abr-2026): en mercados con base_fee=1000 y rate 0.03 la deducción real fue C·0.03·(1−p) shares (= C·0.03·p·(1−p) USDC / p), no el 10 %. Desde CLOB V2 (28-abr-2026) `feeRateBps` desaparece de las órdenes y \"Fees are now set at match time\".\n\nÉpocas: el changelog del 30-mar-2026 dice literalmente \"Fees now apply to Crypto, Sports, Finance, Politics, Economics, Culture, Weather, Tech, Mentions, and Other / General markets\". En CATALOG_V2.duckdb (read_only) hay exactamente dos regímenes: 8.770 mercados `feesEnabled=false` (endDate 2025-12-30 → 2026-03-30) y 84.451 `feesEnabled=true` con feeSchedule idéntico {exponent 1, rate 0.05, takerOnly true, rebateRate 0.25} y base fees 1000 (endDate 2026-03-30 → 2026-09-04); el endDate 2026-03-30 está mezclado (275 sin fee / 143 con fee). Consecuencia práctica para strategy_a: taker_fee por share = rate·p·(1−p) en USDC (equivale a rate·(1−p) como fracción del notional comprado; p.ej. 4,5 % del notional en p=0.10, 2,5 % en p=0.5); maker = 0 más un rebate del pool ≈ 25 % del fee-equivalent; segmentar por `feesEnabled` y leer `feeSchedule` por mercado (las tarifas cambian: sports pasó de 0.03 a 0.05 el 10-jul-2026).",
+  "hallazgos": [
+   {
+    "afirmacion": "Fórmula oficial de la fee (docs actuales): fee = C × feeRate × p × (1 − p), C = shares, p = precio; sólo taker; en USDC.",
+    "tipo": "OBSERVADO",
+    "fuente": "https://docs.polymarket.com/trading/fees (y .md)",
+    "cita": "Fees are calculated using the following formula: fee = C × feeRate × p × (1 - p) Where C = number of shares traded and p = price of the shares. [...] **Makers are never charged fees.** Only takers pay fees. [...] Taker fees are calculated in USDC and vary based on the share price. The fee amount in USDC is symmetric around 50% probability — a trade at 30¢ incurs the same dollar fee as a trade at 70¢."
+   },
+   {
+    "afirmacion": "Tabla oficial por categoría: Weather → Taker Fee Rate 0.05, Maker Fee Rate 0, Maker Rebate 25 %. Ejemplo oficial: a $0.50 y 100 shares, Economics/Other (misma tarifa 0.05) = $1.25, es decir 100×0.05×0.5×0.5.",
+    "tipo": "OBSERVADO",
+    "fuente": "https://docs.polymarket.com/trading/fees.md",
+    "cita": "| Weather | 0.05 | 0 | 25% | [...] | Geopolitics | 0 | 0 | — |"
+   },
+   {
+    "afirmacion": "Redondeo: fees a 5 decimales, mínimo 0.00001 USDC (trades pequeños en los extremos pueden pagar 0).",
+    "tipo": "OBSERVADO",
+    "fuente": "https://docs.polymarket.com/trading/fees.md",
+    "cita": "Fees are rounded to 5 decimal places. The smallest fee charged is **0.00001 USDC**. Anything smaller rounds to zero, so very small trades near the extremes may incur no fee at all."
+   },
+   {
+    "afirmacion": "Definición oficial de los campos Gamma feesEnabled / feeSchedule.{rate, exponent, takerOnly, rebateRate}. NO existe descripción oficial de makerBaseFee/takerBaseFee ni de feeType en esta página.",
+    "tipo": "OBSERVADO",
+    "fuente": "https://docs.polymarket.com/market-data/market-details (#trading-fees)",
+    "cita": "feesEnabled: Whether fees are active for this market. | feeSchedule.rate: Base rate used in the fee calculation. | feeSchedule.exponent: Exponent applied to the price component of the fee curve. | feeSchedule.takerOnly: When `true`, fees are charged to the taker side only, and makers pay no fee. | feeSchedule.rebateRate: Fraction of taker fees rebated back to the resting maker. Example: `0.25` = 25% rebate. | orderPriceMinTickSize: Minimum price increment for limit orders. Prices must be multiples of this value. | orderMinSize: Minimum order size in USDC. The CLOB rejects orders below this threshold."
+   },
+   {
+    "afirmacion": "Desde el 31-mar-2026 la fuente canónica para calcular fees es feeSchedule; el 30-mar-2026 se activaron fees en Weather (entre otras categorías); en CLOB V2 (28-abr-2026) feeRateBps se elimina de las órdenes y la fee se fija en el match.",
+    "tipo": "OBSERVADO",
+    "fuente": "https://docs.polymarket.com/changelog",
+    "cita": "Mar 30, 2026: New fee categories: Fees now apply to Crypto, Sports, Finance, Politics, Economics, Culture, Weather, Tech, Mentions, and Other / General markets with updated rates per category. || Mar 31, 2026: Fee calculation source: Fees should now be calculated using the `feeSchedule` object within a market. || Apr 17, 2026: Order struct: `nonce`, `feeRateBps`, `taker` removed [...] Fees are now set at match time — no more `feeRateBps` on orders. || Jul 10, 2026: The sports taker fee rate increases from `0.03` to `0.05` at midnight UTC [...] The sports maker rebate decreases from 25% to 15% of collected taker fees."
+   },
+   {
+    "afirmacion": "En el OpenAPI de Gamma, makerBaseFee y takerBaseFee son `integer` SIN descripción ni ejemplo; feeType no aparece en el esquema Market; FeeSchedule = {rate number, exponent number, takerOnly boolean, rebateRate number}, todos nullable y sin descripción.",
+    "tipo": "OBSERVADO",
+    "fuente": "https://docs.polymarket.com/api-spec/gamma-openapi.yaml",
+    "cita": "makerBaseFee — Type: integer — Description: Not provided; takerBaseFee — Type: integer — Description: Not provided; feeType — Not found in the Market schema"
+   },
+   {
+    "afirmacion": "El OpenAPI del CLOB sí define la unidad: base_fee (GET /fee-rate) y mbf/tbf (GET /clob-markets/{condition_id}) son 'basis points'. 1000 ⇒ 1000 bps = 10 %. El mismo endpoint expone fd = {r: rate, e: exponent, to: takerOnly}.",
+    "tipo": "OBSERVADO",
+    "fuente": "https://docs.polymarket.com/api-spec/clob-openapi.yaml (descargado a /tmp/clob-openapi.yaml, líneas 5089-5335) y https://docs.polymarket.com/api-reference/market-data/get-fee-rate",
+    "cita": "FeeRate: base_fee: type: integer, format: int64, description: Base fee in basis points, example: 30 || ClobMarketDetails: description: CLOB-level parameters for a market — tokens, tick size, base fees, rewards, RFQ status, and fee details. [...] mbf: description: Maker base fee in basis points [...] tbf: description: Taker base fee in basis points [...] FeeDetails: description: Fee curve parameters for a market. r: description: Fee rate, example: 0.02; e: description: Fee curve exponent, example: 2; to: description: Whether fees apply to takers only || Trade.fee_rate_bps: description: Fee rate in basis points, example: '30'"
+   },
+   {
+    "afirmacion": "Verificación en vivo (GET público, 2026-09-06) sobre mercados del catálogo: weather NUEVO (market 4107021, London ≤17°C 4-sep, createdAt 2026-09-02) → /fee-rate {\"base_fee\":1000}; /clob-markets → mbf 1000, tbf 1000, fd {r:0.05, e:1, to:true}, mts 0.001, mos 5; Gamma → feeType weather_fees, feeSchedule {exponent 1, rate 0.05, takerOnly true, rebateRate 0.25}, makerBaseFee 1000, takerBaseFee 1000. Weather LEGACY (1779191 Paris 30-mar-2026, y 1046093 NYC 30-dic-2025) → base_fee 0, maker_base_fee 0, taker_base_fee 0, SIN fd; Gamma feesEnabled false, feeType null.",
+    "tipo": "OBSERVADO",
+    "fuente": "https://clob.polymarket.com/fee-rate?token_id=…, https://clob.polymarket.com/clob-markets/0xf9a5bbe3c293205bf294e3f854642fd85c70d40cb4bbd1df6cf04ebc54edeb69, https://clob.polymarket.com/clob-markets/0xf73d5adfb957e1c04abdc0eb45da44223e8e3ac709fd08524a8350888816ef64, https://gamma-api.polymarket.com/markets/4107021",
+    "cita": "{\"gst\":\"2026-09-03T23:00:00Z\",\"r\":{\"mi\":50,\"ma\":4.5,\"moas\":30},\"t\":[...],\"c\":\"0xf9a5bbe3…\",\"mos\":5,\"mts\":0.001,\"mbf\":1000,\"tbf\":1000,\"nr\":true,\"aot\":\"2026-09-02T04:56:07Z\",\"ibce\":true,\"fd\":{\"r\":0.05,\"e\":1,\"to\":true},\"v\":\"v1\"} — vs legacy — {\"gst\":\"2026-03-29T22:00:00Z\",...,\"sd\":3,\"mos\":5,\"mts\":0.001,\"nr\":true,\"aot\":\"2026-03-29T17:50:08Z\",\"ibce\":true,\"v\":\"v1\"}"
+   },
+   {
+    "afirmacion": "Los mismos valores (base fee 1000 bps, rate 0.05) aparecen en mercados de sports actuales (sports_fees_v3, rebateRate 0.15): base fee 1000 es constante entre categorías con tarifas distintas, luego NO codifica la rate efectiva.",
+    "tipo": "OBSERVADO",
+    "fuente": "https://gamma-api.polymarket.com/markets?limit=3&closed=false&order=id&ascending=false (2026-09-06)",
+    "cita": "\"feeType\": \"sports_fees_v3\", \"feeSchedule\": {\"exponent\": 1, \"rate\": 0.05, \"takerOnly\": true, \"rebateRate\": 0.15}, \"makerBaseFee\": 1000, \"takerBaseFee\": 1000"
+   },
+   {
+    "afirmacion": "Semántica on-chain (CTF Exchange V1): feeRateBps es 'fee rate in basis points, charged on proceeds'; la fórmula del contrato es fee = feeRateBps × min(p, 1−p) × tokens / (p × 10000) en BUY (cobrada en outcome tokens) y feeRateBps × min(p,1−p) × tokens / 10000 en SELL (cobrada en colateral). Es una fórmula DISTINTA de la documentada (p·(1−p)).",
+    "tipo": "OBSERVADO",
+    "fuente": "https://raw.githubusercontent.com/Polymarket/ctf-exchange/main/src/exchange/libraries/CalculatorHelper.sol y OrderStructs.sol; https://raw.githubusercontent.com/Polymarket/ctf-exchange/main/docs/Overview.md",
+    "cita": "/// @notice Fee rate, in basis points, charged to the order maker, charged on proceeds uint256 feeRateBps; || uint256 internal constant BPS_DIVISOR = 10_000; [...] if (side == Side.BUY) { // Fee charged on Token Proceeds: // baseRate * min(price, 1-price) * (outcomeTokens/price) fee = (feeRateBps * min(price, ONE - price) * outcomeTokens) / (price * BPS_DIVISOR); } else { // Fee charged on Collateral proceeds: // baseRate * min(price, 1-price) * outcomeTokens fee = feeRateBps * min(price, ONE - price) * outcomeTokens / (BPS_DIVISOR * ONE); } || Overview.md: If selling outcome tokens (base) for collateral (quote): feeQuote = baseRate * min(price, 1-price) * size; If buying outcome tokens (base) with collateral (quote): feeBase = baseRate * min(price, 1-price) * size/price"
+   },
+   {
+    "afirmacion": "Existe un FeeModule oficial que permite al operador cobrar MENOS que el feeRateBps firmado y reembolsar la diferencia: mecanismo compatible con 'base fee 1000 bps = tope firmado' y 'fee real = curva feeSchedule'.",
+    "tipo": "OBSERVADO",
+    "fuente": "https://raw.githubusercontent.com/Polymarket/exchange-fee-module/main/README.md",
+    "cita": "The `FeeModule` contract proxies the `Exchange`'s `matchOrders` function and refunds [orders when they incur charges exceeding what the operator intended to collect]"
+   },
+   {
+    "afirmacion": "Evidencia empírica pública (abr-2026, antes de V2) de que con base_fee=1000 la fee cobrada sigue la curva feeSchedule y NO el 10 %: BUY taker de 5 shares a 0.65 en mercado con base_fee 1000 y rate 0.03 → recibió 4.9475 shares; fee 0.0525 shares = 5×0.03×(1−0.65). Con la fórmula on-chain a 1000 bps habría sido 0.10×0.35×5/0.65 = 0.269 shares. Con base_fee=0 (NHL) no hubo deducción. El issue sigue abierto sin respuesta de mantenedores (1 comentario, autor NONE).",
+    "tipo": "OBSERVADO",
+    "fuente": "https://github.com/Polymarket/py-clob-client/issues/326 (gh api, state=open, comments=1)",
+    "cita": "Taker BUY: 5 shares, filled at $0.65 — On-chain position after fill: **4.9475 shares** — Fee deducted: 0.0525 shares [...] The formula `fee = C * feeRate * (1-p)` predicts: `5 * 0.03 * 0.35 = 0.0525 shares` — matches exactly [...] | NHL | 0 | $0.59 | 5.00 | 5.0000 | 0.0000 |"
+   },
+   {
+    "afirmacion": "Reconciliación: la fórmula documentada C·rate·p·(1−p) está en USDC; en un BUY la deducción se hace en shares y equivale a dividir por p → C·rate·(1−p) shares, exactamente lo observado en #326 (0.0525 shares × 0.65 = 0.0341 USDC = 5×0.03×0.65×0.35). Por tanto: feeSchedule.rate es la feeRate efectiva; makerBaseFee/takerBaseFee=1000 es el tope on-chain en bps (10 %) y no debe usarse como fee efectiva.",
+    "tipo": "INFERIDO",
+    "fuente": "Combinación de docs.polymarket.com/trading/fees + CalculatorHelper.sol + issue #326 + observación /clob-markets (fd vs tbf)"
+   },
+   {
+    "afirmacion": "Papel de exponent (no documentado literalmente): fee = C × rate × (p·(1−p))^exponent. Con rate 0.25 y exponent 2 (crypto 15-min, ene-2026) el pico en p=0.5 es 0.25×0.0625 = 1.5625 % ≡ el '1.56 % at 50 % probability' del changelog; un usuario en #247 usa la misma forma. Para weather exponent=1, así que la fórmula documentada aplica sin cambios.",
+    "tipo": "INFERIDO",
+    "fuente": "https://docs.polymarket.com/changelog (Jan 5, 2026: 'Fees vary by price and peak at 1.56% at 50% probability'); https://github.com/Polymarket/py-clob-client/issues/247 ('fee_equivalent = shares * price * 0.25 * (price * (1 - price))^2'); FeeDetails.e example: 2 en clob-openapi.yaml",
+    "cita": "Taker Fees: Enabled on 15-minute crypto markets. Fees vary by price and peak at 1.56% at 50% probability."
+   },
+   {
+    "afirmacion": "Maker rebates: no es un descuento por trade sino un pool diario por mercado: rebate_pool = rebateRate × fees taker cobradas en ese mercado; tu rebate = (tu fee_equivalent / fee_equivalent total de makers) × rebate_pool, con fee_equivalent = C × feeRate × p × (1−p); pago diario en pUSD, mínimo $1. Weather: 25 %.",
+    "tipo": "OBSERVADO",
+    "fuente": "https://docs.polymarket.com/programs/maker-rebates(.md) y https://docs.polymarket.com/market-makers/maker-rebates",
+    "cita": "fee_equivalent = C × feeRate × p × (1 - p) [...] rebate = (your_fee_equivalent / total_fee_equivalent) × rebate_pool [...] Rebates are distributed using the same formula as taker fees [...] Paid daily in pUSD [...] A minimum accrued rebate of $1 pUSD is required for a payout. | Weather | 25% |"
+   },
+   {
+    "afirmacion": "Taker Rebate Program (desde 28-may-2026): rebate escalonado 0–50 % de la fee taker según volumen ponderado de 30 días (wV = Trade Size × (1 − Entry Price) × Category Weight × Bonuses; Weather weight 1.7); Tier 1 requiere $2.000 wV (3 %). Sólo relevante para net edge a volúmenes altos.",
+    "tipo": "OBSERVADO",
+    "fuente": "https://docs.polymarket.com/programs/taker-rebates",
+    "cita": "The Taker Rebate Program goes live on **Thursday, May 28, 2026**. [...] wV = Trade Size × (1 − Entry Price) × Category Weight × Bonuses [...] | 1 | Bronze | $2,000 | 3% | $10 |"
+   },
+   {
+    "afirmacion": "Épocas en el catálogo (DuckDB read_only, tabla mk, 93.221 filas): feesEnabled=false → 8.770 mercados (endDate 2025-12-30T12:00Z … 2026-03-30T12:00Z; 8.768 con tick 0.001 y 2 con tick 0.01), feeSchedule/base fees NULL. feesEnabled=true → 84.451 mercados con feeSchedule IDÉNTICO {\"exponent\": 1, \"rate\": 0.05, \"takerOnly\": true, \"rebateRate\": 0.25}, makerBaseFee=takerBaseFee=1000 (endDate 2026-03-30 … 2026-09-04; 84.042 tick 0.001, 409 tick 0.01). min_order_size=5 en todos. La tabla cls2 replica los mismos dos regímenes (8.770 / 84.451). El endDate 2026-03-30 está mezclado: 275 sin fee y 143 con fee.",
+    "tipo": "OBSERVADO",
+    "fuente": "/Users/mariaaleu/pmw-catalog-v2/CATALOG_V2.duckdb (mk, cls2)",
+    "cita": "(False, None, None, None, 0.001, 5.0, 8768, '2025-12-30T12:00:00Z', '2026-03-30T12:00:00Z') / (True, '{\"exponent\": 1, \"rate\": 0.05, \"takerOnly\": true, \"rebateRate\": 0.25}', 1000.0, 1000.0, 0.001, 5.0, 84042, '2026-03-30T12:00:00Z', '2026-09-04T12:00:00Z') / boundary: ('2026-03-30T12:00:00Z', False, 275) ('2026-03-30T12:00:00Z', True, 143)"
+   },
+   {
+    "afirmacion": "Fecha de activación en weather: el primer mercado con fee del catálogo (id 1741225, Toronto ≤−2°C 31-mar) fue creado el 2026-03-27 y el último sin fee (id 1779820, Moscú ≥12°C 30-mar) el 2026-03-29; es decir, el flag no depende del createdAt sino que se aplicó ~30-mar-2026 (coincide con el changelog 'Mar 30, 2026') a mercados aún abiertos, probablemente por fecha de resolución/endDate.",
+    "tipo": "INFERIDO",
+    "fuente": "https://gamma-api.polymarket.com/markets/1741225 (createdAt 2026-03-27T10:00:12Z, feeType weather_fees) y /markets/1779820 (createdAt 2026-03-29T18:12:58Z, feeType null) + changelog 30-mar-2026"
+   },
+   {
+    "afirmacion": "Los clientes oficiales (py-clob-client) usan /fee-rate.base_fee como entero en bps y lo tratan como el ÚNICO valor válido para fee_rate_bps de la orden (V1); no calculan la fee efectiva a partir de él. En V2 el SDK 'handles fee calculation automatically' y expone get_clob_market_info → fd {r,e,to}.",
+    "tipo": "OBSERVADO",
+    "fuente": "https://raw.githubusercontent.com/Polymarket/py-clob-client/main/py_clob_client/client.py; https://docs.polymarket.com/v2-migration",
+    "cita": "fee_rate = result.get(\"base_fee\") or 0 [...] raise Exception(f\"invalid user provided fee rate: ({user_fee_rate}), fee rate for the market must be {market_fee_rate_bps}\") || v2-migration: Fees are now **determined by the protocol at match time**, not embedded in your signed order. [...] You no longer set `feeRateBps` on orders. The SDK handles fee calculation automatically. [...] info.fd — fee details { r: rate, e: exponent, to: takerOnly }"
+   },
+   {
+    "afirmacion": "Aplicación práctica para strategy_a (weather_fees): taker_fee_usdc_per_share = 0.05·p·(1−p) (máx. 0.0125 en p=0.5); como fracción del notional comprado = 0.05·(1−p) → 4,5 % en p=0.10, 3,5 % en p=0.30, 2,5 % en p=0.50, 0,5 % en p=0.90. Si se entra taker y se mantiene a resolución sólo se paga una vez; si se sale también taker se paga de nuevo al precio de salida. Órdenes maker: fee 0 (+ rebate del pool ≈ 0.25 × propio fee_equivalent, no garantizado). Para fees_disabled: 0 justificado por feesEnabled=false y base_fee=0 en CLOB.",
+    "tipo": "INFERIDO",
+    "fuente": "Derivado de la fórmula oficial (docs.polymarket.com/trading/fees) con rate=0.05, exponent=1, takerOnly=true del feeSchedule observado"
+   }
+  ],
+  "incognitas": [
+   "No hay NINGUNA frase oficial que relacione makerBaseFee/takerBaseFee (1000 bps) con feeSchedule.rate; la lectura '1000 bps = tope on-chain V1, rate = curva efectiva' es una inferencia (contrato V1 + FeeModule + issue #326), y el issue #326 sigue abierto sin respuesta de Polymarket.",
+   "No se ha verificado el código del contrato/exchange de CLOB V2 (28-abr-2026): se asume que la fee 'fijada en el match' sigue siendo C·rate·p·(1−p) en USDC y que en BUY se deduce en shares (fee_usdc/p); la doc V2 sólo habla de 'fee-adjusted fill amounts'.",
+   "La fórmula con exponent (C·rate·(p(1−p))^e) no aparece literalmente en la documentación; sólo está respaldada por el pico 1,56 % (rate 0.25, e=2) y por un comentario de usuario. Irrelevante para weather mientras exponent=1, pero conviene fail-closed si exponent≠1.",
+   "Las tarifas cambian por categoría en el tiempo (sports 0.03→0.05 y rebate 25 %→15 % el 10-jul-2026): Gamma/CLOB devuelven el feeSchedule ACTUAL, no un histórico; el catálogo no tiene fee history, así que no se puede descartar que el rate de weather haya cambiado entre marzo y septiembre de 2026 (todos los mercados observados muestran 0.05/0.25 hoy).",
+   "Fecha exacta de activación en weather: el changelog dice 30-mar-2026 y el catálogo muestra el endDate 2026-03-30 mezclado (275 sin / 143 con fee); no se ha determinado la regla exacta (hora de corte, endDate vs createdAt).",
+   "Realización del maker rebate: es una cuota de un pool diario por mercado; 0.25 × fee_equivalent es una aproximación, no un valor contractual, y se paga en pUSD con mínimo $1.",
+   "orderMinSize: market-details lo describe como 'Minimum order size in USDC' mientras el CLOB lo describe sólo como 'Minimum order size' (=5); no se ha confirmado si es en USDC o en shares.",
+   "No se ha podido comprobar una fee real en un trade de weather (los endpoints /trades del CLOB requieren autenticación L2 y el data-api público no expone fee); la evidencia empírica es de sports (issue #326)."
+  ]
+ },
+ {
+  "resumen": "Lente CÓDIGO Y CONTRATO. (1) Estado del código: fees.py mapea feeSchedule.rate→taker_fee (0.05) y rebateRate→maker_rebate (0.25) con fee_status=KNOWN cuando feeType+feesEnabled+feeSchedule están presentes; feesEnabled=false→fee_regime='fees_disabled', taker_fee=0.0 JUSTIFICADO; sin campos→UNKNOWN/NULL. makerBaseFee/takerBaseFee=1000 sólo se guardan verbatim en raw_fee_fields y nunca se usan. effective_from/effective_to siempre None. config.FEE_CONFIG.effective_cost_components (taker_fee, maker_rebate, spread_cost, slippage, gas_cost) y DEFAULTS de sizing no tienen ningún consumidor. strategy_a.py escribe edge_net=None (l.251) y net_edge=None (l.265) y por diseño no computa coste ni sizing. (2) Semántica confirmada con fuentes públicas: docs.polymarket.com/trading/fees da la fórmula verbatim `fee = C × feeRate × p × (1 - p)` (C = shares, p = precio), Weather: Taker 0.05 / Maker 0 / Rebate 25%; la tabla de ejemplo para Weather (100 shares: $1.25 a p=0.50, $1.05 a p=0.30) reproduce exactamente 100·0.05·p·(1−p). Market Details define feeSchedule.rate = \"Base rate used in the fee calculation\", exponent = \"applied to the price component\", takerOnly, rebateRate. Changelog: 30-mar-2026 \"Fee Structure V2\" (Weather pasa a tener fees) y 31-mar-2026 \"Fees should now be calculated using the feeSchedule object within a market\". (3) Endpoint CLOB público probado: GET https://clob.polymarket.com/fee-rate?token_id=<YES London 4-sep-2026> → {\"base_fee\":1000}; token legacy París 30-mar-2026 → {\"base_fee\":0}; el OpenAPI describe base_fee como \"Base fee in basis points\". GET /clob-markets/{condition_id} devuelve mbf/tbf=1000 y fd={\"r\":0.05,\"e\":1,\"to\":true} para el mercado con fees, y ni fd ni mbf/tbf para el legacy. La relación numérica entre 1000 bps y rate=0.05 NO está documentada; lo documentado es calcular con feeSchedule; base_fee funciona empíricamente como indicador de época (1000 = con fees, 0 = sin). (4) Épocas en CATALOG_V2: 84 451 mercados weather_fees (endDate 2026-03-30..09-04) y 8 770 fees_disabled (endDate 2025-12-30..03-30); la frontera NO es por fecha: el 30-mar-2026 hay 275 sin fees (ciudades no americanas, Gamma createdAt 2026-03-29T17:47Z) y 143 con fees (Américas, createdAt 18:09Z), y un mercado Estambul 31-mar creado el 27-mar ya trae fees; ningún evento mezcla épocas. Conclusión: la época debe tomarse del flag por mercado (markets.fee_regime ya persistido), no derivarse de endDate. (5) Interfaz mínima para strategy_a: cost_per_share(p, fee_model, role) = rate·(p·(1−p))^exponent si role=taker y fee_status=KNOWN (0 si fees_disabled; None→fail-closed si UNKNOWN), simétrico para BUY YES a p y FADE (buy NO a 1−p); edge_net = edge_gross − cost_per_share − spread/slippage modelados; el sizing en shares (C) no altera el coste por share. Incógnitas restantes: unidad/uso real de base_fee=1000 bps; si el flag feesEnabled fue retroactivo en mercados abiertos el 30-mar (updatedAt 31-mar); cobro en salida/redención; spread/slippage sin orderbook histórico.",
+  "hallazgos": [
+   {
+    "afirmacion": "fees.py asume tres casos: (1) feeType+feesEnabled+feeSchedule presentes → fee_regime=feeType, taker_fee=feeSchedule.rate, maker_rebate=feeSchedule.rebateRate, fee_status='KNOWN'; (2) feesEnabled=false → 'fees_disabled', 0.0 justificado, KNOWN; (3) sin campos → 'UNKNOWN', NULL. makerBaseFee/takerBaseFee sólo van a raw_fee_fields; effective_from/to siempre None.",
+    "tipo": "OBSERVADO",
+    "fuente": "/Users/mariaaleu/workspace/Polymarket_Weather_Agent/src/weather_agent/polymarket/fees.py:47-92",
+    "cita": "\"taker_fee\": schedule.get(\"rate\"),           # 0.05 (takerOnly per schedule)\n\"maker_rebate\": schedule.get(\"rebateRate\"),  # 0.25\n\"effective_from\": None,                      # gamma exposes no fee epoch range"
+   },
+   {
+    "afirmacion": "El propio módulo declara no documentada la unidad de makerBaseFee/takerBaseFee=1000 y su relación con feeSchedule.rate.",
+    "tipo": "OBSERVADO",
+    "fuente": "/Users/mariaaleu/workspace/Polymarket_Weather_Agent/src/weather_agent/polymarket/fees.py:23-27",
+    "cita": "The precise UNIT semantics of makerBaseFee/takerBaseFee=1000 and how they relate to feeSchedule.rate are NOT documented by what we fetched; the RAW fields are captured verbatim (raw_fee_fields)"
+   },
+   {
+    "afirmacion": "strategy_a.py escribe edge_net=None en predictions (l.251) y net_edge=None en signals (l.265); el módulo declara que no calcula fees, sizing ni PnL.",
+    "tipo": "OBSERVADO",
+    "fuente": "/Users/mariaaleu/workspace/Polymarket_Weather_Agent/src/weather_agent/strategy/strategy_a.py:5,33,251,265",
+    "cita": "\"edge_gross\": edge, \"edge_net\": None,   # net BLOCKED (fees)  …  \"edge\": edge, \"net_edge\": None,         # net BLOCKED (fees)"
+   },
+   {
+    "afirmacion": "config.FEE_CONFIG define assume_zero_fee=False, default_fee_status/regime='UNKNOWN' y effective_cost_components=[taker_fee, maker_rebate, spread_cost, slippage, gas_cost]; FEE_STATUSES=('KNOWN','UNKNOWN','ESTIMATED','DEPRECATED'). Ningún módulo de src/ consume effective_cost_components ni DEFAULTS de sizing (grep sólo devuelve config.py).",
+    "tipo": "OBSERVADO",
+    "fuente": "/Users/mariaaleu/workspace/Polymarket_Weather_Agent/src/weather_agent/config.py:189-211,219",
+    "cita": "\"effective_cost_components\": [           # modelled as \"effective fees\" (execution)\n    \"taker_fee\", \"maker_rebate\", \"spread_cost\", \"slippage\", \"gas_cost\",\n],"
+   },
+   {
+    "afirmacion": "El esquema market_fee_schedule tiene PK (fee_regime, dataset_version, record_version) y columnas taker_fee, maker_rebate, effective_from, effective_to, fee_status (CHECK vocabulario) y raw_fee_fields JSON; markets.fee_regime enlaza a ella. discovery.py aplica un guard FeeScheduleConflict que aborta si un mismo fee_regime aparece con dos feeSchedule distintos.",
+    "tipo": "OBSERVADO",
+    "fuente": "/Users/mariaaleu/workspace/Polymarket_Weather_Agent/src/weather_agent/database.py:124-139,167,527; src/weather_agent/polymarket/discovery.py:51-56,290-318",
+    "cita": "CHECK (fee_status IN ('KNOWN','UNKNOWN','ESTIMATED','DEPRECATED')), -- versioned identity so a historical fee regime version is never lost PRIMARY KEY (fee_regime, dataset_version, record_version)"
+   },
+   {
+    "afirmacion": "PHASE_2B §9 y PHASE_2D marcan la semántica de fees como caveat abierto / BLOCKED que gatea net_edge y sizing; 2B además prohíbe usar makerBaseFee/takerBaseFee en cualquier cálculo de edge/EV/PnL.",
+    "tipo": "OBSERVADO",
+    "fuente": "/Users/mariaaleu/workspace/Polymarket_Weather_Agent/PHASE_2B_MARKET_DISCOVERY.md:172-179,191-193,297-299; PHASE_2D_STRATEGY_A_DESIGN.md:221-222,397-399",
+    "cita": "semántica de fees (`raw_fee_fields` 1000 vs 0.05) | BLOCKED | `net_edge`=NULL | 2B §9 / #4/#8 | Bloquea net_edge/sizing; NO señal bruta"
+   },
+   {
+    "afirmacion": "ROADMAP R11 pide documentar la fórmula de fee taker en función del precio, confirmar unidades, derivar épocas del catálogo y un costs.py que produzca edge_net; criterio: fees_disabled → edge_net = edge_gross.",
+    "tipo": "OBSERVADO",
+    "fuente": "/Users/mariaaleu/pmw-e2/ROADMAP.md:137-141",
+    "cita": "Criterio de hecho: DECISIONS.md entrada 'FEES' ADOPTADA con fórmula y fuente; tests/test_costs.py verde; predictions.edge_net no NULL para mercados KNOWN; fees_disabled -> edge_net = edge_gross."
+   },
+   {
+    "afirmacion": "Fórmula oficial de fee taker (Polymarket docs): fee = C × feeRate × p × (1 − p), con C = número de shares y p = precio; los makers nunca pagan fee; categoría Weather: Taker Fee Rate 0.05, Maker 0, Maker Rebate 25%. Los fees se aplican en el match, no van en la orden.",
+    "tipo": "OBSERVADO",
+    "fuente": "https://docs.polymarket.com/trading/fees",
+    "cita": "fee = C × feeRate × p × (1 - p)\nWhere **C** = number of shares traded and **p** = price of the shares. … **Makers are never charged fees.** Only takers pay fees. … | Weather | 0.05 | 0 | 25% |"
+   },
+   {
+    "afirmacion": "La tabla oficial 'Economics / Culture / Weather / Other' (100 shares) reproduce exactamente 100·0.05·p·(1−p): $0.05 a p=0.01, $0.24 a 0.05, $1.05 a 0.30, $1.25 a 0.50, $1.05 a 0.70, $0.24 a 0.95 (verificado numéricamente en local). Fee en USDC, simétrico alrededor de 0.50, redondeado a 5 decimales (mínimo 0.00001 USDC).",
+    "tipo": "OBSERVADO",
+    "fuente": "https://docs.polymarket.com/trading/fees (sección 'Fee Tables (100 Shares)' y 'Fee Precision')",
+    "cita": "| $0.50 | $50 | $1.25 | … The fee in USDC **peaks at 50%** probability ($1.25) and decreases symmetrically toward both extremes. … Fees are rounded to 5 decimal places. The smallest fee charged is **0.00001 USDC**."
+   },
+   {
+    "afirmacion": "Definición oficial de los campos feeSchedule de Gamma: rate = base rate de la fórmula; exponent = exponente aplicado al componente de precio; takerOnly = sólo paga el taker; rebateRate = fracción del fee taker devuelta al maker (0.25 = 25%). makerBaseFee/takerBaseFee NO aparecen definidos en esa página.",
+    "tipo": "OBSERVADO",
+    "fuente": "https://docs.polymarket.com/market-data/market-details#trading-fees",
+    "cita": "| `feeSchedule.rate` | number | Base rate used in the fee calculation. |\n| `feeSchedule.exponent` | number | Exponent applied to the price component of the fee curve. |\n| `feeSchedule.takerOnly` | boolean | When `true`, fees are charged to the taker side only, and makers pay no fee. |\n| `feeSchedule.rebateRate` | number | Fraction of taker fees rebated back to the resting maker. Example: `0.25` = 25% rebate. |"
+   },
+   {
+    "afirmacion": "Changelog oficial: 30-mar-2026 'Fee Structure V2' extiende fees a Weather (entre otras categorías); 31-mar-2026 'REST API Fee Fields Update': los fees deben calcularse con el objeto feeSchedule del mercado. Esto fija la fuente de verdad en feeSchedule, no en makerBaseFee/takerBaseFee.",
+    "tipo": "OBSERVADO",
+    "fuente": "https://docs.polymarket.com/changelog",
+    "cita": "<Update label=\"Mar 31, 2026\" description=\"REST API Fee Fields Update\">\n  * **Fee calculation source**: Fees should now be calculated using the `feeSchedule` object within a market.\n<Update label=\"Mar 30, 2026\" description=\"Fee Structure V2\">\n  * **New fee categories**: Fees now apply to Crypto, Sports, Finance, Politics, Economics, Culture, Weather, Tech, Mentions, and Other / General markets"
+   },
+   {
+    "afirmacion": "Existe endpoint público CLOB GET /fee-rate (query token_id o path /fee-rate/{token_id}); el OpenAPI define base_fee como 'Base fee in basis points' (ejemplo 30). Probado con el token YES del mercado 'London 17°C or below, Sep 4 2026' del catálogo: devuelve {\"base_fee\":1000}. Con el token YES legacy 'Paris 7°C or below, Mar 30 2026': {\"base_fee\":0}.",
+    "tipo": "OBSERVADO",
+    "fuente": "https://docs.polymarket.com/api-reference/market-data/get-fee-rate ; curl GET https://clob.polymarket.com/fee-rate?token_id=104995272346033106520251200136275695841154282736851722633151254834716688921304 ; GET https://clob.polymarket.com/fee-rate?token_id=60404942725520873762982927033123190020201788820809704597115218324914096958165",
+    "cita": "{\"base_fee\":1000}  (HTTP 200)   /   {\"base_fee\":0}  (HTTP 200)   —   OpenAPI: base_fee: type: integer, description: Base fee in basis points, example: 30"
+   },
+   {
+    "afirmacion": "GET /clob-markets/{condition_id} (documentado como 'Get CLOB market info') devuelve mbf/tbf ('Maker/Taker base fee in basis points') y fd={r: 'Fee rate', e: 'Fee curve exponent', to: 'takers only'}. Para el mercado con fees: mbf=1000, tbf=1000, fd={\"r\":0.05,\"e\":1,\"to\":true}. Para el legacy no aparecen ni mbf/tbf ni fd. Es decir, el CLOB expone ambos conjuntos (bps y curva) en paralelo.",
+    "tipo": "OBSERVADO",
+    "fuente": "https://docs.polymarket.com/api-reference/markets/get-clob-market-info ; curl GET https://clob.polymarket.com/clob-markets/0xf9a5bbe3c293205bf294e3f854642fd85c70d40cb4bbd1df6cf04ebc54edeb69 ; GET https://clob.polymarket.com/clob-markets/0xf73d5adfb957e1c04abdc0eb45da44223e8e3ac709fd08524a8350888816ef64",
+    "cita": "\"mos\":5,\"mts\":0.001,\"mbf\":1000,\"tbf\":1000,\"nr\":true,\"aot\":\"2026-09-02T04:56:07Z\",\"ibce\":true,\"fd\":{\"r\":0.05,\"e\":1,\"to\":true},\"v\":\"v1\"   (legacy: \"mos\":5,\"mts\":0.001,\"nr\":true,\"aot\":\"2026-03-29T17:50:08Z\",\"ibce\":true,\"v\":\"v1\")"
+   },
+   {
+    "afirmacion": "La relación numérica entre base_fee=1000 bps (=10%) y feeSchedule.rate=0.05 no está documentada en ninguna página consultada; a p=0.5 la fórmula oficial da 0.05·0.25 = 1.25% del notional, que no coincide con 10% ni con 5%. Interpretación: base_fee/makerBaseFee/takerBaseFee es un campo heredado (V1 usaba feeRateBps en la orden, eliminado en V2 según changelog) que hoy sirve como indicador binario de época (1000=con fees, 0=sin) y NO debe usarse como multiplicador.",
+    "tipo": "INFERIDO",
+    "fuente": "https://docs.polymarket.com/changelog (entrada V2: 'Order struct: nonce, feeRateBps, taker removed … Fees are now set at match time — no more feeRateBps on orders') + observaciones /fee-rate 1000 vs 0",
+    "cita": "Fees are now set at match time — no more `feeRateBps` on orders"
+   },
+   {
+    "afirmacion": "Gamma en vivo confirma los dos perfiles del catálogo: mercado reciente (id 4107021) feesEnabled=true, feeType='weather_fees', feeSchedule={exponent:1, rate:0.05, takerOnly:true, rebateRate:0.25}, makerBaseFee=1000, takerBaseFee=1000; mercado legacy (id 1779191) feesEnabled=false, feeType=null, feeSchedule=null, makerBaseFee=null, takerBaseFee=null. Ambos orderPriceMinTickSize=0.001, orderMinSize=5.",
+    "tipo": "OBSERVADO",
+    "fuente": "curl GET https://gamma-api.polymarket.com/markets/slug/highest-temperature-in-london-on-september-4-2026-17corbelow ; GET https://gamma-api.polymarket.com/markets/slug/highest-temperature-in-paris-on-march-30-2026-7corbelow",
+    "cita": "{\"id\": \"4107021\", \"feesEnabled\": true, \"feeType\": \"weather_fees\", \"feeSchedule\": {\"exponent\": 1, \"rate\": 0.05, \"takerOnly\": true, \"rebateRate\": 0.25}, \"makerBaseFee\": 1000, \"takerBaseFee\": 1000, …}  /  {\"id\": \"1779191\", \"feesEnabled\": false, \"feeType\": null, \"feeSchedule\": null, \"makerBaseFee\": null, \"takerBaseFee\": null, …}"
+   },
+   {
+    "afirmacion": "CATALOG_V2 (read_only): exactamente dos configuraciones de fee: 84 451 mercados con feesEnabled=true, feeSchedule {exponent 1, rate 0.05, takerOnly, rebateRate 0.25}, maker/takerBaseFee=1000 (endDate 2026-03-30..2026-09-04); 8 770 con feesEnabled=false y todo NULL (endDate 2025-12-30..2026-03-30). tick_size 0.001/min 5 en 92 810 y tick 0.01/min 5 en 411. Ningún evento mezcla mercados de ambas épocas.",
+    "tipo": "OBSERVADO",
+    "fuente": "/Users/mariaaleu/pmw-catalog-v2/CATALOG_V2.duckdb tabla mk (GROUP BY feesEnabled, feeSchedule, makerBaseFee, takerBaseFee; GROUP BY event_id HAVING count(distinct feesEnabled)>1 → 0)",
+    "cita": "[(True, '{\"exponent\": 1, \"rate\": 0.05, \"takerOnly\": true, \"rebateRate\": 0.25}', 1000.0, 1000.0, 84451, '2026-03-30T12:00:00Z', '2026-09-04T12:00:00Z'), (False, None, None, None, 8770, '2025-12-30T12:00:00Z', '2026-03-30T12:00:00Z')]"
+   },
+   {
+    "afirmacion": "La frontera de épocas NO es una fecha de endDate: el 2026-03-30 conviven 275 mercados sin fees (ciudades no americanas: Londres, París, Seúl, Pekín… con Gamma createdAt 2026-03-29T17:47Z) y 143 con fees (Atlanta, NYC, LA, Ciudad de México, Toronto… createdAt 2026-03-29T18:09Z); y el mercado Estambul 31-mar (createdAt 2026-03-27T10:01Z) ya trae fees. Por tanto effective_from/to por regimen no se puede derivar limpiamente de fechas; la época debe leerse del flag por mercado (markets.fee_regime), que ya está persistido.",
+    "tipo": "OBSERVADO",
+    "fuente": "CATALOG_V2.duckdb mk (endDate LIKE '2026-03-30%' GROUP BY feesEnabled, city) + Gamma /markets/slug/ para highest-temperature-in-london-on-march-30-2026-10c, highest-temperature-in-atlanta-on-march-30-2026-57forbelow, highest-temperature-in-istanbul-on-march-31-2026-10c",
+    "cita": "London 30-mar: feesEnabled=false, createdAt 2026-03-29T17:47:10Z, updatedAt 2026-03-31T11:33:34Z ; Atlanta 30-mar: feesEnabled=true, createdAt 2026-03-29T18:09:47Z ; Istanbul 31-mar: feesEnabled=true, createdAt 2026-03-27T10:01:27Z"
+   },
+   {
+    "afirmacion": "Para una market BUY el importe es notional pre-fee y los fees de plataforma (y de builder, si aplica) se cobran encima en USDC; el SDK ofrece maxSpend para acotar el total. Implicación para el modelo de coste: para un BUY taker de C shares a precio p, desembolso = C·p + C·rate·p·(1−p).",
+    "tipo": "OBSERVADO",
+    "fuente": "https://docs.polymarket.com/trading/place-orders (sección market orders)",
+    "cita": "A market BUY's amount is the pre-fee USD notional. Applicable platform fees and builder taker fees are charged on top. Set an all-in spending limit when the complete cost must remain within a fixed budget."
+   },
+   {
+    "afirmacion": "El rebate maker no es un ingreso determinista por trade: se reparte diariamente desde un pool según fee_equivalent = C × feeRate × p × (1 − p) y rebate = (your_fee_equivalent / total_fee_equivalent) × rebate_pool, por mercado, con mínimo $1 pUSD. Por tanto maker_rebate=0.25 NO puede restarse como coste negativo fijo en edge_net; como maker el coste de fee es 0 y el rebate es una esperanza acotada superiormente por 0.25·fee_equivalent.",
+    "tipo": "OBSERVADO",
+    "fuente": "https://docs.polymarket.com/programs/maker-rebates ('Fee-Curve Weighted Rebates')",
+    "cita": "fee_equivalent = C × feeRate × p × (1 - p) … rebate = (your_fee_equivalent / total_fee_equivalent) * rebate_pool … Totals are calculated per market, so you only compete with other makers in the same market."
+   },
+   {
+    "afirmacion": "Forma general del coste por share coherente con docs y con fd del CLOB: c(p) = rate · (p·(1−p))^exponent (con exponent=1 coincide exactamente con la fórmula oficial). Es simétrica: comprar YES a p o comprar NO a 1−p (FADE) paga el mismo fee por share. Para tomar liquidez: edge_net_BUY = (p_model − p) − c(p) − spread/slippage; edge_net_FADE = ((1−p_model) − (1−p)) − c(p) − spread/slippage = −edge_gross − c(p) − …; fees_disabled → c=0 → edge_net = edge_gross − spread/slippage (y = edge_gross si se modela spread=0 explícitamente).",
+    "tipo": "INFERIDO",
+    "fuente": "Derivado de https://docs.polymarket.com/trading/fees + market-details (exponent) + /clob-markets fd={r:0.05,e:1,to:true}",
+    "cita": "fee = C × feeRate × p × (1 - p)  ⇒  fee por share = feeRate·p·(1−p) = 0.05·p·(1−p) (máx 0.0125 a p=0.5)"
+   },
+   {
+    "afirmacion": "Interfaz mínima que necesita strategy_a para edge_net (sin tocar señal bruta): (a) FeeModel {fee_regime, rate, exponent, taker_only, rebate_rate, fee_status} obtenido de market_fee_schedule vía markets.fee_regime (join por market_id+dataset_version, current view por record_version); (b) taker_fee_per_share(p, fee_model) → float | None (None si fee_status≠KNOWN; 0.0 si fee_regime='fees_disabled'; rate·(p(1−p))^exponent si weather_fees); (c) execution_cost_per_share(p, side, role, exec_model) que sume spread_cost/slippage (hoy sin orderbook histórico → parámetro explícito o 0 JUSTIFICADO, nunca default silencioso); (d) edge_net = edge_gross − taker_fee_per_share − execution_cost, escrito en predictions.edge_net y signals.net_edge; role∈{taker, maker} y side∈{BUY_YES, BUY_NO} son parámetros obligatorios; size (C) no cambia el coste por share con exponent=1, sólo el PnL absoluto; fail-closed (None) si cualquier componente es None. Esto satisface R11 'fees_disabled → edge_net = edge_gross' cuando execution_cost=0 justificado.",
+    "tipo": "INFERIDO",
+    "fuente": "Síntesis de strategy_a.py:240-270, database.py:124-139,167, config.py:189-199 y docs citadas",
+    "cita": "strategy_a.py:243-246: p_model = p_weather; fair_value = p_model; edge = fair_value - p_market; signal = signal_for(edge, tau)"
+   }
+  ],
+  "incognitas": [
+   "Unidad/uso real de base_fee=makerBaseFee=takerBaseFee=1000 bps: ninguna página de docs.polymarket.com lo relaciona con feeSchedule.rate=0.05; sólo se ha confirmado que la fórmula oficial usa feeSchedule y que 1000 vs 0 distingue épocas. Falta confirmación de Polymarket (o un fill real con fee observado) de que 1000 no interviene en el cálculo.",
+   "Retroactividad del flag: mercados creados antes del 30-mar-2026 (p.ej. Estambul 31-mar creado el 27-mar) traen feesEnabled=true y updatedAt del 31-mar; no se sabe si los trades ejecutados en esos mercados antes de la activación de V2 pagaron fee. Afecta al backtest en la franja 27..31-mar-2026.",
+   "Por qué el 30-mar-2026 las ciudades no americanas (createdAt 17:47Z) quedaron sin fees y las americanas (18:09Z) con fees: la hora exacta de corte/backfill no está documentada; se recomienda usar el flag por mercado y no una fecha.",
+   "Cobro de fee en la salida: si la posición se cierra vendiendo como taker se paga otra vez rate·p·(1−p); si se mantiene hasta resolución/redención no se ha encontrado documentación de fee alguno (no verificado). El modelo de coste debe parametrizar exit_mode.",
+   "spread_cost y slippage de FEE_CONFIG.effective_cost_components no son estimables con datos históricos (orderbook/trades vacíos, precio INDICATIVE); requieren un parámetro explícito preregistrado o el colector forward-only (R22).",
+   "Los 411 mercados con tick_size=0.01 (2 legacy, 409 weather_fees, endDate 2026-04-03..09-01) no están explicados; conviene comprobar si corresponden a un template distinto antes de mezclarlos en el backtest.",
+   "Builder fees (docs.polymarket.com/programs/builders/fees) se cobran encima del fee de plataforma si se opera vía un builder; no aplica al cálculo actual pero debería ser un componente opcional del coste efectivo.",
+   "El rebate maker (rebate_rate=0.25) es un reparto diario de pool por mercado, no un ingreso por trade; no se conoce el tamaño del pool ni la competencia, así que su esperanza no es calculable ex ante."
+  ]
+ },
+ {
+  "semantica": "SEMÁNTICA ADOPTADA (hipótesis principal H1). La fee efectiva de un mercado weather la define el objeto Gamma `feeSchedule` = {exponent:1, rate:0.05, takerOnly:true, rebateRate:0.25}, NO los campos makerBaseFee/takerBaseFee=1000.\n\nOBSERVADO (docs.polymarket.com/trading/fees.md, re-verificado 2026-09-06): \"Fees are calculated using the following formula: fee = C × feeRate × p × (1 - p)\"; tabla de categorías \"| Weather | 0.05 | 0 | 25% |\"; \"Makers are never charged fees. Only takers pay fees.\"; \"Fees are rounded to 5 decimal places. The smallest fee charged is 0.00001 USDC.\" Esa página NO menciona makerBaseFee, takerBaseFee, base fee, basis points ni feeRateBps (\"Not present\").\nOBSERVADO (docs.polymarket.com/market-data/market-details#trading-fees): \"feeSchedule.rate: Base rate used in the fee calculation. | feeSchedule.exponent: Exponent applied to the price component of the fee curve. | feeSchedule.takerOnly: When true, fees are charged to the taker side only, and makers pay no fee. | feeSchedule.rebateRate: Fraction of taker fees rebated back to the resting maker. Example: 0.25 = 25% rebate.\"\nOBSERVADO (docs.polymarket.com/changelog): \"Mar 31, 2026: Fees should now be calculated using the `feeSchedule` object within a market.\" y \"Apr 17, 2026: Fees are now set at match time — no more `feeRateBps` on orders\".\nOBSERVADO (en vivo 2026-09-06): GET https://gamma-api.polymarket.com/markets/4107021 → feesEnabled true, feeType 'weather_fees', feeSchedule {exponent 1, rate 0.05, takerOnly true, rebateRate 0.25}, makerBaseFee 1000, takerBaseFee 1000; GET https://clob.polymarket.com/clob-markets/0xf9a5bbe3… → mbf 1000, tbf 1000, fd {r:0.05, e:1, to:true}. OpenAPI CLOB define mbf/tbf/base_fee como \"base fee in basis points\" (1000 bps = 10%).\nOBSERVADO (verificación aritmética contra la tabla oficial de 100 shares): 100×0.05×0.5×0.5 = $1.25 ✓; 100×0.05×0.1×0.9 = $0.45 ✓. Con 1000 bps=10% en la misma fórmula saldría $2.50 ≠ $1.25.\n\nINFERIDO: 1000 bps es el `feeRateBps` on-chain de CTF Exchange V1 (tope firmado; el FeeModule \"refunds\" el exceso) que sobrevive como campo heredado / flag binario (1000 ↔ feesEnabled=true, 0/NULL ↔ false; colinealidad 100% en el catálogo). Evidencia empírica pública de que la fee real sigue feeSchedule y no el 10%: py-clob-client issue #326 (sports, rate 0.03, base_fee 1000: \"5 shares at $0.65 → 4.9475 shares, fee 0.0525 = 5×0.03×0.35\"). NO existe frase oficial que relacione 1000 con 0.05 → esa relación queda UNKNOWN; lo que SÍ está documentado es que el cálculo se hace con feeSchedule.\n\nDeducción por lado: en BUY taker la fee se descuenta en shares (fee_usdc/p) — OBSERVADO en #326 (sports) y coherente con docs \"Taker fees are calculated in USDC\"; place-orders: \"A market BUY's amount is the pre-fee USD notional. Applicable platform fees and builder taker fees are charged on top.\" Para weather no hay fill real verificado (UNKNOWN empírico, ver incógnitas).\n\nMaker: fee 0 (takerOnly). Rebate 25% NO es un descuento por trade: docs.polymarket.com/programs/maker-rebates: \"fee_equivalent = C × feeRate × p × (1 - p) … rebate = (your_fee_equivalent / total_fee_equivalent) × rebate_pool … Totals are calculated per market … A minimum accrued rebate of $1 pUSD is required for a payout.\" → esperanza acotada por 0.25×fee_equivalent, no calculable ex ante; en Strategy A se modela como 0 (conservador) y se reporta la cota superior aparte.",
+  "confianza": "STRONGLY_SUPPORTED",
+  "formula_coste": "Notación: C = shares, p = precio de ejecución del token comprado (YES a p; FADE = NO a 1−p), r = feeSchedule.rate, e = feeSchedule.exponent, regime = markets.fee_regime.\n\n(1) Fee taker por share (USDC), H1 principal:\n   c_taker(p) = r · (p·(1−p))^e   con r=0.05, e=1  ⇒  c_taker(p) = 0.05·p·(1−p)   [máx 0.0125 USDC/share en p=0.5]\n   Fee total = round5( C · c_taker(p) ), mínimo 0.00001 USDC (docs: \"rounded to 5 decimal places\").\n   Como fracción del notional comprado (C·p): f(p) = 0.05·(1−p) → 4.5% en p=0.10; 3.5% en 0.30; 2.5% en 0.50; 0.5% en 0.90.\n   Simetría: comprar YES a p y comprar NO a 1−p pagan la misma fee/share.\n   fees_disabled: c_taker = 0 (JUSTIFICADO por feesEnabled=false + CLOB base_fee=0). fee_status≠KNOWN o e≠1 → None (fail-closed).\n\n(2) Desembolso y shares recibidas (BUY taker, C shares nominales a p):\n   desembolso = C·p + C·c_taker(p)   [docs place-orders: fees \"charged on top\" del notional pre-fee]\n   Equivalente observado en #326 (deducción en shares): shares_netas = C·(1 − r·(1−p)); ambas formas dan el mismo coste USDC = C·r·p·(1−p).\n\n(3) Edge neto por share (Strategy A, señal bruta intacta):\n   edge_net_BUY  = (p_model − p) − c_taker(p) − exit_cost − x_exec\n   edge_net_FADE = ((1−p_model) − (1−p)) − c_taker(p) − exit_cost − x_exec\n   exit_cost = c_taker(p_exit) si exit_mode='taker_close'; = 0 si exit_mode='hold_to_resolution' (redención sin fee documentada; gas fuera del modelo, ver incógnitas).\n   x_exec = spread_cost + slippage: parámetro explícito preregistrado (no estimable históricamente; 0 sólo como valor JUSTIFICADO y declarado).\n   R11: fees_disabled ∧ x_exec=0 ⇒ edge_net = edge_gross.\n\n(4) Maker (si Strategy A cotiza en vez de tomar):\n   c_maker = 0 ; rebate_esperado ∈ [0, 0.25·C·r·p·(1−p)] (pool diario pro-rata por mercado, mínimo $1 pUSD) → modelar rebate=0 y reportar cota superior.\n\n(5) PnL neto por operación (hold_to_resolution, resultado Y∈{0,1} para el token comprado):\n   pnl_net = C·(Y − p) − C·c_taker(p) − C·x_exec   (para FADE sustituir p→1−p, Y→1−Y)\n\n(6) Hipótesis alternativa H2 (fórmula on-chain V1 con feeRateBps=1000 aplicada íntegra): c_H2(p) = 0.10·min(p, 1−p) USDC/share [BUY: fee_shares = 0.10·min(p,1−p)·C/p]. Cota H3 (1000 bps dentro de la fórmula documentada): c_H3(p) = 0.10·p·(1−p). Cota H4 (1000 = 0.1%): c_H4(p) = 0.001·p·(1−p).",
+  "parametros": [
+   {
+    "nombre": "rate (r)",
+    "valor": "0.05",
+    "origen": "Gamma feeSchedule.rate (84.451/84.451 mercados con fees en CATALOG_V2.duckdb mk; en vivo market 4107021) = fila Weather de https://docs.polymarket.com/trading/fees.md \"| Weather | 0.05 | 0 | 25% |\"; CLOB fd.r=0.05",
+    "incertidumbre": "Baja para el valor ACTUAL. Gamma no expone histórico: no se puede excluir desde el catálogo que hubiera otro rate entre 30-mar y hoy (changelog no registra ningún cambio de weather tras el 30-mar; sports sí cambió 0.03→0.05 el 10-jul-2026)"
+   },
+   {
+    "nombre": "exponent (e)",
+    "valor": "1",
+    "origen": "Gamma feeSchedule.exponent; CLOB fd.e=1; docs market-details: \"Exponent applied to the price component of the fee curve\"",
+    "incertidumbre": "Forma general c=r·(p(1−p))^e es INFERIDA (pico 1.56% del changelog crypto con r=0.25,e=2); para weather e=1 la fórmula documentada aplica literalmente. Fail-closed si e≠1"
+   },
+   {
+    "nombre": "takerOnly",
+    "valor": "true (maker fee = 0)",
+    "origen": "Gamma feeSchedule.takerOnly; docs: \"Makers are never charged fees. Only takers pay fees.\"",
+    "incertidumbre": "Baja"
+   },
+   {
+    "nombre": "rebateRate",
+    "valor": "0.25 (cota superior; modelar 0 en edge_net)",
+    "origen": "Gamma feeSchedule.rebateRate; https://docs.polymarket.com/programs/maker-rebates: \"rebate = (your_fee_equivalent / total_fee_equivalent) × rebate_pool\", mínimo $1 pUSD",
+    "incertidumbre": "Alta: reparto diario de pool por mercado, depende de la competencia de makers; no estimable ex ante"
+   },
+   {
+    "nombre": "makerBaseFee / takerBaseFee / CLOB base_fee (mbf, tbf)",
+    "valor": "1000 bps (=10%) — NO se usa en el coste",
+    "origen": "Gamma (integer sin descripción en gamma-openapi.yaml); CLOB openapi: \"Maker/Taker base fee in basis points\"; en vivo 1000 con fees / 0 sin fees",
+    "incertidumbre": "UNKNOWN su relación con rate; INFERIDO que es el feeRateBps on-chain V1 (tope) y hoy un flag binario de época. Contradice los ejemplos oficiales si se usa como rate ($2.50 vs $1.25)"
+   },
+   {
+    "nombre": "redondeo / fee mínima",
+    "valor": "5 decimales; mínimo 0.00001 USDC",
+    "origen": "https://docs.polymarket.com/trading/fees.md",
+    "incertidumbre": "Baja; irrelevante salvo micro-órdenes"
+   },
+   {
+    "nombre": "tick_size",
+    "valor": "0.001 (92.810 mercados, 99.56%) / 0.01 (411 mercados, endDate 2026-03-13..2026-09-01, 343 con slug 'arch-')",
+    "origen": "CATALOG_V2.duckdb mk (verificado read_only 2026-09-06); Gamma orderPriceMinTickSize",
+    "incertidumbre": "Regla que fija 0.01 desconocida; leer por mercado, no por época. El docstring de fees.py ('BOTH epochs carry orderPriceMinTickSize=0.001') es incompleto"
+   },
+   {
+    "nombre": "min_order_size",
+    "valor": "5 (100% de mercados)",
+    "origen": "CATALOG_V2.duckdb mk; Gamma orderMinSize; CLOB mos=5",
+    "incertidumbre": "Unidad no confirmada: market-details dice 'Minimum order size in USDC', CLOB sólo 'Minimum order size'"
+   },
+   {
+    "nombre": "x_exec (spread_cost + slippage)",
+    "valor": "UNKNOWN → parámetro preregistrado explícito",
+    "origen": "config.FEE_CONFIG.effective_cost_components (sin consumidor); no hay orderbook histórico (precio INDICATIVE)",
+    "incertidumbre": "No estimable con datos históricos; sólo forward-only (R22)"
+   },
+   {
+    "nombre": "exit_cost",
+    "valor": "0 si hold_to_resolution; c_taker(p_exit) si cierre taker",
+    "origen": "Derivado de la fórmula oficial (segunda operación taker)",
+    "incertidumbre": "Fee de redención no documentada (no encontrada ni afirmada ni negada) → tratar 0 como supuesto declarado, no verificado"
+   },
+   {
+    "nombre": "taker rebate program",
+    "valor": "0 por defecto (0–50% de la fee taker según wV 30 días; Tier 1 = $2.000 wV → 3%)",
+    "origen": "https://docs.polymarket.com/programs/taker-rebates (desde 2026-05-28; Weather weight 1.7)",
+    "incertidumbre": "Sólo relevante a volumen alto; no incluir en edge_net base"
+   },
+   {
+    "nombre": "builder fee",
+    "valor": "0 (no se opera vía builder)",
+    "origen": "docs place-orders: 'Applicable platform fees and builder taker fees are charged on top'",
+    "incertidumbre": "Componente opcional; añadir si se usa un builder"
+   }
+  ],
+  "epocas": [
+   {
+    "desde": "2025-12-30 (endDate mínimo del catálogo)",
+    "hasta": "2026-03-30 (endDate; ese día sólo 275 mercados de 25 ciudades no norteamericanas)",
+    "regla": "fee_regime='fees_disabled': c_taker=0, c_maker=0, rebate=0 (JUSTIFICADO por feesEnabled=false; CLOB /fee-rate base_fee=0; sin fd). edge_net = edge_gross − x_exec. 8.770 mercados.",
+    "evidencia": "OBSERVADO CATALOG_V2.duckdb mk: (False, NULL, NULL, NULL, 8770, '2025-12-30T12:00:00Z', '2026-03-30T12:00:00Z'); en vivo Gamma 1779191 (Paris 30-mar) feesEnabled false, feeType null; CLOB /fee-rate → {\"base_fee\":0}"
+   },
+   {
+    "desde": "2026-03-30 (endDate; 143 mercados de 13 ciudades norteamericanas: Atlanta, Austin, Chicago, Dallas, Denver, Houston, Los Angeles, Mexico City, Miami, NYC, San Francisco, Seattle, Toronto)",
+    "hasta": "2026-04-28 (cutover CLOB V2)",
+    "regla": "fee_regime='weather_fees', sub-época V1: c_taker=0.05·p·(1−p) USDC/share (H1); mecanismo on-chain = feeRateBps=1000 firmado en la orden + FeeModule refund (INFERIDO). Para endDate ≥ 2026-03-31 el 100% del catálogo tiene fees; para endDate = 2026-03-30 leer feesEnabled por fila (0 eventos mixtos).",
+    "evidencia": "OBSERVADO changelog \"Mar 30, 2026: Fees now apply to … Weather …\" y \"Mar 31, 2026: Fees should now be calculated using the feeSchedule object\"; catálogo 30-mar: (True,143)/(False,275); primer mercado con fees 1779513 Atlanta (createdAt 2026-03-29T18:09:47Z), último sin fees 1779683 Taipei (createdAt 18:11:35Z); Istanbul 31-mar creado el 27-mar ya con fees → corte por lote/evento, no por createdAt ni endDate. Evidencia de fee real = curva feeSchedule bajo base_fee 1000: issue #326 (sports, abr-2026)"
+   },
+   {
+    "desde": "2026-04-28 (CLOB V2: 'Order struct: nonce, feeRateBps, taker removed'; 'Fees are now set at match time')",
+    "hasta": "2026-09-04 (endDate máximo del catálogo) / vigente",
+    "regla": "fee_regime='weather_fees', sub-época V2: misma fórmula c_taker=0.05·p·(1−p) (v2-migration: 'Platform fees are dynamic per market: fee = C × feeRate × p × (1 - p)'; 'Makers are never charged fees'); makerBaseFee/takerBaseFee=1000 persisten como campo heredado. Desde 2026-05-28 existe Taker Rebate Program (0–50% según volumen; modelar 0).",
+    "evidencia": "OBSERVADO changelog Apr 17/Apr 28 2026; https://docs.polymarket.com/v2-migration; en vivo 2026-09-06 market 4107021 (London 4-sep) feeSchedule {1,0.05,true,0.25}, mbf/tbf 1000, fd {0.05,1,true}; catálogo 84.451 mercados con feeSchedule idéntico hasta endDate 2026-09-04"
+   }
+  ],
+  "sensibilidad": "Coste taker por share (USDC) bajo cada semántica, en p = 0.10 / 0.30 / 0.50 / 0.70 / 0.90:\n- H1 (principal) c=0.05·p·(1−p): 0.0045 / 0.0105 / 0.0125 / 0.0105 / 0.0045  (fracción del notional: 4.5% / 3.5% / 2.5% / 1.5% / 0.5%)\n- H2 (on-chain V1 íntegro, 1000 bps) c=0.10·min(p,1−p): 0.0100 / 0.0300 / 0.0500 / 0.0300 / 0.0100  (2.2× a 4× H1; fracción del notional 10% / 10% / 10% / 4.3% / 1.1%)\n- H3 (1000 bps = 10% como rate en la fórmula documentada) c=0.10·p·(1−p): exactamente 2× H1 (máx 0.025 en p=0.5)\n- H4 (1000 = 0.1%) c=0.001·p·(1−p): ≤0.00025 → edge_net ≈ edge_gross (H4 es indistinguible de fees_disabled a efectos prácticos)\n- H5 (10% flat sobre notional) c=0.10·p: 0.01 / 0.03 / 0.05 / 0.07 / 0.09 — asimétrica: penaliza BUY YES caro y favorece FADE; descartada por los ejemplos oficiales pero incluida como cota extrema.\n\nEdge bruto mínimo para edge_net>0 (x_exec=0, hold_to_resolution): H1: 1.25 pt en p=0.5 (0.45 pt en extremos); H2: 5 pt en p=0.5 (1 pt en extremos); H3: 2.5 pt; H5: hasta 9 pt en p=0.9. Con cierre taker (dos operaciones) los umbrales aproximadamente se duplican.\n\nImplicación para Strategy A: con umbrales τ típicos de pocos puntos, H1 deja rentable la mayor parte de señales con |edge|≥2–3 pt en todo el rango de p; H2/H3 eliminan las señales en la zona central (p∈[0.3,0.7]) salvo edges ≥5 pt y conservan sólo las de colas; H5 invalida además la simetría BUY/FADE. Todas las hipótesis salvo H5 son simétricas en p↔1−p, así que la elección BUY vs FADE no depende de la semántica; sólo el nivel del umbral. El 25% de rebate maker, si se realizara íntegro, reduciría el coste efectivo de una entrada maker a −0.25·c_H1 (ingreso), pero no es determinista y se modela 0.\n\nÉpocas: la parte fees_disabled (8.770 mercados, 9.4% del catálogo, endDate ≤ 2026-03-30) es invariante a la semántica (c=0 bajo todas). La sensibilidad afecta al 90.6% restante. Riesgo residual de histórico: si el rate weather hubiera sido distinto de 0.05 en algún subperiodo (no hay constancia en changelog), el PnL de ese tramo estaría mal escalado proporcionalmente.",
+  "propuesta_prereg": "PREREGISTRO 'FEES' (para DECISIONS.md, R11):\n\nH_principal (H1): para mercados con fee_regime='weather_fees' y fee_status='KNOWN', c_taker(p) = feeSchedule.rate · (p·(1−p))^feeSchedule.exponent USDC/share (=0.05·p·(1−p)); c_maker=0; rebate=0 (cota superior 0.25·fee_equivalent reportada aparte); fees_disabled → c=0; fee_status≠KNOWN o exponent≠1 → edge_net=None (fail-closed). Fuentes: docs.polymarket.com/trading/fees.md (fórmula + fila Weather), market-data/market-details (definición feeSchedule), changelog 31-mar-2026 (feeSchedule como fuente de cálculo), catálogo (feeSchedule único {1,0.05,true,0.25}).\n\nH_alternativa (H2): la fee real es la del contrato CTF Exchange V1 con feeRateBps=takerBaseFee=1000: c_taker(p) = 0.10·min(p,1−p) USDC/share (BUY deducido en shares = 0.10·min(p,1−p)·C/p). Se preregistra porque 1000 bps es el único valor que la doc CLOB define con unidad ('base fee in basis points') y su relación con rate=0.05 no está documentada (UNKNOWN).\n\nParámetros fijados a priori: exit_mode='hold_to_resolution' (exit_cost=0, redención sin fee = supuesto declarado); x_exec=0 JUSTIFICADO y declarado como 'sin modelo de spread/slippage hasta R22' (se añadirá una variante x_exec=0.5·tick y x_exec=1 pt como estrés); rebate maker=0; taker rebate program=0; builder fee=0; sizing C no altera el coste por share (exponent=1), sólo escala PnL.\n\nReporte obligatorio (por mercado, época y agregado): edge_gross, pnl_gross, y en columnas separadas edge_net_H1 / pnl_net_H1 (métrica de decisión primaria), edge_net_H2 / pnl_net_H2 (robustez), edge_net_H3 / pnl_net_H3 (cota 2×). predictions.edge_net y signals.net_edge se rellenan con H1; H2/H3 van en columnas o tabla auxiliar 'costs_sensitivity' con hipótesis_id. Criterio preregistrado: la estrategia se declara 'robusta a semántica de fees' sólo si pnl_net_H2 > 0 en la época weather_fees; se declara 'positiva' si pnl_net_H1 > 0 con IC bootstrap que excluya 0. Segmentar SIEMPRE por fee_regime (fees_disabled vs weather_fees) y por sub-época V1/V2 (corte 2026-04-28) como análisis secundario; para endDate=2026-03-30 usar el flag por fila.\n\nTest de falsación (forward, R22): con el primer fill taker real en un mercado weather registrar C, p, USDC gastado y shares recibidas; calcular fee_observada/share. Regla de decisión: si |fee_obs − c_H1(p)| ≤ 5% de c_H1 → H1 ADOPTADA (confianza DEMOSTRADA); si coincide con c_H2 (±5%) → conmutar la métrica primaria a H2 y reprocesar; si no coincide con ninguna → fee_status='UNKNOWN' y edge_net=None hasta nueva evidencia. Además registrar feeSchedule de Gamma en cada snapshot del colector para construir el histórico que Gamma no expone.",
+  "incognitas": [
+   "UNKNOWN: relación oficial entre makerBaseFee/takerBaseFee/base_fee=1000 bps y feeSchedule.rate=0.05; ninguna página de docs.polymarket.com la enuncia. La lectura 'tope on-chain V1 + flag heredado' es INFERIDA (CalculatorHelper.sol + FeeModule README + issue #326 abierto sin respuesta de mantenedores).",
+   "UNKNOWN empírico: no existe ningún fill real verificado en un mercado weather (los /trades del CLOB requieren auth L2; el data-api público no expone fee). La única evidencia de fill es de sports (issue #326, abr-2026, CLOB V1).",
+   "UNKNOWN: fórmula exacta de CLOB V2 en el contrato (28-abr-2026); la doc v2-migration reproduce C×feeRate×p×(1−p) y 'fee-adjusted fill amounts', pero no se ha leído el código del exchange V2 ni el lado (shares vs USDC) en que se deduce.",
+   "UNKNOWN: vigencia histórica del feeSchedule. Gamma/CLOB devuelven el valor ACTUAL; el catálogo no tiene fee history. El changelog no registra cambios de weather tras el 30-mar-2026, pero no se puede demostrar que rate=0.05/rebate=0.25 rigiera en todo el intervalo 30-mar..4-sep.",
+   "UNKNOWN: retroactividad del flag en la franja 27..31-mar-2026 (mercados creados antes del 30-mar con feesEnabled=true y updatedAt 31-mar, p.ej. Istanbul 31-mar creado el 27-mar): no se sabe si los trades ejecutados antes de la activación pagaron fee.",
+   "UNKNOWN: regla exacta del corte del 30-mar-2026 (13 ciudades norteamericanas con fees, 25 no norteamericanas sin fees, creadas con ~20 min de diferencia): activación por lote no documentada. Consecuencia: la época debe leerse de markets.fee_regime por fila, no de una fecha.",
+   "UNKNOWN: fee en redención/resolución (no se ha encontrado documentación que la afirme ni la niegue); el modelo asume 0 como supuesto declarado. Gas de redención fuera del modelo.",
+   "UNKNOWN: forma general con exponent≠1 (c=r·(p(1−p))^e es inferida del pico 1.56% de crypto); irrelevante mientras e=1 pero el código debe hacer fail-closed.",
+   "UNKNOWN: spread_cost y slippage (x_exec) — sin orderbook histórico, precio INDICATIVE; sólo estimable forward (R22).",
+   "UNKNOWN: rebate maker efectivo (pool diario pro-rata por mercado, mínimo $1 pUSD); 0.25 es una cota superior, no un ingreso por trade.",
+   "UNKNOWN: unidad de orderMinSize=5 (market-details: 'in USDC'; CLOB: sólo 'Minimum order size').",
+   "UNKNOWN: regla que asigna tick_size=0.01 a 411 mercados (343 con slug 'arch-', endDate 2026-03-13..2026-09-01); fees.py afirma tick 0.001 para ambas épocas, lo cual es incompleto.",
+   "No verificable en esta sesión: builder fees ('charged on top') si se operase vía builder; Taker Rebate Program (desde 28-may-2026) sólo a volumen alto."
+  ]
+ },
+ {
+  "refutada": false,
+  "motivo": "Lente FUENTE: abrí cada documento citado (fees.md, market-details, changelog, maker-rebates, taker-rebates, v2-migration, place-orders, clob-openapi.yaml, gamma-openapi.yaml) y consulté en vivo Gamma y CLOB (GET). Cada fórmula, parámetro y cita literal del modelo aparece exactamente como se afirma; ninguna cita es inexistente ni dice otra cosa. La fórmula c_taker=0.05·p·(1−p) reproduce la tabla oficial de 100 shares en todos los puntos comprobados (p=0.05→$0.24, 0.10→$0.45, 0.50→$1.25), y la lectura de 1000 bps como rate produciría $2.50 en p=0.5, incompatible con la tabla. Las afirmaciones no documentadas (relación 1000 bps ↔ 0.05, deducción en shares vía issue #326, fórmula on-chain V1, fee de redención) están correctamente etiquetadas como INFERIDO/UNKNOWN y no como OBSERVADO. Sólo detecto una imprecisión de redacción menor (ver corrección), sin impacto en el coste modelado.",
+  "evidencia": "OBSERVADO (curl 2026-09-06, texto crudo):\n1) https://docs.polymarket.com/trading/fees.md — \"fee = C × feeRate × p × (1 - p)\"; \"Where **C** = number of shares traded and **p** = price of the shares.\"; \"**Makers are never charged fees.** Only takers pay fees.\"; tabla \"| Weather | 0.05 | 0 | 25% |\"; \"Taker fees are calculated in USDC and vary based on the share price. The fee amount in USDC is symmetric around 50% probability\"; tab \"Economics / Culture / Weather / Other\": \"| \\$0.05 | \\$5 | \\$0.24 |\", \"| \\$0.10 | \\$10 | \\$0.45 |\", \"| \\$0.50 | \\$50 | \\$1.25 |\"; \"Fees are rounded to 5 decimal places. The smallest fee charged is **0.00001 USDC**. Anything smaller rounds to zero\". grep de 'basis|base fee|exponent|feeSchedule|makerBaseFee' en esa página: 0 resultados (confirma \"Not present\").\n2) https://docs.polymarket.com/market-data/market-details.md (sección \"## Trading Fees\", ancla #trading-fees existe y es enlazada desde fees.md) — \"| `feeSchedule.rate` | number | Base rate used in the fee calculation. |\"; \"| `feeSchedule.exponent` | number | Exponent applied to the price component of the fee curve. |\"; \"| `feeSchedule.takerOnly` | boolean | When `true`, fees are charged to the taker side only, and makers pay no fee. |\"; \"| `feeSchedule.rebateRate` | number | Fraction of taker fees rebated back to the resting maker. Example: `0.25` = 25% rebate. |\"; \"| `orderMinSize` | number | Minimum order size in USDC. |\". makerBaseFee/takerBaseFee no aparecen en esa página.\n3) https://docs.polymarket.com/changelog.md — 'Update label=\"Mar 30, 2026\" description=\"Fee Structure V2\"': \"Fees now apply to Crypto, Sports, Finance, Politics, Economics, Culture, Weather, Tech, Mentions, and Other / General markets\"; 'Mar 31, 2026': \"Fees should now be calculated using the `feeSchedule` object within a market.\"; 'Apr 17, 2026': \"Order struct: `nonce`, `feeRateBps`, `taker` removed\" y \"Fees are now set at match time — no more `feeRateBps` on orders\"; 'Apr 28, 2026' \"CLOB V2 is live on production\"; 'Jul 10, 2026': \"Sports taker fee rate increases from `0.03` to `0.05`\"; crypto: \"peaking at 1.56% at 50% probability\".\n4) https://docs.polymarket.com/programs/maker-rebates.md — \"fee_equivalent = C × feeRate × p × (1 - p)\"; \"rebate = (your_fee_equivalent / total_fee_equivalent) * rebate_pool\"; \"Totals are calculated per market, so you only compete with other makers in the same market.\"; \"A minimum accrued rebate of **\\$1 pUSD** is required for a payout.\"; \"| Weather | 25% | Fee-curve weighted |\"; \"Rebates are calculated and distributed every day.\"\n5) https://docs.polymarket.com/programs/taker-rebates.md — \"The Taker Rebate Program goes live on **Thursday, May 28, 2026**.\"; \"| Economics, Culture, Weather, Other | 1.7 |\"; \"| 1 | Bronze | \\$2,000 | 3% |\"; \"| 6 | Obsidian | \\$10,000,000 and up | 50% |\".\n6) https://docs.polymarket.com/v2-migration.md — \"**Platform fees** are dynamic per market: `fee = C × feeRate × p × (1 - p)`\"; \"**Makers are never charged fees** — only takers pay.\"; \"Use `getClobMarketInfo(conditionID)` to query fee parameters (`fd.r`, `fd.e`, `fd.to`), and rely on the SDK to handle fee-adjusted amounts.\"\n7) https://docs.polymarket.com/trading/place-orders.md — \"A market BUY's amount is the pre-fee USD notional. Applicable [platform fees](/market-data/market-details#trading-fees) and [builder taker fees](/programs/builders/fees) are charged on top.\"\n8) https://docs.polymarket.com/api-spec/clob-openapi.yaml — FeeRate.base_fee: \"description: Base fee in basis points\"; mbf: \"Maker base fee in basis points\"; tbf: \"Taker base fee in basis points\"; FeeDetails.r: \"Fee rate\", e: \"Fee curve exponent\", to: \"Whether fees apply to takers only\"; mos: \"Minimum order size\" (sin unidad). https://docs.polymarket.com/api-spec/gamma-openapi.yaml — makerBaseFee/takerBaseFee: \"type: integer / nullable: true\" sin description; FeeSchedule schema con exponent/rate/takerOnly/rebateRate.\n9) En vivo: GET gamma-api.polymarket.com/markets/4107021 → feesEnabled True, feeType 'weather_fees', feeSchedule {exponent 1, rate 0.05, takerOnly True, rebateRate 0.25}, makerBaseFee 1000, takerBaseFee 1000, orderPriceMinTickSize 0.001, orderMinSize 5. GET clob.polymarket.com/clob-markets/0xf9a5bbe3… → {'mos':5,'mts':0.001,'mbf':1000,'tbf':1000,'fd':{'r':0.05,'e':1,'to':True}}; /fee-rate?token_id=1049952… → {\"base_fee\":1000}. GET markets/1779191 (Paris 30-mar) → feesEnabled False, feeType None, feeSchedule None, makerBaseFee None; /fee-rate de su token → {\"base_fee\":0}.\n10) Aritmética: 100×0.05×0.05×0.95=0.2375→$0.24 ✓; 100×0.05×0.10×0.90=0.45 ✓; 100×0.05×0.25=1.25 ✓; con 0.10: 2.50 ≠ 1.25.\nNO VERIFICADO en esta sesión (fuera de docs/API permitidas): py-clob-client issue #326 y contratos CTF Exchange V1/FeeModule — el modelo ya los etiqueta como INFERIDO. Docs sobre redención (concepts/resolution.md, trading/positions/manage.md): ninguna frase afirma ni niega una fee de redención; positions/manage describe la redención como \"gasless wallet\" transaction.",
+  "correccion": "Precisión menor en formula_coste (1) y en el parámetro \"redondeo / fee mínima\": \"mínimo 0.00001 USDC\" no es un suelo. La doc dice literalmente \"The smallest fee charged is 0.00001 USDC. Anything smaller rounds to zero\" → Fee total = round5(C·c_taker(p)), y si el resultado redondeado es 0 la fee es 0 (no se eleva a 0.00001). Sustituir \"mínimo 0.00001\" por \"granularidad 0.00001; fees < 0.000005 redondean a 0\". Adicionalmente, anotar que la deducción en shares para BUY (issue #326) queda fuera de las fuentes oficiales verificables; lo documentado es \"charged on top\" del notional pre-fee y \"fee-adjusted fill amounts\" vía SDK, equivalentes en coste USDC como ya indica el modelo."
+ },
+ {
+  "refutada": true,
+  "motivo": "Refutación PARCIAL y acotada (lente DATOS). Las tablas agregadas del catálogo se reproducen exactamente con DuckDB read_only, así que la fórmula de coste, los parámetros (r=0.05, e=1, takerOnly, rebate 0.25, mbf/tbf=1000, tick, min_order_size) y los límites de época por endDate NO quedan refutados. Lo que NO cuadra son dos fechas/IDs citados como evidencia OBSERVADA en la época V1 (corte del 30-mar-2026): (a) \"primer mercado con fees 1779513 Atlanta (createdAt 2026-03-29T18:09:47Z)\" es falso: el primer evento con fees de endDate 30-mar es Toronto (event 322390, markets 1779469–1779479, createdAt 18:09:15/18:09:16Z), 31 s antes que Atlanta; (b) \"último sin fees 1779683 Taipei (createdAt 18:11:35Z)\" es falso: después de Taipei se crearon Chongqing, Beijing, Wuhan, Chengdu, Shenzhen (sin fees), luego Austin, Denver, Houston, Los Angeles, San Francisco (con fees), luego Moscow (event 322426, markets 1779810–1779820, createdAt 18:12:55Z, SIN fees) y por último Mexico City (1779821, 18:13:05Z, CON fees). Es decir, la secuencia real es intercalada [7 sin][7 con][16 sin][5 con][1 sin][1 con], no \"primero fees, luego sin fees\"; 12 eventos con fees fueron creados ANTES del último evento sin fees. La conclusión INFERIDA del modelo (\"corte por lote/evento, no por createdAt ni endDate\") sobrevive e incluso se refuerza, pero la evidencia literal citada está mal y, según la regla \"si hay duda razonable, refutada=true\", debe corregirse. Hallazgo adicional no declarado en el modelo: la época fees_disabled \"2025-12-30..2026-03-30\" no es continua en el catálogo (faltan 47 días: 2026-01-02..2026-02-17; enero sólo tiene 56 mercados/8 eventos) y además faltan 2026-04-16 y 2026-04-17 dentro de la sub-época V1; endDate 2026-03-31 sólo tiene 3 eventos/33 mercados (Tokyo, NYC, Istanbul, creados 27-mar) frente a 418 el 1-abr. Estos huecos no cambian la fórmula pero sí el peso muestral de cada época y deberían declararse en el preregistro.",
+  "evidencia": "OBSERVADO (DuckDB read_only=True sobre /Users/mariaaleu/pmw-catalog-v2/CATALOG_V2.duckdb, tabla mk, 93.221 filas; manifest: endpoint https://gamma-api.polymarket.com/events tag_id 104596, n_markets 93221):\n1) Combos (feesEnabled, feeSchedule, makerBaseFee, takerBaseFee, n, min endDate, max endDate, n_eventos): (false, NULL, NULL, NULL, 8770, '2025-12-30T12:00:00Z', '2026-03-30T12:00:00Z', 878) y (true, '{\"exponent\": 1, \"rate\": 0.05, \"takerOnly\": true, \"rebateRate\": 0.25}', 1000.0, 1000.0, 84451, '2026-03-30T12:00:00Z', '2026-09-04T12:00:00Z', 7679). Sólo 2 combinaciones; 0 filas con feesEnabled NULL; colinealidad 1000↔true 100%. 8770/93221 = 9,408 %. COINCIDE con el modelo.\n2) endDate=2026-03-30: (true, 143 mercados, 13 ciudades, 13 eventos) / (false, 275, 25, 25); ciudades con fees = [Atlanta, Austin, Chicago, Dallas, Denver, Houston, Los Angeles, Mexico City, Miami, NYC, San Francisco, Seattle, Toronto]; 0 eventos mixtos. endDate ≥ 2026-03-31 sin fees: 0; endDate < 2026-03-30 con fees: 0. COINCIDE.\n3) tick_size: 0.001 → 92.810 (min endDate 2025-12-30, max 2026-09-04); 0.01 → 411 (2026-03-13..2026-09-01, 343 con slug 'arch-%'). min_order_size = 5.0 en 93.221/93.221. COINCIDE.\n4) ev.n_markets vs count(mk) por evento: 0 discrepancias. Todos los endDate tienen formato 'YYYY-MM-DDT12:00:00Z'.\n5) NO COINCIDE — secuencia de creación de eventos con endDate 2026-03-30 (tabla ev.createdAt, ordenada): Paris 17:46:33 F, London 17:47:09 F, Ankara 17:49:11 F, Istanbul 17:50:12 F, Sao Paulo 17:56:43 F, Buenos Aires 18:08:24 F, Seoul 18:08:32 F, Toronto 18:09:15 T (mk 1779469–1779479), Seattle 18:09:23 T, NYC 18:09:31 T, Dallas 18:09:39 T, Atlanta 18:09:46 T (1779513–1779523), Miami 18:09:54 T, Chicago 18:10:02 T, Wellington 18:10:12 F, Lucknow F, Munich F, Tel Aviv F, Tokyo F, Hong Kong F, Shanghai F, Singapore F, Milan F, Madrid F, Warsaw F, Taipei 18:11:34 F (1779682–1779692), Chongqing 18:11:41 F, Beijing F, Wuhan F, Chengdu F, Shenzhen 18:12:10 F, Austin 18:12:18 T, Denver T, Houston T, Los Angeles T, San Francisco 18:12:48 T, Moscow 18:12:55 F (1779810–1779820), Mexico City 18:13:05 T (1779821–1779831). Consulta: last_nofee_created = 2026-03-29 18:12:55.542626, first_fee_created (endDate 30-mar) = 18:09:15.756847, fee_events_before_last_nofee = 12.\n6) OBSERVADO en vivo (GET https://gamma-api.polymarket.com/markets/{id}, 2026-09-06): 1779469 Toronto createdAt '2026-03-29T18:09:16.12992Z' feesEnabled True feeType 'weather_fees' mbf/tbf 1000; 1779513 Atlanta createdAt '2026-03-29T18:09:47.128891Z' True; 1779683 Taipei createdAt '2026-03-29T18:11:35.208852Z' feesEnabled False feeType None makerBaseFee None; 1779810 Moscow createdAt '2026-03-29T18:12:55.773821Z' feesEnabled False; 1779821 Mexico City createdAt '2026-03-29T18:13:05.43003Z' True; 1741251 Istanbul 31-mar createdAt '2026-03-27T10:01:27.00934Z' feesEnabled True (confirma la afirmación del modelo sobre Istanbul); 4107021 London createdAt '2026-09-02T04:55:51Z' feeSchedule {'exponent': 1, 'rate': 0.05, 'takerOnly': True, 'rebateRate': 0.25}, mbf/tbf 1000, orderPriceMinTickSize 0.001, orderMinSize 5. Los valores vivos coinciden con el catálogo (sin cambio retroactivo del flag detectado en estos 7 mercados).\n7) OBSERVADO — huecos de cobertura: fechas endDate ausentes entre 2025-12-30 y 2026-09-04 = 49 (2026-01-02..2026-02-17 y 2026-04-16, 2026-04-17); 200 endDate distintos sobre 249 días. Por mes: 2025-12 77 mk/11 ev (F); 2026-01 56/8 (F); 2026-02 1386/154 (F); 2026-03 7251/705 (F) + 176/16 (T); 2026-04 14553/1323 (T); 2026-05 17593/1601; 2026-06 15972/1452; 2026-07 16687/1517; 2026-08 17259/1569; 2026-09 2211/201. endDate 2026-03-31: 33 mercados (3 eventos 313355/313358/313361 creados 2026-03-27 10:00–10:01, todos con fees). El catálogo mk no tiene columna createdAt/updatedAt a nivel mercado (sólo ev.createdAt a nivel evento).\nINFERIDO: la activación de fees el 30-mar se hizo por evento/ciudad (13 norteamericanas) y no por orden de creación; la evidencia correcta es la intercalación de 5 tramos, no el par Atlanta/Taipei. El resto del modelo de coste (fórmula H1, sensibilidad H2–H5, parámetros) no es contrastable con el catálogo más allá de los campos verificados arriba.",
+  "correccion": "Sustituir en \"epocas[1].evidencia\" la frase \"primer mercado con fees 1779513 Atlanta (createdAt 2026-03-29T18:09:47Z), último sin fees 1779683 Taipei (createdAt 18:11:35Z)\" por: \"para endDate 30-mar la creación (ev.createdAt / Gamma createdAt, 2026-03-29 UTC) va intercalada: 7 eventos sin fees (Paris 17:46:33 … Seoul 18:08:32) → 7 con fees (Toronto 18:09:15 mk 1779469 … Chicago 18:10:02) → 16 sin fees (Wellington 18:10:12 … Shenzhen 18:12:10, incl. Taipei 18:11:34) → 5 con fees (Austin 18:12:18 … San Francisco 18:12:48) → Moscow 18:12:55 sin fees (mk 1779810–1779820) → Mexico City 18:13:05 con fees (mk 1779821–1779831). Primer mercado con fees de esa fecha: 1779469 (Toronto); último sin fees: 1779820 (Moscow). 12 eventos con fees fueron creados antes del último sin fees → el corte es por ciudad/evento, no por createdAt\". Añadir a \"epocas\" y al preregistro una nota de cobertura: la época fees_disabled tiene 49 días sin mercados en el catálogo (2026-01-02..2026-02-17; 2026-04-16/17 en V1), enero con sólo 8 eventos, y endDate 2026-03-31 con sólo 3 eventos/33 mercados; segmentar por fee_regime y sub-época debe reportar n_mercados y n_días efectivos, y las inferencias sobre la época fees_disabled deben tratarse como basadas en ~8.770 mercados concentrados en 2026-02-18..2026-03-30 (8.637 de 8.770) más 133 de dic/ene. Mantener el resto del modelo (fórmula H1, parámetros, límites de época por endDate, tick/min size) sin cambios: todos los recuentos citados se reproducen exactamente."
+ }
+]
