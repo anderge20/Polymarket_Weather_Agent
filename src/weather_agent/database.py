@@ -77,6 +77,11 @@ ALL_TABLES = (
 # (when WE happened to ingest it), and NEVER `observation_time`/`daily_high_time`
 # (when the weather physically occurred).
 AS_OF_COLUMNS = {
+    # R26: markets discovered while OPEN carry available_at = instant we observed
+    # them (OBSERVED_AT_DISCOVERY). Rows with available_at NULL (closed-mode
+    # discovery, availability UNKNOWN) are NEVER returned by an as-of read on
+    # markets: `NULL <= asof` is not true, and we do not invent availability.
+    "markets": "available_at",
     "price_history": "observation_time",
     "orderbook_snapshots": "timestamp",
     "trades": "timestamp",
