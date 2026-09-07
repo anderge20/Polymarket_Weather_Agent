@@ -1,16 +1,21 @@
 """
 test_market_asof.py — market price as-of  (Phase 2B: IMPLEMENTED)
 =================================================================
-Was a PENDING stub in 2A. Now exercises `weather_agent.polymarket.prices`
-against the real 2A schema, with an injected fetcher so no test touches the
-network.
+Was a PENDING stub in 2A. Exercises `weather_agent.polymarket.prices` against the
+real 2A schema with a fake session, so no test touches the network.
+
+Merges two independent test sets: Codex's (transport discipline — rate limiting,
+atomicity, no partial writes) and Claude's (as-of semantics, windowing, the
+"never executable" invariant).
 
 Asserts the frozen contract:
-  * "The indicative price at or before the lead" is the last point at or before
-    it — never a later one.
+  * The price at the lead is the last point at or before it, never a later one.
   * The stored price is INDICATIVE; 'EXECUTABLE' is unrepresentable (2A CHECK).
-  * A missing price fails CLOSED (raises), never a default or a forward-fill.
-  * Windows are capped and stitched at native fidelity; re-ingestion is idempotent.
+  * A missing price fails CLOSED.
+  * A 429 stops and writes NOTHING; it is never retried (gate D0).
+  * A failure part-way through a stitched interval writes NOTHING.
+  * Contradictory prices for the same instant are refused, not silently resolved.
+  * The endpoint range is [startTs, endTs) — measured, and honoured in validation.
 """
 from __future__ import annotations
 
@@ -30,27 +35,46 @@ def _t(h: int, m: int = 0) -> datetime:
     return datetime(2026, 8, 16, h, m, tzinfo=timezone.utc)
 
 
-def _fake_fetcher(series: dict[datetime, float]):
-    """A `fetch_window` stand-in serving `series`, honouring the range bounds."""
-
-    def fetch(token_id, start, end, fidelity=1, **kw):
-        return [
-            prices.PricePoint(t, p)
-            for t, p in sorted(series.items())
-            if start <= t <= end
-        ]
-
-    return fetch
+def _ts(h: int, m: int = 0) -> int:
+    return int(_t(h, m).timestamp())
 
 
-SERIES = {_t(9): 0.40, _t(10): 0.45, _t(11): 0.55, _t(13): 0.60}
+class _Resp:
+    def __init__(self, status_code=200, payload=None):
+        self.status_code = status_code
+        self._payload = payload if payload is not None else {"history": []}
+
+    def json(self):
+        return self._payload
+
+
+class _Session:
+    """A `requests`-shaped session serving a fixed series, honouring [start, end)."""
+
+    def __init__(self, series: dict[int, float], status_code=200, fail_after=None):
+        self.series = series
+        self.status_code = status_code
+        self.fail_after = fail_after  # nth call (1-based) returns 429
+        self.calls = 0
+
+    def get(self, url, params=None, timeout=None):
+        self.calls += 1
+        if self.fail_after is not None and self.calls >= self.fail_after:
+            return _Resp(429)
+        if self.status_code != 200:
+            return _Resp(self.status_code)
+        a, b = params["startTs"], params["endTs"]
+        hist = [{"t": t, "p": p} for t, p in sorted(self.series.items()) if a <= t < b]
+        return _Resp(200, {"history": hist})
+
+
+SERIES = {_ts(9): 0.40, _ts(10): 0.45, _ts(11): 0.55, _ts(13): 0.60}
 
 
 @pytest.fixture
 def ingested(con):
-    prices.ingest(
-        con, TOKEN, MARKET, _t(9), _t(13), DSV, fetcher=_fake_fetcher(SERIES)
-    )
+    s = _Session(SERIES)
+    prices.ingest(con, s, TOKEN, MARKET, _t(9), _t(14), DSV)
     return con
 
 
@@ -68,8 +92,9 @@ def test_indicative_price_asof_lead(ingested):
 
 
 def test_asof_exactly_on_a_point_takes_that_point(ingested):
-    row = prices.price_asof(ingested, TOKEN, _t(11), dataset_version=DSV)
-    assert row["indicative_price"] == 0.55
+    assert prices.price_asof(ingested, TOKEN, _t(11), dataset_version=DSV)[
+        "indicative_price"
+    ] == 0.55
 
 
 def test_asof_before_first_point_fails_closed(ingested):
@@ -115,45 +140,141 @@ def test_source_window_is_direct(ingested):
 
 
 # --------------------------------------------------------------------------
-# windowing, stitching, idempotency
+# transport discipline: rate limits and atomicity
 # --------------------------------------------------------------------------
 
 
-def test_windows_are_capped():
+def test_rate_limit_writes_nothing_and_is_not_retried(con):
+    """A 429 stops the walk. Nothing is written, and the call is made ONCE."""
+    s = _Session(SERIES, fail_after=1)
+    summary = prices.ingest(con, s, TOKEN, MARKET, _t(9), _t(14), DSV)
+    assert summary["status"] == prices.S_RATE_LIMITED
+    assert summary["points_written"] == 0
+    assert db.query(con, "SELECT count(*) AS n FROM price_history")[0]["n"] == 0
+    assert s.calls == 1  # never retried — gate D0
+
+
+def test_rate_limit_is_a_stop_status():
+    assert prices.S_RATE_LIMITED in prices.STOP_STATUSES
+
+
+def test_late_error_leaves_no_partial_write(con):
+    """A stitched interval that fails on its second window writes nothing at all."""
+    long_series = {_ts(0) + i * 3600: 0.5 for i in range(100)}
+    s = _Session(long_series, fail_after=2)
     start = _t(0)
-    end = start + timedelta(hours=150)
-    ws = list(prices.windows(start, end))
-    assert all((b - a) <= timedelta(hours=prices.MAX_WINDOW_HOURS) for a, b in ws)
-    assert ws[0][0] == start and ws[-1][1] == end
-    # contiguous: each window starts where the previous ended
+    summary = prices.ingest(con, s, TOKEN, MARKET, start, start + timedelta(hours=99), DSV)
+    assert summary["status"] in prices.ERROR_STATUSES
+    assert db.query(con, "SELECT count(*) AS n FROM price_history")[0]["n"] == 0
+    assert s.calls == 2
+
+
+def test_http_error_writes_nothing(con):
+    s = _Session(SERIES, status_code=500)
+    summary = prices.ingest(con, s, TOKEN, MARKET, _t(9), _t(14), DSV)
+    assert summary["status"] == prices.S_HTTP_ERROR
+    assert db.query(con, "SELECT count(*) AS n FROM price_history")[0]["n"] == 0
+
+
+def test_point_outside_the_requested_range_is_refused(con):
+    class Rogue(_Session):
+        def get(self, url, params=None, timeout=None):
+            self.calls += 1
+            return _Resp(200, {"history": [{"t": params["endTs"] + 60, "p": 0.5}]})
+
+    summary = prices.ingest(con, Rogue({}), TOKEN, MARKET, _t(9), _t(14), DSV)
+    assert summary["status"] == prices.S_PARSE
+    assert db.query(con, "SELECT count(*) AS n FROM price_history")[0]["n"] == 0
+
+
+def test_contradictory_price_for_same_instant_is_refused(con):
+    """Two windows reporting different prices for one instant is a source
+    contradiction; picking one silently would invent data."""
+    flip = {"n": 0}
+
+    class Contradictory(_Session):
+        def get(self, url, params=None, timeout=None):
+            self.calls += 1
+            flip["n"] += 1
+            t = params["startTs"]
+            return _Resp(200, {"history": [{"t": t, "p": 0.4 if flip["n"] == 1 else 0.9}]})
+
+    # two windows, both reporting a point at their own start: the stitcher only
+    # sees a contradiction if the same instant differs, so force that instant.
+    class SameInstant(Contradictory):
+        def get(self, url, params=None, timeout=None):
+            self.calls += 1
+            flip["n"] += 1
+            return _Resp(200, {"history": [{"t": params["startTs"], "p": 0.4}]}) if flip["n"] == 1 else _Resp(
+                200, {"history": [{"t": _ts(0), "p": 0.9}]}
+            )
+
+    start = _t(0)
+    summary = prices.ingest(
+        con, SameInstant({}), TOKEN, MARKET, start, start + timedelta(hours=99), DSV
+    )
+    assert summary["status"] == prices.S_PARSE
+    assert db.query(con, "SELECT count(*) AS n FROM price_history")[0]["n"] == 0
+
+
+# --------------------------------------------------------------------------
+# windowing and idempotency
+# --------------------------------------------------------------------------
+
+
+def test_windows_are_capped_and_contiguous():
+    ws = list(prices.windows(_ts(0), _ts(0) + 150 * 3600))
+    assert all((b - a) <= prices.MAX_WINDOW_SECONDS for a, b in ws)
+    assert ws[0][0] == _ts(0) and ws[-1][1] == _ts(0) + 150 * 3600
     assert all(ws[i][1] == ws[i + 1][0] for i in range(len(ws) - 1))
 
 
-def test_stitching_dedups_window_boundaries():
-    """Consecutive windows share an instant; the series must not double it."""
-    long_series = {_t(0) + timedelta(hours=i): 0.5 for i in range(0, 100)}
-    pts = prices.fetch_series(
-        TOKEN, _t(0), _t(0) + timedelta(hours=99), fetcher=_fake_fetcher(long_series)
-    )
-    ts = [p.t for p in pts]
+def test_range_start_is_inclusive_end_exclusive():
+    """Measured against the live endpoint on 2026-09-06 and honoured here: a point
+    at exactly startTs belongs to the window; one at endTs does not."""
+    s = _Session({_ts(9): 0.4, _ts(14): 0.9})
+    status, pts = prices.fetch_history(s, TOKEN, _ts(9), _ts(14))
+    assert status == prices.S_OK
+    assert [p["t"] for p in pts] == [_ts(9)]
+
+
+def test_stitching_covers_a_long_interval_without_duplicates():
+    long_series = {_ts(0) + i * 3600: 0.5 for i in range(100)}
+    s = _Session(long_series)
+    status, pts = prices.fetch_history(s, TOKEN, _ts(0), _ts(0) + 100 * 3600)
+    assert status == prices.S_OK
+    ts = [p["t"] for p in pts]
     assert len(ts) == len(set(ts)) == 100
     assert ts == sorted(ts)
+    assert s.calls == 3  # 100 h over 48 h windows
 
 
 def test_ingest_is_idempotent(con):
-    f = _fake_fetcher(SERIES)
-    n1 = prices.ingest(con, TOKEN, MARKET, _t(9), _t(13), DSV, fetcher=f)
-    prices.ingest(con, TOKEN, MARKET, _t(9), _t(13), DSV, fetcher=f)
+    s = _Session(SERIES)
+    first = prices.ingest(con, s, TOKEN, MARKET, _t(9), _t(14), DSV)
+    prices.ingest(con, _Session(SERIES), TOKEN, MARKET, _t(9), _t(14), DSV)
     total = db.query(con, "SELECT count(*) AS n FROM price_history")[0]["n"]
-    assert total == n1 == len(SERIES)
+    assert total == first["points_written"] == len(SERIES)
+
+
+def test_empty_history_is_not_an_error(con):
+    s = _Session({})
+    summary = prices.ingest(con, s, TOKEN, MARKET, _t(9), _t(14), DSV)
+    assert summary["status"] == prices.S_EMPTY
+    assert summary["points_written"] == 0
 
 
 def test_naive_datetime_rejected():
     """As-of logic is undefined without a timezone; refuse rather than guess."""
     with pytest.raises(ValueError):
-        list(prices.windows(datetime(2026, 8, 16, 9), _t(13)))
+        list(prices.windows_dt(datetime(2026, 8, 16, 9), _t(13)))
 
 
 def test_fidelity_below_native_rejected():
     with pytest.raises(ValueError):
-        prices.fetch_window(TOKEN, _t(9), _t(10), fidelity=0)
+        prices.fetch_window(_Session({}), TOKEN, _ts(9), _ts(10), fidelity=0)
+
+
+def test_backwards_range_rejected():
+    with pytest.raises(ValueError):
+        list(prices.windows(_ts(13), _ts(9)))

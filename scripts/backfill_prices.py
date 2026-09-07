@@ -1,0 +1,180 @@
+#!/usr/bin/env python3
+"""
+backfill_prices.py — historical indicative prices for resolved weather markets
+==============================================================================
+
+Fills `price_history` with the CLOB indicative series around each market's
+decision window, so the backtest can read "the price at the lead" as-of.
+
+WINDOW: [endDate - WINDOW_HOURS, endDate]. `endDate` is the 2E/D1 anchor
+(target_date 12:00:00Z); the leads under study (9 h, 24 h) both fall inside a
+48 h window.
+
+SAMPLING — stratified by target date (this is not a detail)
+------------------------------------------------------------
+A plain `ORDER BY endDate DESC LIMIT n` returns n markets that all share the
+most recent date: the first run of this script pulled 1.14 M price points
+spanning a single target date, which is useless for a backtest because there is
+no temporal variation at all. `--per-date` instead takes up to k markets from
+every date in the catalogue, so coverage is spread across the whole period.
+
+RATE LIMITS: a 429 stops the walk immediately and the script exits non-zero.
+It is never retried and never worked around (gate D0). Re-running resumes.
+
+RESUMABLE: markets already present for this dataset_version are skipped, and
+every market is written atomically, so a stopped run leaves no partial history.
+
+Usage:
+    python3 scripts/backfill_prices.py --per-date 2 --db data/pmw.duckdb
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+import time
+from datetime import datetime, timedelta, timezone
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+
+import duckdb  # noqa: E402
+
+from weather_agent import database as db  # noqa: E402
+from weather_agent.polymarket import prices  # noqa: E402
+
+CATALOG = os.path.expanduser("~/pmw-catalog-v2/CATALOG_V2.duckdb")
+WINDOW_HOURS = 48
+DATASET_VERSION = "backfill_2b_v1"
+
+
+def markets(catalog_path: str, per_date: int, max_total: int | None, city: str | None):
+    """Up to `per_date` markets from EVERY target date, oldest first."""
+    con = duckdb.connect(catalog_path, read_only=True)
+    where = "clobTokenIds IS NOT NULL AND endDate IS NOT NULL"
+    if city:
+        where += f" AND city = '{city}'"
+    sql = f"""
+        WITH ranked AS (
+            SELECT market_id, condition_id, city, station_identifier, endDate,
+                   clobTokenIds, winning_outcome,
+                   CAST(endDate AS DATE) AS d,
+                   row_number() OVER (
+                       PARTITION BY CAST(endDate AS DATE) ORDER BY market_id
+                   ) AS rn
+            FROM mk WHERE {where}
+        )
+        SELECT * FROM ranked WHERE rn <= {per_date} ORDER BY d, market_id
+    """
+    if max_total:
+        sql += f" LIMIT {max_total}"
+    rows = con.execute(sql).fetchdf().to_dict("records")
+    con.close()
+    return rows
+
+
+def yes_token(clob_token_ids: str) -> str:
+    """The YES token is the first of the pair, matching outcomes ["Yes","No"]."""
+    ids = json.loads(clob_token_ids)
+    if not ids:
+        raise ValueError("empty clobTokenIds")
+    return ids[0]
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--per-date", type=int, default=2, help="markets per target date")
+    ap.add_argument("--max-total", type=int, default=None)
+    ap.add_argument("--city", default=None)
+    ap.add_argument("--db", default="data/pmw.duckdb")
+    ap.add_argument("--catalog", default=CATALOG)
+    ap.add_argument("--sleep", type=float, default=0.25)
+    args = ap.parse_args()
+
+    os.makedirs(os.path.dirname(args.db) or ".", exist_ok=True)
+    con = db.init_db(db.connect(args.db))
+    session = prices.default_session()
+
+    done = {
+        r["token_id"]
+        for r in db.query(
+            con,
+            "SELECT DISTINCT token_id FROM price_history WHERE dataset_version = ?",
+            [DATASET_VERSION],
+        )
+    }
+    rows = markets(args.catalog, args.per_date, args.max_total, args.city)
+    dates = {str(m["d"]) for m in rows}
+    print(
+        f"candidatos: {len(rows)} mercados sobre {len(dates)} fechas "
+        f"({min(dates)} → {max(dates)}) · ya ingeridos: {len(done)}",
+        flush=True,
+    )
+
+    ok = skipped = failed = 0
+    total_points = 0
+    by_status: dict[str, int] = {}
+    for i, m in enumerate(rows, 1):
+        try:
+            tok = yes_token(m["clobTokenIds"])
+        except Exception as e:
+            print(f"  [{i}] {m['market_id']}: clobTokenIds ilegible ({e})", flush=True)
+            failed += 1
+            continue
+        if tok in done:
+            skipped += 1
+            continue
+        end = datetime.fromisoformat(str(m["endDate"]).replace("Z", "+00:00"))
+        if end.tzinfo is None:
+            end = end.replace(tzinfo=timezone.utc)
+        start = end - timedelta(hours=WINDOW_HOURS)
+
+        summary = prices.ingest(
+            con, session, tok, str(m["market_id"]), start, end, DATASET_VERSION
+        )
+        st = summary["status"]
+        by_status[st] = by_status.get(st, 0) + 1
+
+        if st in prices.STOP_STATUSES:
+            print(
+                f"  [{i}] {st} en {m['market_id']} — se detiene la pasada. "
+                "Relanzar el mismo comando continúa donde quedó.",
+                flush=True,
+            )
+            break
+        if st in prices.ERROR_STATUSES:
+            failed += 1
+            print(f"  [{i}] {m['market_id']} {st}", flush=True)
+        else:
+            ok += 1
+            total_points += summary["points_written"]
+            if i % 25 == 0:
+                print(
+                    f"  [{i}/{len(rows)}] {m['d']} {m['city']} → "
+                    f"{summary['points_written']} puntos (acum {total_points})",
+                    flush=True,
+                )
+        time.sleep(args.sleep)
+
+    print(
+        f"LISTO_BACKFILL ok={ok} saltados={skipped} fallos={failed} "
+        f"puntos={total_points} estados={by_status}",
+        flush=True,
+    )
+    stats = db.query(
+        con,
+        """SELECT count(*) AS filas, count(DISTINCT token_id) AS tokens,
+                  count(DISTINCT CAST(observation_time AS DATE)) AS dias
+           FROM price_history""",
+    )[0]
+    print(
+        f"price_history: {stats['filas']} filas · {stats['tokens']} tokens · "
+        f"{stats['dias']} días distintos",
+        flush=True,
+    )
+    con.close()
+    return 1 if (failed or prices.S_RATE_LIMITED in by_status) else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
