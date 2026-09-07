@@ -8,11 +8,11 @@ descriptions FROM the verbatim fixtures (never invented templates) and pin
   * the source must never be guessed from station/URL text outside the clause head;
   * a NOAA description whose primary clause is truncated must stay P_UNKNOWN
     (rule never inferred from the fallback sentence);
-  * the HKO ordering defect: the NOAA pattern `weather\\.gov` also matches
+  * FIXED (R29 review): the NOAA pattern `weather\\.gov` used to also match
     `weather.gov.hk` and NOAA is tried before HKO -> an HKO description without an
-    'information from' clause (INFERRED path) is labelled NOAA. Marked xfail(strict)
-    so the suite is green but the defect cannot be forgotten: fix by ordering HKO
-    before NOAA in _SOURCE_NAME_RES or with `weather\\.gov(?!\\.hk)`.
+    'information from' clause (INFERRED path) is labelled NOAA. Fixed by ordering HKO/CWA
+    before NOAA in _SOURCE_NAME_RES AND adding `weather\\.gov(?!\\.hk)`; these two tests
+    now pass and guard the fix.
 """
 from __future__ import annotations
 
@@ -81,10 +81,6 @@ def test_hko_verbatim_clause_is_hko_even_after_fallback_removal():
     assert res.classify_source(res.primary_clause(HKO_DESC)) == res.SRC_HKO
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "R29 defect: _SOURCE_NAME_RES tries NOAA (`weather\\.gov`) before HKO, and "
-    "`weather.gov.hk` matches it -> an HKO description without 'information from' "
-    "clause (INFERRED path, whole-body search) is labelled NOAA."))
 def test_hko_without_primary_clause_is_not_noaa():
     d = HKO_DESC.replace(
         "The resolution source for this market will be information from the Hong Kong Observatory, specifically",
@@ -96,7 +92,6 @@ def test_hko_without_primary_clause_is_not_noaa():
     assert p["contract_source"] != res.SRC_NOAA
 
 
-@pytest.mark.xfail(strict=True, reason="same ordering defect, fallback sentence naming HKO by URL only")
 def test_fallback_naming_hko_by_url_is_not_noaa():
     d = WU_GENERIC_DESC + ("\n\nIf Wunderground data is unavailable, the data at "
                            "https://www.weather.gov.hk/en/cis/climat.htm will be used.")

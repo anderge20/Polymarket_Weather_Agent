@@ -138,11 +138,15 @@ _PRIMARY_RE = re.compile(
 # Source name -> enum, tried IN ORDER against the HEAD of the primary clause (up to
 # the first comma), so "from Wunderground, ... for the Hong Kong International
 # Airport Station" is WU, never HKO.
+# Order matters: the more specific host wins. `weather.gov.hk` (HKO) is a suffix
+# of the NOAA pattern `weather.gov`, so HKO is tried first AND the NOAA pattern
+# carries a negative lookahead. Either guard alone would do; both are kept so a
+# future reordering cannot silently reintroduce the misclassification.
 _SOURCE_NAME_RES: tuple[tuple[str, re.Pattern], ...] = (
     (SRC_WU, re.compile(r"Wunderground|Weather\s+Underground|wunderground\.com", re.I)),
-    (SRC_NOAA, re.compile(r"\bNOAA\b|weather\.gov", re.I)),
     (SRC_HKO, re.compile(r"Hong\s+Kong\s+Observatory|weather\.gov\.hk", re.I)),
     (SRC_CWA, re.compile(r"Central\s+Weather\s+Administration|\bCWA\b|cwa\.gov\.tw", re.I)),
+    (SRC_NOAA, re.compile(r"\bNOAA\b|weather\.gov(?!\.hk)", re.I)),
 )
 
 
