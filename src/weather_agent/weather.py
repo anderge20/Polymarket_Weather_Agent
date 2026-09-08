@@ -239,7 +239,19 @@ def fetch_run(
             }
         except urllib.error.HTTPError as e:
             if e.code == 400:
-                raise WeatherIngestError(f"{model} out of domain at ({lat},{lon})") from e
+                # 400 covers several distinct conditions — a point outside the
+                # model's domain, a run the archive no longer holds, a malformed
+                # parameter. Reporting one of them as if it were another sends
+                # the reader chasing the wrong problem, so quote the API's own
+                # reason instead of guessing.
+                try:
+                    reason = json.loads(e.read()).get("reason", "")
+                except Exception:  # noqa: BLE001 - diagnostics must not mask the error
+                    reason = ""
+                raise WeatherIngestError(
+                    f"{model} rejected at ({lat},{lon}) run {issue_time:%Y-%m-%dT%H:%MZ}"
+                    + (f": {reason}" if reason else " (HTTP 400, no reason given)")
+                ) from e
             if e.code == 429:
                 raise WeatherIngestError("daily quota exhausted (HTTP 429)") from e
             last = e
