@@ -1,7 +1,7 @@
 {
  "schema": "target_date_extraction/v1",
  "date": "2026-09-08",
- "rule": "target_date = fecha del propio texto del mercado (dos extracciones independientes: slug '-<month>-<day>' y descripción \"on <D> <Mon> '<YY>\"). NUNCA derivada de endDate (prohibido por 2D §C).",
+ "rule": "target_date = fecha del texto CONTRACTUAL del mercado (descripción, patrón \"on <D> <Mon> '<YY>\"). El SLUG es CONTROL, no fuente: 2D prohíbe expresamente inferir target_date de slug/question/endDate/close_time/resolution_timestamp. Si control y fuente discrepan -> fail-closed target_date_ambiguous (0 casos).",
  "n_markets": 93221,
  "extractable_slug": 93221,
  "extractable_descr": 93221,
@@ -3542,5 +3542,15 @@
    "end_date": "2026-03-25",
    "slug": "highest-temperature-in-shenzhen-on-march-24-2026-30corhigher"
   }
- ]
+ ],
+ "correction_A26": {
+  "descr_full_date": 93221,
+  "slug_month_day": 93221,
+  "slug_with_year": 93088,
+  "agreement_month_day": 93221,
+  "agreement_year_where_both": 93088,
+  "year_disagreements": 0,
+  "note": "A-25 declaraba dos vias independientes con acuerdo 100% en fecha completa; el año del slug se tomaba de endDate. Corregido en A-26."
+ },
+ "status_A27": "EVIDENCIA DE CONSTRUCTIBILIDAD, NO AUTORIZACION. 2D §C prohíbe derivar target_date de resolution_timestamp/close_time/endDate/question/slug/description y de cualquier fuente heurística, y declara que no existe campo estructurado: el contrato es insatisfacible tal como está. El operador y Strategy A NUNCA lo derivan (parámetro del caller, fail-closed). Que el caller R14 lo pueble con esta extracción es decisión pendiente vía 2D §V."
 }
