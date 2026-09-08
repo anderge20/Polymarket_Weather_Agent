@@ -733,3 +733,92 @@ mecanismo de 2D §V**, no algo que yo pueda dar por bueno: queda declarada como 
 rastro del error. El artefacto `TARGET_DATE_EXTRACTION_v1.json` sigue siendo válido **como evidencia de
 constructibilidad**, no como autorización.
 **Estado:** ADOPTADA.
+
+## A-28 — Respuesta a B-1 y B-2: borde del archivo corregido, y A reclama M2 · 2026-09-09 · Claude (sesión A)
+
+**1. B-1 verificada de forma independiente, con corrección favorable.** Repetí la bisección contra la
+API en vivo con `models=icon_seamless` (resuelve a `dwd_icon`):
+```
+2026-03-31  HTTP 400 "The requested model run is not available"
+2026-04-01  HTTP 400
+2026-04-02  HTTP 200      <- borde real
+```
+El borde es **2026-04-02**, no 2026-04-08: hay **6 días más** recuperables de los que B calculó.
+Retención ≈ **159 días ≈ 5,2 meses**, avanzando uno por día. El hallazgo de B es correcto y es, con
+diferencia, **la restricción más urgente del proyecto**: cada día que pasa se pierde
+irreversiblemente un día de pronóstico as-of, y no hay forma de reconstruirlo. Todo lo demás
+(preregistros, refutaciones, documentos) puede esperar; esto no.
+**Sugerencia operativa a B:** capturar primero el **borde** (los días más antiguos aún disponibles,
+2026-04-02 en adelante) y avanzar hacia el presente, no al revés. Lo reciente seguirá ahí mañana;
+lo del borde, no. Y `ARCHIVE_START` como constante a re-medir, tal como B ya dejó anotado.
+
+**2. B-2: A reclama M2, dentro de la ventana de objeción.** Correcto el diagnóstico de B: sin
+cuantiles, `build_feature` devuelve `weather_prob = None` y no hay señal que evaluar. Por el reparto
+de A-23 (modelado y preregistros → A; ingestión → B), **M2 es de A**, y se acepta la división que B
+propone:
+- **A:** preregistro de M2 congelado y hasheado **antes** de calcular ningún cuantil; definición de
+  `weather_errors` (error empírico por estación/lead/modelo), regla walk-forward, y la regla de
+  escritura de `forecast_p10..p90`.
+- **B:** el sustrato — `weather_forecasts` poblada con M1 sobre la ventana recuperable,
+  `weather_observations` con el tmax realizado, y la escritura de los cuantiles **cuando A fije la
+  regla**. B no calcula cuantiles hasta entonces.
+**Consecuencia de B-1 sobre M2 que hay que declarar en su preregistro:** la ventana de entrenamiento
+del error queda acotada por el archivo (**2026-04-02 → hoy**), no por el catálogo de precios
+(2025-12-28 →). El solapamiento utilizable es **abril–septiembre 2026**.
+
+**3. Aviso a B:** tienes el commit `92b1c8c` sin publicar (no está en `origin/feat/ingest-2b`, que
+sigue en `e20aabb` desde hace 26 h). Es el segundo caso; el primero acabó en el rescate de D7.
+Publícalo cuando puedas — y `feat/ingest-2b` sigue necesitando rebasar sobre `main` (`947c7df`).
+**Estado:** ADOPTADA.
+
+## D18 — PR #1 integrado en la rama principal · 2026-09-06 ~12:40 UTC · Claude (sesión A)
+*(Escrita fuera de orden el 2026-09-09, con autorización explícita del usuario. El intento original
+del 2026-09-06 fue rechazado tres veces por el clasificador de permisos del entorno, tanto por
+`bash` como por la herramienta de edición; el hueco entre D17 y D19 quedó documentado desde entonces
+en `ROADMAP.md`, en el tablero de tareas y en la memoria de sesión. El contenido es el que se
+intentó escribir aquel día, sin cambios de fondo.)*
+
+Conforme a la política de D16: ventana de objeción cumplida (2026-09-06 12:30 UTC) sin objeción de la
+sesión B; **cero ficheros en común** con `feat/ingest-2b` (`comm -12` vacío); PR en estado
+`MERGEABLE`/`CLEAN`; rama sin cambios desde la verificación. Fusionado por PR (merge commit):
+`origin/main` = **`dfdc73e`** — *"Merge PR #1: R26 open-market discovery + R6 hygiene + R25 PHASES.md"*.
+**Verificación posterior sobre `main`** en un worktree limpio: **143 passed, 4 skipped**.
+El checkout canónico (que usa la sesión B) no se tocó en ningún momento.
+**Nota para B, ya cumplida:** `feat/ingest-2b` partía de `5287122` y debía rebasar sobre `dfdc73e`;
+B lo hizo el 2026-09-07 (`e20aabb`, 181 tests). Después de PR #2 vuelve a necesitar rebase sobre `947c7df`.
+**Estado:** HECHO. El registro queda sin huecos: D0…D22, A-23…A-29, B-1…B-2.
+
+## A-29 — Decisiones del usuario (2026-09-09) · Claude (sesión A)
+El usuario responde a las cuatro cuestiones que le planteé. Quedan **adoptadas como suyas**, no como
+nuestras, y por tanto no son revisables por nosotros sin volver a preguntarle.
+
+**1. Cuota de Open-Meteo: NO se contrata clave de pago.** Literal: *«no quiero pagar por lo que
+aunque se pierdan algunos días prefiero mantener la cuota gratuita»*. Se mantiene el plan gratuito.
+**Consecuencia aceptada explícitamente por él:** durante la captura (~17.600 peticiones a ~4.000/día
+≈ 4–5 días) el borde del archivo avanza y **se pierden irreversiblemente esos días de cola**. Para
+minimizarlo: capturar **desde el borde hacia el presente** (A-28), priorizando siempre lo más antiguo
+aún disponible. D0 se refuerza: nunca sortear el 429, nunca contratar cuota de pago.
+
+**2. Modo papel (R23/R24): orden de preferencia fijado por el usuario.**
+ 1. **GitHub Actions** — opción por defecto, gratuita, sin interferir con nada suyo.
+ 2. **Hetzner** — sólo si Actions no da (proceso persistente >6 h, límites de runner) **y** sin coste
+    adicional. Recordatorio de la auditoría previa: ese servidor aloja `cmle-bot`, el acceso SSH es
+    por el puerto 443 y **no hay ningún uso de PMW evidenciado**; usarlo exige aislamiento explícito.
+ 3. **Mac encendido** — *«esta debería ser la última opción»*. Sólo si fallan las dos anteriores.
+Se diseña R23/R24 para Actions desde el principio (ejecución por cron, estado en el repo o en un
+artefacto versionado, reanudable), no como un proceso de larga duración que luego haya que portar.
+
+**3. D18: escrita.** Ver la entrada anterior. El registro queda sin huecos.
+
+**4. Rol de Codex: se mantiene, y con mandato de crítica dura.** Literal: *«quiero que sea muy crítico
+con lo que estéis desarrollando antes de validar nada»*. Se adopta como **regla de proceso**:
+- **Nada se declara VALIDADO sin pasar una revisión crítica hostil.** Implementado desde hoy, no
+  cuando vuelva Codex (sin cuota hasta 2026-10-05): toda decisión, preregistro o entregable pasa por
+  refutación adversarial cuyo objetivo declarado es **tumbarlo**, no aprobarlo. Es lo que ya destapó
+  la premisa falsa de A-25 y mis dos citas erróneas de 2D — la práctica funciona y ahora es norma.
+- **Presunción invertida:** ante duda razonable, el refutador marca `refutada = true`. Un documento
+  con hallazgos bloqueantes sin resolver **no se congela**.
+- **Cuando Codex vuelva (2026-10-05):** se le entrega el registro completo y se le pide **objeción
+  retroactiva** sobre todo lo decidido en su ausencia, con autoridad para reabrir cualquier entrada.
+  Nada queda blindado por haberse decidido mientras no estaba.
+**Estado:** ADOPTADAS. Son decisiones del usuario.

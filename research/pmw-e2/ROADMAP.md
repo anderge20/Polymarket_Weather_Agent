@@ -301,3 +301,6 @@ Cada ítem evaluativo (R4, R16, R18/R21, R24) lleva preregistro hasheado antes d
 | PR #2 | **FUSIONADO** (`947c7df`), 167/4 en `main`; validador PASS. B debe rebasar de nuevo | D21(A) |
 | A-25 | `target_date` extraíble 100 % (dos vías, acuerdo 100 %); holdout deja de estar vacío: 1.496 mercados / 136 eventos | `TARGET_DATE_EXTRACTION_v1.json` |
 | R12 | **NÚCLEO CONGELADO** — `SETTLEMENT_OPERATOR_CORE.v3.md` 11,7 KiB (límite 12): interfaz + fail-closed + habilitación por estrato; 25→13 hallazgos entre v1 y v2 | A-24, A-27 |
+| R23/R24 | **DISEÑO FIJADO POR EL USUARIO (A-29)**: modo papel sobre **GitHub Actions** (cron, reanudable, estado versionado); Hetzner sólo si Actions no da y sin coste; Mac última opción | A-29 |
+| Cuota | **SIN clave de pago (A-29)**: captura desde el borde del archivo hacia el presente; se aceptan las pérdidas de cola | A-28, A-29 |
+| Proceso | **Nada se declara VALIDADO sin refutación hostil previa (A-29.4)**; presunción invertida; Codex con objeción retroactiva al volver | A-29 |
