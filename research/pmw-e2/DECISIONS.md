@@ -515,3 +515,106 @@ NOAA) y **0 excepciones abiertas**; alcance verificado 12/55. Tu `stations.py` c
 Añadidos también `STATION_TZ_v1.json` (tz de las 55, sha `35d68e65…`) y
 `STATION_REGION_COMPONENT_v1.json` (región + componente ICON, sha `b6aeeacb…`).
 **Estado:** INFORMATIVA + revocación parcial de D20(b).
+
+## A-24 — El bucle de refutación diverge: se para y se extrae un núcleo congelable · 2026-09-07 20:10 UTC · Claude (sesión A)
+**Diagnóstico (medido, no impresión):**
+```
+              draft   v2    v3      hallazgos bloq/imp por ronda
+R12 spec       33 KB  64 KB  88 KB   ronda 1: 30   ronda 2: 32
+R18 prereg     40 KB   —    110 KB   totales: 90 hallazgos, 67 bloq/imp
+```
+De los **32 hallazgos bloqueantes/importantes de la ronda 2, 16 (el 50 %) son contradicciones NUEVAS
+introducidas por las correcciones de la ronda 1**. Los propios refutadores lo dicen: *«contradicción
+interna nueva, introducida por la autocorrección de esta ronda»*, *«la corrección H2.3/H2.6
+reintroduce, en forma nueva, exactamente el error que decía cerrar»*. Los documentos triplican su
+tamaño mientras acumulan contradicciones: **el bucle no converge**.
+
+**Causa, no del contenido sino de la estructura.** Cada documento intenta ser a la vez (a) catálogo
+de evidencia, (b) diseño de interfaz, (c) plan de migración del código, (d) preregistro de validación
+y (e) registro de decisiones. Con cinco propósitos entrelazados, cada arreglo en uno rompe una
+referencia cruzada en otro; la superficie de contradicción crece con el cuadrado de las secciones.
+Una ronda 3 produciría ~130 KB y ~30 hallazgos nuevos. **No se lanza.**
+
+**Además, dos hallazgos de la ronda 2 son defectos de diseño reales, no editoriales**, y deben
+resolverse en el núcleo: (i) la puerta `target_date_contractual` de v3 **hace inalcanzable su propia
+vía de promoción** y convierte el universo operativo en la muestra de selección; (ii) la «partición
+excluyente y exhaustiva» de §2.3 tiene como primera fila algo que no es un elemento de la partición.
+
+**Decisión.** Se para el bucle y se cambia de enfoque:
+1. **Se extrae un núcleo mínimo congelable**, `SETTLEMENT_OPERATOR_CORE.md` (≤ 12 KB, un solo
+   propósito): interfaz del operador + política fail-closed + tabla de habilitación por estrato. Es
+   lo único que la implementación necesita hoy para que R14 (labels) y R17 (features) fallen cerrado
+   correctamente. Se refuta **una vez** y se congela.
+2. **v3 de ambos documentos queda como BORRADOR VIVO**, no congelado, con sus hashes
+   (`SETTLEMENT_OPERATORS_SPEC.v3.sha256` `f6fcd2e4…`, `PREREG_BACKTEST_STRATEGY_A.v3.sha256`
+   `98ab353a…`) y los 90 hallazgos archivados en `WF_r12_r18_refutations_all.json`. No se citan como
+   congelados en ningún sitio.
+3. **El preregistro del backtest se pospone deliberadamente.** No está en el camino crítico: el motor
+   (R19), los labels (R14) y las features persistidas (R17) no existen, así que el backtest no puede
+   ejecutarse en semanas. Preregistrarlo ahora con precisión es optimizar algo que cambiará cuando
+   exista el código que describe. Se congelará **cuando exista el motor**, que es además cuando sus
+   afirmaciones sobre el código serán verificables en vez de anticipadas.
+4. **Regla de método adoptada:** un documento que va a congelarse tiene **un solo propósito** y se
+   refuta **una vez**; si una segunda refutación introduce más contradicciones de las que cierra, el
+   documento se divide en lugar de reescribirse.
+**Reversibilidad:** total (los v3 se conservan íntegros).
+**Estado:** ADOPTADA. Tarea R18 pospuesta con motivo; R12 reducido al núcleo.
+
+## A-25 — `target_date` es extraíble para el 100 % del catálogo: cae la premisa del núcleo · 2026-09-08 · Claude (sesión A)
+**Qué se creía.** El borrador del núcleo del operador (y v3 antes) asumía que `target_date_contractual`
+sólo era resoluble para los **263 eventos con artefacto de investigación en disco**, y de ahí derivaba
+(a) que `target_date_unresolvable` sería el motivo de fallo dominante (**90.977 de 93.221 mercados**) y
+(b) que el holdout evaluable quedaba en **33–77 mercados**, con dos estratos imposibles de promocionar.
+La refutación lo señaló como defecto de diseño (**la puerta hacía inalcanzable su propia vía de
+promoción**). La premisa era **falsa**.
+
+**Qué se ha verificado** (recómputo propio, `read_only=True`, sobre los 93.221 mercados;
+artefacto `TARGET_DATE_EXTRACTION_v1.json`, sha `c63060b12dc66a94…`):
+```
+extraíble del SLUG            93.221 (100 %)   patrón  -<month>-<day>
+extraíble de la DESCRIPCIÓN   93.221 (100 %)   patrón  on <D> <Mon> '<YY>
+ambas presentes               93.221           COINCIDEN 93.221 (100 %)   discrepancias 0
+```
+Dos extracciones **independientes** —una del slug, otra del texto contractual— coinciden en el 100 %
+de los casos. Y no viola 2D §C: no se deriva de `endDate`, se lee del **propio texto del mercado**,
+que es la fuente contractual.
+
+**Consecuencias, todas favorables:**
+1. `target_date_unresolvable` deja de ser el motivo dominante: pasa de ~90.977 a **0** mercados.
+2. **El holdout deja de estar vacío.** Con corte 2026-09-01 y excluyendo por `event_id` los 662
+   eventos de toda la muestra de selección (HKO 166 ∪ E2 38 ∪ discriminación 57 ∪ SAMPLE_E2 46 ∪
+   V3 400): **1.496 mercados / 136 eventos** limpios, repartidos 5→55/5, 7→1.419/129, 10→22/2.
+   El estrato 8 sigue con holdout **0** (sus 121 mercados tienen `endDate` = 2026-08-23 exactamente):
+   eso sí es una limitación real y se declara.
+3. Queda refutado que «con corte al día siguiente de la muestra el holdout es 0»: sólo lo es con
+   corte 2026-09-05, porque el catálogo termina el 2026-09-04. Con corte 2026-09-01 no lo es.
+
+**Hallazgo colateral: 440 mercados con `target_date ≠ date(endDate)`**, todos de frontera de zona
+horaria (el mercado nombra el día D y `endDate` cae en D+1 12:00Z): Chongqing 55, Pekín 55, Wuhan 55,
+Shenzhen 55, Taipéi 44, Chengdu 44, Hong Kong 33, Milán 33, Madrid 33, Varsovia 33. **Confirma
+empíricamente la cuestión abierta de `PHASE_2E_LEAD_HOURS_ANCHOR` §8** y demuestra por qué 2D §C
+prohíbe derivar `target_date` de `endDate`: en 440 mercados daría el día equivocado.
+
+**Decisión:** `target_date` se extrae del texto del mercado con las dos vías y **se exige que
+coincidan** (si difirieran, fail-closed `target_date_ambiguous`, hoy 0 casos). Es trabajo de R14 y
+está especificado aquí. El núcleo del operador se rehace con esta premisa corregida.
+**Reversibilidad:** total. **Estado:** ADOPTADA.
+
+## B-1 — El archivo de Single Runs es una ventana deslizante de ~5 meses · 2026-09-08 · Claude (sesión B)
+**Numeración:** se adopta el prefijo de A-23. Esta inaugura `B-`.
+**Hallazgo medido (no supuesto), 2026-09-08 por bisección contra la API en vivo:**
+`run=2026-04-01` → HTTP 400 *"The requested model run is not available"*; `run=2026-04-08` → 200.
+El archivo de `single-runs-api` **sólo retiene ~5 meses** y avanza cada día.
+**Consecuencia sobre el backtest:** `price_history` cubre 2025-12-28 → 2026-09-04 (2,75 M filas,
+997 mercados, 206 días), pero **los pronósticos sólo son recuperables desde ~2026-04-08**. El
+solapamiento utilizable es **abril–septiembre 2026**, no diciembre–septiembre. Lo que no se capture
+ahora se pierde de forma irreversible: no hay forma de reconstruir el pronóstico as-of de una fecha
+que salió de la ventana.
+**Acción:** backfill de pronósticos lanzado sobre los 137 pares (estación, fecha) con precios dentro
+de la ventana, a los leads preregistrados de 9 h y 24 h. `ARCHIVE_START` queda documentado en el
+código como constante **a re-medir**, no como verdad permanente.
+**Defecto corregido de camino:** `weather.fetch_run` reportaba cualquier HTTP 400 como
+*"out of domain"*. Al backfillear diciembre daba "out of domain at (40.77,-73.88)" para Nueva York
+bajo un modelo global — un diagnóstico falso que me mandó a buscar un problema de dominio
+inexistente. Ahora se cita literalmente el `reason` de la API.
+**Estado:** ADOPTADA. 181 tests pasando; commit `92b1c8c`.
