@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from weather_agent import database, store
+from weather_agent import database, database as db_mod, store
 
 _SPEC = importlib.util.spec_from_file_location(
     "paper_cycle", Path(__file__).resolve().parents[1] / "scripts" / "paper_cycle.py")
@@ -368,3 +368,161 @@ def test_own_prices_are_usable_exactly_when_the_clamp_did_not_bind():
                                      datetime(2026, 9, 9, 14, 0, tzinfo=timezone.utc))
     assert late["fired_early"] is False
     assert late["prediction_time"] == late["t_asof"]     # clamped -> own prices too new
+
+
+def _with_b_substrate(con):
+    """Ensure the settle substrate exists, whether or not the schema already has it.
+
+    IDEMPOTENT on purpose. The first version issued a bare ALTER TABLE ADD COLUMN,
+    which is correct while session B's migration is unmerged and a hard error the
+    moment it lands. Each branch was green alone and six tests failed on the
+    merge — the class of defect that only a trial merge finds."""
+    have_obs = set(db_mod.column_names(con, "weather_observations"))
+    for col, typ in (("observed_value", "DOUBLE"), ("observed_unit", "VARCHAR"),
+                     ("series", "VARCHAR")):
+        if col not in have_obs:
+            con.execute(f"ALTER TABLE weather_observations ADD COLUMN {col} {typ}")
+    if "contract_source" not in set(db_mod.column_names(con, "markets")):
+        con.execute("ALTER TABLE markets ADD COLUMN contract_source VARCHAR")
+
+
+
+# --------------------------------------------------------------------------- settle
+def test_settle_names_the_substrate_it_is_missing(con, monkeypatch):
+    """A SKIP that says 'not wired yet' leaves the next reader to guess. This one
+    names the columns.
+
+    Written against a column DROPPED on purpose rather than against whatever the
+    schema happens to lack today: the original version asserted that
+    `observed_value` was absent, which was true on one branch and false once
+    session B's migration merged. Two green branches broke on merge, and this test
+    was the reason."""
+    # Reported through `column_names` rather than by dropping the column: DuckDB
+    # refuses to drop one an index depends on, so schema surgery is not a portable
+    # way to simulate absence.
+    real = db_mod.column_names
+    monkeypatch.setattr(
+        db_mod, "column_names",
+        lambda c, t: [x for x in real(c, t) if x != "observed_value"])
+    missing = paper_cycle.settle_substrate_missing(con)
+    assert any("weather_observations.observed_value" in m for m in missing)
+
+
+def test_settle_reports_ready_on_a_complete_substrate(con, monkeypatch):
+    """The other half, and the one that actually matters going forward."""
+    _with_b_substrate(con)
+    _fake_stations(monkeypatch)
+    assert paper_cycle.settle_substrate_missing(con) == []
+
+
+def test_settle_is_a_noop_with_no_open_positions(con):
+    out = paper_cycle.stage_settle(_cycle(), con, dataset_version="ds1")
+    assert out == {"positions_open": 0, "settled": 0}
+
+
+def test_settle_skips_loudly_rather_than_guessing_a_winner(con, monkeypatch):
+    """The shortcut this refuses to take — picking a winner from the last traded
+    price — is what turns a paper ledger into fiction."""
+    real = db_mod.column_names
+    monkeypatch.setattr(
+        db_mod, "column_names",
+        lambda c, t: [x for x in real(c, t) if x != "series"])
+    from weather_agent import paper as _paper
+    fill = _paper.Fill(shares=100.0, notional=50.0, vwap=0.5, fee=0.6,
+                       outlay=50.6, executable=True)
+    _paper.record_paper_trade(con, backtest_id="r", market_id="m1", token_id="t1",
+                              entry_time=T0, fill=fill, bankroll_after=1.0,
+                              dataset_version="ds1")
+    out = paper_cycle.stage_settle(_cycle(), con, dataset_version="ds1")
+    assert out["positions_open"] == 1 and out["settled"] == 0
+    assert out["missing"], "it must say what it lacks"
+    row = con.execute("SELECT exit_time, settlement FROM paper_trades").fetchone()
+    assert row[0] is None and row[1] is None      # untouched, not guessed
+
+
+def _settleable_market(con, *, band="17°C", outcome="Yes", token="t1"):
+    from weather_agent.polymarket import resolution as res
+    con.execute(
+        "INSERT INTO markets (market_id, event_id, contract_source, measurement_rule, "
+        "unit, rounding_rule, station_identifier, source_timestamps, "
+        "ingestion_timestamp, dataset_version, record_version) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+        ["m1", "e1", res.SRC_NOAA, res.P_NOAA_TEMPCOL, "C", "whole degree", "EGLC",
+         '{"endDate":"2026-09-10T12:00:00Z"}', T0, "ds1", 1])
+    con.execute(
+        "INSERT INTO outcomes (market_id, token_id, band_label, outcome_label, "
+        "ingestion_timestamp, dataset_version, record_version) VALUES (?,?,?,?,?,?,?)",
+        ["m1", token, band, outcome, T0, "ds1", 1])
+    con.execute(
+        "INSERT INTO weather_observations (station, observation_time, tmax_observed, "
+        "observed_value, observed_unit, series, source, ingestion_timestamp, "
+        "dataset_version, record_version) VALUES (?,?,?,?,?,?,?,?,?,?)",
+        ["EGLC", datetime(2026, 9, 10, 14, tzinfo=timezone.utc), 17.0, 17.0, "C",
+         "metar_body_c", "IEM", T0, "ds1", 1])
+    from weather_agent import paper as _paper
+    fill = _paper.Fill(shares=100.0, notional=50.0, vwap=0.5, fee=0.6,
+                       outlay=50.6, executable=True)
+    return _paper.record_paper_trade(
+        con, backtest_id="r", market_id="m1", token_id=token, entry_time=T0,
+        fill=fill, bankroll_after=1.0, dataset_version="ds1")
+
+
+def _fake_stations(monkeypatch):
+    import sys, types
+    mod = types.ModuleType("weather_agent.stations")
+    mod.timezone_of = lambda icao: "Europe/London"   # the real name (B's stations.py)
+    monkeypatch.setitem(sys.modules, "weather_agent.stations", mod)
+
+
+def test_a_yes_token_on_the_winning_band_settles_to_one(con, monkeypatch):
+    _with_b_substrate(con); _fake_stations(monkeypatch)
+    tid = _settleable_market(con, band="17°C", outcome="Yes")
+    out = paper_cycle.stage_settle(_cycle(), con, dataset_version="ds1")
+    assert out["settled"] == 1, out
+    row = con.execute("SELECT settlement, net_pnl FROM paper_trades "
+                      "WHERE paper_trade_id = ?", [tid]).fetchone()
+    assert row[0] == 1.0 and row[1] > 0
+
+
+def test_a_yes_token_on_a_losing_band_settles_to_zero(con, monkeypatch):
+    _with_b_substrate(con); _fake_stations(monkeypatch)
+    tid = _settleable_market(con, band="21°C", outcome="Yes")
+    paper_cycle.stage_settle(_cycle(), con, dataset_version="ds1")
+    row = con.execute("SELECT settlement, net_pnl FROM paper_trades "
+                      "WHERE paper_trade_id = ?", [tid]).fetchone()
+    assert row[0] == 0.0 and row[1] < 0
+
+
+def test_a_no_token_pays_when_the_band_does_not_contain_the_key(con, monkeypatch):
+    """The complement, and it is easy to get backwards: a No token wins exactly
+    when its own band did NOT happen."""
+    _with_b_substrate(con); _fake_stations(monkeypatch)
+    tid = _settleable_market(con, band="21°C", outcome="No")
+    paper_cycle.stage_settle(_cycle(), con, dataset_version="ds1")
+    assert con.execute("SELECT settlement FROM paper_trades WHERE paper_trade_id = ?",
+                       [tid]).fetchone()[0] == 1.0
+
+
+def test_an_open_ended_band_settles_correctly(con, monkeypatch):
+    _with_b_substrate(con); _fake_stations(monkeypatch)
+    tid = _settleable_market(con, band="15°C or below", outcome="Yes")
+    paper_cycle.stage_settle(_cycle(), con, dataset_version="ds1")
+    assert con.execute("SELECT settlement FROM paper_trades WHERE paper_trade_id = ?",
+                       [tid]).fetchone()[0] == 0.0     # 17 is not <= 15
+
+
+def test_a_refused_settlement_leaves_the_position_open_with_its_reason(con, monkeypatch):
+    """A stratum with no operator must not settle. The position stays open and the
+    reason is counted — never a guessed winner."""
+    from weather_agent.polymarket import resolution as res
+    _with_b_substrate(con); _fake_stations(monkeypatch)
+    tid = _settleable_market(con)
+    con.execute("UPDATE markets SET measurement_rule = ? WHERE market_id = 'm1'",
+                [res.P_BY_FORECAST])
+    con.execute("UPDATE markets SET contract_source = ? WHERE market_id = 'm1'",
+                [res.SRC_WU])
+    out = paper_cycle.stage_settle(_cycle(), con, dataset_version="ds1")
+    assert out["settled"] == 0
+    assert out["refusals"].get("no_settlement_operator:by_forecast") == 1
+    assert con.execute("SELECT exit_time FROM paper_trades WHERE paper_trade_id = ?",
+                       [tid]).fetchone()[0] is None
