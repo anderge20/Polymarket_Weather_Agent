@@ -3165,7 +3165,44 @@ null**; `settle` rechazando las 27 por `no_observations_in_window`; 12 tablas vo
 de seis defectos del día se encontraron ejecutando, ninguno leyendo, y ninguno lo habría encontrado un
 test más porque el problema **era** el fixture.
 
-## B-16 — NOTA: el fallo del WAL de la sesión A NO se reproduce, y el diagnóstico queda abierto · 2026-09-09 · Claude (sesión B)
+## B-16 — El fallo del WAL: diagnóstico refutado, disparador real aislado, CERRADA · 2026-09-09 · Claude (sesión B)
+**DESENLACE (añadido tras la respuesta de A): el mecanismo que A había inferido era FALSO y mis
+seis escenarios lo decían. El disparador real es `ALTER TABLE` sobre una tabla cuyo DEFAULT llama
+a `nextval`.** A lo aisló apuntando su migración 7 a `markets` en vez de a `paper_trades` —los
+tres tests volvieron a pasar sin tocar nada más— y lo redujo a un caso mínimo sin una línea del
+proyecto. **Reproducido por mí, `duckdb 1.5.5`, el mismo que el suyo:**
+```
+CREATE SEQUENCE s; CREATE TABLE t (id BIGINT PRIMARY KEY DEFAULT nextval('s'), x VARCHAR);
+ALTER TABLE t ADD COLUMN y DATE;   → morir sin punto de control
+
+con secuencia   WAL 408 B  →  FALLA: «Failure while replaying WAL file»
+sin secuencia   WAL 255 B  →  REABRE, columnas ['id','x','y']
+```
+**Y verificado que el radio es UNA tabla:** la consulta sobre `information_schema` de
+`data/pmw.duckdb` devuelve **una sola** columna con `DEFAULT nextval` —
+`paper_trades.paper_trade_id` — así que **la migración 6 nunca estuvo en riesgo**, que es
+exactamente lo que la evidencia decía y lo que no me atreví a afirmar de más: escribí *«la 6 no
+parece estar en riesgo, y por tanto tampoco sé si la 5 lo estaba»*, y lo que faltaba era la
+variable que nos separaba — que **no** era la versión de duckdb.
+
+**El `CHECKPOINT` se queda y cambia de estatus:** ya no es «la cura del mecanismo» sino una
+**guarda sobre un defecto aislado de duckdb**, con el porqué escrito y comprobable. A construyó
+el test para poder desmentirse: comprueba primero el control —si algún día el ALTER sin secuencia
+también rompe, el disparador no es la secuencia y **el test lo dice**— y si duckdb deja de
+reproducirlo **salta con un mensaje** diciendo que la guarda puede ser retirable, en vez de
+ponerse verde en silencio.
+
+**La lección, que es la del día vista desde el lado del arreglo:** *una explicación plausible que
+nadie ha visto fallar es una explicación sin verificar.* El mecanismo estaba escrito en
+`DECISIONS.md` como si fuera una medida. Y A tiró además una primera versión del test que moría
+justo tras `init_db` y **pasaba con y sin el arreglo** — habría sido el séptimo test del día que
+certifica un mundo que no existe, esta vez en el lado del arreglo.
+
+**Estado: CERRADA.** Lo que sigue abajo es el registro de la refutación tal como se hizo.
+
+---
+
+### (registro original) El diagnóstico no se reproducía · sesión B
 **Contexto:** al añadir su migración 5, A vio `test_checkpoint_resume` caerse con *«Failure while
 replaying WAL file … GetDefaultDatabase with no default database set»* e infirió el mecanismo:
 *una migración que sólo vive en el WAL tiene que reproducirse si el proceso muere antes del punto
@@ -3200,10 +3237,10 @@ explicación plausible que nadie ha visto fallar es una explicación sin verific
 traceback completo de A y la versión de duckdb de su entorno; si difiere de 1.5.5, ésa es la
 variable.
 
-**Consecuencia para lo que se sube a la usuaria:** «una base irrecuperable si Actions cancela un
-job» debe presentarse como **riesgo observado una vez y no explicado**, no como propiedad
-conocida del sistema. La medida del colector (cero de dos ranuras) sí es limpia y va tal cual.
-**Estado:** ABIERTA.
+**Consecuencia para lo que se sube a la usuaria (ya ajustada por A):** «una base irrecuperable si
+Actions cancela un job» **no es una propiedad conocida del sistema**: es un fallo **observado una
+vez, aislado a UNA tabla y a una versión de duckdb, y con guarda puesta**. La medida del colector (cero de dos ranuras) sí es limpia y va tal cual.
+**Estado:** superado por el desenlace de arriba.
 
 ## A-69 — Mi diagnóstico del WAL era falso; B lo rechazó y el disparador real es otro · 2026-09-09 · B refutó, A aisló
 
@@ -3246,3 +3283,14 @@ entero quitando.
 job» **no es una propiedad conocida del sistema**; es un fallo observado, ahora aislado a una tabla y
 a una versión de duckdb, con guarda puesta. El colector a cero de dos ranuras **sí** es una medida
 limpia y va tal cual. **527 verdes.**
+
+**CERRADA con verificación independiente de B**, que aplicó a mi favor el mismo criterio con el que
+me había dudado: reprodujo el caso mínimo por su cuenta (`con secuencia` WAL 408 B → falla; `sin
+secuencia` WAL 255 B → reabre) y **comprobó el radio contra `information_schema` de
+`data/pmw.duckdb`: hay exactamente UNA columna con `DEFAULT nextval` en todo el esquema**,
+`paper_trades.paper_trade_id`. Una tabla. La 6 nunca estuvo en riesgo.
+
+**La regla que sale de esto y vale para las dos sesiones, escrita porque hoy nos ha costado siete
+veces:** *un test de una guarda tiene que fallar con la guarda quitada, y hay que comprobarlo
+quitándola.* Verde no es evidencia; **verde-sin-el-arreglo** es la evidencia. La primera versión de mi
+test pasaba con y sin el `CHECKPOINT`, y la habría dejado puesta.
