@@ -553,10 +553,22 @@ decisiones y aun así perdió. **No existe un tau operable con este sustrato.** 
 ponga en la variable se declara aquí como de ejercicio, y el informe lo repite: quien lea el libro no
 debe entender «operaban con tau = X» como si X tuviera respaldo.
 
-**2. La regla para elegirlo es de COBERTURA, no de beneficio:** *el tau más alto que aún abre
-posiciones en la mayoría de los ciclos*, medido sobre ciclos previos a la corrida y declarado con su
-valor antes de poner la variable. Elegirlo para maximizar operaciones sería montar un escaparate;
-elegirlo mirando qué PnL sale es exactamente lo que este documento existe para impedir.
+**2. La regla para elegirlo es de COBERTURA, no de beneficio** — y **la formulación de la primera
+versión estaba sobre la palanca equivocada**. Decía *«el tau más alto que aún abre posiciones en la
+mayoría de los ciclos»*, y la sesión B lo midió: **el techo es 42,4 %**, por debajo del 50 %, así que
+**la regla no tenía solución**. Peor, `tau = 0,02` y `tau = 0,04` abren **los mismos 115 ciclos**, lo
+que demuestra que **quien decide si un ciclo abre no es `tau_signal` sino la puerta de EJECUCIÓN**.
+
+Lo que se fija aquí, porque no depende de ningún resultado: **la regla se formulará sobre la puerta de
+ejecución, no sobre `tau_signal`**, y elegir el valor para maximizar operaciones o mirando el PnL
+sigue prohibido.
+
+**Lo que NO se fija hoy, y la razón importa:** el umbral concreto. La medida de B sale de un sustrato
+cuya elegibilidad está **sesgada a la baja** —su backfill completó 400 eventos sobre 41 fechas, 1,8
+eventos elegibles por fecha, frente a los 7 de un ciclo en vivo (A-76)—, así que su 42,4 % es **cota
+inferior y no pronóstico**. Fijar el umbral sobre él sería congelar el criterio sobre un sustrato que
+ya sabemos que no describe la corrida. **Se fija cuando haya elegibilidad medida EN VIVO sobre varios
+días**, que el colector ya paga, y siempre **antes** de poner la variable (P12).
 
 **3. EL ORDEN ES UNA PRECONDICIÓN, no una recomendación.** Poner `vars.PAPER_TAU` **es** lo que
 convierte los ciclos en operativos, así que la enmienda de §0 —el `n_requerido(tau)` y su umbral— y
