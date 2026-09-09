@@ -64,6 +64,32 @@ def test_the_id_is_over_content_not_over_formatting(tmp_path):
     assert qa.artifact_id_of(a) == qa.artifact_id_of(b) == a["artifact_id"]
 
 
+def test_the_id_identifies_a_FIT_not_a_set_of_numbers(tmp_path):
+    """Identical quantiles fitted at a different instant are a DIFFERENT artifact.
+
+    The docstring of `canonical_bytes` used to promise the opposite — "two fits
+    that produced the same numbers get the same id on any machine" — and A-94
+    measured it false: a refit against an unchanged substrate returned n, window
+    and quantiles identical digit for digit, and a different id, because
+    `fit_instant` is hashed with the rest.
+
+    Nothing downstream is wrong; R24 §4bis.4 wants to partition a run by refit
+    EVENT and that is what this gives. This test exists because the false
+    promise invited a plausible future "fix" — dropping `fit_instant` from the
+    hash to make the id a content hash — which would silently merge two refits
+    into one artifact id and destroy exactly that partition.
+    """
+    same_numbers = _payload(fit_instant=FIT + timedelta(hours=48))
+    baseline = _payload()
+    assert same_numbers["strata"] == baseline["strata"]
+    assert same_numbers["artifact_id"] != baseline["artifact_id"], (
+        "two refits of the same data are two artifacts; the id is not a content "
+        "hash of the quantiles")
+
+    # and pinning the instant is what makes it reproducible across machines
+    assert _payload(fit_instant=FIT)["artifact_id"] == baseline["artifact_id"]
+
+
 def test_changing_any_field_changes_the_id(tmp_path):
     base = _payload()["artifact_id"]
     assert _payload(fit_instant=FIT + timedelta(seconds=1))["artifact_id"] != base

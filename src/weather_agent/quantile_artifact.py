@@ -149,8 +149,23 @@ class ArtifactUnusable(Exception):
 
 def canonical_bytes(payload: Mapping[str, Any]) -> bytes:
     """The bytes an artifact_id is taken over: the JSON of everything EXCEPT
-    `artifact_id`, keys sorted, no insignificant whitespace. Two fits that
-    produced the same numbers get the same id on any machine."""
+    `artifact_id`, keys sorted, no insignificant whitespace.
+
+    THE ID IDENTIFIES A FIT, NOT A SET OF NUMBERS, and the previous sentence here
+    claimed otherwise: "two fits that produced the same numbers get the same id
+    on any machine". That is false, and measured false on 2026-09-09 (A-94) — a
+    refit against an unchanged substrate returned `n`, window and quantiles
+    identical to the artifact on disk, digit for digit, and a DIFFERENT id
+    (`61f20fd1a83e…` against `1520268baff2…`), because `fit_instant` is part of
+    the payload that is hashed.
+
+    Nothing downstream is wrong: R24 §4bis.4 wants to partition a run by REFIT
+    EVENT, and that is exactly what this gives. What was wrong was the promise.
+    Determinism across machines holds only when the fit instant is pinned, which
+    is what `fit_quantile_artifact.py --fit-instant` exists for; without it, two
+    machines fitting the same data at different moments produce two artifacts, by
+    design.
+    """
     body = {k: v for k, v in payload.items() if k != "artifact_id"}
     return json.dumps(body, sort_keys=True, separators=(",", ":"),
                       ensure_ascii=False).encode("utf-8")
