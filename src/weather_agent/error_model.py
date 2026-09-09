@@ -10,11 +10,14 @@ them may be changed after seeing results.
 
   * error is `e = y - f` in Celsius, positive meaning reality beat the forecast;
   * quantiles are the empirical percentiles of `e`, added to `f`;
-  * strata are pooled BY LEAD; per-station only when n >= MIN_STATION_N, because
-    ~26 station-days per station cannot support nine per-station quantiles;
-  * training is walk-forward and expanding: a target date D may only use pairs
-    with `target_date < D`. The first weeks have no coverage and are NOT
-    backfilled;
+  * strata are pooled BY LEAD only. The per-station stratum was removed in v2:
+    n >= 30 held in 4 of 98 (station, lead) groups, so it bought no coverage and
+    added uncontrolled heterogeneity. Lowering the threshold to 20 after seeing
+    that 88 of 98 would cross it is choosing a cutoff from results;
+  * training is walk-forward on LABEL AVAILABILITY, not on the target date: a
+    decision at T may only use pairs whose realized high was already available,
+    `end_of_local_day(F) + 24h <= T`. Filtering by `target_date < D` instead
+    leaked in 8/8 stations at both leads, by -9 h to -43 h (v2 §0, D-2);
   * a stratum with fewer than MIN_N pairs emits NOTHING, so `build_feature`
     returns None. Without a characterised error there is no honest probability.
 
@@ -28,7 +31,7 @@ measurement, and every report using these quantiles must say so.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Iterable, Sequence
 
 #: Preregistration §7 — the levels, frozen.
@@ -37,8 +40,10 @@ LEVELS = (10, 25, 50, 75, 90)
 #: §8.1 — minimum training pairs before any quantile is emitted.
 MIN_N = 30
 
-#: §4 — minimum pairs before a per-station stratum is used instead of pooled.
-MIN_STATION_N = 30
+#: v2 §5 — falsifiable acceptance. A declared 80 % interval that covers half the
+#: outcomes is decoration, not a distribution. Fixed here, before seeing results.
+CALIBRATION_P10_RANGE = (0.05, 0.15)
+CALIBRATION_P90_RANGE = (0.85, 0.95)
 
 #: §8.3 — a stratum whose p90-p10 falls outside this range is rejected. Zero width
 #: means a degenerate sample; 30 C means something is broken, not that the weather
@@ -57,13 +62,19 @@ SCOPE_INSUFFICIENT = "INSUFFICIENT"
 
 @dataclass(frozen=True)
 class Pair:
-    """One (forecast, realized) observation used to train the error model."""
+    """One (forecast, realized) observation used to train the error model.
+
+    `label_available_at` is when this pair's realized high could first be known
+    (v2 §3). It is what gates training, not the target date: a label from the day
+    before is still in the future at a 24 h-lead decision.
+    """
 
     station: str
     target_date: date
     lead_h: int
     forecast_c: float
     observed_c: float
+    label_available_at: "datetime | None" = None
 
     @property
     def error_c(self) -> float:
@@ -119,39 +130,49 @@ def fit(errors: Iterable[float], scope: str) -> Quantiles:
     return Quantiles(scope, n, q)
 
 
-def training_pairs(
-    pairs: Sequence[Pair], target: date, lead_h: int, station: str | None = None
-) -> list[Pair]:
-    """Walk-forward, expanding: only pairs strictly BEFORE the target date (§5).
+def training_pairs(pairs: Sequence[Pair], t, lead_h: int) -> list[Pair]:
+    """Pairs whose label was ALREADY AVAILABLE at the decision instant `t` (v2 §3).
 
-    Leads are never mixed — the error grows with the horizon, and a pooled
-    distribution over both would describe neither.
+    The filter is applied pair by pair, with the timezone of the pair's own
+    station — not of the market being evaluated. It is not a fixed offset in days
+    but the availability condition itself, evaluated.
+
+    Leads are never mixed: the error grows with the horizon, and a distribution
+    pooled over both would describe neither.
     """
     return [
         p
         for p in pairs
-        if p.target_date < target
-        and p.lead_h == lead_h
-        and (station is None or p.station == station)
+        if p.lead_h == lead_h
+        and p.label_available_at is not None
+        and p.label_available_at <= t
     ]
 
 
-def quantiles_for(
-    pairs: Sequence[Pair], station: str, target: date, lead_h: int
-) -> Quantiles:
-    """The stratum to use for one (station, target_date, lead), per §4.
+def quantiles_for(pairs: Sequence[Pair], t, lead_h: int) -> Quantiles:
+    """The stratum for a decision at `t` and this lead: pooled, always (v2 §4).
 
-    Per-station when it has enough history of its own; pooled by lead otherwise.
-    The choice is recorded in `scope` so a downstream report can say which rows
-    rest on station-specific evidence and which on the pool.
+    100 % of rows use the pooled-by-lead stratum. A per-station stratum needs its
+    own preregistration with the threshold fixed in advance.
     """
-    own = training_pairs(pairs, target, lead_h, station)
-    if len(own) >= MIN_STATION_N:
-        fitted = fit((p.error_c for p in own), SCOPE_STATION)
-        if fitted.values:
-            return fitted
-    pooled = training_pairs(pairs, target, lead_h)
-    return fit((p.error_c for p in pooled), SCOPE_POOLED)
+    return fit((p.error_c for p in training_pairs(pairs, t, lead_h)), SCOPE_POOLED)
+
+
+def calibration(pairs: Sequence[Pair], q: Quantiles) -> dict:
+    """Share of realized highs below p10 and below p90 (v2 §5.1).
+
+    Computed on pairs the model did NOT train on; the caller passes the holdout.
+    """
+    if not q.values or not pairs:
+        return {"n": 0, "below_p10": None, "below_p90": None, "passes": False}
+    n = len(pairs)
+    below10 = sum(1 for p in pairs if p.error_c < q.values[10]) / n
+    below90 = sum(1 for p in pairs if p.error_c < q.values[90]) / n
+    passes = (
+        CALIBRATION_P10_RANGE[0] <= below10 <= CALIBRATION_P10_RANGE[1]
+        and CALIBRATION_P90_RANGE[0] <= below90 <= CALIBRATION_P90_RANGE[1]
+    )
+    return {"n": n, "below_p10": below10, "below_p90": below90, "passes": passes}
 
 
 def forecast_quantiles_c(forecast_c: float, q: Quantiles) -> dict[int, float]:

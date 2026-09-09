@@ -14,17 +14,27 @@ import pytest
 from weather_agent import error_model as em
 
 
-def _pairs(n, station="EFHK", lead=24, start_day=1, errs=None):
+from datetime import datetime, timedelta, timezone
+
+
+def _avail(d):
+    """Label availability under v2 §3, for a UTC station: end of day + 24 h."""
+    return datetime(d.year, d.month, d.day, tzinfo=timezone.utc) + timedelta(hours=48)
+
+
+def _pairs(n, station="EFHK", lead=24, errs=None):
     out = []
     for i in range(n):
         e = errs[i] if errs else (i % 7) - 3.0
+        d = date(2026, 5, 1 + (i % 28))
         out.append(
             em.Pair(
                 station=station,
-                target_date=date(2026, 5, 1 + (i % 28)),
+                target_date=d,
                 lead_h=lead,
                 forecast_c=20.0,
                 observed_c=20.0 + e,
+                label_available_at=_avail(d),
             )
         )
     return out
@@ -84,34 +94,60 @@ def test_applying_a_rejected_stratum_raises():
 # --- §5: walk-forward -----------------------------------------------------
 
 
-def test_training_uses_only_strictly_earlier_dates():
+def test_training_uses_only_labels_already_available():
+    """v2 §3. Filtering on `target_date < D` instead leaked in 8/8 stations at
+    both leads, by -9 h to -43 h: the previous day's label is still in the future
+    at a 24 h-lead decision."""
     ps = [
-        em.Pair("EFHK", date(2026, 5, 1), 24, 20.0, 21.0),
-        em.Pair("EFHK", date(2026, 5, 2), 24, 20.0, 22.0),
-        em.Pair("EFHK", date(2026, 5, 3), 24, 20.0, 23.0),
+        em.Pair("EFHK", date(2026, 5, d), 24, 20.0, 21.0, _avail(date(2026, 5, d)))
+        for d in (1, 2, 3)
     ]
-    got = em.training_pairs(ps, date(2026, 5, 2), 24)
-    assert [p.target_date for p in got] == [date(2026, 5, 1)]
+    # The 1st's label lands on the 3rd at 00:00Z (end of day + 24 h); the 2nd's on
+    # the 4th. Half way through the 3rd, only the first is usable.
+    t = datetime(2026, 5, 3, 12, tzinfo=timezone.utc)
+    assert [p.target_date for p in em.training_pairs(ps, t, 24)] == [date(2026, 5, 1)]
+
+    # exactly at its availability instant it counts: the filter is <=
+    assert [p.target_date for p in em.training_pairs(
+        ps, datetime(2026, 5, 3, 0, tzinfo=timezone.utc), 24)] == [date(2026, 5, 1)]
+
+    # and one day later the second becomes usable too
+    assert [p.target_date for p in em.training_pairs(
+        ps, datetime(2026, 5, 4, 0, tzinfo=timezone.utc), 24)] == [
+        date(2026, 5, 1), date(2026, 5, 2)]
+
+
+def test_a_pair_without_known_availability_is_never_used():
+    ps = [em.Pair("EFHK", date(2026, 5, 1), 24, 20.0, 21.0, None)]
+    assert em.training_pairs(ps, datetime(2027, 1, 1, tzinfo=timezone.utc), 24) == []
 
 
 def test_leads_are_never_mixed():
     ps = _pairs(40, lead=9) + _pairs(40, lead=24)
-    got = em.training_pairs(ps, date(2026, 12, 1), 9)
+    got = em.training_pairs(ps, datetime(2026, 12, 1, tzinfo=timezone.utc), 9)
     assert {p.lead_h for p in got} == {9}
 
 
 # --- §4: stratification ---------------------------------------------------
 
 
-def test_station_stratum_used_only_with_enough_history():
-    thin = _pairs(em.MIN_STATION_N - 1, station="EFHK")
-    other = _pairs(60, station="KDAL")
-    q = em.quantiles_for(thin + other, "EFHK", date(2026, 12, 1), 24)
+def test_stratum_is_always_pooled_by_lead():
+    """v2 §4 removed the per-station stratum: n >= 30 held in 4 of 98 groups, so
+    it bought no coverage and added uncontrolled heterogeneity."""
+    ps = _pairs(60, station="EFHK") + _pairs(60, station="KDAL")
+    q = em.quantiles_for(ps, datetime(2026, 12, 1, tzinfo=timezone.utc), 24)
     assert q.scope == em.SCOPE_POOLED
 
-    thick = _pairs(60, station="EFHK")
-    q2 = em.quantiles_for(thick + other, "EFHK", date(2026, 12, 1), 24)
-    assert q2.scope == em.SCOPE_STATION
+
+def test_calibration_is_the_falsifiable_criterion():
+    """v2 §5.1: a declared 80 % interval that covers half the outcomes fails."""
+    q = em.Quantiles(em.SCOPE_POOLED, 100, {10: -2.0, 25: -1.0, 50: 0.0, 75: 1.0, 90: 2.0})
+    good = _pairs(100, errs=[(-3.0 if i < 10 else (3.0 if i >= 90 else 0.0)) for i in range(100)])
+    assert em.calibration(good, q)["passes"] is True
+
+    # a distribution far too narrow for the outcomes: most fall outside p10..p90
+    bad = _pairs(100, errs=[(-5.0 if i % 2 else 5.0) for i in range(100)])
+    assert em.calibration(bad, q)["passes"] is False
 
 
 # --- §3 / B-7: units ------------------------------------------------------
