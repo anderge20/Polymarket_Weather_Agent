@@ -1031,6 +1031,31 @@ def upsert_many(
             )
     conflict = list(conflict_cols)
     updates = [c for c in cols if c not in conflict]
+
+    # DEDUPLICATE ON THE CONFLICT KEY FIRST, AND DECLARE WHICH ONE WINS.
+    #
+    # Without this the two paths below DISAGREE, silently, on a batch that
+    # repeats a key: `INSERT ... SELECT` from a frame keeps the FIRST occurrence,
+    # `executemany` applies row by row so the LAST one wins. Measured on the same
+    # two-row batch — with pandas [("dup","primera")], without it
+    # [("dup","SEGUNDA")]. Both return 2, neither raises, and the data depends on
+    # whether a package is installed. Session B caught it: the change that removed
+    # one latent trap had introduced another of the same shape, in the same
+    # function, in the same commit.
+    #
+    # LAST OCCURRENCE WINS, because that is what row-by-row upserting does and
+    # what `ON CONFLICT DO UPDATE` means — a later row is an update of an earlier
+    # one. Applied BEFORE the split, so "identical semantics" is a fact and not an
+    # aspiration.
+    #
+    # Not reachable today: the one caller, `prices.ingest_*`, deduplicates before
+    # writing. That is exactly why it had to be fixed now and not when it starts
+    # mattering.
+    deduped: dict[tuple, Mapping[str, Any]] = {}
+    for r in rows:
+        deduped[tuple(r[c] for c in conflict)] = r
+    if len(deduped) != len(rows):
+        rows = list(deduped.values())
     sql_bulk = (
         f"INSERT INTO {_q(table)} ({', '.join(_q(c) for c in cols)}) "
         f"SELECT {', '.join(_q(c) for c in cols)} FROM __BATCH__ "

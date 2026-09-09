@@ -555,8 +555,15 @@ def test_upsert_many_works_without_pandas_and_agrees_with_it(tmp_path, monkeypat
 
     from datetime import datetime, timezone
     now = datetime(2026, 9, 9, 12, tzinfo=timezone.utc)
+    # A DUPLICATE CONFLICT KEY IS IN THE BATCH ON PURPOSE. With five distinct
+    # keys the two paths CANNOT differ, so the comparison could not fail and the
+    # test proved nothing about the thing it claims to check. With a repeat they
+    # diverged: the frame keeps the FIRST occurrence, `executemany` the LAST —
+    # both returning success, the data depending on whether a package is
+    # installed. `upsert_many` now deduplicates first, LAST WINS, on both paths.
     rows = [{"version": f"dv{i}", "created_at": now, "description": f"n{i}"}
             for i in range(5)]
+    rows.append({"version": "dv2", "created_at": now, "description": "LAST"})
 
     def run(with_pandas: bool):
         con = db.init_db(db.connect(":memory:"))
@@ -582,7 +589,9 @@ def test_upsert_many_works_without_pandas_and_agrees_with_it(tmp_path, monkeypat
     n_with, rows_with = run(True)
     n_without, rows_without = run(False)
 
+    # 6 rows in, 5 keys out: the duplicate collapsed before either path saw it.
     assert n_with == n_without == 5
     assert rows_with == rows_without, "the two paths must produce the same rows"
-    assert rows_without == [("dv0", "n0"), ("dv1", "n1"), ("dv2", "n2"),
-                            ("dv3", "n3"), ("dv4", "n4")]
+    assert rows_without == [("dv0", "n0"), ("dv1", "n1"), ("dv2", "LAST"),
+                            ("dv3", "n3"), ("dv4", "n4")], \
+        "last occurrence must win, which is what row-by-row upserting does"
