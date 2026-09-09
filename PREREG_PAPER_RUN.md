@@ -741,6 +741,16 @@ gusta. Cualquiera de esas cosas es una corrida nueva con su propio preregistro.
     segundo.
   `stage_observations` hereda este sesgo; se reporta pegado a cada cifra (§7) con la tasa de la
   anchura de banda que corresponda, y junto al 0,85 % medido sobre operaciones tomadas.
+- **NINGUNA de las dos corridas cubre un año, y la limitación es SIMÉTRICA.** R21 va de abril a julio
+  (37 fechas) y R22 declara sus estratos desbalanceados hacia abril-mayo; esta corrida son **21 días
+  consecutivos de una sola época**. Juntas cubren primavera, verano y tres semanas de otoño, que es
+  más de lo que tiene cualquiera por separado — y sigue sin ser un año. Se declara como limitación
+  **conjunta**, no como virtud de ninguna de las dos.
+  *(Y se hace constar lo que NO se afirma: se consideró argumentar que la corrida aporta más
+  diversidad de régimen que R21 por repartirse en 21 días en vez de concentrarse. **La medida lo
+  refutó**: R21 tiene 37 fechas sobre cuatro meses y pierde en las 37, así que en diversidad de
+  régimen es MEJOR que esta corrida. El argumento se retiró antes de escribirse y se deja anotado
+  para que no vuelva.)*
 - **La estimación de cuantiles se mueve entre reajustes.** Como dispersión es pequeña —σ_inst
   0,037 °C (lead 9) y 0,055 °C (lead 24) a Δ = 5 días, un 0,5 % del margen— **porque M2 v2 agrupa
   entre estaciones y su localización se estima con ~2.000 pares; es una propiedad de v2, no del

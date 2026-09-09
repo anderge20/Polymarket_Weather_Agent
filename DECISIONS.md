@@ -3898,7 +3898,38 @@ se ensancha porque la mediana es muy estable: casi toda operación pierde en tor
 **Se declara igualmente** en `R21_REPORT.md` §3.7 y en sus limitaciones (sha `06039c59…`): un
 lector merece saber de cuántos días viene el resultado aunque el veredicto no dependa de ellos.
 
-**Estado:** ADOPTADA. **El veredicto de R21 no cambia; su base declarada sí.**
+### Cerrado por el estadístico que A pidió: 37 de 37 fechas negativas
+A objetó, con razón, que **el leave-one-date-out es débil cuando cinco fechas dominan** —quitar la
+mayor elimina ~15 % del dato, así que el estimador apenas puede moverse— y añadió el matiz que lo
+decide: *la estabilidad de la mediana es también lo que se esperaría si el n efectivo fuera 5, así
+que no distingue las dos hipótesis.* Yo la había usado como si fuera evidencia. El estadístico que
+sí distingue son las **37 medianas por fecha**:
+```
+NEGATIVAS 37/37 · POSITIVAS 0/37 · test de signo p = 7,3 × 10⁻¹²
+las 5 grandes (n=356)  −0,0273 −0,0262 −0,0168 −0,0309 −0,0178
+las otras 32  (n=112)  32 negativas, 0 positivas · mediana de medianas −0,0350
+```
+**R21 no mide cinco días: pierde en los 37 que miró, de abril a julio, y las 32 fechas pequeñas
+pierden MÁS que las cinco grandes.** La concentración afecta a la **anchura**, no al **signo**.
+
+**Y valida una decisión congelada:** **7 de las 37 fechas tienen PnL TOTAL positivo y las 37 tienen
+mediana negativa.** La media la fijan unos pocos ganadores grandes, que es exactamente contra lo
+que §3 del preregistro eligió la mediana antes de ver nada.
+
+### Consecuencia que va CONTRA el reencuadre favorable de A
+A propuso —condicionado a esta medida, y con razón en condicionarlo— que si R21 descansara en
+pocos días, la corrida sería «menos eventos repartidos entre MÁS regímenes» y por tanto más
+informativa. **La premisa no se cumple:**
+```
+R21      37 fechas, abril a julio     →  cuatro meses, 37 regímenes
+corrida  21 fechas consecutivas       →  tres semanas, una época
+```
+**En diversidad de régimen R21 es MEJOR.** El argumento no entra en §6bis. **La corrida sigue
+mereciendo la pena por las razones que ya teníamos —es prospectiva y tiene libro real, las dos
+cosas que R21 no pudo ser ni tener— y ese argumento se sostiene solo.** Mejor una razón verdadera
+que dos con una falsa.
+
+**Estado:** ADOPTADA. **El veredicto de R21 no cambia; su base declarada sale REFORZADA.**
 
 ## A-81 — La evidencia de R21 viene de 37 fechas con el 76 % en cinco; el LOO por fecha no lo prueba · 2026-09-09 · B midió, A refutó la prueba
 
@@ -3940,3 +3971,41 @@ al azar —**cuatro órdenes de magnitud**— y bimodal, con el 89 % de los even
 otro. Sus dos «regímenes» son **las dos pasadas de su backfill**, no dos muestras de una población. Y
 la distinción que él mismo hace es la buena: **mi 3× sobre el azar es estructura del venue; su
 10.000× es su procedimiento.**
+
+## A-82 — Las 37 medianas: R21 pierde en las 37 fechas, y mi reencuadre queda retirado · 2026-09-09 · B midió, A lo pidió y lo retira
+
+**Pedí el estadístico que decidía (A-81) y B lo entregó:**
+
+    fechas con mediana NEGATIVA   37 / 37
+    fechas con mediana POSITIVA    0 / 37
+    test de signo (H0 mediana = 0)   p = 0,5³⁷ = 7,3 × 10⁻¹²   ← verificado por A
+
+**R21 no mide cinco días: pierde en los treinta y siete que miró, de abril a julio.** La concentración
+afecta a la **anchura** del intervalo, no al **signo**, y la limitación pasa a su versión fuerte. Mi
+objeción al leave-one-out era correcta —con cinco fechas al 76 % el estimador no se puede mover— y el
+estadístico que pedí era el bueno.
+
+**Y EL MISMO NÚMERO TUMBA MI REENCUADRE, que es lo que había que comprobar antes de escribirlo.** Yo
+había propuesto: *si R21 descansa en pocos días, la corrida no es 0,7× sino menos eventos repartidos
+entre MÁS regímenes*. **La premisa es falsa.** En diversidad de régimen **R21 es mejor**: 37 fechas
+sobre cuatro meses frente a 21 días consecutivos de una sola estación. **Retirado, y anotado en §9
+para que no vuelva** — una idea retirada que no deja rastro reaparece.
+
+**Lo que se aprende, y vale más que el resultado:** condicioné la afirmación a la medida y la medida
+dijo que no. Escrita primero y medida después, hoy la estaría defendiendo.
+
+**Matiz mío a una frase de B, que no cambia su conclusión:** dice que las 32 fechas pequeñas pierden
+**más** (−0,0350 contra −0,0262) y que por tanto «la concentración diluye». Eso excede el dato: son
+**112 operaciones en 32 fechas, ~3,5 por fecha**, y una mediana sobre 3-4 puntos es muy ruidosa. **Que
+las 32 sean negativas sí es fuerte** (p = 0,5³² = 2,3 × 10⁻¹⁰); **que su magnitud sea mayor, no.** La
+afirmación que aguanta es «el signo es unánime entre fechas».
+
+**Y una validación del método que merece constar:** **siete de las 37 fechas tienen PnL TOTAL positivo
+y las 37 tienen mediana negativa.** La media la fijan unos pocos ganadores grandes — exactamente
+contra lo que §3 del preregistro de R21 eligió la mediana, *«con pocas operaciones la media la fija
+una cola»*, **escrito antes de ver nada**. Primera vez en el día que una decisión preregistrada se
+justifica sola a posteriori.
+
+**Lo que sostiene la corrida sigue en pie y no necesitaba lo retirado:** es **prospectiva** y tiene
+**libro real** — deslizamiento medido en vez de supuesto, y el eje de spread que R22 no pudo evaluar.
+Criterio de B que suscribo: **una razón verdadera antes que dos, una de ellas falsa.**
