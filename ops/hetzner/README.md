@@ -26,9 +26,16 @@ is not.
 
 | when | what |
 |---|---|
-| `7 */3 * * *` | `run_cycle.sh collect` — book snapshots |
-| `40 2 * * *` | `run_cycle.sh decide 9` — lead 9 h, target today |
-| `40 11 * * *` | `run_cycle.sh decide 24` — lead 24 h, target tomorrow |
+| `7 */3 * * *` | `launcher.sh collect` — book snapshots |
+| `40 2 * * *` | `launcher.sh decide 9` — lead 9 h, target today |
+| `40 11 * * *` | `launcher.sh decide 24` — lead 24 h, target tomorrow |
+
+Cron calls `launcher.sh`, which lives **outside** the checkout. `run_cycle.sh`
+begins by updating the checkout it lives in, and a `git reset --hard` to a ref
+that does not contain `ops/hetzner/` would delete the running script while bash
+was still reading it — a half-executed file and a schedule that stops without an
+error anyone would recognise. The launcher updates the tree, **checks the runner
+still exists**, and stops loudly if it does not.
 
 ## Trading is OFF, and turning it on is a deliberate act
 
@@ -62,6 +69,9 @@ To stop everything: `crontab -r` (or delete the delimited block).
 ## Layout
 
 ```
+/opt/pmw/bin/launcher.sh   what cron calls — OUTSIDE the checkout on purpose
+/opt/pmw/REF               which ref to run (default `main`); switching branch
+                           is editing this file and nothing else
 /opt/pmw/repo    clone of main          — code, pulled every run
 /opt/pmw/state   clone of paper-state   — shards, pushed every run
 /opt/pmw/venv    requirements-paper.txt

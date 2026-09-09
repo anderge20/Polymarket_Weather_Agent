@@ -33,13 +33,17 @@ END='# <<< pmw paper mode <<<'
 NEW=$(cat <<CRON
 $BEGIN
 # UTC. Collector every 3 h; a missed book slot is not recoverable.
-7 */3 * * * $REPO/ops/hetzner/run_cycle.sh collect    >> $ROOT/log/collect.log 2>&1
-40 2 * * *  $REPO/ops/hetzner/run_cycle.sh decide 9   >> $ROOT/log/cycle.log   2>&1
-40 11 * * * $REPO/ops/hetzner/run_cycle.sh decide 24  >> $ROOT/log/cycle.log   2>&1
+7 */3 * * * $ROOT/bin/launcher.sh collect    >> $ROOT/log/collect.log 2>&1
+40 2 * * *  $ROOT/bin/launcher.sh decide 9   >> $ROOT/log/cycle.log   2>&1
+40 11 * * * $ROOT/bin/launcher.sh decide 24  >> $ROOT/log/cycle.log   2>&1
 $END
 CRON
 )
-mkdir -p "$ROOT/log"
+mkdir -p "$ROOT/log" "$ROOT/bin"
+# The launcher lives OUTSIDE the checkout so a `git reset` can never delete the
+# script that is running. Copied, not symlinked, for the same reason.
+install -m 0755 "$REPO/ops/hetzner/launcher.sh" "$ROOT/bin/launcher.sh"
+[ -f "$ROOT/REF" ] || echo main > "$ROOT/REF"
 ( crontab -l 2>/dev/null | sed "/$BEGIN/,/$END/d"; echo "$NEW" ) | crontab -
 echo "cron installed:"; crontab -l | sed -n "/$BEGIN/,/$END/p"
 echo

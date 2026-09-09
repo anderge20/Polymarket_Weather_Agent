@@ -36,9 +36,10 @@ LEAD=${2:-24}
 
 log() { printf '%s %s\n' "$(date -u +%FT%TZ)" "$*"; }
 
-# ---- 1. the code, from GitHub, always -------------------------------------
-git -C "$REPO" fetch -q origin
-git -C "$REPO" reset -q --hard origin/main
+# ---- 1. the code -----------------------------------------------------------
+# The checkout is updated by `launcher.sh` BEFORE this script is exec'd, and
+# deliberately not here: a script that `git reset`s the tree it is being read
+# from can delete itself mid-execution when the target ref does not contain it.
 log "code at $(git -C "$REPO" rev-parse --short HEAD)"
 
 # ---- 2. the state branch ---------------------------------------------------
