@@ -2821,7 +2821,7 @@ operaciones tomadas      468    §4.1 n>=100 CUMPLE — el resultado es EVALUABL
 mediana PnL/operación −0,0236   §4.2 FALLA
 leave-one-station-out  negativa en las 47   §4.3 FALLA
 sin el mes mayor      −0,0184   §4.4 FALLA
-tasa de acierto        0,0556   frente a 0,0744 de base en el universo
+tasa de acierto        0,0556   frente a 0,0734 de base en LOS PROPIOS CANDIDATOS
 ```
 **VEREDICTO: LA ESTRATEGIA NO ES OPERABLE CON ESTE SUSTRATO.** §5 lo declaraba por adelantado.
 No se han probado umbrales alternativos, no se ha relajado el margen y no se ha ampliado la
@@ -2884,8 +2884,32 @@ regla compra el error propio y **ningún umbral la arregla**; hace falta un crit
 distribución con colas ajustadas al error empírico en vez de lineales a un grado · **(3)** más
 periodo. Cada una exige su propio preregistro.
 
-**Artefactos:** `R21_BACKTEST.json` (las 468 operaciones fila a fila y el `tau` de cada día),
-`R21_LABEL_BIAS_PNL.json`, `LABEL_BIAS_RECORDS.json`. **Gate D0 intacto.**
+### Adenda 1: el `n` efectivo es de EVENTOS (refutación de A, aceptada y medida)
+Las bandas de un evento forman una partición que suma 1 y **no son independientes**: 468 filas
+salen de **211 eventos** (mediana 2 por evento, máximo 8; 301 pares evento-lead). Con bootstrap
+por bloques de evento la mediana queda en **[−0,0288 · −0,0205]** frente al ingenuo por fila
+[−0,0275 · −0,0210]. **El intervalo correcto es más ancho y no cruza cero: el signo aguanta.**
+La objeción era válida y la corrección no cambia el veredicto, sólo su precisión declarada.
+
+### Adenda 2: el arreglo posterior de la cola NO reabre esta corrida
+La sesión A encontró después, en `quantiles_to_distribution`, un error **aritmético** que yo no
+vi al auditar esa misma función: por debajo de `p10 − 1` la rama de cola inferior devuelve
+valores **negativos** (`cdf(17,5) = −0,0330` con p10 = 18,83) y el bin se calcula como una
+diferencia, así que **suma la magnitud del negativo** — el 33 % del bin más bajo lo fabricaba
+esa rama, y la masa bruta sumaba 1,0333 antes de que la normalización lo escondiera. La cota
+estaba escrita en la cola superior (`min(1.0, …)`) y **no** en la inferior. Reproducido y
+confirmado por mí. 521 tests pasaban antes del arreglo: **ninguno miraba la cola.**
+
+**No entra en R21.** Esta corrida se preregistró, se ejecutó y se publicó con su veredicto; un
+arreglo posterior no se retro-aplica. Si cambia algo es una **pregunta nueva** y necesita su
+propio preregistro antes de que nadie calcule un segundo PnL. En palabras de A, que se copian
+aquí a propósito: *no se convierte el arreglo en la excusa para reabrir un resultado que no
+gustó.* Además el arreglo vale un 31 % en un bin y el fenómeno medido es de factor 22, así que
+tampoco es candidato a explicación.
+
+**Artefactos:** `R21_REPORT.md` (sha `ed73e1fd…`), `R21_BACKTEST.json` (las 468 operaciones fila
+a fila y el `tau` de cada día), `R21_LABEL_BIAS_PNL.json`, `LABEL_BIAS_RECORDS.json`.
+**Gate D0 intacto.**
 **Estado:** ADOPTADA.
 
 ## A-64 — R21: la estrategia NO ES OPERABLE, y la causa es de DISEÑO · 2026-09-09 · B midió, A verificó
@@ -2946,3 +2970,40 @@ etiquetas coinciden en que perdieron**. Corregido.
 y no de la ESTRATEGIA**, y **no se espera beneficio**. Declararlo antes es lo que hace informativo
 cualquier resultado. **La decisión de gastar 21 días en validar una cadena cuya señal ya se sabe
 negativa es del usuario**, y se le plantea con estos números delante. **P2 cerrada: sin umbral.**
+
+## A-65 — PR #11 fusionado; revisión de PR #12: un bloqueante en la caché de columnas · 2026-09-09 · Claude (sesión A)
+
+**PR #11 FUSIONADO** a las 16:08:12Z, ventana D16 vencida, tras la refutación de A-54.
+
+**Revisión del PR #12 de B (R19/R20/R21).** 502 verdes verificados por mí, **D0 intacto** (ni wallet,
+ni firmante, ni clave, ni ruta de orden en `src` ni en `scripts`). **Un bloqueante, reproducido.**
+
+**`_COLUMN_CACHE` devuelve esquemas obsoletos, en silencio.**
+
+*Forma 1, determinista:* tras un `ALTER TABLE` que no pase por el bucle de migraciones de `init_db`,
+`column_names` sigue devolviendo la lista vieja mientras `information_schema` devuelve la nueva.
+Reproducido. **No es hipotético en este repo:** hay tests que hacen ALTER a pelo —fue el choque de
+fixtures de la fusión con R14— y `_ensure_checkpoint_table` crea una tabla después del bucle.
+**Grave porque `discovery.ingest_event` decide con `column_names` si escribe `contract_source` y
+`measurement_rule_code`**: con la caché fría de más deja de escribirlos y no falla nada. Misma clase
+que todo lo cazado hoy.
+
+*Forma 2, probabilística y real:* **`id(con)` se reutiliza** — seis conexiones sucesivas devolvieron
+el mismo id. Y `invalidate_column_cache` sólo se llama **cuando una migración se ejecuta**; sobre una
+base **ya migrada** (`data/pmw.duckdb`, el caso de producción) no corre ninguna, así que nunca se
+invalida y una conexión nueva puede heredar la caché de una muerta.
+
+**Arreglo comprobado viable:** las conexiones de DuckDB **admiten `weakref`** pero **no admiten
+atributos** (`no __dict__ for setting new attributes`). Luego `WeakKeyDictionary` con el objeto
+conexión como clave resuelve la forma 2 de raíz; la forma 1 exige además que el contrato sea explícito
+(todo DDL fuera de `init_db` invalida) o acotar la caché a un ámbito con gestor de contexto.
+
+**Aprobado sin reservas:** `costs.py` (libre de base de datos, `taker_fee` devuelve `None` y no 0,0
+—«un mercado cuyo coste no sabemos leer no es un mercado gratis»—, tamaño de una acción **con la razón
+escrita**: B-12 midió que `p_model` calibra peor por mercado, así que dimensionar por confianza
+apostaría más donde el número se sabe malo); la migración **6** con el comentario que explica por qué
+no es la 5; `upsert_many` con la medida delante.
+
+**Fusión pendiente del arreglo.** Orden acordado: B corrige → A fusiona #12 → A rebasa R30 encima
+(conflictos ya identificados en el merge de prueba: `SCHEMA_VERSION` 5 vs 6 con **las dos**
+migraciones, y los dos bloques al final de `test_probability.py`; `probability.py` fusiona limpio).
