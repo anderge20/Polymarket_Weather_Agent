@@ -55,6 +55,28 @@ lifts**, and R21 measured the strategy as NOT OPERABLE — median −0.0236 per
 trade, negative in all 47 stations and all 37 dates, losing even with free
 execution.
 
+## What was verified, and why each one
+
+Assuming any of these would have produced a schedule that looks installed and
+does not run. Each was checked on the box, not reasoned about:
+
+- **The full loop.** The runner pulled `main`, collected 1 078 tokens, and pushed
+  to `paper-state` — commit visible on GitHub with its `venue_coverage` shard.
+- **The cron environment.** `git push` under cron has no SSH agent and a minimal
+  PATH, so it can fail where an interactive login succeeds — and it would fail
+  SILENTLY, leaving shards on disk and nothing on GitHub. Tested with
+  `env -i HOME=/root PATH=/usr/bin:/bin`: the launcher runs and pushes.
+- **The host clock.** `Etc/UTC`, and `install.sh` refuses to install otherwise.
+- **The test suite, on this machine.** It found a `pandas` import the paper tier
+  does not install — green on the developer's laptop, broken here.
+
+And one that was NOT verified, with the consequence it had: the first deployment
+pointed the runner at a branch with a `sed` whose pattern did not match the real
+line. The edit silently did nothing, the runner reset the checkout to `main`,
+which had no `ops/`, and **deleted itself while bash was reading it**. No error,
+no log, one collector slot lost. That is what `launcher.sh` now prevents — see
+below — and why "I applied an edit" is not the same as "the edit applied".
+
 ## Operating it
 
 ```sh
