@@ -35,7 +35,7 @@ from datetime import datetime, timedelta, timezone
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 sys.path.insert(0, os.path.dirname(__file__))
 
-from fit_m2 import DATASET_VERSION, LEADS, load_pairs  # noqa: E402
+from weather_agent.m2 import DATASET_VERSION, LEADS, load_pairs  # noqa: E402
 
 from weather_agent import database as db  # noqa: E402
 from weather_agent import error_model as em  # noqa: E402
