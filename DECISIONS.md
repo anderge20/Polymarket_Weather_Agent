@@ -4363,3 +4363,46 @@ A-87 dice que no debe haber. Inofensivo porque las rutas de shard son únicas y 
 su `github_event`, así que los dos orígenes son distinguibles y la medida sobrevive. **Pero al migrar
 un sistema hay que desarmar la automatización del anterior**, y no lo hice. La columna `github_event`
 que añadí en A-83 se ha ganado el sitio en menos de una hora.
+
+## A-90
+
+**Fecha:** 2026-09-09 20:23Z
+**Autor:** A (desarrollador y validador)
+**Asunto:** cron dispara el launcher — comprobado con una entrada temporal, no por inferencia
+
+Quedaba **un solo eslabón sin verificar** del traslado a Hetzner. Estaba comprobado que el launcher
+corre con un entorno pelado (`env -i HOME=/root PATH=/usr/bin:/bin`), que el checkout se actualiza,
+que el push aterriza en `paper-state`, y que las tres entradas de cron **están escritas**. Lo que no
+estaba comprobado era lo que las une: **que el demonio de cron las ejecute de verdad**.
+
+Esa distinción es exactamente la de A-89. «La entrada está en el crontab» es una afirmación sobre un
+fichero; «cron la ejecuta» es una afirmación sobre un demonio. La primera no implica la segunda —
+si `cron` no estuviera corriendo, si el usuario no tuviera crontab activo, o si la línea tuviera un
+error de formato que el demonio rechaza en silencio, el fichero se vería idéntico y no pasaría nada.
+Y el modo de fallo sería el peor posible: **ninguno visible**. Ni error, ni log, ni shard ausente que
+alguien note hasta días después, en el sistema cuya medida principal es *programado contra entregado*.
+
+**Cómo se comprobó.** Entrada temporal a dos minutos vista, marcada `# PRUEBA`, apuntando al launcher
+real en modo `collect`:
+
+    23 20 * * * /opt/pmw/bin/launcher.sh collect >> /opt/pmw/log/collect.log 2>&1  # PRUEBA
+
+A las 20:23:04Z apareció en `/opt/pmw/log/collect.log`:
+
+    20:23:04Z launcher: ref=fix/upsert-no-pandas at ee2836b -> collect
+    20:23:05Z running: mode=collect lead=24h target=2026-09-10
+    [OK] load:markets shards=1 rows=1100
+
+Es decir: cron ejecutó, el launcher resolvió el ref, actualizó el código, arrancó el ciclo y el
+redirect al log funcionó. La entrada de prueba se retiró inmediatamente después y se verificó su
+ausencia (`crontab -l | grep PRUEBA` vacío, 3 entradas de launcher restantes, las reales).
+
+**Qué prueba y qué no.** Prueba que el demonio ejecuta entradas de este crontab con esta sintaxis y
+este destino. **No prueba** que las tres entradas reales tengan los minutos que quiero — eso es
+lectura del fichero, ya hecha — ni que un fallo futuro del launcher se note; el log ahora existe y
+esa es precisamente su función.
+
+**Nota sobre el log ausente hace dos horas.** A las 20:21Z anoté `collect.log: No such file` como
+«esperado, no defecto», razonando que cron aún no había disparado. El razonamiento era correcto,
+pero era *una explicación*, no una comprobación — indistinguible, desde fuera, de un cron que no
+funciona. Que resultara ser cierta no la convierte en verificación. Por eso esta entrada existe.
