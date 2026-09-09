@@ -87,3 +87,24 @@ def test_module_is_importable_without_a_database():
 
     importlib.reload(m2)
     assert callable(m2.load_pairs)
+
+
+def test_dataset_version_is_a_parameter_not_a_constant():
+    """It was a module constant used inside both queries, so a caller running
+    under ds_paper_v1 would have read the backfill silently while appearing to
+    operate entirely on its own version. Same family as A-37: a parameter that
+    exists and a constant that decides."""
+    import inspect
+
+    sig = inspect.signature(m2.load_pairs)
+    assert "dataset_version" in sig.parameters
+    assert sig.parameters["dataset_version"].default == m2.DATASET_VERSION
+
+
+def test_load_pairs_reads_only_the_requested_version():
+    from weather_agent import database as db
+
+    con = db.init_db(db.connect(":memory:"))
+    pairs, _, _ = m2.load_pairs(con, dataset_version="ds_paper_v1")
+    assert pairs == []
+    con.close()

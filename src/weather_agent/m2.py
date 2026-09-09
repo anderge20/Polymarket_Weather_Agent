@@ -62,15 +62,26 @@ def pick_run(t: datetime, model: str, issue_hours=(0, 6, 12, 18), max_age_h=36):
     return None
 
 
-def load_pairs(con):
+def load_pairs(con, dataset_version: str = DATASET_VERSION):
     """(pairs, issue_by_key, stats). Pairing by LOCAL day, in Python — the SQL
     join on `CAST(observation_time AS DATE)` is what made the sample depend on a
-    session variable."""
+    session variable.
+
+    `dataset_version` is an EXPLICIT parameter, defaulting to the backfill. It was
+    a module constant used inside both queries, which meant a caller running under
+    another version — the paper cycle under `ds_paper_v1` — would have read the
+    backfill silently while appearing to operate entirely on its own version.
+
+    The coupling is semantically right: M2's quantiles are fitted on history and
+    applied to today's forecast, so the training pairs SHOULD come from the
+    backfill. What was wrong was that it was implicit. Same family as A-37 — a
+    parameter that exists and a constant that decides. Harmless until it is not.
+    """
     obs = db.query(
         con,
         """SELECT station, observation_time, tmax_observed FROM weather_observations
            WHERE dataset_version = ?""",
-        [DATASET_VERSION],
+        [dataset_version],
     )
     by_local_day: dict[tuple, float] = {}
     no_tz = 0
@@ -89,7 +100,7 @@ def load_pairs(con):
         """SELECT station, target_date, issue_time, forecast_tmax
            FROM weather_forecasts
            WHERE dataset_version = ? AND forecast_tmax IS NOT NULL""",
-        [DATASET_VERSION],
+        [dataset_version],
     )
     pairs: list[em.Pair] = []
     issue_by_key: dict[tuple, object] = {}
