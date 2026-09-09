@@ -8,6 +8,7 @@ filter that must never become a target_date derivation.
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -1012,3 +1013,43 @@ def test_a_trade_with_no_target_date_is_left_open_not_guessed(con, monkeypatch):
     settled = paper_cycle.stage_settle(_cycle(), con, dataset_version="ds1")
     assert settled["settled"] == 0
     assert settled["refusals"].get("trade_without_target_date") == 1
+
+
+def test_stage_paper_opens_a_position_carrying_the_callers_target_date(con):
+    """`stage_paper` had NO stage-level test at all — 525 of them passed while the
+    stage that OPENS positions raised NameError on its first live signal. This is
+    the missing one, and it asserts the thing that matters: the position carries
+    the caller's target_date (2D §C), not a value some later stage rebuilds."""
+    T = datetime(2026, 9, 9, 12, tzinfo=timezone.utc)
+    _market(con, market_id="m1", event_id="e1", end_date="2026-09-10T12:00:00Z")
+    con.execute(
+        "INSERT INTO market_fee_schedule (fee_regime, taker_fee, fee_status, "
+        "raw_fee_fields, ingestion_timestamp, dataset_version, record_version) "
+        "VALUES (?,?,?,?,?,?,?)",
+        ["weather_fees", 0.05, "KNOWN", '{"feeSchedule":{"exponent":1,"rate":0.05}}',
+         T0, "ds1", 1])
+    con.execute("UPDATE markets SET fee_regime = 'weather_fees'")
+    con.execute(
+        'INSERT INTO orderbook_snapshots (token_id, "timestamp", market_id, '
+        "book_snapshot, ingestion_timestamp, dataset_version, record_version) "
+        "VALUES (?,?,?,?,?,?,?)",
+        ["m1_yes", T - timedelta(minutes=5), "m1",
+         json.dumps({"asks": [{"price": 0.50, "size": 10_000}],
+                     "bids": [{"price": 0.49, "size": 100}], "truncated": False}),
+         T0, "ds1", 1])
+    con.execute(
+        'INSERT INTO signals (market_id, token_id, strategy, "timestamp", signal, '
+        "fair_value, price_assumption, edge, ingestion_timestamp, dataset_version, "
+        "record_version) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+        ["m1", "m1_yes", "strategy_a_v1", T, "BUY", 0.70, 0.50, 0.20, T0, "ds1", 1])
+
+    from weather_agent import paper as _paper
+    out = paper_cycle.stage_paper(
+        _cycle(), con, dataset_version="ds1", session_id="cyc",
+        params=_paper.PaperParams(bankroll=10_000.0, fixed_fraction=0.02,
+                                  size_cap=0.02, tau_exec=0.03,
+                                  exit_mode="hold_to_resolution", x_exec=0.0),
+        prediction_time=T, target_date=date(2026, 9, 10))
+    assert out["opened"] == 1
+    td = con.execute("SELECT target_date FROM paper_trades").fetchone()[0]
+    assert (td.date() if hasattr(td, "date") else td) == date(2026, 9, 10)

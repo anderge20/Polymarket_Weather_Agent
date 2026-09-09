@@ -571,8 +571,13 @@ def stage_signals(cy: Cycle, con, *, dataset_version: str, target_date: date,
 
 
 def stage_paper(cy: Cycle, con, *, dataset_version: str, session_id: str,
-                params: paper.PaperParams, prediction_time: datetime) -> dict:
-    """Turn actionable signals into simulated fills against the observed book."""
+                params: paper.PaperParams, prediction_time: datetime,
+                target_date: date) -> dict:
+    """Turn actionable signals into simulated fills against the observed book.
+
+    `target_date` is the CALLER'S parameter (2D §C) and is stored on every
+    position, because nothing downstream may rebuild it from `endDate` — which is
+    re-discovered every cycle and can move under an open trade."""
     signals = db.query(
         con,
         "SELECT market_id, token_id, signal, fair_value, timestamp "
@@ -1323,7 +1328,8 @@ def main(argv: list[str] | None = None) -> int:
             )
             stage_paper(cy, con, dataset_version=args.dataset_version,
                         session_id=session_id, params=params,
-                        prediction_time=prediction_time)
+                        prediction_time=prediction_time,
+                        target_date=target_date)
             # The label BEFORE the settlement that consumes it, and after the
             # positions that name which labels are needed. Same ordering lesson as
             # `prediction_time` settled after collection: a stage that reads what
