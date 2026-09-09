@@ -1042,7 +1042,37 @@ def upsert_many(
         )
     else:
         sql_bulk += "DO NOTHING"
-    import pandas as pd
+    # PANDAS IS OPTIONAL HERE, and that is not a style preference.
+    #
+    # `requirements-paper.txt` EXCLUDES pandas on purpose — its own header says
+    # installing the pipeline tier "would add minutes of wheel resolution per run
+    # to import nothing the cycle uses". So a hard `import pandas` inside a
+    # database helper puts a dependency the paper tier refuses to install on a
+    # path any future caller might reach. Found by running the suite on the host
+    # that will actually run it: `ModuleNotFoundError: No module named 'pandas'`,
+    # green on the development machine where pandas happens to exist.
+    #
+    # The frame is only a FAST PATH: registering it lets DuckDB do
+    # INSERT ... SELECT, measured at 0.05 s against 16.47 s for `executemany` and
+    # 24.99 s row by row. Where pandas is absent the fallback is `executemany` —
+    # slower, identical semantics, same ON CONFLICT clause, same transaction.
+    # Correctness never depends on which branch runs; only speed does.
+    try:
+        import pandas as pd
+    except ImportError:
+        pd = None
+
+    if pd is None:
+        placeholders = ", ".join("?" for _ in cols)
+        sql_rows = (
+            f"INSERT INTO {_q(table)} ({', '.join(_q(c) for c in cols)}) "
+            f"VALUES ({placeholders}) "
+            f"ON CONFLICT ({', '.join(_q(c) for c in conflict)}) "
+        ) + ("DO UPDATE SET " + ", ".join(f"{_q(c)} = excluded.{_q(c)}"
+                                          for c in updates)
+             if updates else "DO NOTHING")
+        con.executemany(sql_rows, [[_prep(r[c]) for c in cols] for r in rows])
+        return len(rows)
 
     frame = pd.DataFrame([{c: _prep(r[c]) for c in cols} for r in rows])
     name = f"_upsert_batch_{id(frame):x}"

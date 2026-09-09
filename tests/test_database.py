@@ -536,3 +536,53 @@ def test_cache_entries_do_not_survive_their_connection():
         del first
         second = db.init_db(db.connect(":memory:"))
         assert "probe_ghost" not in db.column_names(second, "markets")
+
+
+def test_upsert_many_works_without_pandas_and_agrees_with_it(tmp_path, monkeypatch):
+    """The fallback has to be exercised, or it is a branch that only runs where
+    nobody looks.
+
+    `requirements-paper.txt` excludes pandas deliberately — its header says
+    installing the pipeline tier "would add minutes of wheel resolution per run to
+    import nothing the cycle uses" — so a hard `import pandas` in a database
+    helper puts a refused dependency on a path a future caller might reach. Found
+    by running this suite on the HOST that will run it: ModuleNotFoundError,
+    while green on the development machine where pandas happens to exist.
+
+    The two branches must agree on rows, not merely both succeed.
+    """
+    import builtins
+
+    from datetime import datetime, timezone
+    now = datetime(2026, 9, 9, 12, tzinfo=timezone.utc)
+    rows = [{"version": f"dv{i}", "created_at": now, "description": f"n{i}"}
+            for i in range(5)]
+
+    def run(with_pandas: bool):
+        con = db.init_db(db.connect(":memory:"))
+        try:
+            if not with_pandas:
+                real_import = builtins.__import__
+
+                def no_pandas(name, *a, **k):
+                    if name == "pandas":
+                        raise ImportError("pandas is not installed on the paper tier")
+                    return real_import(name, *a, **k)
+                monkeypatch.setattr(builtins, "__import__", no_pandas)
+            n = db.upsert_many(con, "dataset_versions", rows,
+                               conflict_cols=("version",))
+            got = con.execute(
+                "SELECT version, description FROM dataset_versions "
+                "ORDER BY version").fetchall()
+            return n, got
+        finally:
+            con.close()
+            monkeypatch.undo()
+
+    n_with, rows_with = run(True)
+    n_without, rows_without = run(False)
+
+    assert n_with == n_without == 5
+    assert rows_with == rows_without, "the two paths must produce the same rows"
+    assert rows_without == [("dv0", "n0"), ("dv1", "n1"), ("dv2", "n2"),
+                            ("dv3", "n3"), ("dv4", "n4")]
