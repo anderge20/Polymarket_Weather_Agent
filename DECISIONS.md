@@ -3468,3 +3468,55 @@ de anular.
 aceptación en otro documento fragmentaría el contrato justo donde hace falta que sea uno. El borrador
 `PREREG_R25_PROSPECTIVE.draft.md` queda **SUPERADO** por §6bis y se marca como tal para que no haya dos
 contratos. La autoría de cada cláusula está citada.
+
+## A-75 — La muestra efectiva de la corrida es MENOR que la de R21, y las dos cifras previas estaban mal · 2026-09-09 · B refutó a A y a sí mismo
+
+**B refutó mi 1,4× y la refutación va también contra su propia cifra original.** Ninguna de las dos
+contaba el bloque:
+
+- B dijo «~1.000 posiciones, más del doble de las 468 de R21» → contaba **posiciones**.
+- Yo corregí a «~294 decisiones de evento, 1,4×» → contaba **decisiones**.
+- **El bloque es el EVENTO.** Su resultado es uno solo y lo comparten sus once bandas **y sus dos
+  decisiones**: el cron de las 11:40Z decide el objetivo de mañana (lead 24) y el de las 02:40Z decide
+  **ese mismo objetivo** esa madrugada (lead 9).
+
+**Verificado:**
+
+    21 fechas × 5–7 eventos elegibles  →  105–147 EVENTOS DISTINTOS
+                                          210–294 decisiones · 420–590 posiciones
+    R21:  468 posiciones → 301 pares evento-lead → 211 EVENTOS
+
+**La corrida trae entre 0,5× y 0,7× de la muestra efectiva de R21, no 1,4×.** Es exactamente el
+argumento con el que yo tumbé el `n = 468` de R21, aplicado ahora a las decisiones — y esta vez lo
+levanta B contra su propia cifra.
+
+**Lo que la corrida aporta no es tamaño: es que es PROSPECTIVA y que trae LIBRO** (A-74). 0,7×
+prospectivo con precio alcanzable **medido** vale más que 2× retrospectivo con el deslizamiento
+**supuesto**; pero con el número correcto delante, un intervalo ancho no parecerá un fallo.
+
+**Y de ahí salen tres cláusulas que §6bis no tenía:**
+
+**§4quater — `NO EVALUABLE` se atribuye al HOST, no a la estrategia.** Con techo 105–147 y mínimo 100
+el margen es estrecho **por diseño y se sabe hoy**, y el colector entregó 2 de 3 ranuras su primer día.
+El informe publicará al lado **ciclos programados frente a entregados** y **ranuras de colector
+programadas frente a entregadas**, separando `schedule` de `workflow_dispatch`. Sin esta cláusula, 21
+días de cron con pérdidas producen un `NO EVALUABLE` que alguien leerá como «no se encontró
+beneficio». Aportación de B.
+
+**§4quinquies — la duración se decide AHORA.** Una corrida de duración fija con un mínimo que puede no
+alcanzarse se resuelve sola en la dirección equivocada. **21 días base; si al cerrar el día 21 los
+eventos distintos liquidados están por debajo del mínimo, se extiende en días enteros hasta un máximo
+de 35**, terminando en lo que ocurra primero. **La regla de parada es sobre el recuento de eventos y
+nada más: el PnL no se mira hasta que la corrida cierra.**
+
+**§4sexies — el `tau` de cobertura y su ventana de calibración.** B lo mide sobre el sustrato
+retrospectivo y **declara la limitación antes de ver el resultado**: allí el precio es
+`MIDPOINT_ESTIMATED` y la puerta usa un `x_exec` supuesto, así que en vivo la cobertura puede diferir.
+Recalcularlo a mitad sería un cambio de parámetro (§8.3). En su lugar: **los primeros 4 ciclos con la
+variable puesta son ventana de calibración, excluida de la corrida y de todo agregado**; si hay que
+corregir el tau se corrige ahí, se hashea, y **la corrida empieza después**. Pasada la ventana no se
+recalibra.
+
+**Y el mínimo NO se baja.** Que 100 de un techo de 105–147 sea estrecho es un hecho del venue, no una
+razón para mover el listón: bajarlo tras ver que no llega sería elegir el criterio por el resultado.
+Lo que se adapta es la **duración**, con tope declarado.

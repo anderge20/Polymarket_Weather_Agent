@@ -91,14 +91,27 @@ mitad, ¿sigue siendo una sola corrida? §4bis la responde congelando la REGLA, 
 > durante 21 días son del orden de **mil posiciones**, más del doble de las 468 de R21 y sobre datos
 > que R21 no puede tener: **prospectivos**.
 >
-> **Con un matiz que cambia el peso y que no está en el recuento de posiciones.** Esas ~1.000
-> posiciones salen de unos ~7 eventos elegibles por ciclo × 42 ciclos ≈ **294 decisiones de evento**,
-> y el evento es la unidad: sus bandas son una partición que suma 1 y sus errores están acoplados.
-> Contra los **211 bloques de evento** de R21 eso no es «el doble de evidencia», es **~1,4×**. El
-> techo de 294 ya estaba medido en §0 como propiedad del venue. **Se dobla el número de posiciones y
-> se multiplica por 1,4 la muestra efectiva**, y cualquier intervalo se calcula por bloques de evento
-> (la corrección que la sesión A planteó contra R21 y que allí ensanchó el intervalo a
-> [−0,0288 · −0,0205] sin cambiar el signo).
+> **Y LA MUESTRA EFECTIVA ES MENOR QUE LA DE R21, no mayor. Las dos cifras anteriores estaban mal en
+> la misma dirección.** «Más del doble de posiciones» (sesión B) contaba posiciones; «~294 decisiones
+> de evento, 1,4×» (sesión A) contaba decisiones. **Ninguna de las dos es el bloque.** El bloque es el
+> **evento**: su resultado es uno solo y lo comparten sus once bandas *y sus dos decisiones*, porque
+> el cron de las 11:40Z decide el objetivo de mañana (lead 24) y el de las 02:40Z decide **ese mismo
+> objetivo** esa madrugada (lead 9).
+>
+>     21 fechas × 5–7 eventos elegibles  →  105–147 EVENTOS DISTINTOS
+>                                           210–294 decisiones
+>                                           420–590 posiciones
+>     R21, por comparación:  468 posiciones → 301 pares evento-lead → 211 EVENTOS
+>
+> **Así que la corrida trae entre 0,5× y 0,7× de la muestra efectiva de R21**, no 1,4×. Es exactamente
+> el argumento con que la sesión A tumbó el `n = 468` de R21, aplicado ahora a las decisiones en vez
+> de a las posiciones — y esta vez lo levanta la sesión B contra su propia cifra. Todo intervalo se
+> calcula por **bloques de evento**.
+>
+> **Lo que la corrida aporta no es tamaño: es que es PROSPECTIVA y que trae LIBRO.** 0,7× prospectivo
+> con precio alcanzable medido vale más que 2× retrospectivo con el deslizamiento supuesto — pero
+> decirlo con el número correcto delante evita que un intervalo ancho parezca un fallo cuando era
+> predecible desde hoy.
 >
 > **Y HAY DOS PREGUNTAS QUE SÓLO ESTA CORRIDA PUEDE CONTESTAR**, porque su sustrato no se recupera
 > hacia atrás. Verificado en el almacén prospectivo el 2026-09-09: los shards de
@@ -567,7 +580,10 @@ del criterio invalida la corrida igual que un cambio de parámetro a mitad (§8.
   sobre **≥ 100 operaciones LIQUIDADAS**. *(Esta condición implica la formulación anterior —un
   intervalo positivo que excluye el cero excluye por fuerza el [−0,0288 · −0,0205] de R21, que es
   enteramente negativo— y es preferible porque se comprueba directamente.)*
-- **`n` < 100 liquidadas → `NO EVALUABLE`**, ni APTA ni NO APTA. No «no hubo beneficio».
+- **`n` < 100 EVENTOS DISTINTOS liquidados → `NO EVALUABLE`**, ni APTA ni NO APTA. No «no hubo
+  beneficio». La unidad es el evento y no la posición ni la decisión, por lo dicho en §0: sus bandas y
+  sus dos leads comparten un solo resultado. Con un techo de 105–147 el margen es estrecho **y eso se
+  sabe hoy**, no después (§4quater y §4quinquies).
 - **La etiqueta es `winning_outcome` del venue**, la misma que R21 §A.5, para que las dos corridas se
   midan contra la misma vara. El sesgo de la etiqueta por observación (§9) se reporta aparte y **no**
   sustituye a ésta.
@@ -576,6 +592,39 @@ del criterio invalida la corrida igual que un cambio de parámetro a mitad (§8.
 **por separado y no se agregan**: un PnL agregado sobre dos taus distintas no es el PnL de ninguna
 regla. Aportación de la sesión B, y cierra el hueco que dejaba §8.3 —que anula por cambio de
 parámetro— para el caso en que alguien decida partir en vez de anular.
+
+**4quater. `NO EVALUABLE` SE ATRIBUYE AL HOST, NO A LA ESTRATEGIA.** Aportación de la sesión B, y
+cierra una trampa que el resto de §6bis dejaba abierta. Con un techo de **105–147 eventos distintos**
+y un mínimo de 100, el margen es estrecho **por diseño y se sabe hoy**; y el colector entregó **2 de 3
+ranuras** su primer día. Una corrida que pierda ciclos aterriza en `NO EVALUABLE` con facilidad, y
+alguien lo leerá como «no se encontró beneficio». Por tanto:
+
+> Si la corrida termina en `NO EVALUABLE`, el informe lo atribuye **al host** y publica al lado el
+> recuento de **ciclos programados frente a ciclos entregados**, y de **ranuras de colector
+> programadas frente a entregadas**, separando `schedule` de `workflow_dispatch`. `NO EVALUABLE` no
+> es un resultado sobre la estrategia y no se reporta como tal.
+
+**4quinquies. LA DURACIÓN SE DECIDE AHORA, no cuando se vea que no llega.** Una corrida de duración
+fija con un mínimo que puede no alcanzarse es un diseño que se resuelve solo en la dirección
+equivocada. Se declara:
+- **N = 21 días naturales** (§5) como duración base.
+- Si al cerrar el día 21 los **eventos distintos liquidados** están por debajo del mínimo, la corrida
+  **se extiende en días enteros hasta un máximo de 35 días naturales**, y termina en lo que ocurra
+  primero: alcanzar el mínimo, o el día 35.
+- **La regla de parada es SOBRE EL RECUENTO DE EVENTOS Y NADA MÁS.** El PnL **no se mira** hasta que
+  la corrida cierra. Parar cuando el resultado gusta es lo que este documento existe para impedir, y
+  una regla de parada sobre `n` declarada de antemano no es eso.
+
+**4sexies. EL `tau` DE COBERTURA SE FIJA ANTES, CON UNA VENTANA DE CALIBRACIÓN EXCLUIDA.** La sesión B
+lo está midiendo sobre el sustrato retrospectivo y **declara por adelantado su limitación**: allí el
+precio es `MIDPOINT_ESTIMATED` y la puerta de ejecución usa un `x_exec` supuesto, así que **en vivo la
+fracción de ciclos que abren puede ser distinta**. Recalcularlo a mitad de corrida sería un cambio de
+parámetro (§8.3). En su lugar:
+
+> Los **primeros 4 ciclos con `PAPER_TAU` puesta son una VENTANA DE CALIBRACIÓN**, declarada como tal,
+> **excluida de la corrida** y de todo agregado. Si su cobertura observada obliga a corregir el tau,
+> se corrige **ahí**, se hashea el nuevo valor en `DECISIONS.md`, y **la corrida empieza después**.
+> Pasada esa ventana el tau no se toca: si se cambia, §8.3 anula o §4ter parte, pero no se recalibra.
 
 **5. Lo que esta sección NO autoriza:** ni ampliar la rejilla de tau, ni cambiar la regla de
 selección, ni reajustar el constructor de colas, ni volver a correr con otra tau si la primera no
