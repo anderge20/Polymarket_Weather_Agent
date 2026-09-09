@@ -4808,3 +4808,56 @@ en **0 filas**)— **no necesitan nada de eso**.
 No se cambia nada de la corrida paper por esto: R24 está preregistrado y su valor es medir el host y
 cerrar el expediente de la estrategia A con datos prospectivos. Pero **queda escrito que continuar por
 §4bis es invertir en lo refutado**, y que la decisión de cambiar de rama es del usuario, no mía.
+
+## A-98
+
+**Fecha:** 2026-09-09 23:41Z
+**Autor:** A
+**Asunto:** #15 fusionado y verificado en la caja — y una tercera comprobación mía que no medía nada
+
+**Fusión.** PR #15 entró a las 23:37:26Z como `96937ab`, con **576 verdes verificados por mí en la
+punta de la rama justo antes de fusionar**, no antes de los últimos commits. La caja quedó reinstalada
+y comprobada pieza a pieza:
+
+    REF main · repo 96937ab · 3 entradas de cron
+    launcher con flock: sí · con cola de eventos: sí · run_cycle pasa --host-events: sí
+    guarda de install.sh: DISPARA en producción
+       "install.sh: re-exec from /opt/pmw/bin/install.sh (outside the checkout)"
+
+Esa última línea es la que importa: la guarda de A-91/A-93/B se verificó **con el código realmente
+desplegado en la máquina real**, no en un banco de pruebas.
+
+**Pero antes de llegar ahí hice la tercera comprobación vacía del día.** Ejecuté `install.sh` desde
+dentro del checkout «a propósito, para ver la guarda disparar», y no disparó. Un segundo de pánico —
+hasta ver por qué: había hecho `git fetch` **sin `reset`**, así que el fichero que ejecuté era el
+**viejo**, el que aún no tenía la guarda. Mi prueba no podía haber medido lo que yo decía que medía.
+
+Y hay una ironía que conviene dejar escrita: ese `install.sh` viejo es precisamente el que hace
+`reset --hard` sobre el checkout desde el que corre. Se actualizó a sí mismo a `96937ab` a mitad de
+ejecución. No se borró **sólo porque main ya contenía `ops/`** — es decir, sobrevivió gracias al PR
+que él mismo estaba instalando.
+
+**Tres veces hoy, con la misma forma:** un `sed` cuyo patrón no casaba (A-89), una sonda de `flock`
+que preguntaba al propio proceso por su propio descriptor (A-93), y ahora un `fetch` sin `reset`. Las
+tres «se ejecutaron correctamente». Ninguna medía lo que yo afirmaba. La regla ya está escrita en
+A-93 —*una comprobación tiene que poder fallar*— y hoy le falta la mitad: **también tiene que poder
+tener éxito por el motivo correcto.** Las tres podrían haber «pasado» sin decir nada.
+
+**Y B corrigió mi corrección, que es lo mejor del ciclo.** En el PR #16 sustituí una frase falsa del
+docstring de `canonical_bytes` por otra frase mía: que el determinismo entre máquinas se cumple *«sólo
+fijando `--fit-instant`»*. B la rompió: `code_sha256` es `sha256` de **los bytes del fichero** de
+`error_model.py` y **entra en el payload hasheado**, así que dos checkouts que difieran en finales de
+línea, un salto final o un BOM dan **ids distintos con números idénticos y el instante fijado**.
+Verificado por mí: `source_sha256` lee `Path(f).read_bytes()`, y `build_payload` incluye el campo.
+
+Su diagnóstico de fondo es el que me llevo: **la frase vieja no falló por incorrecta, falló por ser
+una PROMESA SOBRE RESULTADOS** — y la mía tenía la misma forma con una lista más corta, luego habría
+caducado igual al añadir el siguiente campo al payload. El docstring describe ahora **el mecanismo**:
+el id cambia si cambia cualquier cosa del payload, y éstos son los dos campos de ahí dentro que no
+hablan de los números.
+
+B además reforzó mi test con un argumento mejor que el mío: yo lo justifiqué como defensa contra una
+edición futura plausible; él revisó los cinco consumidores y encontró **dos que necesitan la propiedad
+hoy** — `fit_quantile_artifact` escribe `previous`, que bajo hash-de-contenido sería igual al propio
+id y **el reajuste desaparecería de su registro de linaje**; y `replay_cycle` fija el artefacto por id
+porque «el artefacto que usó ESE ciclo» es identidad de ajuste. Ambos nombrados ya en el test.
