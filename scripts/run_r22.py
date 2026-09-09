@@ -123,7 +123,10 @@ def build_cells(rows, *, drop_age: bool = False) -> dict:
         cells[f"lead={r['lead_h']}"].append(r)
         cells[f"unidad={r['unit']}"].append(r)
         cells[f"banda={r['band_pos']}"].append(r)
-        cells[f"precio_decil={min(int(r['p_mid'] * 10), 9)}"].append(r)
+        # FIXED-WIDTH bins on p_mid, NOT deciles — bin 0 alone held 79 % of the
+        # sample. The cuts are ex ante and the measurement is unaffected, but the
+        # name misled a reader of the published artifact, so it says what it is.
+        cells[f"precio_bin_0.1={min(int(r['p_mid'] * 10), 9)}"].append(r)
         cells[f"estacion={r['station']}"].append(r)
         cells[f"anchura_fc={'baja' if r['spread_fc'] <= w_lo else 'alta' if r['spread_fc'] > w_hi else 'media'}"].append(r)
         cells[f"completitud={'baja' if r['event_bands'] <= c_lo else 'alta' if r['event_bands'] > c_hi else 'media'}"].append(r)
@@ -244,6 +247,33 @@ def evaluate(rows, rng, out_dir) -> int:
         print("NINGUNA CELDA EVALUABLE.", flush=True)
         return 2
 
+    # A CELL THAT COVERS THE WHOLE SAMPLE IS NOT A STRATUM. `completitud=baja`
+    # held 1 308/1 308 events and 10 000/10 000 rows: its Delta IS the global
+    # Delta, and counting it inflates the coverage the report claims. Session A
+    # caught it in the published artifact; the guard only looked for NULLs, so it
+    # caught `antiguedad` (an axis with no data) and missed this one (an axis with
+    # all the data in one bucket). Both are the same defect — one cell wearing the
+    # shape of an axis — and this catches both.
+    #
+    # Removed from the COUNT, never from the table: its Delta is reported like any
+    # other. Dropping a cell that does not favour the model cannot favour it, and
+    # the change lowers the coverage claimed rather than raising it.
+    degeneradas = {}
+    for name, rs in list(cells.items()):
+        if name in evaluables and n_events(rs) == n_events(rows) and len(rs) == len(rows):
+            degeneradas[name] = {"eventos": n_events(rs), "filas": len(rs),
+                                 "delta": evaluables[name]["delta"],
+                                 "motivo": "cubre la muestra entera: no estratifica"}
+    for name in degeneradas:
+        evaluables.pop(name, None)
+    if degeneradas:
+        print(f"  DEGENERADAS (cubren la muestra entera, fuera del recuento): "
+              f"{list(degeneradas)}", flush=True)
+
+    if not evaluables:
+        print("NINGUNA CELDA EVALUABLE TRAS DESCARTAR LAS DEGENERADAS.", flush=True)
+        return 2
+
     t_obs = max(v["delta"] for v in evaluables.values())
 
     # ---- §5: permutation on the MAXIMUM statistic, PAIRED, by whole event.
@@ -314,6 +344,7 @@ def evaluate(rows, rng, out_dir) -> int:
         "celdas_evaluables": evaluables, "celdas_insuficientes": insuficientes,
         "ganadoras": ganadoras, "VEREDICTO": veredicto,
         "ejes_no_disponibles": ejes_no_disponibles,
+        "celdas_degeneradas": degeneradas,
         "nota": ("Un resultado POSITIVO no es un hallazgo: es un candidato sobre el "
                  "que preregistrar otra cosa (PREREG_R22 §0). Brier es un promedio "
                  "sobre toda la distribucion; el beneficio vive en un subconjunto "
