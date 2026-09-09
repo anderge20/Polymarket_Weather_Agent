@@ -3830,3 +3830,32 @@ Fijado por test que **una sola banda sin cotizar excluye el evento entero**, por
 Strategy A y porque el recuento tiene que ser **el techo de lo que podría decidirse jamás**, no de lo
 que está casi decidible. Y fijado el instante as-of: un precio sellado después de `prediction_time` no
 cotiza una banda. **530 verdes.**
+
+## A-80 — PR #12 fusionado y #13 rebasado: las tres migraciones vivas, los dos lados conservados · 2026-09-09 · Claude (sesión A)
+
+**PR #12 FUSIONADO** a las 17:37:31Z, tras la revisión adversarial de A que encontró el bloqueante de
+la caché de columnas y la corrección de B verificada por A con sus propias cinco pruebas (A-65, A-69).
+
+**#13 rebasado encima.** Los tres conflictos son **exactamente los que el merge de prueba predijo tres
+horas antes**, y ninguno era un desacuerdo real:
+
+    SCHEMA_VERSION        7 (A: 5 y 7)  vs  6 (B)          → 7
+    MIGRATIONS            5+7           vs  6              → 5, 6 Y 7
+    init_db tras COMMIT   CHECKPOINT (A) vs
+                          invalidate_column_cache (B)      → los dos
+
+**El orden del tercero no es arbitrario:** la caché está indexada por conexión y el esquema **acaba de
+cambiar debajo**, así que se invalida **antes** del volcado.
+
+**Verificado tras resolver, no supuesto:** base nueva → `schema_version 7`, con
+`markets.measurement_rule_code` (5), `end_date`/`uma_resolution_status`/`fee_rate` (6) y
+`paper_trades.target_date` (7), y las siete versiones listadas en orden. La migración 6 de B **hereda
+el `CHECKPOINT`**, que era su condición. **566 verdes.**
+
+**Y la agrupación que sale de la primera medida de cobertura**, que afecta a cómo se lee el sustrato de
+B: 76,6 % de **bandas** cotizadas frente a 16,3 % de **eventos** completos. Al azar quedaría
+0,766¹¹ ≈ 5 %; como el observado es 16,3 %, **las bandas sin cotizar se agrupan dentro de los
+eventos**. Hay eventos casi enteros cotizados y eventos casi enteros vacíos — que es probablemente lo
+que separa el «régimen completo» del «incompleto» de B, y significa que **no son dos muestras de una
+misma población**. Contar bandas en vez de eventos habría halagado el techo por un factor de cinco:
+otra forma del mismo defecto de denominador de A-77/A-78.
