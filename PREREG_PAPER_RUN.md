@@ -59,6 +59,27 @@ mitad, ¿sigue siendo una sola corrida? §4bis la responde congelando la REGLA, 
 > acierto por debajo del azar, y explica por qué **ningún umbral lo arregla**: subir `tau` aprieta con
 > más fuerza sobre el mismo criterio equivocado.
 >
+> **Y R22 lo cierra midiendo dónde, si en algún sitio, el modelo bate al mercado.** Ocho ejes
+> declarados antes de mirar, 1.308 eventos, 17 celdas evaluables: **ninguna favorece al modelo**, y en
+> quince el `|Δ|` supera `2·SE` de la propia celda. La permutación sobre el máximo ni siquiera tuvo
+> trabajo — el mejor Δ ya era negativo. *(Cobertura honesta: **diez** celdas estratifican de verdad;
+> `completitud` degenera en una sola celda que es la muestra entera, el eje de precio pone el 79 % de
+> las filas en un bin, la estación sólo llega a mínimo en EGLC y ahí es **no concluyente**, y los ejes
+> de spread y antigüedad **no son evaluables** — `orderbook_snapshots` está vacía y `discovered_at` es
+> NULL en 10.000 de 10.000.)*
+>
+> **Y dentro de los datos de R22 está la descomposición que lo explica todo.** El BSS del modelo
+> contra la tasa base **de cada bin de precio**:
+>
+>     precio_decil 0  −0,547 · 1  −0,117 · 2  −0,023 · 3  −0,091 · 4  −0,234
+>     muestra entera  +0,238
+>
+> **Dentro de cualquier régimen de precio el modelo es PEOR que predecir la tasa base de ese régimen.
+> Su habilidad global positiva es enteramente un efecto ENTRE bins.** Lo único que aporta es «las
+> bandas baratas son improbables», y eso el mercado ya lo tiene en el precio **porque el precio es el
+> bin**. No es que el modelo sea algo peor que el mercado: **condicionado al precio no aporta
+> información, y la que parecía aportar era la que el precio ya contenía.**
+>
 > **Es un problema de DISEÑO, no de estimación.** «Opera donde más discrepas del mercado» sólo
 > funciona si eres mejor que el mercado. Haría falta un criterio que identifique **dónde** el modelo
 > supera al mercado, no **cuánto** discrepa de él, y ese criterio no existe todavía.
