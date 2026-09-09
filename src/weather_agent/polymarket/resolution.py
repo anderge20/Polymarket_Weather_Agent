@@ -76,7 +76,19 @@ DATA_ERROR = "DATA_ERROR"  # inconsistent source data (e.g. >1 winning band)
 # ICAO is the last path segment of the Wunderground history URL, e.g.
 # .../history/daily/tr/%C3%A7ubuk/LTAC -> LTAC ; .../nz/wellington/NZWN -> NZWN.
 _ICAO_RE = re.compile(r"wunderground\.com/history/daily/[a-z]{2}/[^/]+/([A-Za-z0-9]{3,5})", re.I)
-_URL_RE = re.compile(r"https://www\.wunderground\.com/history/daily/\S+", re.I)
+# The resolution URL, in the TWO shapes the catalogue actually uses. Only the
+# Wunderground one was ever matched, so every NOAA market — the dominant source
+# in the live open universe — resolved to NO station and NO resolution_source.
+# It stayed invisible because the historical work read `v3.icao2` from the
+# catalogue build rather than this classifier; the gap only shows on live
+# discovery, where 319 of 330 open markets had no station (measured 2026-09-09).
+_URL_RE = re.compile(
+    r"https://www\.wunderground\.com/history/daily/\S+"
+    r"|https?://(?:www\.)?weather\.gov/wrh/timeseries\?site=[A-Za-z0-9]{3,5}\b",
+    # re.I was on the pre-R30 pattern and dropping it here would have been a
+    # SILENT narrowing: 0 descriptions in CATALOG_V2 carry a cased URL today, so
+    # no test and no measurement could have caught the loss. Kept deliberately.
+    re.I)
 # "recorded at the <Station Name> Station in degrees ..." (non-greedy, unicode-safe)
 _STATION_RE = re.compile(r"recorded at the (.+?) Station", re.I)
 _CITY_TITLE_RE = re.compile(r"temperature in ([A-Za-z .,'\-]+?) on ", re.I)
@@ -363,12 +375,31 @@ def parse_resolution_text(desc: str) -> dict:
     if m:
         url = m.group(0).rstrip('.,")\\')
         out["resolution_source"] = url
-        # ICAO is the LAST path segment of the Wunderground URL. US URLs carry an
-        # extra state segment (us/ny/new-york-city/KLGA) vs non-US (tr/%C3%A7ubuk/
-        # LTAC), so take the tail rather than a fixed position.
-        tail = url.rstrip("/").split("/")[-1]
-        if re.fullmatch(r"[A-Za-z0-9]{3,5}", tail):
-            out["station_identifier"] = tail.upper()
+        # TWO URL SHAPES CARRY THE ICAO, and only one was ever read.
+        #
+        # Wunderground puts it in the LAST PATH SEGMENT. US URLs carry an extra
+        # state segment (us/ny/new-york-city/KLGA) vs non-US (tr/%C3%A7ubuk/LTAC),
+        # so take the tail rather than a fixed position.
+        #
+        # NOAA puts it in a QUERY PARAMETER instead:
+        #     https://www.weather.gov/wrh/timeseries?site=eglc
+        # whose last path segment is "timeseries?site=eglc" and matches nothing.
+        # Reading only the path silently produced NO station for every NOAA
+        # market. It went unnoticed because the historical catalogue's `icao2`
+        # column was populated by another route, so the gap only shows on live
+        # discovery — where the open universe is NOAA-heavy: 319 of 330 open
+        # markets resolved to no station (measured 2026-09-09), which is the whole
+        # prospective pipeline with nothing to forecast for.
+        icao = None
+        q = re.search(r"[?&]site=([A-Za-z0-9]{3,5})\b", url, re.I)
+        if q:
+            icao = q.group(1)
+        else:
+            tail = url.rstrip("/").split("/")[-1]
+            if re.fullmatch(r"[A-Za-z0-9]{3,5}", tail):
+                icao = tail
+        if icao:
+            out["station_identifier"] = icao.upper()
     # Rely on the explicit "degrees Celsius/Fahrenheit" wording in the resolution
     # sentence — NOT bare °C/°F, which BOTH appear in the toggle boilerplate
     # ("switch ... between °F and °C") and would misclassify every market.
