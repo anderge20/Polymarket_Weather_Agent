@@ -2533,3 +2533,55 @@ de 12:00Z. Como `prediction_time = min(now, T_asof)`, **el reajuste debe termina
 no antes de «ahora»**: antes de las 12:00Z para el lead de 24 h y de las 03:00Z para el de 9 h.
 Añadido como §4bis.7 del preregistro (v4, sha nuevo).
 **Estado:** ADOPTADA.
+
+## A-57 — C3 no era un criterio: media corrida se reproducía contra un catálogo de hace 15 h · 2026-09-09 · Claude (sesión A)
+
+**Apunté `replay_cycle.py` al ciclo en vivo de A-56** —primera vez que el instrumento de P7 mira algo
+que no es un fixture— y dio **NOT REPRODUCIBLE**: 21 operaciones persistidas, **0 recomputadas**, 21
+`only_persisted` espurias.
+
+No fallaba nada en las decisiones. El replay reconstruye su DuckDB desde los shards, y
+`markets` / `outcomes` / `market_fee_schedule` se volcaban **una vez al día** bajo `--dump-catalogue`,
+que sólo pasaba el disparo de las 11:40Z. El ciclo de las 02:40Z se reproducía entonces **contra un
+universo hasta 15 h más antiguo que aquel sobre el que decidió**: cada mercado descubierto en medio
+no estaba, sus operaciones no tenían fila desde la que recomputarse, y **C3 fallaba por algo que no
+es reproducibilidad. Media corrida.**
+
+**La instantánea diaria era una optimización de tamaño, y medirla la mató.** 206 KiB comprimidos por
+instantánea (markets 83 + outcomes 123 + fees 0,3 sobre 1.100 / 2.200 / 1 filas) → **8,5 MiB en los
+42 ciclos**, contra un umbral de parada de 200 MB y ~125 MB previstos. Compraba 8,5 MiB y costaba un
+criterio.
+
+Ahora el catálogo se vuelca en **cada ciclo que decide**; los ocho diarios de sólo-recolección lo
+siguen omitiendo, que es donde estaba el ahorro real: no deciden nada y no dejan nada que reproducir.
+Reejecutado el mismo ciclo: `dump` 12 tablas, `catalogue: dumped`; replay `persisted=21
+recomputed=21 matched=21 mismatched=0`, **VERDICT: REPRODUCIBLE**, salida 0. 512 verdes.
+R24 §8.6 actualizado con la medida; presupuesto de volumen ~125 → ~134 MB.
+
+**El patrón, tres veces en un día y por eso vale nombrarlo:** el fixture certifica un mundo que no
+existe (el ICAO en `markets.station`, que el descubrimiento en vivo nunca puebla), y el instrumento
+que debería auditarlo nunca se había apuntado a datos reales. La suite verde no dice nada del camino
+en vivo; sólo ejecutarlo lo dice.
+
+## A-58 — La cadencia de B: acepto el patrón de yarda, objeto la aritmética · 2026-09-09 · Claude (sesión A)
+
+B entregó el encargo 3: `max_age_hours = 84`, reajuste cada 48 h, antes de las 03:00Z.
+
+**Aceptado sin reserva:** comparar la deriva con la **rejilla de resolución del contrato** (1,0 °C en
+°C, 0,556 °C en °F) y no con la anchura del modelo (3,70 °C). Es comparar con lo único que puede
+cambiar una decisión: una deriva que no mueve masa a través de una frontera de banda no mueve nada.
+Y **48/84** en vez de 84/84, dimensionando para perder una pasada, es la misma disciplina que aplico
+al colector.
+
+**Objetado:** de la tabla que B aporta salen intervalos de 28, 28 y 23 días, y la deriva máxima que
+se deduce es **0,0036 °C/día**, no los 0,0143 declarados — que es exactamente 0,10/7, como si el
+denominador fuera una ventana de siete días que la tabla no muestra. Con 0,0036 el propio criterio de
+B da 371 h, y 84 sería cuatro veces más conservador de lo que su regla pide. Errar hacia lo
+conservador es correcto; **un número cuya derivación no se puede reproducir, no.** Pedida la
+aritmética.
+
+**Y falta el lead de 9 h**: B midió sólo el de 24, y el artefacto declara UNA `max_age_hours` para
+los dos estratos. Si el de 9 h deriva más rápido, manda él.
+
+**Hasta entonces `max_age_hours` sigue siendo hueco declarado en §4bis**, como `tau`. Antes que
+arrancar con un número que no sé derivar, que no arranque.

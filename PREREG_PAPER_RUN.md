@@ -349,7 +349,17 @@ detecta con pocas observaciones. **No se presentará como evidencia de buena cal
 **Parada con corrida conservada y declarada corta:**
 
 5. 429 sostenido que impida ≥ 3 ciclos consecutivos.
-6. **Crecimiento del almacén > 200 MB.** v1 fijaba 50 MB sin cuenta alguna y **la corrida lo
+6. **Crecimiento del almacén > 200 MB.** *(actualizado 2026-09-09)* El volcado del catálogo pasa a
+   hacerse en **cada ciclo que decide**, no una vez al día: restringirlo al disparo de las 11:40Z
+   dejaba al de las 02:40Z reproduciéndose contra un catálogo hasta **15 h más antiguo** que el
+   universo sobre el que decidió, y **C3 daba NOT REPRODUCIBLE para media corrida por una razón que
+   no es reproducibilidad** (verificado: 21 operaciones persistidas, 0 recomputadas, 21
+   `only_persisted` espurias). Coste **medido** del volcado: **206 KiB** comprimidos por instantánea
+   (markets 83 + outcomes 123 + fees 0,3, sobre 1.100 / 2.200 / 1 filas) → **8,5 MiB en los 42
+   ciclos**. Los ocho ciclos diarios de sólo-recolección lo siguen omitiendo: no deciden nada y no
+   dejan nada que reproducir. El presupuesto de volumen sube de ~125 MB a ~134 MB, holgadamente
+   por debajo del umbral.
+   El umbral original: v1 fijaba 50 MB sin cuenta alguna y **la corrida lo
    rebasaba hacia el día 9**, haciendo C1 inalcanzable: el volumen medido es ≈ 271 B/fila
    comprimida × ~20 200 filas/día ≈ **5,5 MB/día ≈ 115 MB en 21 días**, más ~10 MB de catálogo — un
    volcado diario: el workflow pasaba `--dump-catalogue` en **los dos** disparos (~21 MB), y se ha
