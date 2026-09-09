@@ -29,12 +29,21 @@ CONTRACT (frozen; tests/test_market_asof.py enforces it)
   picking one.
 * Idempotent on the natural key.
 
-RANGE SEMANTICS (measured 2026-09-06, not assumed)
----------------------------------------------------
-The endpoint's range is `[startTs, endTs)`: a point whose timestamp equals
-`startTs` **is** returned; the upper bound is exclusive. Verified against a token
-with a point at exactly the requested start. Adjacent windows therefore share a
-boundary without duplicating it, and validation must accept `startTs <= t`.
+RANGE SEMANTICS (measured twice; the first measurement was wrong)
+------------------------------------------------------------------
+The endpoint's range is `[startTs, endTs]` — **both ends inclusive**.
+
+First measurement (2026-09-06) confirmed the start is inclusive and inferred the
+end was exclusive, from a request that happened to have no point exactly at
+`endTs`. Absence of a boundary point is not evidence of exclusion. On
+2026-09-08 a market (Dallas/KDAL, target 2026-04-08) returned a point at exactly
+`endTs`, and the end-exclusive check threw away all **2 862** legitimate points
+of that window as PARSE_ERROR. Silent, total data loss for that market from one
+boundary point.
+
+Windows therefore overlap by one instant at each boundary. The stitcher keys by
+timestamp so the repeat collapses, and a genuine disagreement at that instant is
+still caught as a contradiction rather than resolved silently.
 
 Provenance: this module is the reconciliation of two independent implementations
 — Codex's (transport discipline: status taxonomy, no-hammer 429, atomic write,
@@ -117,10 +126,10 @@ def default_session():
 def windows(start_ts: int, end_ts: int) -> Iterator[tuple[int, int]]:
     """Adjacent request windows of at most `MAX_WINDOW_SECONDS`, in unix seconds.
 
-    Windows share a boundary instant. Because the endpoint's range is
-    `[start, end)`, a point exactly on the boundary belongs to the later window
-    only, so no de-duplication is needed — but the stitcher still checks for
-    contradictions.
+    Windows share a boundary instant. The endpoint's range is `[start, end]`, so
+    a point exactly on the boundary is returned by BOTH adjacent windows; the
+    stitcher keys by timestamp, which collapses the repeat while still catching a
+    genuine disagreement as a contradiction.
     """
     if end_ts <= start_ts:
         raise ValueError("end_ts must be after start_ts")
@@ -159,7 +168,7 @@ def fetch_window(
     """One `prices-history` call, attempted ONCE.
 
     A 429 returns `S_RATE_LIMITED` and the caller must stop; it is never retried
-    here. Any point outside `[start_ts, end_ts)` or outside `[0,1]` makes the
+    here. Any point outside `[start_ts, end_ts]` or outside `[0,1]` makes the
     whole window `S_PARSE` — a source that answers outside what was asked is not
     understood, and guessing which points to keep would be inventing data.
     """
@@ -201,8 +210,8 @@ def fetch_window(
             if not isinstance(point, dict) or "t" not in point or "p" not in point:
                 return S_PARSE, []
             ts, price = int(point["t"]), float(point["p"])
-            # measured: the range is [start, end)
-            if not (start_ts <= ts < end_ts) or not (0.0 <= price <= 1.0):
+            # measured: the range is [start, end] — BOTH ends inclusive
+            if not (start_ts <= ts <= end_ts) or not (0.0 <= price <= 1.0):
                 return S_PARSE, []
             points.append({"t": ts, "p": price})
     except (TypeError, ValueError):

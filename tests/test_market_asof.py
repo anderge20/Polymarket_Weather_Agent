@@ -64,7 +64,9 @@ class _Session:
         if self.status_code != 200:
             return _Resp(self.status_code)
         a, b = params["startTs"], params["endTs"]
-        hist = [{"t": t, "p": p} for t, p in sorted(self.series.items()) if a <= t < b]
+        # the real endpoint includes BOTH ends; the fake must too, or the
+        # tests pass against a behaviour the API does not have.
+        hist = [{"t": t, "p": p} for t, p in sorted(self.series.items()) if a <= t <= b]
         return _Resp(200, {"history": hist})
 
 
@@ -229,10 +231,9 @@ def test_windows_are_capped_and_contiguous():
     assert all(ws[i][1] == ws[i + 1][0] for i in range(len(ws) - 1))
 
 
-def test_range_start_is_inclusive_end_exclusive():
-    """Measured against the live endpoint on 2026-09-06 and honoured here: a point
-    at exactly startTs belongs to the window; one at endTs does not."""
-    s = _Session({_ts(9): 0.4, _ts(14): 0.9})
+def test_range_start_is_inclusive():
+    """A point at exactly startTs belongs to the window (measured 2026-09-06)."""
+    s = _Session({_ts(9): 0.4})
     status, pts = prices.fetch_history(s, TOKEN, _ts(9), _ts(14))
     assert status == prices.S_OK
     assert [p["t"] for p in pts] == [_ts(9)]
@@ -278,3 +279,17 @@ def test_fidelity_below_native_rejected():
 def test_backwards_range_rejected():
     with pytest.raises(ValueError):
         list(prices.windows(_ts(13), _ts(9)))
+
+
+def test_range_end_is_inclusive_too():
+    """Regression: a point at exactly endTs is legitimate and must be kept.
+
+    Measured 2026-09-08 (Dallas/KDAL, target 2026-04-08): the endpoint returned a
+    point at exactly endTs, and an end-exclusive check discarded all 2 862 points
+    of that window as PARSE_ERROR. Absence of a boundary point in an earlier probe
+    was mistaken for evidence of exclusion.
+    """
+    s = _Session({_ts(9): 0.4, _ts(14): 0.9})
+    status, pts = prices.fetch_history(s, TOKEN, _ts(9), _ts(14))
+    assert status == prices.S_OK
+    assert [p["t"] for p in pts] == [_ts(9), _ts(14)]
