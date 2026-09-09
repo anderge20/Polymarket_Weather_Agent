@@ -293,3 +293,58 @@ def test_the_guard_stops_on_a_superseded_record_version(con):
 def test_an_empty_database_does_not_trip_the_guard(con):
     out = paper_cycle.stage_guard_dataset_version(_cycle(), con, dataset_version="ds1")
     assert out["ok"] is True
+
+
+# --------------------------------------------------------------------------- as-of ordering
+def test_the_decision_instant_is_after_the_collection_it_consumes():
+    """The third form of the same defect. `prediction_time` computed at cycle
+    start lands BEFORE the `observation_time` of the prices the cycle is about to
+    collect, and build_feature's filter (`observation_time <= prediction_time`)
+    then rejects every one of them: 0 signals again.
+
+    Real numbers: cron fires 11:40Z, T_asof is 12:00Z, collection finishes 11:45Z.
+    """
+    start = datetime(2026, 9, 9, 11, 40, tzinfo=timezone.utc)
+    collected = start + timedelta(minutes=5)
+    target = date(2026, 9, 10)
+
+    at_start = paper_cycle.decision_time(target, 24, start)["prediction_time"]
+    assert collected > at_start                    # the bug, pinned
+
+    after = paper_cycle.decision_time(target, 24, collected)["prediction_time"]
+    assert collected <= after                      # the fix: the price qualifies
+
+
+def test_a_late_cycle_still_never_decides_after_t_asof():
+    """The clamp must survive the reordering: running late may make this cycle's
+    own prices unusable, but it must not let them in by moving the as-of."""
+    target = date(2026, 9, 10)
+    t_asof = datetime(2026, 9, 9, 12, 0, tzinfo=timezone.utc)
+    collected = datetime(2026, 9, 9, 14, 30, tzinfo=timezone.utc)   # 2.5 h late
+    out = paper_cycle.decision_time(target, 24, collected)
+    assert out["prediction_time"] == t_asof
+    assert collected > out["prediction_time"]      # own prices correctly excluded
+    assert out["drift_h"] == pytest.approx(2.5)
+
+
+def test_main_settles_prediction_time_after_collection_not_before():
+    """Source-level: the ordering is the whole fix, so pin it."""
+    src = (Path(__file__).resolve().parents[1] / "scripts" / "paper_cycle.py").read_text()
+    i_collect = src.index("stage_collect(cy, con")
+    i_settle = src.index("timing = decision_time(target_date, args.lead_hours, _utcnow())")
+    assert i_settle > i_collect, "prediction_time must be settled after collection"
+
+
+def test_own_prices_are_usable_exactly_when_the_clamp_did_not_bind():
+    """Spotted in a live run: the cycle reported `late_firing=False` and
+    `own_prices_usable=False` in the same breath, which cannot both be true."""
+    target = date(2026, 9, 10)
+    early = paper_cycle.decision_time(target, 24,
+                                      datetime(2026, 9, 9, 10, 8, tzinfo=timezone.utc))
+    assert early["fired_early"] is True
+    assert early["prediction_time"] == datetime(2026, 9, 9, 10, 8, tzinfo=timezone.utc)
+
+    late = paper_cycle.decision_time(target, 24,
+                                     datetime(2026, 9, 9, 14, 0, tzinfo=timezone.utc))
+    assert late["fired_early"] is False
+    assert late["prediction_time"] == late["t_asof"]     # clamped -> own prices too new

@@ -106,7 +106,15 @@ def decision_time(target_date: date, lead_hours: float, now: datetime) -> dict:
         a fiction, which is exactly the defect A-32 found in someone else's
         document — the availability rule stated in prose and never applied.
 
-    `lead_effective` is measured, never assumed: it is what actually happened."""
+    `lead_effective` is measured, never assumed: it is what actually happened.
+
+    WHEN this is called matters as much as what it computes. It must be evaluated
+    AFTER collection, not at cycle start: the decision instant is when we decide,
+    which is necessarily after we have gathered what we decide on. Computed at
+    start, `prediction_time` lands BEFORE the `observation_time` of the prices the
+    same cycle is about to collect, and `build_feature`'s as-of filter
+    (`observation_time <= prediction_time`) then rejects every one of them — 0
+    signals, for the third time and by a third mechanism."""
     end = t_end(target_date)
     asof = end - timedelta(hours=float(lead_hours))
     pt = min(now, asof)
@@ -641,38 +649,25 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     target_date = date.fromisoformat(args.target_date)
     session_id = args.session_id or collector.new_session_id()
-    timing = decision_time(target_date, args.lead_hours, _utcnow())
-    prediction_time = timing["prediction_time"]
+    # Planned only: T_end and T_asof do not depend on the clock, so they can be
+    # logged up front. `prediction_time` is NOT settled here — see below.
+    plan = decision_time(target_date, args.lead_hours, _utcnow())
 
     cy = Cycle(session_id=session_id, dataset_version=args.dataset_version,
                target_date=str(target_date), model=args.model,
                collect_only=bool(args.collect_only),
-               t_end=_iso(timing["t_end"]), t_asof=_iso(timing["t_asof"]),
-               prediction_time=_iso(prediction_time),
-               lead_nominal_h=timing["lead_nominal_h"],
-               lead_effective_h=round(timing["lead_effective_h"], 4),
-               drift_h=round(timing["drift_h"], 4))
+               t_end=_iso(plan["t_end"]), t_asof=_iso(plan["t_asof"]),
+               lead_nominal_h=plan["lead_nominal_h"])
     print(f"paper_cycle session={session_id} target_date={target_date} "
           f"dataset_version={args.dataset_version}", flush=True)
-    print(f"  T_end={_iso(timing['t_end'])}  T_asof={_iso(timing['t_asof'])}  "
-          f"prediction_time={_iso(prediction_time)}", flush=True)
-    print(f"  lead nominal={timing['lead_nominal_h']:.0f}h  "
-          f"effective={timing['lead_effective_h']:.2f}h  "
-          f"drift={timing['drift_h']:+.2f}h  "
-          f"{'EARLY (safe)' if timing['fired_early'] else 'LATE -> clamped to T_asof'}",
-          flush=True)
+    print(f"  T_end={_iso(plan['t_end'])}  T_asof={_iso(plan['t_asof'])}  "
+          f"lead nominal={plan['lead_nominal_h']:.0f}h", flush=True)
 
     con = db.init_db(db.connect(args.db or ":memory:"))
     try:
         import requests
         http = requests.Session()
 
-        cy.stage("timing", OK, t_asof=_iso(timing["t_asof"]),
-                 prediction_time=_iso(prediction_time),
-                 lead_effective_h=round(timing["lead_effective_h"], 3),
-                 drift_h=round(timing["drift_h"], 3),
-                 lead_drift=abs(timing["lead_effective_h"]
-                                - timing["lead_nominal_h"]) > 1.0)
         stage_load_state(cy, con, root=args.store_root)
         discovery.ensure_dataset_version(con, args.dataset_version)
         stage_discover(cy, con, dataset_version=args.dataset_version,
@@ -688,6 +683,31 @@ def main(argv: list[str] | None = None) -> int:
         stage_collect(cy, con, dataset_version=args.dataset_version,
                       session_id=session_id, universe=universe, session=http,
                       chunk_size=args.chunk_size)
+
+        # THE DECISION INSTANT IS SETTLED HERE, after collection, never at cycle
+        # start: everything a decision consumes must already exist at
+        # `prediction_time`, and the prices this cycle just wrote carry an
+        # `observation_time` of a few minutes ago.
+        timing = decision_time(target_date, args.lead_hours, _utcnow())
+        prediction_time = timing["prediction_time"]
+        # Usable exactly when the clamp did NOT bind: if `now` is still before
+        # T_asof then `prediction_time` IS `now`, which is after the collection
+        # that just finished, so this cycle's own prices qualify. If the clamp
+        # bound, `prediction_time` is T_asof and the prices are newer than it.
+        own_prices_usable = timing["fired_early"]
+        cy.stage("timing", OK, t_asof=_iso(timing["t_asof"]),
+                 prediction_time=_iso(prediction_time),
+                 lead_effective_h=round(timing["lead_effective_h"], 3),
+                 drift_h=round(timing["drift_h"], 3),
+                 late_firing=timing["drift_h"] > 0,
+                 own_prices_usable=own_prices_usable)
+        if not own_prices_usable:
+            # Ran past T_asof: this cycle's own prices are newer than the as-of it
+            # must respect, so the decision falls back to the last price at or
+            # before T_asof — which the 3-hourly collector supplies. Reported, not
+            # silently absorbed.
+            cy.stage("timing:fallback", OK,
+                     reason="own_prices_newer_than_t_asof_using_earlier_collection")
 
         # Guard BEFORE any decision, and after the tables are populated: a cycle
         # that only collects is harmless, one that decides on an ambiguous
