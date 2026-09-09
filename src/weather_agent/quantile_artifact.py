@@ -151,20 +151,36 @@ def canonical_bytes(payload: Mapping[str, Any]) -> bytes:
     """The bytes an artifact_id is taken over: the JSON of everything EXCEPT
     `artifact_id`, keys sorted, no insignificant whitespace.
 
-    THE ID IDENTIFIES A FIT, NOT A SET OF NUMBERS, and the previous sentence here
-    claimed otherwise: "two fits that produced the same numbers get the same id
-    on any machine". That is false, and measured false on 2026-09-09 (A-94) — a
-    refit against an unchanged substrate returned `n`, window and quantiles
-    identical to the artifact on disk, digit for digit, and a DIFFERENT id
-    (`61f20fd1a83e…` against `1520268baff2…`), because `fit_instant` is part of
-    the payload that is hashed.
+    THE MECHANISM, NOT A PROMISE ABOUT IT. The id changes if ANYTHING in the
+    payload changes, and two of the fields in there are not about the numbers:
 
-    Nothing downstream is wrong: R24 §4bis.4 wants to partition a run by REFIT
-    EVENT, and that is exactly what this gives. What was wrong was the promise.
-    Determinism across machines holds only when the fit instant is pinned, which
-    is what `fit_quantile_artifact.py --fit-instant` exists for; without it, two
-    machines fitting the same data at different moments produce two artifacts, by
-    design.
+      * `fit_instant` — so two refits of an unchanged substrate are two
+        artifacts. Measured on 2026-09-09 (A-94): a refit returned n, window and
+        quantiles identical digit for digit and a different id.
+      * `code_sha256` — the sha256 of the BYTES of `error_model.py`, not of its
+        logic. Two checkouts that differ only by line endings, a trailing
+        newline or a BOM produce different ids for identical numbers, even with
+        the instant pinned. Note the trap: the module docstring says this field
+        is "written and reported, never used to refuse", which is true of
+        REFUSAL and false of the id.
+
+    So the id identifies a FIT, not a set of numbers — and two consumers depend
+    on exactly that, which is why this is a property and not an accident:
+
+      * `fit_quantile_artifact.py` records `{"artifact_id": …, "previous": …}`.
+        Under a content hash, a refit against an unchanged substrate would write
+        `previous == artifact_id` and vanish from its own lineage.
+      * `replay_cycle.py` pins the artifact BY ID, because "the artifact that
+        cycle used" is an identity of fit; a replay against a newer one with the
+        same numbers would be computing something else and calling it a
+        reproduction.
+
+    The sentence that used to be here — "two fits that produced the same numbers
+    get the same id on any machine" — failed not by being incorrect but by being
+    a PROMISE ABOUT OUTCOMES. Promises about outcomes go stale as fields are
+    added to the payload; a description of the mechanism does not. Session B's
+    point, after catching the first replacement making the same shape of claim
+    with a shorter list.
     """
     body = {k: v for k, v in payload.items() if k != "artifact_id"}
     return json.dumps(body, sort_keys=True, separators=(",", ":"),

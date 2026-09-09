@@ -73,11 +73,18 @@ def test_the_id_identifies_a_FIT_not_a_set_of_numbers(tmp_path):
     and quantiles identical digit for digit, and a different id, because
     `fit_instant` is hashed with the rest.
 
-    Nothing downstream is wrong; R24 §4bis.4 wants to partition a run by refit
-    EVENT and that is what this gives. This test exists because the false
-    promise invited a plausible future "fix" — dropping `fit_instant` from the
-    hash to make the id a content hash — which would silently merge two refits
-    into one artifact id and destroy exactly that partition.
+    This is NOT a test against an imagined future — session B checked the five
+    consumers and two need this property today:
+
+      * `fit_quantile_artifact.py` writes `{"artifact_id": …, "previous": …}`.
+        Under a content hash, a refit against an unchanged substrate writes
+        `previous == artifact_id` and DISAPPEARS FROM ITS OWN LINEAGE RECORD.
+      * `replay_cycle.py` pins the artifact by id, because "the artifact that
+        cycle used" is an identity of fit, not of numbers.
+
+    The plausible wrong fix the old docstring invited — drop `fit_instant` from
+    the hash so the id becomes a content hash — breaks both. This test fails on
+    exactly that edit.
     """
     same_numbers = _payload(fit_instant=FIT + timedelta(hours=48))
     baseline = _payload()
