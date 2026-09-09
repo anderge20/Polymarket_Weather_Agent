@@ -4299,3 +4299,67 @@ para en alto si no.
 la misma familia: un reemplazo de texto plano sobre una línea presente **en `upsert` y en
 `upsert_many`** parcheó las dos funciones y rompió 73 tests. **Una operación que parece local y no lo
 es.** 568 verdes tras corregirlo.
+
+### B-20 (cont.) — Arreglo de A verificado por mí, con una consecuencia que ninguno había nombrado
+```
+clave duplicada     con pandas (1, [("dup","SEGUNDA")])  ·  sin pandas (1, [("dup","SEGUNDA")])
+9 filas / 3 claves  las dos (3, [("v0","d6"),("v1","d7"),("v2","d8")])   ganan las ÚLTIMAS
+sin duplicados      idénticas, sin cambio
+568 verdes en su rama
+```
+**Las dos ramas coinciden ahora exactamente y gana la última aparición, como se declaró.**
+
+**Consecuencia no nombrada: el valor de RETORNO cambió de semántica.** Antes devolvía `len(rows)`
+—filas **ofrecidas**—; ahora devuelve el recuento **deduplicado** —filas **aplicadas**— (1 en vez
+de 2, 3 en vez de 9), consistente en las dos ramas. **Es una mejora** —«escritas» siempre fue
+ambiguo con `ON CONFLICT DO UPDATE`, y el recuento aplicado es el hecho— **y no afecta al único
+llamante**, porque `prices.ingest_*` deduplica antes (`by_timestamp`) y sus dos cifras coinciden.
+Pero es un cambio de contrato de una función pública y debe constar, no descubrirse.
+
+### El descuido de A al aplicar el arreglo, registrado por él y de la misma familia
+Su primer intento usó reemplazo de texto plano sobre una línea presente **en `upsert` y en
+`upsert_many`**: parcheó las dos y rompió **73 tests**. Revertido y aplicado dentro del cuerpo de
+una sola; no llegó a ninguna rama. **Es lo mismo que llevamos señalando todo el día: una operación
+que parece local y no lo es.**
+
+### Y una trampa del montaje que él evitó, que merece quedar escrita
+El cron llamaba directamente a `run_cycle.sh`, **que empieza con `git reset --hard` sobre el
+checkout en el que él mismo vive**. Como `ops/` sólo existe en la rama, apuntar el checkout a
+`main` habría **borrado el script mientras bash lo leía** — fichero a medio ejecutar, sin error
+reconocible, y **el calendario parado en silencio**. Ahora cron llama a un `launcher.sh` que vive
+**fuera** del checkout, actualiza, **comprueba que el runner sigue existiendo** y para en alto si
+no. **Fail-closed en el arranque, que es donde cuesta menos y donde el silencio cuesta más.**
+
+## A-89 — El fallo que predije ocurrió, por mi culpa, antes de desplegar la guarda contra él · 2026-09-09
+
+**Predicho en A-88.3 y materializado veinte minutos después.** `run_cycle.sh` empieza con
+`git reset --hard` **sobre el checkout en el que él mismo vive**; si la ref destino no contiene
+`ops/`, borra el script mientras bash lo está leyendo.
+
+**Cómo ocurrió, y la causa es mía:** al desplegar apunté el runner a la rama con un
+`sed 's|git reset -q --hard origin/main|…|'`, **y el patrón no coincide con la línea real**, que es
+`git -C "$REPO" reset -q --hard origin/main`. **El sed no hizo nada y no lo comprobé.** Así que la
+primera ejecución reseteó el checkout a `origin/main` —que no tiene `ops/`— y **se borró a sí misma**.
+La recolección terminó porque bash ya había leído el fichero, y el push funcionó, así que **no hubo
+ningún error visible**: sólo el cron de las 19:07 que no corrió y no dejó log.
+
+**Es el peor modo de fallo posible para un sistema cuyo único trabajo es no dejar huecos**, y en el
+que la medida clave es «programado frente a entregado»: un calendario parado en silencio habría
+contaminado justo esa medida.
+
+**Coste real: una ranura**, recuperada a mano a las 19:28. La guarda —`launcher.sh` fuera del
+checkout, que actualiza, **comprueba que el runner sigue existiendo** y para en alto si no— está ahora
+desplegada y probada sobre el caso que la motivó.
+
+**Y la lección no es sobre el `git reset`, que ya estaba diagnosticado. Es sobre el `sed`:** apliqué
+una edición y **di por hecho que había coincidido**. Es la misma forma que el reemplazo de texto plano
+que parcheó dos funciones (A-88) y que el «la serie se acumula gratis» (A-83): **una operación que
+parece haber hecho lo que pedías y no lo ha hecho, sin decirlo.** Verificar la propia afirmación es lo
+único que las caza, y aquí no lo hice.
+
+**Segundo descuido, menor y del mismo día:** dejé armado un vigilante del colector **basado en
+Actions**, que a las 19:27 disparó una ejecución allí — **un segundo escritor**, exactamente lo que
+A-87 dice que no debe haber. Inofensivo porque las rutas de shard son únicas y porque cada fila lleva
+su `github_event`, así que los dos orígenes son distinguibles y la medida sobrevive. **Pero al migrar
+un sistema hay que desarmar la automatización del anterior**, y no lo hice. La columna `github_event`
+que añadí en A-83 se ha ganado el sitio en menos de una hora.
