@@ -1,0 +1,1563 @@
+{
+ "schema": "station_coords_snapshot/v1.1",
+ "extracted_at": "2026-09-05",
+ "rule": "COORDINATE_UNIVERSE_AUDIT.md §10 — estación observadora NOAA (siteType ⊇ METAR); ICAO desde icao2 del mercado; OurAirports control; IEM/OSCAR prohibidos",
+ "decision": "DECISIONS.md D1",
+ "n": 55,
+ "excluded_no_icao": [
+  {
+   "city": "Hong Kong",
+   "markets": 1859,
+   "reason": "settlement HKO, no METAR"
+  },
+  {
+   "city": "Taipei",
+   "markets": 77,
+   "reason": "periodo 2026-03-17..22 sin ICAO"
+  }
+ ],
+ "stations": [
+  {
+   "icao": "CYYZ",
+   "city": "Toronto",
+   "lat": 43.679,
+   "lon": -79.629,
+   "elev_m": 171,
+   "site": "Toronto/Pearson Intl",
+   "wmoId": "71624",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "CA",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 43.675935,
+    "lon": -79.629421,
+    "d_km": 0.342
+   },
+   "legacy_iem": {
+    "lat": 43.67722,
+    "lon": -79.63056,
+    "d_km": 0.234
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "DNMM",
+   "city": "Lagos",
+   "lat": 6.577,
+   "lon": 3.321,
+   "elev_m": 27,
+   "site": "Lagos/Muhammed Intl",
+   "wmoId": "65201",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "NG",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 6.57737,
+    "lon": 3.32116,
+    "d_km": 0.045
+   },
+   "legacy_iem": {
+    "lat": 6.57737,
+    "lon": 3.32116,
+    "d_km": 0.045
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "EDDM",
+   "city": "Munich",
+   "lat": 48.348,
+   "lon": 11.813,
+   "elev_m": 445,
+   "site": "Munich Intl",
+   "wmoId": "10866",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "DE",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 48.353802,
+    "lon": 11.7861,
+    "d_km": 2.09
+   },
+   "legacy_iem": {
+    "lat": 48.35833,
+    "lon": 11.80917,
+    "d_km": 1.183
+   },
+   "cell_depends_on_source": true,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "EFHK",
+   "city": "Helsinki",
+   "lat": 60.327,
+   "lon": 24.957,
+   "elev_m": 56,
+   "site": "Helsinki/Vantaa Arpt",
+   "wmoId": "02974",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "FI",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 60.318363,
+    "lon": 24.963341,
+    "d_km": 1.022
+   },
+   "legacy_iem": {
+    "lat": 60.31722,
+    "lon": 24.96333,
+    "d_km": 1.142
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "EGLC",
+   "city": "London",
+   "lat": 51.505,
+   "lon": 0.055,
+   "elev_m": 10,
+   "site": "London City Arpt",
+   "wmoId": null,
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "GB",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 51.505299,
+    "lon": 0.055278,
+    "d_km": 0.038
+   },
+   "legacy_iem": {
+    "lat": 51.50528,
+    "lon": 0.05528,
+    "d_km": 0.037
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "EHAM",
+   "city": "Amsterdam",
+   "lat": 52.315,
+   "lon": 4.79,
+   "elev_m": -2,
+   "site": "Amsterdam/Schiphol Arpt",
+   "wmoId": "06240",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "NL",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 52.308601,
+    "lon": 4.76389,
+    "d_km": 1.912
+   },
+   "legacy_iem": {
+    "lat": 52.31541,
+    "lon": 4.79016,
+    "d_km": 0.047
+   },
+   "cell_depends_on_source": true,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "EPWA",
+   "city": "Warsaw",
+   "lat": 52.163,
+   "lon": 20.961,
+   "elev_m": 107,
+   "site": "Warsaw/Chopin Arpt",
+   "wmoId": "12375",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "PL",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 52.165699,
+    "lon": 20.9671,
+    "d_km": 0.513
+   },
+   "legacy_iem": {
+    "lat": 52.16278,
+    "lon": 20.96111,
+    "d_km": 0.026
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "FACT",
+   "city": "Cape Town",
+   "lat": -33.965,
+   "lon": 18.602,
+   "elev_m": 48,
+   "site": "Capetown Intl",
+   "wmoId": "68816",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "ZA",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": -33.97403,
+    "lon": 18.604333,
+    "d_km": 1.027
+   },
+   "legacy_iem": {
+    "lat": -33.9666666667,
+    "lon": 18.6,
+    "d_km": 0.261
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "KATL",
+   "city": "Atlanta",
+   "lat": 33.62972,
+   "lon": -84.44223,
+   "elev_m": 309,
+   "site": "Atlanta/Hartsfield-Jackson Intl",
+   "wmoId": "72219",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "US",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 33.6367,
+    "lon": -84.428101,
+    "d_km": 1.521
+   },
+   "legacy_iem": {
+    "lat": 33.6301,
+    "lon": -84.4418,
+    "d_km": 0.058
+   },
+   "cell_depends_on_source": true,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "KAUS",
+   "city": "Austin",
+   "lat": 30.1831,
+   "lon": -97.68063,
+   "elev_m": 148,
+   "site": "Austin/Bergstrom Intl",
+   "wmoId": "72254",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "US",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 30.197535,
+    "lon": -97.662015,
+    "d_km": 2.404
+   },
+   "legacy_iem": {
+    "lat": 30.18304,
+    "lon": -97.67987,
+    "d_km": 0.073
+   },
+   "cell_depends_on_source": true,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "KBKF",
+   "city": "Denver",
+   "lat": 39.713,
+   "lon": -104.758,
+   "elev_m": 1703,
+   "site": "Buckley SFB",
+   "wmoId": null,
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "US",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 39.701698,
+    "lon": -104.751999,
+    "d_km": 1.358
+   },
+   "legacy_iem": {
+    "lat": 39.70167,
+    "lon": -104.75167,
+    "d_km": 1.371
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "KDAL",
+   "city": "Dallas",
+   "lat": 32.83836,
+   "lon": -96.83584,
+   "elev_m": 148,
+   "site": "Dallas/Love Fld",
+   "wmoId": "72258",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "US",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 32.844776,
+    "lon": -96.847653,
+    "d_km": 1.314
+   },
+   "legacy_iem": {
+    "lat": 32.84711,
+    "lon": -96.85178,
+    "d_km": 1.779
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "KHOU",
+   "city": "Houston",
+   "lat": 29.64582,
+   "lon": -95.28214,
+   "elev_m": 13,
+   "site": "Houston/Hobby Arpt",
+   "wmoId": "72244",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "US",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 29.645336,
+    "lon": -95.276812,
+    "d_km": 0.518
+   },
+   "legacy_iem": {
+    "lat": 29.63747,
+    "lon": -95.28245,
+    "d_km": 0.929
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "KLAX",
+   "city": "Los Angeles",
+   "lat": 33.93817,
+   "lon": -118.3866,
+   "elev_m": 30,
+   "site": "Los Angeles Intl",
+   "wmoId": "72295",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "US",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 33.942501,
+    "lon": -118.407997,
+    "d_km": 2.032
+   },
+   "legacy_iem": {
+    "lat": 33.93816,
+    "lon": -118.38653,
+    "d_km": 0.007
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "KLGA",
+   "city": "NYC",
+   "lat": 40.77945,
+   "lon": -73.88027,
+   "elev_m": 9,
+   "site": "New York/La Guardia Arpt",
+   "wmoId": "72503",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "US",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 40.777199,
+    "lon": -73.872597,
+    "d_km": 0.693
+   },
+   "legacy_iem": {
+    "lat": 40.77945,
+    "lon": -73.88028,
+    "d_km": 0.001
+   },
+   "cell_depends_on_source": true,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "KMIA",
+   "city": "Miami",
+   "lat": 25.78806,
+   "lon": -80.31692,
+   "elev_m": 1,
+   "site": "Miami Intl",
+   "wmoId": "72202",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "US",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 25.796011,
+    "lon": -80.289751,
+    "d_km": 2.86
+   },
+   "legacy_iem": {
+    "lat": 25.78805,
+    "lon": -80.31693,
+    "d_km": 0.001
+   },
+   "cell_depends_on_source": true,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "KORD",
+   "city": "Chicago",
+   "lat": 41.96017,
+   "lon": -87.93161,
+   "elev_m": 202,
+   "site": "Chicago/O'Hare Intl",
+   "wmoId": "72530",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "US",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 41.9786,
+    "lon": -87.9048,
+    "d_km": 3.019
+   },
+   "legacy_iem": {
+    "lat": 41.9602,
+    "lon": -87.9316,
+    "d_km": 0.003
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "KSEA",
+   "city": "Seattle",
+   "lat": 47.44467,
+   "lon": -122.31442,
+   "elev_m": 115,
+   "site": "Seattle-Tacoma Intl",
+   "wmoId": "72793",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "US",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 47.447943,
+    "lon": -122.310276,
+    "d_km": 0.479
+   },
+   "legacy_iem": {
+    "lat": 47.44469,
+    "lon": -122.31437,
+    "d_km": 0.004
+   },
+   "cell_depends_on_source": true,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "KSFO",
+   "city": "San Francisco",
+   "lat": 37.61961,
+   "lon": -122.36561,
+   "elev_m": 2,
+   "site": "San Francisco Intl",
+   "wmoId": "72494",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "US",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 37.619806,
+    "lon": -122.374821,
+    "d_km": 0.812
+   },
+   "legacy_iem": {
+    "lat": 37.61897,
+    "lon": -122.37489,
+    "d_km": 0.82
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "LEMD",
+   "city": "Madrid",
+   "lat": 40.466,
+   "lon": -3.555,
+   "elev_m": 589,
+   "site": "Madrid/Barajas Arpt",
+   "wmoId": "08221",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "ES",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 40.493407,
+    "lon": -3.572249,
+    "d_km": 3.379
+   },
+   "legacy_iem": {
+    "lat": 40.46667,
+    "lon": -3.55556,
+    "d_km": 0.088
+   },
+   "cell_depends_on_source": true,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "LFPB",
+   "city": "Paris",
+   "lat": 48.967,
+   "lon": 2.428,
+   "elev_m": 50,
+   "site": "Paris/Le Bourge Arpt",
+   "wmoId": "07150",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "FR",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 48.962276,
+    "lon": 2.436539,
+    "d_km": 0.815
+   },
+   "legacy_iem": {
+    "lat": 48.96722,
+    "lon": 2.42722,
+    "d_km": 0.062
+   },
+   "cell_depends_on_source": true,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "LFPG",
+   "city": "Paris",
+   "lat": 49.015,
+   "lon": 2.534,
+   "elev_m": 107,
+   "site": "Paris/De Gaulle Arpt",
+   "wmoId": "07157",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "FR",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 49.00896,
+    "lon": 2.554117,
+    "d_km": 1.614
+   },
+   "legacy_iem": {
+    "lat": 49.01528,
+    "lon": 2.53444,
+    "d_km": 0.045
+   },
+   "cell_depends_on_source": true,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "LIMC",
+   "city": "Milan",
+   "lat": 45.631,
+   "lon": 8.728,
+   "elev_m": 221,
+   "site": "Milan/Malpensa Arpt",
+   "wmoId": "16066",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "IT",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 45.6306,
+    "lon": 8.72811,
+    "d_km": 0.045
+   },
+   "legacy_iem": {
+    "lat": 45.63,
+    "lon": 8.72306,
+    "d_km": 0.4
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "LLBG",
+   "city": "Tel Aviv",
+   "lat": 32.011,
+   "lon": 34.887,
+   "elev_m": 35,
+   "site": "Tel Aviv/Ben Gurion Arpt",
+   "wmoId": "40180",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "IL",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 32.011398,
+    "lon": 34.8867,
+    "d_km": 0.053
+   },
+   "legacy_iem": {
+    "lat": 32.01139,
+    "lon": 34.88667,
+    "d_km": 0.053
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "LTAC",
+   "city": "Ankara",
+   "lat": 40.128,
+   "lon": 32.995,
+   "elev_m": 952,
+   "site": "Ankara/Esenboğa Intl",
+   "wmoId": "17128",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "TR",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 40.128101,
+    "lon": 32.995098,
+    "d_km": 0.014
+   },
+   "legacy_iem": {
+    "lat": 40.12808,
+    "lon": 32.99508,
+    "d_km": 0.011
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "LTFM",
+   "city": "Istanbul",
+   "lat": 41.262,
+   "lon": 28.74,
+   "elev_m": 99,
+   "site": "Istanbul Arpt",
+   "wmoId": null,
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "TR",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 41.274874,
+    "lon": 28.732136,
+    "d_km": 1.575
+   },
+   "legacy_iem": {
+    "lat": 41.2629,
+    "lon": 28.7413,
+    "d_km": 0.148
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "MMMX",
+   "city": "Mexico City",
+   "lat": 19.436,
+   "lon": -99.072,
+   "elev_m": 2224,
+   "site": "Mexico City Intl",
+   "wmoId": null,
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "MX",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 19.435822,
+    "lon": -99.07033,
+    "d_km": 0.176
+   },
+   "legacy_iem": {
+    "lat": 19.4363,
+    "lon": -99.0721,
+    "d_km": 0.035
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "MPMG",
+   "city": "Panama City",
+   "lat": 8.967,
+   "lon": -79.555,
+   "elev_m": 6,
+   "site": "Panama/Gelabert Intl",
+   "wmoId": null,
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "PA",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 8.97334,
+    "lon": -79.555603,
+    "d_km": 0.708
+   },
+   "legacy_iem": {
+    "lat": 8.9833333333,
+    "lon": -79.5166666667,
+    "d_km": 4.585
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "NZWN",
+   "city": "Wellington",
+   "lat": -41.331,
+   "lon": 174.806,
+   "elev_m": 12,
+   "site": "Wellington Intl",
+   "wmoId": "93436",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "NZ",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": -41.326839,
+    "lon": 174.806862,
+    "d_km": 0.468
+   },
+   "legacy_iem": {
+    "lat": -41.3272,
+    "lon": 174.8053,
+    "d_km": 0.427
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "OEJN",
+   "city": "Jeddah",
+   "lat": 21.685,
+   "lon": 39.166,
+   "elev_m": 8,
+   "site": "Jeddah/King Abdulaziz Intl",
+   "wmoId": "41024",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "SA",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 21.680241,
+    "lon": 39.157436,
+    "d_km": 1.031
+   },
+   "legacy_iem": {
+    "lat": 21.65983127,
+    "lon": 39.12220782,
+    "d_km": 5.321
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "OPKC",
+   "city": "Karachi",
+   "lat": 24.902,
+   "lon": 67.139,
+   "elev_m": 20,
+   "site": "Karachi/Jinnah Intl",
+   "wmoId": "41780",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "PK",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 24.9065,
+    "lon": 67.160797,
+    "d_km": 2.255
+   },
+   "legacy_iem": {
+    "lat": 24.84558,
+    "lon": 67.16137,
+    "d_km": 6.667
+   },
+   "cell_depends_on_source": true,
+   "status": "EXCEPCION_ABIERTA",
+   "note": "NOAA a 2.51 km del ARP; cambia celda ECMWF (ΔT 2.8 °C); requiere AIP Pakistán"
+  },
+  {
+   "icao": "RCSS",
+   "city": "Taipei",
+   "lat": 25.069,
+   "lon": 121.552,
+   "elev_m": 8,
+   "site": "Taipei/Songshan Arpt",
+   "wmoId": "46696",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "TW",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 25.067244,
+    "lon": 121.552822,
+    "d_km": 0.212
+   },
+   "legacy_iem": {
+    "lat": 25.06944,
+    "lon": 121.55167,
+    "d_km": 0.059
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "RCTP",
+   "city": "Taipei",
+   "lat": 25.078,
+   "lon": 121.233,
+   "elev_m": 33,
+   "site": "Taipei/Taoyuan Arpt",
+   "wmoId": "46686",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "TW",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 25.0777,
+    "lon": 121.233002,
+    "d_km": 0.033
+   },
+   "legacy_iem": {
+    "lat": 25.07773,
+    "lon": 121.23282,
+    "d_km": 0.035
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "RJTT",
+   "city": "Tokyo",
+   "lat": 35.553,
+   "lon": 139.781,
+   "elev_m": 5,
+   "site": "Tokyo/Haneda Intl",
+   "wmoId": "47671",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "JP",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 35.549678,
+    "lon": 139.786958,
+    "d_km": 0.653
+   },
+   "legacy_iem": {
+    "lat": 35.55333,
+    "lon": 139.78111,
+    "d_km": 0.038
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "RKPK",
+   "city": "Busan",
+   "lat": 35.179,
+   "lon": 128.938,
+   "elev_m": 3,
+   "site": "Busan/Gimhae Intl",
+   "wmoId": "47153",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "KR",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 35.179501,
+    "lon": 128.938004,
+    "d_km": 0.056
+   },
+   "legacy_iem": {
+    "lat": 35.17953,
+    "lon": 128.93822,
+    "d_km": 0.062
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "RKSI",
+   "city": "Seoul",
+   "lat": 37.469,
+   "lon": 126.451,
+   "elev_m": 7,
+   "site": "Seoul/Incheon Intl",
+   "wmoId": null,
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "KR",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 37.469101,
+    "lon": 126.450996,
+    "d_km": 0.011
+   },
+   "legacy_iem": {
+    "lat": 37.4666666667,
+    "lon": 126.45,
+    "d_km": 0.274
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "RPLL",
+   "city": "Manila",
+   "lat": 14.507,
+   "lon": 121.004,
+   "elev_m": 15,
+   "site": "Manila/Aquino Intl",
+   "wmoId": "98429",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "PH",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 14.5086,
+    "lon": 121.019997,
+    "d_km": 1.731
+   },
+   "legacy_iem": {
+    "lat": 14.5069,
+    "lon": 121.0042,
+    "d_km": 0.024
+   },
+   "cell_depends_on_source": true,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "SAEZ",
+   "city": "Buenos Aires",
+   "lat": -34.822,
+   "lon": -58.536,
+   "elev_m": 16,
+   "site": "Buenos Aires/Pistarini Arpt",
+   "wmoId": "87576",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "AR",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": -34.8222,
+    "lon": -58.5358,
+    "d_km": 0.029
+   },
+   "legacy_iem": {
+    "lat": -34.82222,
+    "lon": -58.53583,
+    "d_km": 0.029
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "SBGR",
+   "city": "Sao Paulo",
+   "lat": -23.432,
+   "lon": -46.469,
+   "elev_m": 745,
+   "site": "Sao Paulo Intl",
+   "wmoId": "83075",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "BR",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": -23.431274,
+    "lon": -46.469954,
+    "d_km": 0.126
+   },
+   "legacy_iem": {
+    "lat": -23.43208,
+    "lon": -46.46951,
+    "d_km": 0.053
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "UUWW",
+   "city": "Moscow",
+   "lat": 55.592,
+   "lon": 37.261,
+   "elev_m": 195,
+   "site": "Moscow/Vnukovo Arpt",
+   "wmoId": null,
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "RU",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 55.591499,
+    "lon": 37.261501,
+    "d_km": 0.064
+   },
+   "legacy_iem": {
+    "lat": 55.5915,
+    "lon": 37.2615,
+    "d_km": 0.064
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "VHHH",
+   "city": "Hong Kong",
+   "lat": 22.309,
+   "lon": 113.922,
+   "elev_m": 9,
+   "site": "Hong Kong Intl",
+   "wmoId": "45007",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "HK",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 22.31184,
+    "lon": 113.914862,
+    "d_km": 0.799
+   },
+   "legacy_iem": {
+    "lat": 22.30944,
+    "lon": 113.92194,
+    "d_km": 0.049
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "VILK",
+   "city": "Lucknow",
+   "lat": 26.761,
+   "lon": 80.889,
+   "elev_m": 121,
+   "site": "Lucknow/Singh Arpt",
+   "wmoId": "42369",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "IN",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 26.760599,
+    "lon": 80.889297,
+    "d_km": 0.053
+   },
+   "legacy_iem": {
+    "lat": 26.76059,
+    "lon": 80.88934,
+    "d_km": 0.057
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "WIHH",
+   "city": "Jakarta",
+   "lat": -6.267,
+   "lon": 106.891,
+   "elev_m": 26,
+   "site": "Jakarta/Perdanakusum",
+   "wmoId": null,
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "ID",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": -6.266989,
+    "lon": 106.890318,
+    "d_km": 0.075
+   },
+   "legacy_iem": {
+    "lat": -6.26661,
+    "lon": 106.89112,
+    "d_km": 0.045
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "WMKK",
+   "city": "Kuala Lumpur",
+   "lat": 2.747,
+   "lon": 101.714,
+   "elev_m": 21,
+   "site": "Kuala Lumpur Intl",
+   "wmoId": "48650",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "MY",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 2.74558,
+    "lon": 101.709999,
+    "d_km": 0.472
+   },
+   "legacy_iem": {
+    "lat": 2.71667,
+    "lon": 101.7,
+    "d_km": 3.714
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "WSSS",
+   "city": "Singapore",
+   "lat": 1.368,
+   "lon": 103.982,
+   "elev_m": 17,
+   "site": "Singapore/Changi Intl",
+   "wmoId": "48698",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "SG",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 1.35019,
+    "lon": 103.994003,
+    "d_km": 2.388
+   },
+   "legacy_iem": {
+    "lat": 1.36667,
+    "lon": 103.98333,
+    "d_km": 0.209
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": "Resuelta 2026-09-05: NOAA a 46 m de WMO OSCAR 48698 y 40 m de NEA S24; ARP (torre) a 1.27 km. Ver COORDINATE_SENSOR_VERIFICATION.md §3"
+  },
+  {
+   "icao": "ZBAA",
+   "city": "Beijing",
+   "lat": 40.082,
+   "lon": 116.603,
+   "elev_m": 31,
+   "site": "Beijing Intl",
+   "wmoId": "54511",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "CN",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 40.077349,
+    "lon": 116.596702,
+    "d_km": 0.745
+   },
+   "legacy_iem": {
+    "lat": 40.07413,
+    "lon": 116.587,
+    "d_km": 1.618
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "ZGGG",
+   "city": "Guangzhou",
+   "lat": 23.392,
+   "lon": 113.307,
+   "elev_m": 11,
+   "site": "Guangzhou/Baiyun Intl",
+   "wmoId": "59287",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "CN",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 23.392401,
+    "lon": 113.299004,
+    "d_km": 0.817
+   },
+   "legacy_iem": {
+    "lat": 23.39639,
+    "lon": 113.30083,
+    "d_km": 0.797
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "ZGSZ",
+   "city": "Shenzhen",
+   "lat": 22.639,
+   "lon": 113.803,
+   "elev_m": 18,
+   "site": "Shenzhen/Boan Intl",
+   "wmoId": "59493",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "CN",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 22.639474,
+    "lon": 113.803262,
+    "d_km": 0.059
+   },
+   "legacy_iem": {
+    "lat": 22.55,
+    "lon": 114.1,
+    "d_km": 32.056
+   },
+   "cell_depends_on_source": true,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "ZHCC",
+   "city": "Zhengzhou",
+   "lat": 34.52,
+   "lon": 113.834,
+   "elev_m": 149,
+   "site": "Zhengzhou/Xinzheng Arpt",
+   "wmoId": "57083",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "CN",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 34.526497,
+    "lon": 113.849165,
+    "d_km": 1.566
+   },
+   "legacy_iem": {
+    "lat": 34.7166666667,
+    "lon": 113.65,
+    "d_km": 27.599
+   },
+   "cell_depends_on_source": true,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "ZHHH",
+   "city": "Wuhan",
+   "lat": 30.783,
+   "lon": 114.205,
+   "elev_m": 33,
+   "site": "Wuhan/Tianhe Intl",
+   "wmoId": "57494",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "CN",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 30.774798,
+    "lon": 114.213723,
+    "d_km": 1.235
+   },
+   "legacy_iem": {
+    "lat": 30.62,
+    "lon": 114.13,
+    "d_km": 19.492
+   },
+   "cell_depends_on_source": true,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "ZSJN",
+   "city": "Jinan",
+   "lat": 36.856,
+   "lon": 117.206,
+   "elev_m": 22,
+   "site": "Jinan Yaoqiang Intl",
+   "wmoId": null,
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "CN",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 36.857201,
+    "lon": 117.216003,
+    "d_km": 0.9
+   },
+   "legacy_iem": {
+    "lat": 36.8555,
+    "lon": 117.206,
+    "d_km": 0.056
+   },
+   "cell_depends_on_source": false,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "ZSPD",
+   "city": "Shanghai",
+   "lat": 31.146,
+   "lon": 121.8,
+   "elev_m": 4,
+   "site": "Shanghai/Pudong Intl",
+   "wmoId": null,
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "CN",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 31.1434,
+    "lon": 121.805,
+    "d_km": 0.557
+   },
+   "legacy_iem": {
+    "lat": 31.1166666667,
+    "lon": 121.766666667,
+    "d_km": 4.55
+   },
+   "cell_depends_on_source": true,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "ZSQD",
+   "city": "Qingdao",
+   "lat": 36.362,
+   "lon": 120.087,
+   "elev_m": 2,
+   "site": "Qingdao/Jiaodong Arpt",
+   "wmoId": "54857",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "CN",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 36.361953,
+    "lon": 120.088171,
+    "d_km": 0.105
+   },
+   "legacy_iem": {
+    "lat": 36.06667,
+    "lon": 120.33333,
+    "d_km": 39.583
+   },
+   "cell_depends_on_source": true,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "ZUCK",
+   "city": "Chongqing",
+   "lat": 29.718,
+   "lon": 106.639,
+   "elev_m": 416,
+   "site": "Chongqing/Jiangbei Intl",
+   "wmoId": "57516",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "CN",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 29.712254,
+    "lon": 106.651895,
+    "d_km": 1.4
+   },
+   "legacy_iem": {
+    "lat": 29.52,
+    "lon": 106.48,
+    "d_km": 26.851
+   },
+   "cell_depends_on_source": true,
+   "status": "CANONICA",
+   "note": null
+  },
+  {
+   "icao": "ZUUU",
+   "city": "Chengdu",
+   "lat": 30.576,
+   "lon": 103.95,
+   "elev_m": 494,
+   "site": "Chengdu/Shuangliu Intl",
+   "wmoId": "56294",
+   "siteType": [
+    "METAR",
+    "TAF"
+   ],
+   "country": "CN",
+   "source": "NOAA AviationWeather stationinfo",
+   "control_ourairports": {
+    "lat": 30.558257,
+    "lon": 103.945966,
+    "d_km": 2.01
+   },
+   "legacy_iem": {
+    "lat": 30.6666666667,
+    "lon": 104.016666667,
+    "d_km": 11.93
+   },
+   "cell_depends_on_source": true,
+   "status": "CANONICA",
+   "note": null
+  }
+ ],
+ "revised_at": "2026-09-05",
+ "verification": "COORDINATE_SENSOR_VERIFICATION.md: NOAA = sensor ASOS CM en 10/10 EE.UU. (media 9 m); WSSS confirmada por AIP+OSCAR+NEA"
+}

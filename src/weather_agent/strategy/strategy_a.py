@@ -201,16 +201,20 @@ def generate_event_signals(
         if p_market is None or p_weather is None or band_label is None:
             reason = reason or "missing_feature"
             continue
-        # PRICE-LINEAGE GUARD: build_feature selects the price by market_id only and takes
-        # prices[0], which is NOT guaranteed to be this YES token. Re-query the YES token's
-        # price directly, reusing build_feature's own conventions (observation_time as-of pt,
-        # partition by token_id, NO dataset_version filter — matching features.py), and require
-        # an EXACT match. Missing YES price / mismatch -> fail-closed (no fallback, no arbitrary
-        # pick, no tolerance).
+        # PRICE-LINEAGE GUARD, now REDUNDANT and kept as belt-and-braces.
+        # It was written because build_feature selected the price by market_id only
+        # and took prices[0], which was not guaranteed to be this YES token; that is
+        # fixed at the source, and build_feature now asserts the identity itself.
+        # Conventions must stay in step with features.py: observation_time as-of pt,
+        # partition by token_id, AND the dataset_version filter added in A-37 —
+        # without it this guard compares the cycle's price against the latest of ANY
+        # version and rejects the event as ambiguous_or_wrong_token_price, which
+        # would be false the moment a second dataset_version exists.
         yes_rows = db.latest_asof(
             con, "price_history", time_col="observation_time", asof=pt,
             partition_cols=["token_id"],
-            where="market_id = ? AND token_id = ?", params=[market_id, token_id],
+            where="market_id = ? AND token_id = ? AND dataset_version = ?",
+            params=[market_id, token_id, dataset_version],
         )
         yes_price = yes_rows[0].get("indicative_price") if yes_rows else None
         if yes_price is None or yes_price != p_market:

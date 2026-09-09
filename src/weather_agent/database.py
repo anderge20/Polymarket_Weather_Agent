@@ -47,7 +47,7 @@ from typing import Any, Iterable, Mapping, Sequence
 
 from .config import DB_PATH
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 # Standard provenance columns present on every fact/derived table.
 PROVENANCE_COLUMNS = (
@@ -317,7 +317,7 @@ _DDL: list[str] = [
         city                VARCHAR,
         station             VARCHAR,
         source              VARCHAR,              -- obs provider == provenance source
-        tmax_observed       DOUBLE,
+        tmax_observed       DOUBLE,               -- ALWAYS Celsius; migration 4 adds the source grid
         daily_high_time     TIMESTAMPTZ,          -- when the daily high occurred
         available_at        TIMESTAMPTZ,          -- when the obs became AVAILABLE at the source (as-of engine filters on THIS, not ingestion_timestamp)
         fetched_at          TIMESTAMPTZ,
@@ -540,6 +540,13 @@ _DDL_V3 = [
     "ALTER TABLE outcomes ADD COLUMN IF NOT EXISTS outcome_label VARCHAR;",
 ]
 
+_DDL_V4 = [
+    "ALTER TABLE weather_observations ADD COLUMN IF NOT EXISTS observed_unit VARCHAR",
+    "ALTER TABLE weather_observations ADD COLUMN IF NOT EXISTS observed_value DOUBLE",
+    "ALTER TABLE weather_observations ADD COLUMN IF NOT EXISTS series VARCHAR",
+]
+
+
 # Ordered, idempotent migrations. Add a new dict (version+1) for future changes;
 # never edit a shipped migration in place.
 MIGRATIONS: list[dict] = [
@@ -557,6 +564,19 @@ MIGRATIONS: list[dict] = [
         "version": 3,
         "name": "phase2d_outcome_label",
         "statements": _DDL_V3,
+    },
+    {
+        "version": 4,
+        "name": "phase2b_observation_source_grid",
+        # A-41: `tmax_observed` is always Celsius, but the SOURCE grid differs —
+        # 10 US stations report whole degrees Fahrenheit (their Celsius values have
+        # fractional parts of exactly n/9), the other 38 whole Celsius, and KBKF
+        # mixes both. Converting to Celsius destroys the source grid, and settling
+        # a Fahrenheit market on the converted value settles it off its own grid.
+        # These columns keep the reported value and its unit so no consumer has to
+        # reconstruct them. Additive: existing rows gain NULLs, which read as
+        # "unknown", never as a default.
+        "statements": _DDL_V4,
     },
 ]
 
@@ -856,12 +876,26 @@ def latest_asof(
     base = f"SELECT * FROM {_q(table)} WHERE {' AND '.join(clauses)}"
     if partition_cols:
         part = ", ".join(_q(c) for c in partition_cols)
+        # Ties on the as-of column were broken arbitrarily, so two revisions of the
+        # same observation returned whichever the engine happened to emit first.
+        # The append-only convention is that a higher record_version supersedes,
+        # so make that the tiebreak and the result deterministic.
+        #
+        # NOT as-of-correct for revisions: we cannot tell when a revision became
+        # public, only when we ingested it. Same class of limitation as the label
+        # availability assumption, and declared with it.
+        order_by = f"{_q(time_col)} DESC"
+        if "record_version" in column_names(con, table):
+            order_by += ", record_version DESC"
         sql = (
             f"{base} QUALIFY row_number() OVER "
-            f"(PARTITION BY {part} ORDER BY {_q(time_col)} DESC) = 1"
+            f"(PARTITION BY {part} ORDER BY {order_by}) = 1"
         )
     else:
-        sql = f"{base} ORDER BY {_q(time_col)} DESC LIMIT 1"
+        tail = f"{_q(time_col)} DESC"
+        if "record_version" in column_names(con, table):
+            tail += ", record_version DESC"
+        sql = f"{base} ORDER BY {tail} LIMIT 1"
     return query(con, sql, p)
 
 

@@ -11,6 +11,7 @@ from datetime import datetime
 from typing import Any
 
 from weather_agent import database as db
+from weather_agent import error_model
 from weather_agent.probability import (
     band_probability,
     quantiles_to_distribution,
@@ -25,6 +26,27 @@ FORBIDDEN_FEATURE_FIELDS = {
     "settlement_timestamp",
     "is_winner",
 }
+
+
+def _market_unit(con, market_id: str) -> str:
+    """The market's CONTRACTUAL temperature unit.
+
+    Raises rather than defaulting. A market whose unit we do not know cannot have
+    its band compared against any distribution: guessing here is precisely the
+    failure B-6 identified, and it produces a confident wrong answer rather than
+    an error.
+    """
+    rows = db.query(
+        con,
+        "SELECT unit FROM markets WHERE market_id = ? ORDER BY record_version DESC LIMIT 1",
+        [market_id],
+    )
+    if not rows or not rows[0].get("unit"):
+        raise ValueError(
+            f"market {market_id!r} has no declared unit; refusing to compare a band "
+            "against a distribution of unknown scale"
+        )
+    return rows[0]["unit"]
 
 
 def build_feature(
@@ -77,8 +99,17 @@ def build_feature(
         time_col="observation_time",
         asof=prediction_time,
         partition_cols=["token_id"],
-        where="market_id = ?",
-        params=[market_id],
+        # A-37: dataset_version was accepted and never used. Latent while only one
+        # version existed; the moment paper mode adds `ds_paper_v1` the as-of read
+        # would mix a backfilled price with a prospective one and raise nothing.
+        # token_id was accepted, used to label the row, and never used to SELECT
+        # the price: the read filtered by market only and took prices[0]. With two
+        # tokens per market that returns the OTHER side's price under this token's
+        # name, with no exception and no_lookahead_verified still true. The
+        # lineage guard in strategy_a exists only to patch this from outside;
+        # with the filter here it becomes redundant, which is what a guard should be.
+        where="market_id = ? AND token_id = ? AND dataset_version = ?",
+        params=[market_id, token_id, dataset_version],
     )
 
     if not prices:
@@ -90,6 +121,12 @@ def build_feature(
     if price.get("price_semantics") == "EXECUTABLE":
         raise ValueError("EXECUTABLE price cannot enter features")
 
+    # And never let a price from another token wear this token's name.
+    if str(price.get("token_id")) != str(token_id):
+        raise AssertionError(
+            f"price row is token {price.get('token_id')!r}, feature is for {token_id!r}"
+        )
+
     # ------------------------------------------------------------------
     # 2. WEATHER FORECAST — SOURCE AVAILABILITY as-of
     # ------------------------------------------------------------------
@@ -100,8 +137,8 @@ def build_feature(
         time_col="available_at",
         asof=prediction_time,
         partition_cols=["station", "model", "target_date"],
-        where="station = ? AND model = ? AND target_date = ?",
-        params=[station, model, target_date],
+        where="station = ? AND model = ? AND target_date = ? AND dataset_version = ?",
+        params=[station, model, target_date, dataset_version],
     )
 
     if not forecasts:
@@ -141,12 +178,32 @@ def build_feature(
     weather_prob = None
 
     if outcome is not None:
+        # UNITS (decision B-7). The quantiles in weather_forecasts are CELSIUS;
+        # the band's lo/hi are in the market's CONTRACTUAL unit, and 23 % of the
+        # catalogue trades in Fahrenheit. The distribution is indexed by integer
+        # temperatures and the contract resolves on whole degrees in ITS unit, so
+        # the DISTRIBUTION moves to the band's unit — converting the band instead
+        # would make a 1 F band 0.56 C wide and misaligned with the integer grid.
+        #
+        # Without this, a "27F or below" band read against a Celsius distribution
+        # asks "is the high <= 27 C?" — near-certain where the truth is a low-tail
+        # event. No exception, no failing test: a confident, inverted probability.
+        quantiles_c = {
+            10: forecast.get("forecast_p10"),
+            25: forecast.get("forecast_p25"),
+            50: forecast.get("forecast_p50"),
+            75: forecast.get("forecast_p75"),
+            90: forecast.get("forecast_p90"),
+        }
+        if any(v is None for v in quantiles_c.values()):
+            # M2 emitted no quantiles here (training window too short, or a
+            # rejected stratum). No characterised error, no honest probability.
+            return None
+
+        q = error_model.to_market_unit(quantiles_c, _market_unit(con, market_id))
+
         distribution = quantiles_to_distribution(
-            p10=forecast.get("forecast_p10"),
-            p25=forecast.get("forecast_p25"),
-            p50=forecast.get("forecast_p50"),
-            p75=forecast.get("forecast_p75"),
-            p90=forecast.get("forecast_p90"),
+            p10=q[10], p25=q[25], p50=q[50], p75=q[75], p90=q[90]
         )
 
         weather_prob = band_probability(
