@@ -2639,3 +2639,50 @@ endurece P2: `tau_exec` debe cubrir las dos.
 **insatisfacible**. Ahora exige que la medida de movimiento esté citada para los DOS leads y que la
 base de `max_age_hours` se declare. Se cambió la precondición porque era falsa, no para poder
 cumplirla. R24 v4, sha `6af0ba40…`.
+
+## A-60 — El libro se cierra por primera vez, y para llegar hubo tres roturas en cadena · 2026-09-09 · Claude (sesión A)
+
+**La cadena completa, en vivo:** descubrimiento → recolección → pronóstico → cuantiles del artefacto →
+señal → fill contra el book observado con fees D19 → **etiqueta** → operador congelado → **PnL
+realizado**.
+
+    observations  wanted=1 ingested=1   RKSI 2026-09-07, 28,0 °C, serie
+                                        IEM_ASOS_METAR_1C, available_at = descarga
+    settle        positions_open=2 settled=2 refused=0
+    trades        settlement=1, net_pnl +51,78 y +49,49, exit_time puesto
+
+**1. Nadie ingería las etiquetas.** `stage_settle` lee `weather_observations` y en modo papel **nada
+la escribía**: la puebla el backfill bajo otro `dataset_version`, y las fechas objetivo de la corrida
+están en el futuro cuando se abre la posición. Cada posición habría quedado abierta los 21 días y el
+libro habría reportado **PnL cero no porque la estrategia no ganara nada sino porque nada resolvió**.
+Misma forma que `stage_forecasts` antes de cablearse: el módulo existía, el ciclo no lo llamaba.
+`stage_observations` pide una vez por (estación, día local) que una posición ABIERTA necesita, cuyo
+día local **ya terminó** —el máximo METAR de un día en curso no es el máximo de ese día— y que no esté
+ya. 429 para la etapa. `available_at` = instante de descarga: la corrida acumula el histórico as-of
+real que D17 se comprometió a construir y el backfill retrospectivo no puede demostrar.
+
+**2. La otra mitad de la terna nunca se persistía.** `contract_source` tenía columna;
+`measurement_rule_code` no. `stage_settle` metía la **frase** en un campo llamado `_code` y el núcleo
+rechazaba todos los mercados con «terna outside the 11-class partition». Añadida como **migración 5**,
+no como línea en la 2: un ALTER en una migración ya aplicada **no corre** en una base que registró esa
+versión, así que las bases nuevas la tendrían y `data/pmw.duckdb` no — liquidaría en CI y se negaría
+en la operación. `SCHEMA_VERSION` = 5.
+
+**3. Los dos módulos llaman distinto a la misma serie.** El núcleo congelado exige `metar_body_c` /
+`metar_tgroup_tmpf`; `observations.to_row` —único escritor de la tabla, prospectivo y backfill—
+escribe `IEM_ASOS_METAR_1C`, `IEM_ASOS_TMPF_1F`, `IEM_ASOS_TMPF_0.1F`. **El único sitio donde
+`metar_body_c` había aparecido fuera del núcleo era un fixture de este repo**, así que **P4 se cerró
+contra ese fixture y la liquidación no había tocado nunca una fila real**. El núcleo está congelado
+por sha: la correspondencia se declara en la frontera y **sólo donde es cierta**
+(`IEM_ASOS_METAR_1C → metar_body_c`). Las dos series Fahrenheit **no se mapean**: `metar_tgroup_tmpf`
+nombra el T-group y esas dos son `tmpf` a dos resoluciones distintas; colapsarlas liquidaría KBKF
+fuera de su rejilla (A-42). Se niegan con `series_correspondence_undeclared`.
+
+**ABIERTA, para el audit:** ¿contra qué serie de IEM se escribió `metar_tgroup_tmpf`? Si el audit de
+R12/R14 nunca miró esa columna, **el operador en °F no está validado contra nada** y hay que decirlo
+en §9: son 10 estaciones más KBKF de 48.
+
+**El patrón, quinta y sexta vez en el día.** Cinco fixtures certificando mundos que no existen: el
+ICAO en `markets.station`, el código P_* en `measurement_rule`, `metar_body_c` en `series`, la sesión
+falsa del CLOB de B, y el `--collect-only` de los smoke tests. **La suite verde no dice nada del
+camino en vivo.** 520 verdes, y las 520 no habrían encontrado ninguna de las tres.
