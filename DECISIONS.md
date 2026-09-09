@@ -3800,3 +3800,33 @@ correcciones sobre artefactos ya publicados —el `x_exec`, la proyección de `N
 de denominadores— dentro de los documentos y no en los márgenes. **Lo que queda es de A y de la
 usuaria:** medir elegibilidad en vivo varios días, reformular la regla de cobertura sobre la puerta
 que ata, y decidir si se gastan 21 días. **`PAPER_TAU` sigue sin poner.**
+
+## A-79 — La medida de elegibilidad estaba instrumentada donde los ciclos no corren · 2026-09-09 · Claude (sesión A)
+
+**El embudo que instrumenté en A-78 no registra nada.** Vive en `stage_signals`, y `stage_signals`
+**no se ejecuta nunca en Actions**: todos los ciclos programados son `--collect-only` porque
+`vars.PAPER_TAU` no está puesta, que es el fallo cerrado correcto. Verificado sobre el almacén real —
+`signals` 0 shards, `weather_forecasts` 0, `paper_trades` 0 (A-72). **Instrumenté la única etapa que
+no puede correr en el host.**
+
+**El peldaño 1 —cuántos eventos tienen TODAS sus bandas cotizadas— no necesita tau, ni pronóstico, ni
+modelo, ni decisión. Sólo precios.** Así que pasa a `stage_venue_coverage`, que corre en **cada
+ciclo**, incluidos los de sólo-recolección, y la serie de varios días se acumula **gratis**: sin
+cuota, sin operaciones y sin escribir nada en el libro de la corrida.
+
+**Verificado en un ciclo `--collect-only` en vivo:**
+
+    universo         49 eventos / 539 mercados / 1.078 tokens
+    venue_coverage   eventos 49 · completos 8 (16,3 %)
+                     bandas 539 · cotizadas 413 (76,6 %)
+
+**Y las dos tasas juntas dicen algo que ninguna dice sola:** está cotizado el **76,6 % de las BANDAS**
+pero sólo es completo el **16,3 % de los EVENTOS**. Con huecos repartidos al azar quedaría
+0,766^11 ≈ **5 %** de eventos completos, así que **las bandas sin cotizar se AGRUPAN dentro de los
+eventos** en vez de esparcirse. Por eso el techo es el que es — y por eso contar bandas lo habría
+halagado por un factor de cinco.
+
+Fijado por test que **una sola banda sin cotizar excluye el evento entero**, porque eso es lo que hace
+Strategy A y porque el recuento tiene que ser **el techo de lo que podría decidirse jamás**, no de lo
+que está casi decidible. Y fijado el instante as-of: un precio sellado después de `prediction_time` no
+cotiza una banda. **530 verdes.**
