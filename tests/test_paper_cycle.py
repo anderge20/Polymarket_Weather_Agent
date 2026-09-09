@@ -1053,3 +1053,56 @@ def test_stage_paper_opens_a_position_carrying_the_callers_target_date(con):
     assert out["opened"] == 1
     td = con.execute("SELECT target_date FROM paper_trades").fetchone()[0]
     assert (td.date() if hasattr(td, "date") else td) == date(2026, 9, 10)
+
+
+def test_the_signals_stage_records_both_rungs_with_their_denominators(con, monkeypatch):
+    """A rate is not a measurement until its denominator is written next to it.
+
+    Two cross-session numbers called "eligible" turned out to have different
+    denominators — 14 % was structural completeness, 80.2 % was
+    actionable-among-complete — and the second was the PRODUCT of two rungs that
+    happened to be nearly equal, which is what makes two denominators look like
+    one. The cycle records both rungs and the tau that produced them instead of
+    leaving a later reader to infer which is which.
+    """
+    T = datetime(2026, 9, 9, 12, tzinfo=timezone.utc)
+    for i, mid in enumerate(("m1", "m2")):
+        _market(con, market_id=mid, event_id=f"e{i}", end_date="2026-09-10T12:00:00Z")
+    # `available_at` is what the as-of universe filter reads: a market we could not
+    # have known existed at prediction_time is not decidable (R26).
+    con.execute("UPDATE markets SET available_at = ?", [T - timedelta(hours=1)])
+    con.execute(
+        "INSERT INTO weather_forecasts (issue_time, target_date, station, model, "
+        "forecast_tmax, forecast_p50, available_at, ingestion_timestamp, "
+        "dataset_version, record_version) VALUES (?,?,?,?,?,?,?,?,?,?)",
+        [T, date(2026, 9, 10), "EGLC", "icon_seamless", 17.0, 17.0, T, T0, "ds1", 1])
+    # one event produces an actionable signal, the other does not
+    con.execute(
+        'INSERT INTO signals (market_id, token_id, strategy, "timestamp", signal, '
+        "fair_value, price_assumption, edge, ingestion_timestamp, dataset_version, "
+        "record_version) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+        ["m1", "m1_yes", "strategy_a_v1", T, "BUY", 0.70, 0.50, 0.20, T0, "ds1", 1])
+    con.execute(
+        'INSERT INTO signals (market_id, token_id, strategy, "timestamp", signal, '
+        "fair_value, price_assumption, edge, ingestion_timestamp, dataset_version, "
+        "record_version) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+        ["m2", "m2_yes", "strategy_a_v1", T, "HOLD", 0.51, 0.50, 0.01, T0, "ds1", 1])
+
+    cy = _cycle()
+    monkeypatch.setattr(
+        "weather_agent.strategy.strategy_a.generate_event_signals",
+        lambda con, **kw: {"eligible": True, "signals_written": 1})
+    out = paper_cycle.stage_signals(
+        cy, con, dataset_version="ds1", target_date=date(2026, 9, 10),
+        universe=[{"market_id": "m1", "event_id": "e0"},
+                  {"market_id": "m2", "event_id": "e1"}],
+        model="icon_seamless", tau=0.03, weather_sum_tolerance=0.02,
+        market_sum_min=0.9, market_sum_max=1.15, prediction_time=T)
+
+    assert out["events_discovered"] == 2
+    assert out["events_admissible"] == 2
+    assert out["eligible"] == 2
+    assert out["events_actionable"] == 1          # only m1's event has BUY/FADE
+    assert out["rung1_structural_rate"] == 1.0    # 2 of 2 pass the structural gate
+    assert out["rung2_actionable_rate"] == 0.5    # 1 of 2 eligible is actionable
+    assert out["tau_signal"] == 0.03

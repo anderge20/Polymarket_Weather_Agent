@@ -566,6 +566,48 @@ def stage_signals(cy: Cycle, con, *, dataset_version: str, target_date: date,
         totals["eligible"] += 1 if out.get("eligible") else 0
         totals["excluded"] += 0 if out.get("eligible") else 1
         totals["signals"] += out.get("signals_written", 0)
+
+    # THE FUNNEL, RUNG BY RUNG, WITH ITS DENOMINATORS NAMED.
+    #
+    # Half an hour of cross-session argument went into discovering, TWICE, that
+    # two numbers called "eligible" had different denominators: one session's
+    # 14 % was structural completeness (7 of 49 events pass the band/price gates)
+    # and the other's 80.2 % was actionable-among-already-complete — and the
+    # second turned out to be the PRODUCT of two rungs that happened to be almost
+    # equal (0.895 x 0.896), which is exactly what makes two denominators look
+    # like one. A rate is not a measurement until its denominator is written down
+    # next to it, so the cycle writes them instead of leaving them to be inferred:
+    #
+    #   rung 1  structural   eligible / discovered      the venue property
+    #   rung 2  actionable   with a BUY|FADE / eligible what the rule adds
+    #
+    # Both, plus the tau of EACH gate, because they are different quantities over
+    # different operands (A-32's lesson) and a reader comparing runs needs to know
+    # which threshold produced which count.
+    actionable_events = {
+        r["event_id"] for r in db.query(
+            con,
+            "SELECT DISTINCT m.event_id FROM signals s JOIN markets m "
+            "  ON m.market_id = s.market_id AND m.dataset_version = s.dataset_version "
+            "WHERE s.dataset_version = ? AND s.\"timestamp\" = ? "
+            "  AND s.signal IN ('BUY','FADE')",
+            [dataset_version, prediction_time],
+        ) if r.get("event_id")
+    }
+    # AND THE DENOMINATOR OF RUNG 1 IS THE ADMISSIBLE SET, NOT EVERYTHING
+    # DISCOVERED. `eligible` is counted over the events that survived the as-of
+    # filter, so dividing it by everything discovered would mix two populations —
+    # the very defect this block exists to prevent, committed while writing it.
+    # Both counts are published so the as-of drop is visible and never folded in.
+    totals["events_discovered"] = len(all_events)
+    totals["events_admissible"] = len(events)
+    totals["events_actionable"] = len(actionable_events)
+    totals["rung1_structural_rate"] = (
+        round(totals["eligible"] / len(events), 4) if events else None)
+    totals["rung2_actionable_rate"] = (
+        round(len(actionable_events) / totals["eligible"], 4)
+        if totals["eligible"] else None)
+    totals["tau_signal"] = tau
     cy.stage("signals", OK, events=len(events), **totals)
     return totals
 
