@@ -52,6 +52,11 @@ on:
         required: false
         type: boolean
         default: false
+      settle_only:
+        description: 'Settlement tail (R24 §5): ingest labels and settle, decide nothing'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -163,7 +168,14 @@ jobs:
           # NOT REPRODUCIBLE for half the run for a reason that is not
           # reproducibility. Measured cost of the snapshot: 206 KiB, 8.5 MiB over
           # the run.
-          if [ "${{ steps.gate.outputs.collect_only }}" = "true" ]; then
+          # The tail (R24 §5) is dispatch-only and never scheduled: it runs for
+          # the two days after the run's last decision cycle, to close positions
+          # whose target day resolves after the run ends. It is checked FIRST
+          # because it subsumes collect_only — a tail cycle collects nothing
+          # either, and passing both would be ambiguous.
+          if [ "${{ inputs.settle_only }}" = "true" ]; then
+            ARGS+=(--settle-only)
+          elif [ "${{ steps.gate.outputs.collect_only }}" = "true" ]; then
             ARGS+=(--collect-only)
           else
             ARGS+=(
