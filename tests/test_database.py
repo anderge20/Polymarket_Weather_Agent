@@ -12,6 +12,7 @@ Run:  pip install -r requirements-pipeline.txt && pytest -q
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -385,3 +386,71 @@ def test_asof_defaults_to_available_at_for_weather(con):
     got = db.query_asof(con, "weather_forecasts", asof=T)
     assert len(got) == 1
     assert got[0]["available_at"] is not None
+
+
+def test_altering_a_sequence_backed_table_leaves_an_unreplayable_wal(tmp_path):
+    """WHY `init_db` CHECKPOINTs after every migration — the trigger, isolated.
+
+    Adding migration 7 broke `test_checkpoint_resume` with "Failure while replaying
+    WAL file ... GetDefaultDatabase with no default database set". The first
+    explanation given for it — "a migration that lives only in the WAL has to be
+    replayed and replaying DDL is what breaks" — was WRONG, and session B refused
+    it because they could not reproduce it on migration 6 in six scenarios. They
+    were right. The real trigger is narrower, and this is it, in duckdb alone with
+    no project code:
+
+        ALTER TABLE ... ADD COLUMN on a table whose default calls `nextval`
+        leaves a WAL that duckdb 1.5.5 cannot replay.
+
+    The IDENTICAL statement on a table without the sequence-backed default replays
+    fine. Confirmed against the project too: pointing migration 7 at `markets`
+    instead of `paper_trades` makes the three checkpoint/resume tests pass.
+
+    In this schema exactly one table qualifies — `paper_trades` — and it is the
+    ledger, written by a process that runs where jobs get cancelled.
+
+    If duckdb stops reproducing this, the test SKIPS with a message rather than
+    passing silently: that is the signal that the CHECKPOINT guard may be
+    removable, and it should not look like ordinary success.
+    """
+    import subprocess
+    import sys
+    import textwrap
+
+    import duckdb
+
+    child = textwrap.dedent("""
+        import duckdb, os, sys
+        con = duckdb.connect(sys.argv[1])
+        if sys.argv[2] == "seq":
+            con.execute("CREATE SEQUENCE s START 1")
+            con.execute("CREATE TABLE t (id BIGINT PRIMARY KEY "
+                        "DEFAULT nextval('s'), x VARCHAR)")
+        else:
+            con.execute("CREATE TABLE t (id BIGINT PRIMARY KEY, x VARCHAR)")
+        con.execute("ALTER TABLE t ADD COLUMN y DATE")
+        os._exit(9)
+    """)
+
+    def survives(mode: str) -> bool:
+        path = str(tmp_path / f"{mode}.duckdb")
+        subprocess.run([sys.executable, "-c", child, path, mode],
+                       capture_output=True, timeout=120)
+        try:
+            con = duckdb.connect(path)
+            con.close()
+            return True
+        except Exception:
+            return False
+
+    without_sequence = survives("noseq")
+    with_sequence = survives("seq")
+
+    assert without_sequence, (
+        "the control must survive: if the plain ALTER also breaks, the trigger is "
+        "not the sequence and this whole diagnosis is wrong again")
+    if with_sequence:
+        pytest.skip(
+            f"duckdb {duckdb.__version__} no longer leaves an unreplayable WAL for "
+            "ALTER on a sequence-backed table. The CHECKPOINT in init_db may be "
+            "removable — check before removing it.")

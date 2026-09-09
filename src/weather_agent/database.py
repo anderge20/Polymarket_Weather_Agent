@@ -718,18 +718,34 @@ def init_db(con=None, db_path: str | None = None):
             con.execute("COMMIT;")
             # FORCE THE DDL INTO THE DATABASE FILE, out of the write-ahead log.
             #
-            # A migration that lives only in the WAL has to be REPLAYED if the
-            # process dies before DuckDB checkpoints on its own, and replaying DDL
-            # is where this DuckDB version breaks: adding one more ALTER made
-            # `test_checkpoint_resume` fail with "Failure while replaying WAL file
-            # ... GetDefaultDatabase with no default database set" — an internal
-            # assertion, on a database that was fine one migration earlier.
+            # ISOLATED, not inferred. The first account of this — "a migration
+            # that lives only in the WAL has to be replayed and replaying DDL is
+            # what breaks" — was WRONG, and session B refused it because they
+            # could not reproduce it on migration 6 in six scenarios. They were
+            # right to. The real trigger is narrower and it reproduces in twenty
+            # lines with no project code at all, on duckdb 1.5.5:
             #
-            # The hazard belongs to EVERY migration, not to this one; this one only
-            # crossed whatever boundary triggers it. And the cycle runs where
-            # processes get killed: a cancelled Actions job during the first run
-            # against a new schema would leave a database that cannot be reopened
-            # at all. One flush per migration — they run once — removes the class.
+            #     CREATE SEQUENCE s START 1;
+            #     CREATE TABLE t (id BIGINT PRIMARY KEY DEFAULT nextval('s'), ...);
+            #     ALTER TABLE t ADD COLUMN y DATE;      -- then die, no checkpoint
+            #     -- reopening: INTERNAL Error, Failure while replaying WAL file
+            #
+            # The IDENTICAL ALTER on a table WITHOUT the sequence-backed default
+            # replays fine (247 B of WAL, reopens, column present). So it is not
+            # DDL in the WAL, and not the number of migrations: it is ALTER on a
+            # table whose default calls `nextval`. Confirmed against the project
+            # too — pointing migration 7 at `markets` instead of `paper_trades`
+            # makes the three checkpoint/resume tests pass again.
+            #
+            # In this schema exactly ONE table qualifies: `paper_trades`, the only
+            # one with `DEFAULT nextval('seq_paper_trades')`. So the blast radius
+            # is one table — and it is the ledger, altered by a process that runs
+            # where jobs get cancelled.
+            #
+            # The CHECKPOINT stays anyway: flushing a migration costs one write,
+            # they run once, and it removes this and anything else that would have
+            # needed a WAL replay. But it is a GUARD, not the cure, and if the
+            # error ever appears WITH it in place then this diagnosis is wrong too.
             with contextlib.suppress(Exception):
                 # A read-only or in-memory connection has nothing to flush and says
                 # so by raising. That is not a failure of the migration.
