@@ -84,7 +84,11 @@ _ICAO_RE = re.compile(r"wunderground\.com/history/daily/[a-z]{2}/[^/]+/([A-Za-z0
 # discovery, where 319 of 330 open markets had no station (measured 2026-09-09).
 _URL_RE = re.compile(
     r"https://www\.wunderground\.com/history/daily/\S+"
-    r"|https?://(?:www\.)?weather\.gov/wrh/timeseries\?site=[A-Za-z0-9]{3,5}\b")
+    r"|https?://(?:www\.)?weather\.gov/wrh/timeseries\?site=[A-Za-z0-9]{3,5}\b",
+    # re.I was on the pre-R30 pattern and dropping it here would have been a
+    # SILENT narrowing: 0 descriptions in CATALOG_V2 carry a cased URL today, so
+    # no test and no measurement could have caught the loss. Kept deliberately.
+    re.I)
 # "recorded at the <Station Name> Station in degrees ..." (non-greedy, unicode-safe)
 _STATION_RE = re.compile(r"recorded at the (.+?) Station", re.I)
 _CITY_TITLE_RE = re.compile(r"temperature in ([A-Za-z .,'\-]+?) on ", re.I)
@@ -387,7 +391,7 @@ def parse_resolution_text(desc: str) -> dict:
         # markets resolved to no station (measured 2026-09-09), which is the whole
         # prospective pipeline with nothing to forecast for.
         icao = None
-        q = re.search(r"[?&]site=([A-Za-z0-9]{3,5})\b", url)
+        q = re.search(r"[?&]site=([A-Za-z0-9]{3,5})\b", url, re.I)
         if q:
             icao = q.group(1)
         else:

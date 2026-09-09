@@ -596,3 +596,51 @@ def test_forecasts_writes_quantiles_in_celsius_from_the_backfill_substrate(con, 
                       "FROM weather_forecasts WHERE station = 'EGLC'").fetchone()
     # forecast_pXX = f + percentile_XX(e), in Celsius; f = 17.0
     assert row == (pytest.approx(15.5), pytest.approx(17.4), pytest.approx(19.2))
+
+
+def test_quantiles_never_cross_between_record_versions(con, monkeypatch):
+    """`record_version` is part of the PK of weather_forecasts. An UPDATE that does
+    not name it writes to EVERY version of the key, so the last forecast processed
+    would set the quantiles of all of them — a row whose p50 is not derived from
+    its own forecast_tmax. Two versions, two different tmax, two different p50."""
+    from weather_agent import error_model as em, m2, weather
+
+    t = datetime(2026, 9, 9, 12, tzinfo=timezone.utc)
+    issue = m2.pick_run(t, weather.M1_MODEL)
+    for rv, tmax in ((1, 10.0), (2, 20.0)):
+        con.execute(
+            "INSERT INTO weather_forecasts (issue_time, target_date, station, model, "
+            "forecast_tmax, available_at, ingestion_timestamp, dataset_version, "
+            "record_version) VALUES (?,?,?,?,?,?,?,?,?)",
+            [issue, date(2026, 9, 10), "EGLC", "icon_seamless", tmax,
+             weather.available_at(issue, "icon_seamless"), T0, "ds_paper_v1", rv])
+    monkeypatch.setattr(weather, "ingest_run", lambda *a, **k: None)
+    monkeypatch.setattr("weather_agent.stations.timezone_of", lambda i: "Europe/London")
+    fake_q = em.Quantiles(scope=em.SCOPE_POOLED, n=100,
+                          values={10: -1.0, 25: -0.5, 50: 0.0, 75: 0.5, 90: 1.0})
+    monkeypatch.setattr(m2, "load_pairs", lambda con, dataset_version=None: ([], {}, {}))
+    monkeypatch.setattr(em, "quantiles_for", lambda p, t, l: fake_q)
+
+    out = paper_cycle.stage_forecasts(
+        _cycle(), con, dataset_version="ds_paper_v1", target_date=date(2026, 9, 10),
+        universe=[{"station_identifier": "EGLC"}], model="icon_seamless",
+        lead_hours=24, prediction_time=t)
+    assert out["quantiles"] == 2
+    got = dict(con.execute(
+        "SELECT record_version, forecast_p50 FROM weather_forecasts "
+        "WHERE station = 'EGLC' ORDER BY record_version").fetchall())
+    assert got[1] == pytest.approx(10.0)
+    assert got[2] == pytest.approx(20.0)
+
+
+def test_a_non_integral_lead_refuses_instead_of_truncating_the_stratum(con, monkeypatch):
+    """`training_pairs` matches `p.lead_h == lead_h` exactly. int(9.5) -> 9 would
+    return the 9 h stratum for a 9.5 h decision without raising anything."""
+    from weather_agent import weather
+    monkeypatch.setattr(weather, "ingest_run", lambda *a, **k: None)
+    monkeypatch.setattr("weather_agent.stations.timezone_of", lambda i: "Europe/London")
+    out = paper_cycle.stage_forecasts(
+        _cycle(), con, dataset_version="ds_paper_v1", target_date=date(2026, 9, 10),
+        universe=[{"station_identifier": "EGLC"}], model="icon_seamless",
+        lead_hours=9.5, prediction_time=datetime(2026, 9, 9, 12, tzinfo=timezone.utc))
+    assert out.get("stopped") is True and out["quantiles"] == 0

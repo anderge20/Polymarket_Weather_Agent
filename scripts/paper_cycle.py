@@ -414,6 +414,14 @@ def stage_forecasts(cy: Cycle, con, *, dataset_version: str, target_date: date,
     # ---- 2. the uncertainty
     pairs, _issue_by_key, pair_stats = m2.load_pairs(
         con, dataset_version=m2.DATASET_VERSION)
+    # The stratum is keyed by an INTEGER lead (`training_pairs` compares
+    # `p.lead_h == lead_h`). `int()` on a non-integral lead would not raise: it
+    # would truncate into a NEIGHBOURING stratum and return quantiles for a
+    # horizon nobody asked about. Refuse instead.
+    if float(lead_hours) != int(lead_hours):
+        cy.stage("forecasts", STOPPED, reason="non_integral_lead_hours",
+                 lead_hours=lead_hours, written=written)
+        return {"written": written, "quantiles": 0, "stopped": True}
     q = em.quantiles_for(pairs, prediction_time, int(lead_hours))
     if not q.values:
         cy.stage("forecasts", OK, written=written, quantiles=0,
@@ -421,9 +429,17 @@ def stage_forecasts(cy: Cycle, con, *, dataset_version: str, target_date: date,
                  note="forecast rows written WITHOUT quantiles: the stratum has none")
         return {"written": written, "quantiles": 0}
 
+    # `record_version` is PART OF THE PRIMARY KEY of weather_forecasts and was
+    # named by NEITHER the read nor the write. With one version per key — all
+    # `ingest_run` writes today — the two agree; with two, the SELECT returns both
+    # rows and each UPDATE, unscoped, writes to BOTH, so the last forecast_tmax
+    # processed would set the quantiles of every version of that key. That is the
+    # defect class of "the price read returned another token's price", latent
+    # rather than live, and the fix is to name the column.
     rows = db.query(
         con,
-        "SELECT station, issue_time, target_date, forecast_tmax FROM weather_forecasts "
+        "SELECT station, issue_time, target_date, record_version, forecast_tmax "
+        "FROM weather_forecasts "
         "WHERE dataset_version = ? AND model = ? AND target_date = ? "
         "AND issue_time = ? AND forecast_tmax IS NOT NULL",
         [dataset_version, model, target_date, issue_time],
@@ -435,9 +451,10 @@ def stage_forecasts(cy: Cycle, con, *, dataset_version: str, target_date: date,
             "UPDATE weather_forecasts SET forecast_p10 = ?, forecast_p25 = ?, "
             "forecast_p50 = ?, forecast_p75 = ?, forecast_p90 = ? "
             "WHERE station = ? AND model = ? AND issue_time = ? AND target_date = ? "
-            "AND dataset_version = ?",
+            "AND dataset_version = ? AND record_version = ?",
             [qs[10], qs[25], qs[50], qs[75], qs[90],
-             r["station"], model, r["issue_time"], r["target_date"], dataset_version],
+             r["station"], model, r["issue_time"], r["target_date"], dataset_version,
+             r["record_version"]],
         )
         n_q += 1
 

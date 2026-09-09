@@ -138,3 +138,16 @@ def test_band_integrity_flags_double_open_ended():
     r = res.band_integrity(["27°F or below", "20°F or below", "38°F or higher"])
     assert r["n_lower_open"] == 2
     assert r["is_partition"] is False
+
+
+def test_the_resolution_url_is_matched_case_insensitively():
+    """`re.I` was on the pre-R30 pattern. Dropping it while widening the pattern
+    would have been a silent narrowing: no description in CATALOG_V2 carries a
+    cased URL today, so nothing in the suite or in the catalogue could see it."""
+    from weather_agent.polymarket import resolution as res
+    for url, icao in (
+        ("Https://Www.Weather.Gov/wrh/timeseries?SITE=eglc", "EGLC"),
+        ("HTTPS://WWW.WUNDERGROUND.COM/history/daily/gb/london/EGLC", "EGLC"),
+    ):
+        out = res.parse_resolution_text(f"... available here: {url} ...")
+        assert out.get("station_identifier") == icao, url
