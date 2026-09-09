@@ -140,7 +140,8 @@ Explícitos porque su ausencia fue el bloqueante nº 2 de la refutación de `PRE
 | `price_history` | `observation_time` (instante de NUESTRA captura del book) |
 | `orderbook_snapshots` | `timestamp` = `collected_at` (ídem) |
 | `weather_forecasts` | `available_at` |
-| `markets` / `outcomes` | `available_at` (sellado en el descubrimiento, R26) |
+| `markets` | `available_at` (sellado en el descubrimiento, R26) |
+| `outcomes` | **no tiene columna as-of**: no figura en `AS_OF_COLUMNS` y sus únicas columnas temporales son `source_timestamp` e `ingestion_timestamp`, que `database.py` prohíbe usar como as-of. Su admisibilidad se hereda de su `markets` (v2 la agrupó con `markets` bajo `available_at` y repetía el error que decía corregir) |
 
 ---
 
@@ -188,7 +189,8 @@ precondición y se espera.
 | `fixed_fraction` | 0,02 | `config.DEFAULTS` |
 | `size_cap` | 0,02 | `config.DEFAULTS` |
 | **presupuesto por posición** | **200 USDC en la PRIMERA**; decae como `200·(1−0,02)^k` mientras no haya liquidación que reponga bankroll | `paper.position_cash` sobre el bankroll corriente. v1 decía «200 USDC/posición» a secas, y era falso a partir de la segunda |
-| `tau` | **de R21 (P2)** — sin valor por defecto; sin él la corrida no arranca | preregistro del backtest |
+| **`tau_signal`** | **de R21 (P2)** — sin valor por defecto | umbral de Strategy A, sobre el edge **BRUTO** (`fair_value − p_market`) contra el mid indicativo |
+| **`tau_exec`** | **de R21 (P2)**, declarado aparte | umbral de ejecución, sobre el edge **NETO** (tras fees, contra el VWAP alcanzable). v1 y v2 declaraban **un** `tau` con **un** origen, mientras el código lo aplicaba **dos veces sobre dos magnitudes distintas**: un umbral con dos operandos, la misma clase de defecto que A-32 le reprocha al `n ≥ 30` ajeno. Pueden tomar el mismo valor; que lo tomen es una **decisión declarada**, no una identidad |
 | `exit_mode` | `hold_to_resolution` | D19: redención sin fee de venue |
 | `x_exec` | **0,0 como principal**, y **dos variantes de estrés obligatorias: `0,5·tick` y `1 punto`** | D19 las declara obligatorias y v1 las omitía. Las variantes se computan **sobre las mismas decisiones registradas**, no re-operando |
 | `price_layer` | `SIMULATED_EXECUTABLE` | R23 |
