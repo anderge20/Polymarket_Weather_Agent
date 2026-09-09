@@ -41,7 +41,9 @@ All human timestamps are stored as TIMESTAMPTZ (UTC).
 from __future__ import annotations
 
 import json
+import contextlib
 import os
+import weakref
 from datetime import datetime, timezone
 from typing import Any, Iterable, Mapping, Sequence
 
@@ -716,37 +718,80 @@ def table_names(con) -> list[str]:
     return [r[0] for r in rows]
 
 
-#: Column lists are SCHEMA, and the schema changes only when a migration runs.
-#: `latest_asof` was asking `information_schema` once PER CALL, so the R19 backtest
-#: spent 28 % of its time re-reading metadata it had already read 2 000 times that
-#: second. Keyed by connection identity, because two connections in one process
-#: can legitimately sit at different schema versions — `validate_2b.py` relies on
-#: exactly that when it checks a column is absent at v1 and present at v2.
-_COLUMN_CACHE: dict[tuple[int, str], list[str]] = {}
+#: Column lists are SCHEMA, and re-reading `information_schema` once per call cost
+#: the R19 backtest 28 % of its wall clock. But a GLOBAL, perpetual cache was
+#: wrong, and session A reproduced both ways it breaks:
+#:
+#:   1. any DDL outside `init_db`'s migration loop leaves it lying. Verified: warm
+#:      the cache, `ALTER TABLE markets ADD COLUMN probe_yyy`, and `column_names`
+#:      still does not list it while `information_schema` does. Tests in this repo
+#:      do bare ALTERs, and `_ensure_checkpoint_table` creates a table AFTER the
+#:      loop.
+#:   2. `id(con)` is REUSED. Six successive connections returned the same id, and
+#:      `init_db` only invalidates when a migration actually runs — so on an
+#:      already-migrated base, which is the production case, it never invalidates
+#:      and a fresh connection can inherit a dead one's entry.
+#:
+#: Neither failure raises. `discovery.ingest_event` decides from `column_names`
+#: whether to write `contract_source` and `measurement_rule_code`; a stale answer
+#: makes it silently stop writing them. That is precisely the class of defect this
+#: project has spent its day on: the gap that produces a plausible value instead of
+#: an error.
+#:
+#: So the cache is OFF unless a caller opts in for an explicit, bounded, read-only
+#: pass. Outside `column_cache()` every call queries, exactly as before, and the
+#: dangerous callers never opt in. The keys are the connection OBJECTS in a
+#: WeakKeyDictionary (DuckDB connections support weakref, verified), so a dead
+#: connection's entry dies with it and no reused id can resurrect it.
+_COLUMN_CACHE: "weakref.WeakKeyDictionary | None" = None
+
+
+@contextlib.contextmanager
+def column_cache():
+    """Cache column lists for the duration of this block.
+
+    THE SCHEMA MUST NOT CHANGE INSIDE THE BLOCK. That is a real constraint and it
+    is why the cache is opt-in and scoped rather than global: a short analytical
+    pass can promise it, and `ingest_event` running for hours cannot. Call
+    `invalidate_column_cache(con)` if you must alter something anyway.
+
+    Re-entrant: a nested block reuses the outer cache and the outer state is
+    restored on exit.
+    """
+    global _COLUMN_CACHE
+    outer = _COLUMN_CACHE
+    if outer is None:
+        _COLUMN_CACHE = weakref.WeakKeyDictionary()
+    try:
+        yield
+    finally:
+        _COLUMN_CACHE = outer
 
 
 def invalidate_column_cache(con=None) -> None:
-    """Drop cached column lists. Called after every migration; a cache that
-    outlived an ALTER would report the old schema, and the caller would conclude
-    a column does not exist because we did not look."""
+    """Drop cached column lists — all of them, or one connection's. A no-op when
+    no cache is active, so callers never have to ask whether one is."""
+    if _COLUMN_CACHE is None:
+        return
     if con is None:
         _COLUMN_CACHE.clear()
-        return
-    for key in [k for k in _COLUMN_CACHE if k[0] == id(con)]:
-        del _COLUMN_CACHE[key]
+    else:
+        _COLUMN_CACHE.pop(con, None)
 
 
 def column_names(con, table: str) -> list[str]:
-    key = (id(con), table)
-    hit = _COLUMN_CACHE.get(key)
-    if hit is not None:
-        return hit
+    cache = _COLUMN_CACHE
+    if cache is not None:
+        per = cache.get(con)
+        if per is not None and table in per:
+            return per[table]
     rows = con.execute(
         "SELECT column_name FROM information_schema.columns WHERE table_name = ?",
         [table],
     ).fetchall()
     cols = [r[0] for r in rows]
-    _COLUMN_CACHE[key] = cols
+    if cache is not None:
+        cache.setdefault(con, {})[table] = cols
     return cols
 
 

@@ -193,6 +193,25 @@ def candidates(con, target_dates, *, leads=LEADS,
         c[k] = c.get(k, 0) + 1
 
     out: list[Candidate] = []
+    # The one place that opts into the column cache: a bounded, read-only pass
+    # over a schema that cannot change while it runs. Outside this block
+    # `column_names` always queries, so `discovery.ingest_event` — which decides
+    # from it whether to write `contract_source` — can never read a stale schema.
+    with db.column_cache():
+        out.extend(_candidates_inner(
+            con, target_dates, leads=leads, dataset_version=dataset_version,
+            model=model, x_exec=x_exec, cost_model=cost_model, counters=c))
+    return out
+
+
+def _candidates_inner(con, target_dates, *, leads, dataset_version, model,
+                      x_exec, cost_model, counters) -> list[Candidate]:
+    c = counters
+
+    def bump(k):
+        c[k] = c.get(k, 0) + 1
+
+    out: list[Candidate] = []
     for d in target_dates:
         rows = universe(con, d, dataset_version)
         if not rows:

@@ -418,3 +418,53 @@ def test_upsert_many_updates_in_place_like_upsert(con):
     db.upsert_many(con, "price_history", [{**base, "indicative_price": 0.9}], key)
     rows = db.query(con, "SELECT indicative_price FROM price_history")
     assert len(rows) == 1 and rows[0]["indicative_price"] == 0.9
+
+
+# ---------------------------------------------------------------- column cache
+def test_column_names_is_not_cached_by_default():
+    """Session A reproduced this: a global cache is stale after any DDL outside
+    `init_db`'s migration loop, and the failure is SILENT — `ingest_event` decides
+    from `column_names` whether to write `contract_source`, so a stale answer makes
+    it quietly stop writing it. The cache is therefore OFF unless opted into."""
+    con = db.init_db(db.connect(":memory:"))
+    db.column_names(con, "markets")
+    con.execute("ALTER TABLE markets ADD COLUMN probe_default VARCHAR")
+    assert "probe_default" in db.column_names(con, "markets")
+
+
+def test_column_cache_scope_can_be_invalidated_and_ends_with_the_block():
+    con = db.init_db(db.connect(":memory:"))
+    with db.column_cache():
+        db.column_names(con, "markets")
+        con.execute("ALTER TABLE markets ADD COLUMN probe_scoped VARCHAR")
+        assert "probe_scoped" not in db.column_names(con, "markets")
+        db.invalidate_column_cache(con)
+        assert "probe_scoped" in db.column_names(con, "markets")
+    con.execute("ALTER TABLE markets ADD COLUMN probe_after VARCHAR")
+    assert "probe_after" in db.column_names(con, "markets")
+
+
+def test_column_cache_is_reentrant():
+    con = db.init_db(db.connect(":memory:"))
+    with db.column_cache():
+        db.column_names(con, "markets")
+        with db.column_cache():
+            db.column_names(con, "markets")
+        # the inner block must not have torn down the outer cache
+        con.execute("ALTER TABLE markets ADD COLUMN probe_nested VARCHAR")
+        assert "probe_nested" not in db.column_names(con, "markets")
+    assert "probe_nested" in db.column_names(con, "markets")
+
+
+def test_cache_entries_do_not_survive_their_connection():
+    """`id(con)` is REUSED — six successive connections returned one id — so an
+    id-keyed cache lets a fresh connection inherit a dead one's schema. Keying on
+    the connection OBJECT in a WeakKeyDictionary makes that impossible."""
+    with db.column_cache():
+        first = db.init_db(db.connect(":memory:"))
+        first.execute("ALTER TABLE markets ADD COLUMN probe_ghost VARCHAR")
+        assert "probe_ghost" in db.column_names(first, "markets")
+        first.close()
+        del first
+        second = db.init_db(db.connect(":memory:"))
+        assert "probe_ghost" not in db.column_names(second, "markets")

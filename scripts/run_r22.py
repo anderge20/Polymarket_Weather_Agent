@@ -68,18 +68,41 @@ def delta(rows) -> float:
     return brier(rows, lambda r: r["p_mid"]) - brier(rows, lambda r: r["p_model"])
 
 
+def event_aggregates(rows) -> list:
+    """Per event: (sum sq. error of the market, of the model, count).
+
+    Δ is a difference of means of squared errors, so it is exactly reconstructible
+    from these three numbers per block:
+
+        Δ = (Σ_ev sse_mid − Σ_ev sse_model) / Σ_ev n
+
+    Resampling and permuting over these aggregates is ARITHMETICALLY IDENTICAL to
+    doing it over the rows, and turns 200 million row visits into a few million.
+    The block is still the event: nothing about §1 is relaxed.
+    """
+    agg: dict = {}
+    for r in sorted(rows, key=lambda x: str(x["event_id"])):
+        y = 1.0 if r["won"] else 0.0
+        a = agg.setdefault(r["event_id"], [0.0, 0.0, 0])
+        a[0] += (r["p_mid"] - y) ** 2
+        a[1] += (r["p_model"] - y) ** 2
+        a[2] += 1
+    return list(agg.values())
+
+
+def delta_from(agg) -> float:
+    n = sum(a[2] for a in agg)
+    return (sum(a[0] for a in agg) - sum(a[1] for a in agg)) / n if n else 0.0
+
+
 def se_by_event(rows, rng) -> float:
     """§5: standard error of Δ by BLOCK bootstrap over events. Never over rows."""
-    by_ev = defaultdict(list)
-    for r in rows:
-        by_ev[r["event_id"]].append(r)
-    keys = list(by_ev)
-    if len(keys) < 2:
+    agg = event_aggregates(rows)
+    if len(agg) < 2:
         return float("inf")
     out = []
     for _ in range(N_BOOT):
-        s = [x for k in rng.choices(keys, k=len(keys)) for x in by_ev[k]]
-        out.append(delta(s))
+        out.append(delta_from(rng.choices(agg, k=len(agg))))
     return statistics.pstdev(out)
 
 
@@ -90,12 +113,12 @@ def terciles(values):
     return (v[len(v) // 3], v[2 * len(v) // 3])
 
 
-def build_cells(rows) -> dict:
+def build_cells(rows, *, drop_age: bool = False) -> dict:
     """§2: MARGINAL axes only, declared in advance. No crossing of axes."""
     cells: dict = defaultdict(list)
     w_lo, w_hi = terciles([r["spread_fc"] for r in rows])
     c_lo, c_hi = terciles([r["event_bands"] for r in rows])
-    a_lo, a_hi = terciles([r["age_days"] for r in rows])
+    a_lo, a_hi = terciles([r["age_days"] for r in rows if r["age_days"] is not None])
     for r in rows:
         cells[f"lead={r['lead_h']}"].append(r)
         cells[f"unidad={r['unit']}"].append(r)
@@ -104,7 +127,8 @@ def build_cells(rows) -> dict:
         cells[f"estacion={r['station']}"].append(r)
         cells[f"anchura_fc={'baja' if r['spread_fc'] <= w_lo else 'alta' if r['spread_fc'] > w_hi else 'media'}"].append(r)
         cells[f"completitud={'baja' if r['event_bands'] <= c_lo else 'alta' if r['event_bands'] > c_hi else 'media'}"].append(r)
-        cells[f"antiguedad={'baja' if r['age_days'] <= a_lo else 'alta' if r['age_days'] > a_hi else 'media'}"].append(r)
+        if not drop_age:
+            cells[f"antiguedad={'baja' if r['age_days'] <= a_lo else 'alta' if r['age_days'] > a_hi else 'media'}"].append(r)
     return cells
 
 
@@ -116,8 +140,17 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--db", default="data/pmw.duckdb")
     ap.add_argument("--out", default=os.path.expanduser("~/pmw-e2"))
+    ap.add_argument("--rows-cache", default=None,
+                    help="reuse the as-of candidate rows instead of rebuilding "
+                         "them; the rebuild is deterministic, so this changes "
+                         "nothing but the wall clock")
     args = ap.parse_args()
     rng = random.Random(SEED)
+
+    if args.rows_cache and os.path.exists(args.rows_cache):
+        rows = json.load(open(args.rows_cache))
+        print(f"filas desde cache: {len(rows)} · eventos: {n_events(rows)}", flush=True)
+        return evaluate(rows, rng, args.out)
 
     con = db.init_db(db.connect(args.db))
     days = [r["d"] for r in db.query(
@@ -155,20 +188,37 @@ def main() -> int:
         })
     print(f"filas: {len(rows)} · eventos: {n_events(rows)}", flush=True)
     con.close()
+    if args.rows_cache:
+        json.dump(rows, open(args.rows_cache, "w"), default=str)
+    return evaluate(rows, rng, args.out)
+
+
+def evaluate(rows, rng, out_dir) -> int:
     if not rows:
         print("SIN FILAS — nada que evaluar.", flush=True)
         return 2
 
-    # `age_days` is NULL wherever `discovered_at` was never written. That axis is
-    # then INSUFICIENTE by absence, and says so, rather than being silently
-    # collapsed to a single bucket by a default of 0.
+    # `age_days` is NULL wherever `discovered_at` was never written — and it was
+    # never written for any of the 6 143 markets. An axis with no data does NOT
+    # become three equal buckets: every NaN comparison is False, so all three
+    # tercile tests fail and every row lands in "media" — ONE cell wearing the
+    # shape of three, which is the same defect as the string 'nan' in
+    # `station_identifier` and as a fixture certifying a world that does not
+    # exist. The axis is DROPPED and reported as unavailable.
     n_age = sum(1 for r in rows if r["age_days"] is not None)
-    print(f"  con antiguedad conocida: {n_age}/{len(rows)}", flush=True)
-    if n_age < len(rows):
-        for r in rows:
-            r["age_days"] = r["age_days"] if r["age_days"] is not None else float("nan")
+    ejes_no_disponibles = {}
+    if n_age < len(rows) / 2:
+        ejes_no_disponibles["antiguedad"] = (
+            f"discovered_at nulo en {len(rows) - n_age}/{len(rows)} filas; "
+            "el eje no se evalua y no se colapsa a una celda")
+        print(f"  EJE ANTIGUEDAD NO DISPONIBLE: discovered_at nulo en "
+              f"{len(rows) - n_age}/{len(rows)}", flush=True)
+    # the book-spread axis was already declared impossible in the preregistration
+    ejes_no_disponibles["spread_libro"] = (
+        "orderbook_snapshots vacia y todo price_history es MIDPOINT_ESTIMATED; "
+        "PREREG_R22 §0 premisa 1")
 
-    cells = build_cells(rows)
+    cells = build_cells(rows, drop_age="antiguedad" in ejes_no_disponibles)
     print(f"celdas construidas: {len(cells)}", flush=True)
 
     # ---- evaluable cells, and the observed statistics
@@ -200,32 +250,44 @@ def main() -> int:
     # The null is that the two predictors are exchangeable, so under it Delta is
     # symmetric about zero. Swapping `p_model` and `p_mid` for a WHOLE event at a
     # time keeps §1's blocks intact by construction, needs no size matching, and
-    # never touches which cell a row belongs to.
+    # never touches which cell a row belongs to. A swap simply exchanges the two
+    # sums in that event's aggregate, so the whole test runs on aggregates.
     #
     # v3 froze a different scheme — "shuffle the assignment of events to cells" —
     # and it is not implementable with MARGINAL axes: a row's cell is determined by
     # its own attributes, so reassigning would change what the cells are. Found
     # while implementing, before any Brier existed, and re-frozen as v4 rather than
     # quietly implementing something else.
-    by_ev = defaultdict(list)
-    for r in rows:
-        by_ev[r["event_id"]].append(r)
-    ev_keys = list(by_ev)
+    # SORTED, not a set: set iteration order depends on PYTHONHASHSEED, so the
+    # flip vector would differ between runs despite the fixed seed and the
+    # published p-value would not be reproducible. A frozen procedure that cannot
+    # be re-run to the same number is not frozen.
+    ev_index = {e: i for i, e in enumerate(sorted({r["event_id"] for r in rows}))}
+    cell_agg = {}
+    for name in evaluables:
+        per_ev: dict = {}
+        for r in cells[name]:
+            y = 1.0 if r["won"] else 0.0
+            a = per_ev.setdefault(ev_index[r["event_id"]], [0.0, 0.0, 0])
+            a[0] += (r["p_mid"] - y) ** 2
+            a[1] += (r["p_model"] - y) ** 2
+            a[2] += 1
+        n = sum(a[2] for a in per_ev.values())
+        cell_agg[name] = ([(i, a[0], a[1]) for i, a in per_ev.items()], n)
+
+    n_ev_total = len(ev_index)
     hits = 0
     for _ in range(N_PERM):
-        flip = {k: (rng.random() < 0.5) for k in ev_keys}
-        star = []
-        for name in evaluables:
-            rs = cells[name]
-            bm = bd = 0.0
-            for r in rs:
-                y = 1.0 if r["won"] else 0.0
-                a, b = ((r["p_model"], r["p_mid"]) if flip[r["event_id"]]
-                        else (r["p_mid"], r["p_model"]))
-                bm += (a - y) ** 2
-                bd += (b - y) ** 2
-            star.append((bm - bd) / len(rs))
-        if star and max(star) >= t_obs:
+        flip = [rng.random() < 0.5 for _ in range(n_ev_total)]
+        best = None
+        for name, (items, n) in cell_agg.items():
+            tot = 0.0
+            for i, s_mid, s_mod in items:
+                tot += (s_mod - s_mid) if flip[i] else (s_mid - s_mod)
+            d = tot / n
+            if best is None or d > best:
+                best = d
+        if best is not None and best >= t_obs:
             hits += 1
     p_familia = (1 + hits) / (1 + N_PERM)
 
@@ -244,19 +306,20 @@ def main() -> int:
                  "EL_MODELO_NO_SUPERA_AL_MERCADO_EN_NINGUNO_DE_LOS_ESTRATOS_DECLARADOS")
     print(f"\nganadoras: {list(ganadoras)}\nVEREDICTO: {veredicto}", flush=True)
 
-    os.makedirs(args.out, exist_ok=True)
+    os.makedirs(out_dir, exist_ok=True)
     json.dump({
         "prereg_sha256": PREREG_SHA, "min_eventos": MIN_EVENTOS,
         "n_filas": len(rows), "n_eventos": n_events(rows),
         "t_obs": t_obs, "p_familia": p_familia, "n_permutaciones": N_PERM,
         "celdas_evaluables": evaluables, "celdas_insuficientes": insuficientes,
         "ganadoras": ganadoras, "VEREDICTO": veredicto,
+        "ejes_no_disponibles": ejes_no_disponibles,
         "nota": ("Un resultado POSITIVO no es un hallazgo: es un candidato sobre el "
                  "que preregistrar otra cosa (PREREG_R22 §0). Brier es un promedio "
                  "sobre toda la distribucion; el beneficio vive en un subconjunto "
                  "elegido. Condicion necesaria, nunca suficiente."),
-    }, open(os.path.join(args.out, "R22_SKILL_LOCUS.json"), "w"), indent=1, default=str)
-    print(f"escrito {os.path.join(args.out, 'R22_SKILL_LOCUS.json')}", flush=True)
+    }, open(os.path.join(out_dir, "R22_SKILL_LOCUS.json"), "w"), indent=1, default=str)
+    print(f"escrito {os.path.join(out_dir, 'R22_SKILL_LOCUS.json')}", flush=True)
     return 0 if veredicto.startswith("EL_MODELO_NO") else 3
 
 
