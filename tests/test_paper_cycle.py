@@ -742,3 +742,39 @@ def test_the_cycle_records_which_artifact_it_used(tmp_path):
     assert params["quantile_artifact_id"] == "abc123"
     assert params["quantile_stratum_n"] == 147
     assert params["max_artifact_age_h"] == 48.0
+
+
+def test_a_deciding_cycle_dumps_its_own_catalogue(con, tmp_path):
+    """C3 is only a criterion if the replay can rebuild the universe the cycle
+    DECIDED on. Restricted to one firing a day, the other cycle was replayed
+    against a snapshot up to 15 h older: markets discovered in between were
+    absent, their trades came back as `only_persisted`, and the verdict was NOT
+    REPRODUCIBLE for a reason that is not reproducibility. Measured cost of doing
+    it every deciding cycle: 206 KiB, 8.5 MiB over the run."""
+    con.execute(
+        "INSERT INTO markets (market_id, event_id, source, ingestion_timestamp, "
+        "dataset_version, record_version) VALUES (?,?,?,?,?,?)",
+        ["m1", "e1", "test", T0, "ds1", 1])
+    cy = _cycle()
+    paper_cycle.stage_dump(cy, con, root=str(tmp_path), session_id="cyc",
+                           dataset_version="ds1", since=T0 - timedelta(days=1),
+                           dump_catalogue=True)
+    assert (tmp_path / "markets").exists()
+    stages = {s["stage"]: s for s in cy.summary()["stages"]}
+    assert stages["dump"]["catalogue"] == "dumped"
+
+
+def test_a_collect_only_cycle_skips_the_catalogue_and_says_why(con, tmp_path):
+    """The saving lives here: the collector fires 8 times a day, decides nothing,
+    and leaves the replay nothing to reproduce."""
+    con.execute(
+        "INSERT INTO markets (market_id, event_id, source, ingestion_timestamp, "
+        "dataset_version, record_version) VALUES (?,?,?,?,?,?)",
+        ["m1", "e1", "test", T0, "ds1", 1])
+    cy = _cycle()
+    paper_cycle.stage_dump(cy, con, root=str(tmp_path), session_id="cyc",
+                           dataset_version="ds1", since=T0 - timedelta(days=1),
+                           dump_catalogue=False)
+    assert not (tmp_path / "markets").exists()
+    stages = {s["stage"]: s for s in cy.summary()["stages"]}
+    assert stages["dump:catalogue"]["reason"] == "collect_only_nothing_to_replay"

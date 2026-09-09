@@ -54,9 +54,12 @@ from weather_agent.polymarket import discovery  # noqa: E402
 #: Slowly-changing catalogue. Re-discovered from gamma on EVERY cycle, which
 #: re-stamps `ingestion_timestamp` on every row — so the `since` filter cannot
 #: tell a genuinely new market from one seen eight times today, and dumping these
-#: each cycle would add ~500 KB × 8/day ≈ 120 MB/month of near-identical shards to
-#: git. They are therefore dumped once a day, under `--dump-catalogue`, which the
-#: daily workflow passes and the frequent collector does not.
+#: each cycle would add near-identical shards to git. MEASURED, not estimated:
+#: 206 KiB compressed per snapshot (markets 83 + outcomes 123 + fees 0.3, at
+#: 1 100 / 2 200 / 1 rows). They are therefore dumped on every cycle that DECIDES
+#: — two a day, 8.5 MiB over the run, which is the price of C3 being reproducible
+#: — and skipped on the eight daily collect-only cycles, which decide nothing and
+#: leave the replay nothing to reproduce.
 #: Losing the intra-day copies costs nothing: `discovery.ingest_event` already
 #: keeps the EARLIEST `available_at` and `discovered_at` across re-ingests, so the
 #: first-discovery instant survives in the daily snapshot rather than being
@@ -862,7 +865,30 @@ def stage_dump(cy: Cycle, con, *, root: str, session_id: str,
     them and grow the store by a full copy on every retry. `ingestion_timestamp`
     is stamped in this process, so it separates what was produced now from what
     was merely reloaded — and it is the one column every one of these tables has,
-    which is why the filter is uniform instead of per-table."""
+    which is why the filter is uniform instead of per-table.
+
+    THE CATALOGUE GOES OUT ON EVERY CYCLE THAT DECIDES, and it used to go out once
+    a day. The daily snapshot was a size optimisation, and measuring it killed it:
+    the three catalogue tables compress to **206 KiB per snapshot** (markets 83,
+    outcomes 123, fee schedule 0.3, at 1 100 / 2 200 / 1 rows), so the two daily
+    decision cycles cost **8.5 MiB over the 42-cycle run**, against a 200 MB stop
+    threshold and ~125 MB of projected volume. What the optimisation bought was
+    negligible; what it cost was C3.
+
+    `replay_cycle.py` rebuilds its DuckDB from the shards. Without a catalogue
+    shard of its own, a cycle is replayed against the most recent daily snapshot —
+    up to 15 h older than the decisions it audits — so every market discovered in
+    between is simply absent, its trades come back as `only_persisted`, and the
+    verdict is NOT REPRODUCIBLE for a reason that has nothing to do with
+    reproducibility. Verified on a live cycle: 21 trades persisted, 0 recomputed,
+    21 spurious `only_persisted`, purely because `markets` and `outcomes` had no
+    shard. A criterion that fails for half the run on an artefact of the dump
+    schedule is not a criterion.
+
+    COLLECT-ONLY CYCLES STILL SKIP IT, and that is the whole saving: the collector
+    fires 8 times a day and decides nothing, so its cycles have nothing for the
+    replay to reproduce (`replay` returns "trivially reproducible" for them). The
+    catalogue is dumped where it is needed and nowhere else."""
     tables = LEDGER_TABLES + (CATALOGUE_TABLES if dump_catalogue else ())
     total = 0
     for table in tables:
@@ -879,8 +905,9 @@ def stage_dump(cy: Cycle, con, *, root: str, session_id: str,
         if out["n_rows"]:
             cy.stage(f"dump:{table}", OK, rows=out["n_rows"], path=out["path"])
     if not dump_catalogue:
-        cy.stage("dump:catalogue", SKIPPED, reason="daily_snapshot_only")
-    cy.stage("dump", OK, tables=len(tables), rows_written=total)
+        cy.stage("dump:catalogue", SKIPPED, reason="collect_only_nothing_to_replay")
+    cy.stage("dump", OK, tables=len(tables), rows_written=total,
+             catalogue="dumped" if dump_catalogue else "skipped")
 
 
 # --------------------------------------------------------------------------- main
@@ -936,8 +963,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--collect-only", action="store_true",
                    help="Books only: skip signals, paper and settlement.")
     p.add_argument("--dump-catalogue", action="store_true",
-                   help="Also snapshot markets/outcomes/fees. Once a day, not on "
-                        "every collection cycle (see CATALOGUE_TABLES).")
+                   help="Force the markets/outcomes/fees snapshot on a "
+                        "--collect-only run. Deciding cycles always take it: the "
+                        "replay needs the universe the cycle decided on, not a "
+                        "snapshot up to 15 h older (see CATALOGUE_TABLES).")
     p.add_argument("--summary-json", default=None,
                    help="Write the cycle summary to this path.")
     return p
@@ -1063,7 +1092,11 @@ def main(argv: list[str] | None = None) -> int:
                      timing=timing, dataset_version=args.dataset_version)
         stage_dump(cy, con, root=args.store_root, session_id=session_id,
                    dataset_version=args.dataset_version, since=cy.started_at,
-                   dump_catalogue=bool(args.dump_catalogue))
+                   # Every DECIDING cycle carries its own catalogue, so the
+                   # replay reproduces it against the universe it actually
+                   # decided on. `--dump-catalogue` survives as an override for a
+                   # collect-only run someone wants snapshotted anyway.
+                   dump_catalogue=(not args.collect_only) or bool(args.dump_catalogue))
     finally:
         con.close()
 
