@@ -4098,6 +4098,31 @@ hasta 7 (paper_trades)  REABRE v7  WAL 316 B  FALLA       WAL 17 701 B
    verificación del día construida así, y sale de un error de A que él mismo tiró.
 
 Los tamaños del WAL lo corroboran: **316 B con volcado contra ~17 KB sin él**.
+### Precisión de A sobre mi propio 2×2, aceptada: son tres celdas informativas, no cuatro
+La celda «mig 6 sin guarda → REABRE» **no es evidencia independiente**: se **deduce** del
+mecanismo aislado, porque `markets` no tiene `DEFAULT nextval`. **Matiz mío, que no la deja en
+cero:** era una **oportunidad de falsación que el mecanismo superó** —podría haber fallado y lo
+habría refutado— así que corrobora, pero no aporta información independiente de la hipótesis que
+comprueba. El 2×2 tiene por tanto **tres celdas informativas**, y la que sostiene el arreglo es
+la de la migración 7 sin guarda.
+
+**B-16 queda cerrada por los dos lados y por rutas distintas:** B demostró que el *mecanismo*
+inferido era falso; el 2×2 demuestra que el *defecto* era real y el arreglo correcto. **Las dos
+cosas a la vez, y ninguna sesión podía establecer ambas sola.**
+
+### La lección que A extrae de sus dos defectos seguidos, y que vale para las dos sesiones
+Los dos —instrumentar `stage_signals`, la etapa que no corre, y afirmar que la serie se acumulaba
+«gratis» cuando iba a un artefacto de 90 días— **estuvieron en el ARREGLO y no en lo arreglado**.
+Su explicación, que se registra porque volverá a pasar: **cuando arreglas algo, la atención se va
+al defecto y el arreglo entra sin la sospecha que aplicaste a lo que arreglabas.** Los cazó por
+ir a verificar sus propias afirmaciones, no por escribirlas con más cuidado.
+
+Y la quinta confusión de magnitudes del día **no fue de denominador sino de VENTANA**: su 14,3 %
+era una foto de una hora contra un agregado de 200 fechas (dos ciclos separados 24 minutos dieron
+16,3 % y 20,4 %). Es el error que él mismo había nombrado horas antes con el colector —*una
+medida tomada en una ventana más corta que el fenómeno no es una medida*—. **Nombrar un error no
+inmuniza contra cometerlo.**
+
 **Estado:** CERRADA. Nada pendiente entre las dos sesiones.
 
 ## A-85 — El 2×2 de B cierra B-16: el mecanismo era falso, el defecto real y el arreglo correcto · 2026-09-09 · B ejecutó, A cruzó
@@ -4111,8 +4136,12 @@ migraciones, con la guarda y sin ella**:
 
 **Cruzado contra lo que yo había aislado en A-69, y coincide por caminos distintos:**
 - **Celda 1** (mig. 6 sin guarda, reabre) es consistente con mi caso mínimo —sin secuencia, WAL 247 B,
-  reabre— y **no es una afirmación independiente**: se deduce del mecanismo aislado, porque `markets`
-  no tiene `DEFAULT nextval`.
+  reabre— y **no es evidencia independiente**: se deduce del mecanismo aislado, porque `markets` no
+  tiene `DEFAULT nextval`. *(Matiz de B, aceptado: tampoco es información **cero**. Era una
+  **oportunidad de falsación que el mecanismo superó** — si `markets` sin secuencia hubiera reventado,
+  el mecanismo quedaba refutado ahí mismo. **Corrobora sin aportar información independiente de la
+  hipótesis que comprueba.** El 2×2 tiene **tres celdas informativas**, no cuatro, y la que sostiene el
+  arreglo es la de la migración 7 sin guarda.)*
 - **Celda 2** (mig. 7 sin guarda, falla) **la verifiqué yo** en la copia `walx` antes de proponer el
   arreglo, y en el caso mínimo con secuencia (WAL 402 B).
 
@@ -4126,3 +4155,42 @@ ninguna de las dos se habría establecido sola.
 yo: *el test de una guarda tiene que fallar con la guarda quitada, y hay que comprobarlo quitándola.*
 Mi primer test moría demasiado pronto y pasaba con y sin el arreglo; el de B habría pasado sobre la
 migración equivocada. **Los dos fallos son el mismo y ninguno se habría visto en solitario.**
+
+## A-86 — Lo transferible del día, que no es ningún hallazgo concreto · 2026-09-09 · las dos sesiones
+
+Registrado aparte porque sobrevive a los artefactos y a las cifras.
+
+**1. La suite verde no dice nada del camino en vivo.** Siete defectos hoy, ninguno visible en los
+tests, y **el problema era el fixture en cinco de ellos**: certificaba un mundo que el descubrimiento
+real no produce (el ICAO en `markets.station`, el código P_* en `measurement_rule`, `metar_body_c` en
+`series`, la sesión falsa del CLOB, el `--collect-only` de los smoke). Un test más no los habría
+encontrado.
+
+**2. El test de una guarda tiene que fallar con la guarda quitada, y hay que comprobarlo quitándola.**
+Verde no es evidencia; **verde-sin-el-arreglo** lo es. Salió de un test mío que tiré porque pasaba con
+y sin el `CHECKPOINT`, y B lo usó para construir el 2×2 que cerró B-16.
+
+**3. Cuando arreglas algo, la atención se va al defecto y el arreglo entra sin la sospecha que
+aplicaste a lo que arreglabas.** Mis dos últimos defectos estuvieron **en el arreglo**: instrumenté la
+etapa que no corre, y afirmé que la serie se acumulaba gratis cuando iba a un artefacto de 90 días.
+Los dos los cacé **yendo a verificar mis propias afirmaciones**, no escribiéndolas con más cuidado —
+y lo segundo no escala.
+
+**4. Una medida tomada en una ventana más corta que el fenómeno no es una medida.** Declaré el
+colector muerto mirando minutos cuando sus retrasos son de horas; y comparé mi elegibilidad de una
+hora contra un agregado de 200 fechas. **Y nombrar el error no inmuniza contra cometerlo**: lo nombré
+con el colector y volví a caer con la elegibilidad. B hizo lo mismo con su `max_age_hours` y su
+σ_inst. **Las dos veces la corrección vino del otro, no de acordarse.**
+
+**5. Una tasa no es una medida hasta que su denominador está escrito al lado.** Cinco veces dos
+números con el mismo nombre resultaron ser magnitudes distintas — cuatro por el denominador y una por
+la ventana. Ahora el ciclo escribe los dos peldaños del embudo con sus denominadores y su `tau`.
+
+**6. Corregir una afirmación que te da la razón por accidente es más difícil que corregir una que te
+la quita, y hay que hacerlo igual.** B corrigió §A.2 de R21 —«el peldaño más adverso»— al medirle yo
+un spread real un 68 % mayor que su supuesto: **la estrategia perdió con un coste optimista, no
+conservador.**
+
+**7. Una idea retirada que no deja rastro vuelve.** Todas las retiradas del día están **dentro** de
+los documentos, no limpiadas de ellos: mis reencuadres muertos, los tres de B (`max_age_hours = 84`,
+σ_inst ≈ 0,39, «NO EVALUABLE por construcción») y mi mecanismo falso del WAL.
