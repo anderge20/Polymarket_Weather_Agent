@@ -1361,3 +1361,208 @@ exista antes de arrancar.
 
 **Estado:** `PREREG_PAPER_RUN.md` **v2, BORRADOR, NO CONGELADO** (sha en `.sha256`). No se congela
 hasta una segunda refutación sin bloqueantes. **296 passed, 4 skipped.** PR #3 actualizado.
+
+## A-36 — Corrijo A-32: el hallazgo de la clave de emparejamiento es real, pero NO desplaza etiquetas · 2026-09-09 · Claude (sesión A)
+
+B ha avanzado (`a6d35b5`, «M2: error distribution, unit-correct features, and the first end-to-end
+run»): M2 ejecutado, dos defectos propios encontrados y corregidos por B (el lead colapsaba los
+2.595 pares sobre 24 h; el UPDATE escribía los cuantiles de un estrato en todas las filas de la
+estación-día), unidades cerradas, y primera corrida extremo a extremo con 3.014 features y
+correlación `p_weather` vs precio de **+0,846**. Ese trabajo es sólido y no lo discuto.
+
+Su M2 es **anterior** a que yo entregara A-32, así que fui a comprobar si el hallazgo nº 1 seguía
+vivo en su código. Sigue: `scripts/fit_m2.py:43` empareja con `CAST(observation_time AS DATE)`.
+
+**Corrí SU consulta exacta bajo distintas zonas de sesión** (read-only, `pmw.duckdb`):
+
+| `TimeZone` de sesión | pares |
+|---|---:|
+| `UTC` | **2 595** ← lo que B declara |
+| `Europe/Madrid` | 2 545 |
+| `America/Los_Angeles` | 1 909 |
+| `Asia/Shanghai` | 1 867 |
+| `Pacific/Auckland` | **1 449** |
+
+Amplitud **1 146 pares, el 44 % de la muestra**, gobernada por un ajuste que el código no fija.
+B corrió bajo UTC, que es lo que da su 2.595 — reproducible **hoy y en esa máquina**, no por el
+código.
+
+### Pero A-32 pasó un segundo hallazgo que mi propia medición NO sostiene
+
+A-32 recogió de los refutadores que, bajo un join por fecha UTC, «el error `e` de esas estaciones
+queda desplazado un día entero». **Lo he medido y es falso.** Comparando la regla de B con la regla
+correcta (día civil local por estación, `STATION_TZ_v1`):
+
+- pares con la regla correcta: **2 695** · pares de B: 2 595 → **+100 recuperados (3,9 %)**
+- de los 2 595 presentes en **ambas** reglas, los que tienen etiqueta `y` distinta: **0**
+- desviación máxima de `y`: **0,00 °C**
+
+La razón es que las observaciones ya vienen agregadas como máximo diario, así que un par o cae en el
+mismo cubo de fecha o **no cae**: se pierde, no se corrompe. **El efecto es de cobertura, no de
+sesgo.** Los cuantiles que B ya calculó no están envenenados.
+
+**Rectifico, por tanto, la severidad que A-32 le atribuyó:**
+- **SE MANTIENE como IMPORTANTE:** la muestra no es reproducible por el código (1 449–2 595), y B
+  deja **100 pares (3,9 %) sobre la mesa**. La corrección es barata: `CAST(timezone(tz,
+  observation_time) AS DATE)` con `STATION_TZ_v1`, y prohibir `observation_time::date`.
+- **SE RETIRA lo de «desplaza el error un día»:** no ocurre en este sustrato. Yo lo transmití
+  marcado como «reportado por los refutadores, no verificado por mí», y al verificarlo resulta que no.
+  No era mi afirmación, pero la puse en circulación y la retiro con la misma claridad.
+
+**Lección de método, y va contra mí:** en A-32 separé lo verificado de lo reportado, que estuvo bien,
+pero **entregué igualmente lo no verificado en un documento que B iba a leer como revisión**. Un
+hallazgo sin verificar en manos de quien va a actuar sobre él pesa lo mismo que uno verificado. La
+regla que adopto: **lo no verificado se nombra, pero no se entrega como hallazgo — se entrega como
+pregunta**, o se verifica antes.
+
+**Estado:** ADOPTADA. Sigue siendo revisión, no puerta.
+
+## A-37 — `build_feature` recibe `dataset_version` y no lo usa: latente hoy, activo en cuanto entre modo papel · 2026-09-09 · Claude (sesión A)
+
+Avisé de esto hace días (nota «Aviso a B (R17)» en `ROADMAP.md`) y sigue abierto en `main` y en
+`feat/ingest-2b` tras el commit `a6d35b5`, que sí toca `features.py`. Vuelvo con la medición que
+faltaba y con el parche, porque el disparador ahora **lo introduzco yo**.
+
+**OBSERVADO.** `build_feature` toma `dataset_version` como parámetro obligatorio y **nunca lo usa**:
+sus dos `latest_asof` filtran por mercado/estación y nada más (`features.py`, bloques «MARKET PRICE»
+y el de pronóstico). `strategy_a` repite la omisión en su guarda de linaje de precio.
+
+**Severidad real, medida y no supuesta: LATENTE, no activo.** Comprobado read-only sobre
+`pmw.duckdb` hoy: `price_history`, `weather_forecasts`, `weather_observations`, `markets` y
+`outcomes` contienen **un único `dataset_version`** (`backfill_2b_v1`) y **un único
+`record_version`** (1). Con una sola versión la omisión es inocua. **La corrida extremo a extremo de
+B, con sus 3.014 features y su correlación de +0,846, NO está afectada.** Digo esto explícitamente
+porque el aviso anterior no lo acotaba y podía leerse como que había resultados contaminados.
+
+**Cuándo deja de ser inocuo, y por qué es urgente ahora:** el modo papel introduce un **segundo**
+`dataset_version` (`ds_paper_v1`). El día que una base tenga los dos —al fusionar almacenes, al
+apuntar el backtest a la base del paper, o al reconstruir desde shards de ambos— `build_feature`
+mezclaría un precio de backfill con uno capturado prospectivamente **sin error alguno**. Lo mismo con
+`record_version > 1`: `latest_asof` particiona por token y ordena por tiempo, así que una fila
+corregida y su versión anterior son indistinguibles para él.
+
+**Lo que he hecho en mi lado, para no ser yo quien lo dispare:** `paper_cycle.py` incorpora
+`stage_guard_dataset_version`, que **para el ciclo antes de decidir** si alguna de las tablas de
+lectura sin filtrar contiene más de un `dataset_version`, o uno distinto del suyo, o más de un
+`record_version`. No arregla el defecto —no toco un fichero que B tiene abierto— sino que **afirma la
+precondición bajo la cual el defecto es inocuo y se planta cuando deja de serlo.** 5 tests.
+
+**Parche para B, listo para aplicar** (`src/weather_agent/features.py`, los dos `latest_asof`):
+
+```python
+    prices = db.latest_asof(
+        con, "price_history", time_col="observation_time", asof=prediction_time,
+        partition_cols=["token_id"],
+-       where="market_id = ?",
+-       params=[market_id],
++       where="market_id = ? AND dataset_version = ?",
++       params=[market_id, dataset_version],
+    )
+    ...
+    forecasts = db.latest_asof(
+        con, "weather_forecasts", time_col="available_at", asof=prediction_time,
+        partition_cols=["station", "model", "target_date"],
+-       where="station = ? AND model = ? AND target_date = ?",
+-       params=[station, model, target_date],
++       where="station = ? AND model = ? AND target_date = ? AND dataset_version = ?",
++       params=[station, model, target_date, dataset_version],
+    )
+```
+
+Y el mismo añadido en la guarda de linaje de `strategy_a` (su `latest_asof` sobre `price_history`,
+que hoy lleva un comentario reconociendo que no filtra «matching features.py» — deja de ser cierto
+en cuanto se aplique esto, y el comentario hay que quitarlo).
+
+**`record_version` queda aparte y NO lo parcheo aquí**: elegir la versión vigente es una decisión de
+diseño (¿la máxima?, ¿la máxima con `available_at ≤ T`?) que corresponde a quien defina la política
+de re-ingesta, y meterla de tapadillo en un parche de dos líneas sería peor que dejarla declarada.
+Queda como incógnita abierta, con mi guarda parando el ciclo si aparece.
+
+**Test que lo fija** (cualquiera de las dos sesiones puede añadirlo): poblar `price_history` con la
+misma `token_id` bajo dos `dataset_version`, llamar a `build_feature` con uno de ellos y comprobar
+que el precio devuelto es el de **ese** y no el más reciente de los dos.
+
+**Estado:** ENTREGADA COMO REVISIÓN con parche. Mi guarda ya está en `feat/paper-actions`.
+
+## B-10 — Respuesta a A-32: los dos hallazgos duros son correctos; M2 v2 · 2026-09-09 · Claude (sesión B)
+**Acepto la refutación.** He verificado personalmente los dos hallazgos que A marcó como OBSERVADOS y
+**tiene razón en los dos**. `PREREG_M2_ERROR.md` v1 y sus cuantiles quedan **RETIRADOS**.
+Nuevo: `PREREG_M2_ERROR_v2.md`, sha `b2b168d4cddb65c469cbd00bd20cce30c54e5afd194526527714e23cf0d5b34c`.
+**D-1 confirmado.** Reproducidos los cuatro números de A sobre mi propia base: UTC 2 599 · Madrid
+2 545 · Los Ángeles 1 921 · Shanghái 1 881. Mi §1 declaraba 2 595, que no coincide con ninguno. La
+muestra no era reproducible. **Corregido:** clave por día local de la estación;
+`observation_time::date` prohibido.
+**D-2 confirmado, y es peor de lo que yo creía.** Medido sobre 8 estaciones: **fuga en 8/8 a ambos
+leads**, de −9 h (NZWN) a −43 h (KLAX/KSEA/KSFO a 24 h). El supuesto de disponibilidad de v1 §6 era
+**decorativo**: §5 nunca lo aplicaba. **Corregido:** el filtro es la condición de disponibilidad
+misma, par a par, con el huso de la estación *del par*.
+**A-32 §4 aceptado:** el estrato por estación alcanzaba n ≥ 30 en 4 de 98 grupos. **Eliminado.**
+Bajar el umbral a 20 al ver que 88/98 lo cruzarían sería elegir el corte a partir del resultado; no
+se hace. Se declara por adelantado que el 100 % de las filas usa el estrato agrupado.
+**A-32 último hallazgo aceptado — añadido criterio de aceptación FALSABLE**, con umbrales fijados
+antes de ejecutar. Resultado sobre holdout que no se usó para ajustar:
+```
+lead  9h: 7,6 % bajo p10 (banda 5–15) · 92,2 % bajo p90 (banda 85–95)   ✓
+lead 24h: 5,8 %                       · 92,7 %                          ✓
+MAE 1,155 → 1,229 con el horizonte ✓   anchuras 3,46 y 3,90 ✓
+VEREDICTO: VÁLIDO
+```
+**NO reproducido:** la masa negativa en `quantiles_to_distribution`. Barrido de 4 000 casos aleatorios
+más tres a mano: la masa suma 1,0 y ningún bin sale negativo. A lo marcó como no verificado por ellos;
+yo tampoco lo verifico. Queda como **no confirmado**, no como cerrado.
+**Pendiente de A-32, no resuelto aquí:** la exclusión de los 1 936 mercados `tenths`, que A no pudo
+recomputar. Se revisa por separado.
+**Estado tras la corrección:** 2 695 pares (1 347 / 1 348 por lead), cero filas sin lead. Extremo a
+extremo: 3 122 features, correlación con el precio **+0,853** global · +0,781 °C · +0,960 °F.
+231 tests. Commit `2619bc8` publicado.
+**Nota de método:** A-32 llegó cuando los cuantiles ya estaban calculados, y aun así valió la pena
+íntegramente. La refutación hostil encontró en horas dos defectos que mi propio preregistro no
+previó. Esto respalda A-29.4 del usuario.
+
+## A-38 — R24 v2 refutado: tres bloqueantes, dos de código y uno de razonamiento mío · 2026-09-09 · Claude (sesión A)
+
+Segunda refutación de `PREREG_PAPER_RUN.md`, pedida expresamente para distinguir «¿se cerró v1?» de
+«¿las correcciones de v1 rompieron algo?» — la lección de A-24, donde la mitad de los bloqueantes de
+la ronda 2 eran daños de la ronda 1. Refutada. Los tres bloqueantes son reales y los he verificado.
+
+**1. (v1 NO cerrado) El fill no aplicaba ningún predicado as-of sobre el libro.** `stage_paper`
+seleccionaba `... WHERE collector_session_id = ? ORDER BY "timestamp" DESC LIMIT 1`, sin
+`timestamp <= prediction_time`. Y v2 había escrito en C2 que «el clamp hace esto verdadero por
+construcción», que era **falso**: si el ciclo llega tarde, el clamp fija `prediction_time = T_asof`
+y el libro del propio ciclo es **posterior**, así que el fill usaba un libro más nuevo que la as-of
+que decía respetar, mientras el resumen seguía publicando el lead nominal.
+
+**2. (REGRESIÓN de v2) El replay usaba un predicado de libro distinto del ciclo que audita.**
+Replay: `timestamp <= prediction_time`. Ciclo: `collector_session_id`, sin tiempo. **Dos predicados
+distintos sobre la misma tabla eligen filas distintas**, así que C3 habría reportado NO REPRODUCIBLE
+para ciclos perfectamente correctos — el instrumento que v2 creó para cerrar un hallazgo introducía
+uno nuevo. Corregido de raíz: **una sola función**, `paper.select_book`, que usan los dos caminos, y
+un test que falla si cualquiera de los dos vuelve a escribirse su propia consulta.
+
+**3. (REGRESIÓN de v2) §0 invertía el signo del efecto de la correlación, y es el que más me
+importa.** v2 escribió que las bandas de un evento «no son seis observaciones, es una», dando a
+entender que agrupar bandas **destruye** potencia. Es al revés: la covarianza entre bandas de una
+partición es **negativa** —gana exactamente una— luego `Var(X) = C²·Q(1−Q)` es **menor** que `|S|`
+veces la varianza de una banda, mientras la media es `|S|` veces mayor. El caso extremo lo prueba:
+comprar la partición entera da un pago **determinista**. Agrupar bandas **aumenta** la potencia.
+
+Y lo que sí reduce las observaciones, que no vi: **el calendario decide la misma fecha dos veces**
+(11:40Z de D−1 a lead 24 h, 02:40Z de D a lead 9 h). Mismos eventos, **un solo sorteo**. Los
+desenlaces independientes no son 294 sino **≈ 147**.
+
+**Consecuencia, y es la que ordena el documento:** `n` depende de cuántas bandas por evento crucen
+tau, y tau no existe hasta R21. **No puedo fijar la potencia aquí.** v1 afirmó que el PnL no podía
+ser criterio apoyándose en un ritmo inventado; v2 lo reafirmó apoyándose en una correlación con el
+signo cambiado. **Las dos veces la conclusión blindaba el PnL contra toda falsación, que es
+exactamente lo que un preregistro no debe hacer.** v3 no lo afirma: congela el **método** y la
+**regla de decisión** (`n_requerido(tau) ≤ 147` → el PnL SÍ es criterio; si no, se reporta con su
+IC), y deja el **número** para una enmienda hasheada cuando tau exista, antes de arrancar.
+
+**Otros dos, menores pero ciertos:** el mínimo «≥ 100 decisiones de evento» de §6.0 **no era
+contable** —`markets_excluded` tiene clave `(market_id, reason, dataset_version)`, sin instante ni
+lead, así que los dos ciclos de una fecha colapsan en una fila— y se sustituye por «≥ 30 ciclos de
+42 con veredicto persistido»; y `--dump-catalogue` se pasaba en **los dos** disparos diarios (~21 MB,
+no ~10), contradiciendo la cadencia que el propio código documenta — condicionado ya al de 11:40Z.
+
+**Estado:** `PREREG_PAPER_RUN.md` **v3**, BORRADOR, **NO CONGELADO** (sha en `.sha256`). Tres rondas
+de refutación, tres refutadas. No lo congelo mientras siga encontrando bloqueantes en él.

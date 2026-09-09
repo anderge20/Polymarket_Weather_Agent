@@ -1,8 +1,10 @@
-# PREREGISTRO — Corrida de modo papel (R24) · **v2**
+# PREREGISTRO — Corrida de modo papel (R24) · **v3**
 
-**Estado:** BORRADOR v2, **NO CONGELADO**. Por A-29.4 no se congela hasta pasar refutación hostil
+**Estado:** BORRADOR v3, **NO CONGELADO**. Por A-29.4 no se congela hasta pasar refutación hostil
 sin bloqueantes abiertos.
-**v1 (2026-09-09) REFUTADA:** 2/2 refutadores `refutada = true`, 25 hallazgos. v2 los incorpora.
+**v1 REFUTADA** (2/2 refutadores, 25 hallazgos) → v2. **v2 REFUTADA** (3 bloqueantes: el fill no aplicaba
+predicado as-of sobre el libro; el replay usaba un predicado distinto del ciclo que audita; y §0
+invertía el signo del efecto de la correlación) → **v3**, que es esta.
 **Fecha:** 2026-09-09 · **Autor:** Claude (sesión A) · **Pista:** A-31
 **Host:** GitHub Actions (decisión del usuario, A-29.2) · **Código:** `feat/paper-actions` (PR #3)
 
@@ -18,7 +20,7 @@ sin bloqueantes abiertos.
 
 ---
 
-## §0. Qué gobierna, y por qué el PnL no puede ser su criterio
+## §0. Qué gobierna, y cómo se decidirá si el PnL puede ser criterio
 
 Gobierna la corrida de N días que decide si el sistema está **listo para operar**, que aquí
 significa exactamente una cosa: *que sólo falte el permiso explícito del usuario para levantar D0*.
@@ -64,28 +66,52 @@ ignorarla subestima `n` entre 1,4× y 7,1×. Con `media_neta = (q−p) − 0,05�
 `C` se cancela en el cociente, de modo que ninguna decisión de sizing de §4 cambia estas cifras —
 v1 presentaba columnas de acciones y sd que sugerían lo contrario y eran decorativas.
 
-**`n` cuenta EVENTOS, no posiciones — y esto no es un detalle.** La fórmula supone observaciones
-independientes. Las bandas de un evento **no lo son**: forman una partición y **gana exactamente
-una**, de modo que están fuertemente correlacionadas (negativamente) por construcción. Abrir seis
-posiciones en seis bandas del mismo evento **no son seis observaciones**, es una. Usar el modelo
-i.i.d. para la tabla y contar bandas para el ritmo sería mezclar dos modelos incompatibles, que es
-justamente lo que v1 hacía al hablar de «operaciones». **La unidad de análisis es el evento**, y el
-techo medido lo da directamente:
+**Y aquí v2 se equivocó de signo, no sólo de unidad.** v2 escribía que las bandas de un evento
+«no son seis observaciones, es una», dando a entender que agrupar bandas **destruye** potencia. Es al
+revés. Si en un evento se abren `|S|` bandas de la partición con pago `X = Σ_j C(1{gana j} − p_j)`,
+la covarianza entre bandas es **negativa** (gana exactamente una), luego `Var(X) = C²·Q(1−Q)` con
+`Q = Σ q_j`, que es **menor** que `|S|` veces la varianza de una banda suelta, mientras la media es
+`|S|` veces mayor. El caso extremo lo deja claro: comprar **toda** la partición da un pago
+determinista `C·(1 − Σp_j)` — varianza **cero**. Agrupar bandas del mismo evento **aumenta** la
+potencia por evento, no la reduce.
 
-> **≤ 7 eventos elegibles por ciclo · ≤ 14 por día · ≤ 294 eventos independientes en 21 días.**
+**Lo que sí reduce el número de observaciones, y v2 no vio:** el calendario de §5 decide **la misma
+fecha objetivo dos veces** — a las 11:40Z de `D−1` con lead 24 h y a las 02:40Z de `D` con lead 9 h.
+Mismos eventos, mismos mercados, **un solo sorteo**: qué banda gana en `D`. Los dos pagos están
+perfectamente correlacionados. El techo de **desenlaces independientes** no es 294 sino
+**≈ 21 fechas × 7 eventos ≈ 147**.
 
-**Conclusión, ahora con la unidad correcta y con el coste dentro.** Contra un techo de **294**
-observaciones independientes: la fila **más favorable** de la tabla (5 puntos brutos a `p` = 0,20,
-que sería enorme) necesita **425**; la ventaja de 3 puntos que el diseño contempla necesita
-**1 464**; a `p` = 0,50 con 2 puntos, **17 749**. **Ninguna fila cabe en 294.**
+Hay entonces tres magnitudes distintas, y v2 las confundía en una:
 
-> **El PnL de esta corrida NO es criterio de éxito ni de fracaso** (§7). v1 llegaba a la misma
-> conclusión desde un ritmo inventado; v2 llega desde un techo medido y con la unidad de
-> independencia correcta, y el margen es holgado: la fila más favorable pide 1,4× más eventos de los
-> que caben, y la plausible 5×. Subir N no lo arregla dentro de ningún horizonte razonable — harían
-> falta ~105 días para la fila de 3 puntos.
+| magnitud | valor |
+|---|---:|
+| (i) decisiones de evento por ciclo | ≤ 7 |
+| (ii) decisiones de evento en la corrida (**no** independientes) | ≤ 294 |
+| (iii) **desenlaces independientes** | **≈ 147** |
 
----
+### La potencia NO se puede fijar aquí, y decirlo es el resultado
+
+`n` depende de `|S|` —cuántas bandas por evento cruzan tau— y `|S|` depende de **tau**, que no
+existe hasta R21 (P2). Con `|S|` grande la varianza por evento se desploma y hacen falta muchos menos
+eventos; con `|S| = 1` la tabla de arriba vale tal cual, en unidades de **posición**, y el techo
+relevante es (ii). No puedo elegir la fila sin conocer tau, y elegirla a ojo sería exactamente lo que
+§10 prohíbe.
+
+> **DECISIÓN, congelada ahora:** el **método** queda fijado aquí y el **número** se calcula cuando
+> tau exista, **antes** de arrancar la corrida, como enmienda preregistrada y hasheada. La regla de
+> decisión también queda fijada ahora, para que no dependa del resultado:
+> - Si `n_requerido(tau) ≤ 147` → **el PnL SÍ es criterio**, y su umbral se declara en esa enmienda.
+> - Si `n_requerido(tau) > 147` → el PnL **se reporta con su IC y no es criterio**, y la enmienda
+>   escribe cuántos días harían falta.
+>
+> `n_requerido(tau)` se computa con `σ = √(Q(1−Q))`, `Q = Σ_j q_j` sobre las bandas efectivamente
+> abiertas, y `μ = Σ_j (q_j − p_j − 0,05·p_j(1−p_j))`, medidos sobre un ciclo real previo a la
+> corrida. La tabla de arriba se conserva **sólo** como cota para el caso `|S| = 1`.
+
+**v1 afirmó que el PnL no podía ser criterio apoyándose en un ritmo inventado. v2 lo reafirmó
+apoyándose en una correlación con el signo cambiado. v3 no lo afirma: fija cómo se decidirá y cuándo,
+antes de ver un solo dato.** Las dos veces anteriores la conclusión blindaba el PnL contra toda
+falsación, que es justo lo que un preregistro no debe hacer.
 
 ## §1. Símbolos y ancla temporal
 
@@ -206,7 +232,7 @@ corrida existe para descartar.
 
 | | mínimo | por qué ése |
 |---|---:|---|
-| decisiones de evento evaluadas (elegible o excluido con razón) | **≥ 100** | de un techo medido de 294 (§0); por debajo, C5 no tiene denominador |
+| **ciclos con veredicto registrado en el almacén** — NO sobre `markets_excluded`, cuya clave `(market_id, reason, dataset_version)` no lleva instante ni lead y colapsa en una fila los dos ciclos de la misma fecha: ese recuento **no es recuperable** de ahí, así que el resumen del ciclo (con su mapa `reasons`) se persiste como shard | **≥ 30 de 42** | es lo que el almacén sí puede reconstruir, y queda ligado a C1 y no al techo de eventos |
 | posiciones **abiertas** | **≥ 30** | por debajo, C3 y C4 son casi vacíos |
 | posiciones **liquidadas** | **≥ 20** | por debajo, C6 no puede pronunciarse ni siquiera sobre un fallo grosero |
 
@@ -229,7 +255,7 @@ los datos.
 |---|---|---|---|
 | **C1** | **Continuidad.** Un ciclo cuenta como completado si **ninguna** de sus etapas quedó en STOPPED y dejó su shard `cycle_params` | **≥ 38 de 42** (90 %) y ningún hueco > 24 h (2 ciclos consecutivos) | shards `cycle_params` + resúmenes. v1 contaba commits, que no miden esto: el ciclo devuelve 0 aunque haya etapas paradas |
 | **C2** | **Integridad as-of.** Filas usadas en una decisión cuya columna as-of (§1, por tabla) sea **posterior a `prediction_time`** | **exactamente 0**, sobre **≥ 30 posiciones** (§6.0) | auditoría sobre las filas persistidas. El clamp hace esto verdadero por construcción para el precio; el criterio **sí muerde** en `weather_forecasts.available_at` y en `markets.available_at`, que el clamp no gobierna |
-| **C3** | **Reproducibilidad.** `replay_cycle.py` (P7) reconstruye desde shards y re-evalúa cada decisión con el `prediction_time` y los parámetros **registrados** de ese ciclo | **100 %** de las ≥ 30 operaciones | la herramienta de P7. v1 invocaba un instrumento inexistente |
+| **C3** | **Reproducibilidad de la CAPA DE EJECUCIÓN.** `replay_cycle.py` (P7) reconstruye desde shards y re-deriva, para cada señal persistida, el libro admisible, el precio de fill, el tamaño y la fee, con el `prediction_time` y los parámetros **registrados** de ese ciclo. **NO recomputa la señal**: toma `signal` y `fair_value` como dados. Auditar la generación de señal exigiría re-derivar `p_weather` desde los cuantiles de M2, que es pista de B | **100 %** de las ≥ 30 operaciones | la herramienta de P7. v1 invocaba un instrumento inexistente; v2 lo creó pero afirmaba auditar «cada decisión», que es más de lo que hace |
 | **C4** | **Coste aplicado.** Fills con fee del modelo de D19 y `fee_status='KNOWN'` | **100 %**; **0 fills con fee 0**, sin cláusula de escape — el régimen `fees_disabled` sólo existe para `endDate` < 2026-03-30 y en modo prospectivo no puede aparecer | `paper_trades.fees` frente al `cycle_params` y a `market_fee_schedule` vía `markets.fee_regime` |
 | **C5** | **Coherencia con el backtest.** Tasa de eventos elegibles y reparto de razones de exclusión frente a R21 | ambas dentro de **±10 puntos porcentuales**. **Si R21 no publicó esas tasas, C5 se declara NO APLICABLE y la corrida NO puede ser APTA** — no se sustituye por un juicio | comparación tabulada |
 | **C6** | **Calibración.** Fiabilidad de `p_model`: agrupadas las posiciones en deciles de `p_model`, la frecuencia observada de aciertos frente a la predicha | ningún decil con **\|observada − predicha\| > 0,40** con IC95 de Wilson que **excluya** esa diferencia | Wilson sobre ≥ 20 liquidadas. v1 hablaba de «cobertura de los intervalos de p_model», y `p_model` es un **escalar**, no un intervalo: era un error de categoría |
@@ -273,7 +299,9 @@ detecta con pocas observaciones. **No se presentará como evidencia de buena cal
 5. 429 sostenido que impida ≥ 3 ciclos consecutivos.
 6. **Crecimiento del almacén > 200 MB.** v1 fijaba 50 MB sin cuenta alguna y **la corrida lo
    rebasaba hacia el día 9**, haciendo C1 inalcanzable: el volumen medido es ≈ 271 B/fila
-   comprimida × ~20 200 filas/día ≈ **5,5 MB/día ≈ 115 MB en 21 días**, más ~10 MB de catálogo. El
+   comprimida × ~20 200 filas/día ≈ **5,5 MB/día ≈ 115 MB en 21 días**, más ~10 MB de catálogo — un
+   volcado diario: el workflow pasaba `--dump-catalogue` en **los dos** disparos (~21 MB), y se ha
+   corregido en el código para que sólo lo pase el de las 11:40Z. El
    umbral se fija por encima del volumen previsto, no por debajo.
 7. Petición del usuario.
 
