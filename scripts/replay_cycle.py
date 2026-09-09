@@ -259,6 +259,24 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"    ONLY PERSISTED: {k}")
             for k in tr.get("only_recomputed", []):
                 print(f"    ONLY RECOMPUTED: {k}")
+        # WHAT THIS AUDIT DOES AND DOES NOT COVER, stated in its own output.
+        #
+        # The replay re-derives FILLS from the recorded signals and the stored
+        # books. It does not regenerate the signals, so it never touches M2's
+        # quantiles and its verdict is INDEPENDENT of which artifact the cycle
+        # used. That independence is a limit, not a virtue: a signal computed from
+        # a different distribution would reproduce here without complaint.
+        #
+        # So the artifact the cycle recorded is printed with the verdict. If this
+        # replay is ever extended to regenerate signals, the artifact has to be
+        # PINNED — loaded by id, refused if absent — because `quantile_artifact`
+        # already refuses a fit later than the decision and a replay against a
+        # newer artifact would otherwise be computing something else and calling
+        # it a reproduction.
+        art = (out.get("params") or {}).get("quantile_artifact_id")
+        print(f"  scope: execution layer only — signals are NOT regenerated, so "
+              f"this verdict does not depend on the quantile artifact")
+        print(f"  artifact recorded by the cycle: {art or 'none (collect-only or pre-R30)'}")
         print(f"  VERDICT: {'REPRODUCIBLE' if out.get('ok') else 'NOT REPRODUCIBLE'}")
     return 0 if out.get("ok") else 1
 

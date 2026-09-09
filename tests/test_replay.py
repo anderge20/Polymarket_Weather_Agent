@@ -204,3 +204,16 @@ def test_a_book_stamped_after_the_decision_is_never_used(tmp_path):
         assert snap["asks"][0]["price"] == 0.50      # the past one, not the future one
     finally:
         con.close()
+
+
+def test_the_replay_states_its_scope_and_the_artifact_it_did_not_use(tmp_path, capsys):
+    """The replay re-derives FILLS, not signals, so its verdict is independent of
+    which quantile artifact produced the signal. That independence is a LIMIT: a
+    signal computed from a different distribution would reproduce here without
+    complaint. Saying so in the output is what stops REPRODUCIBLE from being read
+    as more than it is."""
+    _seed(tmp_path)
+    replay_cycle.main(["--session-id", SESSION, "--store-root", str(tmp_path)])
+    out = capsys.readouterr().out
+    assert "signals are NOT regenerated" in out
+    assert "artifact recorded by the cycle" in out
