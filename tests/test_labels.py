@@ -24,22 +24,49 @@ YES, NO = "tok_yes", "tok_no"
 def con():
     c = db.init_db(db.connect(":memory:"))
     # simulate the not-yet-merged substrate so the real path is exercised
-    for col, typ in (("observed_unit", "VARCHAR"), ("observed_value", "DOUBLE"),
-                     ("series", "VARCHAR")):
-        if col not in db.column_names(c, "weather_observations"):
-            c.execute(f"ALTER TABLE weather_observations ADD COLUMN {col} {typ}")
-    if "contract_source" not in db.column_names(c, "markets"):
-        c.execute("ALTER TABLE markets ADD COLUMN contract_source VARCHAR")
+    # Idempotent by construction: every column is added only if absent, so the
+    # fixture works whether or not the migration that adds it has landed. An
+    # unconditional ALTER is a bet on merge order.
+    for table, cols in (
+        ("weather_observations", (("observed_unit", "VARCHAR"),
+                                  ("observed_value", "DOUBLE"),
+                                  ("series", "VARCHAR"))),
+        ("markets", (("contract_source", "VARCHAR"),)),
+    ):
+        have = set(db.column_names(c, table))
+        for col, typ in cols:
+            if col not in have:
+                c.execute(f"ALTER TABLE {table} ADD COLUMN {col} {typ}")
     try:
         yield c
     finally:
         c.close()
 
 
-def test_missing_substrate_names_the_columns():
+def test_missing_substrate_names_the_columns(monkeypatch):
     """A caller that cannot run should be told which column to add, not left to
-    discover it. This is how markets.contract_source was found missing."""
+    discover it. This is how markets.contract_source was found missing.
+
+    The absence is SIMULATED rather than asserted against a live schema. Asserting
+    "this column is missing" makes the test a hostage of every other branch: the
+    moment someone adds it, a green test turns red for a reason that is not a
+    defect. That is precisely what broke six of session A's tests when my
+    migration 4 landed, and what broke this one when their PR #7 added
+    contract_source. A test must not encode the absence of work someone else may
+    legitimately do.
+
+    DROP COLUMN is not an option either — DuckDB refuses while an index depends on
+    a later column — so the reader is patched instead.
+    """
     c = db.init_db(db.connect(":memory:"))
+    real = db.column_names
+    hidden = {"contract_source", "observed_value"}
+
+    def without_hidden(con, table):
+        return [col for col in real(con, table) if col not in hidden]
+
+    monkeypatch.setattr(db, "column_names", without_hidden)
+    monkeypatch.setattr(labels.db, "column_names", without_hidden)
     missing = labels.missing_substrate(c)
     assert "markets.contract_source" in missing
     assert "weather_observations.observed_value" in missing
