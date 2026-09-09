@@ -54,8 +54,8 @@ def main() -> int:
     con.execute(
         """UPDATE weather_forecasts SET forecast_p10=NULL, forecast_p25=NULL,
            forecast_p50=NULL, forecast_p75=NULL, forecast_p90=NULL
-           WHERE dataset_version = ?""",
-        [DATASET_VERSION],
+           WHERE dataset_version = ? AND model = ?""",
+        [DATASET_VERSION, weather.M1_MODEL],
     )
     pairs, issue_by_key, stats = load_pairs(con)
     print(f"pares (día local): {len(pairs)} · {stats}", flush=True)
@@ -83,10 +83,17 @@ def main() -> int:
             continue
         rows = db.query(
             con,
-            """SELECT issue_time, forecast_tmax FROM weather_forecasts
+            # model and record_version are BOTH part of this table's primary key
+            # and neither was named. With one of each they coincide; with two, the
+            # SELECT returns every version and each unscoped UPDATE writes to ALL
+            # of them, so the last forecast_tmax processed fixes the quantiles of
+            # every version. Same class as the price read returning another
+            # token's price — caught by session A before it could fire.
+            """SELECT issue_time, forecast_tmax, model, record_version
+               FROM weather_forecasts
                WHERE station = ? AND target_date = ? AND issue_time = ?
-                 AND dataset_version = ?""",
-            [station, target.isoformat(), issue, DATASET_VERSION],
+                 AND model = ? AND dataset_version = ?""",
+            [station, target.isoformat(), issue, weather.M1_MODEL, DATASET_VERSION],
         )
         for r in rows:
             fq = em.forecast_quantiles_c(float(r["forecast_tmax"]), q)
@@ -94,9 +101,11 @@ def main() -> int:
                 """UPDATE weather_forecasts
                    SET forecast_p10=?, forecast_p25=?, forecast_p50=?,
                        forecast_p75=?, forecast_p90=?
-                   WHERE station=? AND target_date=? AND issue_time=? AND dataset_version=?""",
+                   WHERE station=? AND target_date=? AND issue_time=?
+                     AND model=? AND record_version=? AND dataset_version=?""",
                 [fq[10], fq[25], fq[50], fq[75], fq[90], station,
-                 target.isoformat(), r["issue_time"], DATASET_VERSION],
+                 target.isoformat(), r["issue_time"], r["model"],
+                 r["record_version"], DATASET_VERSION],
             )
             written += 1
 

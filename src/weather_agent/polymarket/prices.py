@@ -286,13 +286,12 @@ def ingest_history(
     fetched_at = _now()
     try:
         con.execute("BEGIN TRANSACTION")
+        batch = []
         for point in points:
             observation_time = datetime.fromtimestamp(
                 point["t"], timezone.utc
             ).isoformat()
-            db.upsert(
-                con,
-                "price_history",
+            batch.append(
                 {
                     "observation_time": observation_time,
                     "market_id": market_id,
@@ -308,10 +307,16 @@ def ingest_history(
                     "ingestion_timestamp": fetched_at,
                     "dataset_version": dataset_version,
                     "record_version": 1,
-                },
-                ["token_id", "observation_time", "dataset_version", "record_version"],
+                }
             )
-            summary["points_written"] += 1
+        # One prepared statement instead of one per point: the write was 99 % of a
+        # backfill's runtime (25 s of upserts against 0.19 s of network per
+        # market), which put a full pass at 19 hours. Same ON CONFLICT semantics,
+        # same transaction.
+        summary["points_written"] = db.upsert_many(
+            con, "price_history", batch,
+            ["token_id", "observation_time", "dataset_version", "record_version"],
+        )
         con.execute("COMMIT")
     except Exception:
         con.execute("ROLLBACK")

@@ -111,6 +111,50 @@ def markets(
     return rows
 
 
+def complete_event_markets(catalog_path: str, con, max_events: int | None = None):
+    """Every band of every event whose (station, target_date) already has a
+    forecast.
+
+    Strategy A is fail-closed per EVENT: it needs all ~11 bands priced. The
+    date/station sample took ONE market per pair, giving 1.5 bands per event
+    against the catalogue's 10.9, so no event could ever be eligible. Correct for
+    M2, which needs station-days; wrong for the backtest, which needs events.
+    """
+    def d10(x):
+        x = x.date() if hasattr(x, "date") else x
+        return str(x)[:10]
+
+    pairs = {
+        (r["station"], d10(r["target_date"]))
+        for r in db.query(
+            con,
+            "SELECT DISTINCT station, target_date FROM weather_forecasts "
+            "WHERE dataset_version = ?", [DATASET_VERSION])
+    }
+    cat = duckdb.connect(catalog_path, read_only=True)
+    rows = cat.execute(
+        """SELECT market_id, condition_id, city, station_identifier, endDate,
+                  clobTokenIds, winning_outcome, event_id,
+                  CAST(endDate AS DATE) AS d
+           FROM mk
+           WHERE clobTokenIds IS NOT NULL AND station_identifier IS NOT NULL"""
+    ).fetchdf().to_dict("records")
+    cat.close()
+    keep = [r for r in rows if (r["station_identifier"], d10(r["d"])) in pairs]
+    if max_events:
+        # Bound by EVENTS, never by markets: truncating mid-event would leave it
+        # incomplete, and an incomplete event is exactly what Strategy A refuses.
+        # Cutting by market count would silently produce the very thing this mode
+        # exists to avoid.
+        from collections import defaultdict
+        by_event = defaultdict(list)
+        for r in keep:
+            by_event[str(r["event_id"])].append(r)
+        chosen = sorted(by_event)[:max_events]
+        keep = [r for e in chosen for r in by_event[e]]
+    return keep
+
+
 def yes_token(clob_token_ids: str) -> str:
     """The YES token is the first of the pair, matching outcomes ["Yes","No"]."""
     ids = json.loads(clob_token_ids)
@@ -130,6 +174,14 @@ def main() -> int:
     ap.add_argument("--db", default="data/pmw.duckdb")
     ap.add_argument("--catalog", default=CATALOG)
     ap.add_argument("--sleep", type=float, default=0.25)
+    ap.add_argument("--max-events", type=int, default=None,
+                    help="cap by EVENTS, never by markets: a truncated event is "
+                         "incomplete, which is what Strategy A refuses")
+    ap.add_argument("--complete-events", action="store_true",
+                    help="all bands of every event whose (station, date) already "
+                         "has a forecast — Strategy A is fail-closed per EVENT and "
+                         "needs every band, so a per-(date,station) sample of one "
+                         "market yields zero eligible events")
     args = ap.parse_args()
 
     os.makedirs(os.path.dirname(args.db) or ".", exist_ok=True)
@@ -144,8 +196,11 @@ def main() -> int:
             [DATASET_VERSION],
         )
     }
-    rows = markets(args.catalog, args.per_pair, args.max_total, args.city,
-                   since=args.since, stride=args.stride)
+    if args.complete_events:
+        rows = complete_event_markets(args.catalog, con, args.max_events)
+    else:
+        rows = markets(args.catalog, args.per_pair, args.max_total, args.city,
+                       since=args.since, stride=args.stride)
     dates = {str(m["d"]) for m in rows}
     ests = {str(m["station_identifier"]) for m in rows}
     print(

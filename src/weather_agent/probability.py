@@ -159,4 +159,17 @@ def band_probability(
 
         probability += float(mass)
 
+    # The distribution is normalised to sum to 1, so a band covering the whole
+    # support sums to 1 plus the rounding of that division: 1.0000000000000002.
+    # Real data found this, not the suite — every fixture band happened to be a
+    # strict subset of the support, so the sum never reached the top.
+    #
+    # The clamp is deliberately NARROW. Outside 1e-9 the value is returned
+    # untouched so `build_feature`'s guard still fires: a probability of 1.3 is a
+    # broken distribution, and swallowing it here would turn the one assertion
+    # that would catch it into decoration.
+    if 1.0 < probability <= 1.0 + 1e-9:
+        return 1.0
+    if -1e-9 <= probability < 0.0:
+        return 0.0
     return probability

@@ -41,7 +41,9 @@ All human timestamps are stored as TIMESTAMPTZ (UTC).
 from __future__ import annotations
 
 import json
+import contextlib
 import os
+import weakref
 from datetime import datetime, timezone
 import contextlib
 from typing import Any, Iterable, Mapping, Sequence
@@ -552,6 +554,31 @@ _DDL_V4 = [
     "ALTER TABLE weather_observations ADD COLUMN IF NOT EXISTS series VARCHAR",
 ]
 
+# R19/R21: what the backtest needs to settle a trade and to price its cost, none
+# of which the substrate held. `end_date` is the contract's declared end (R8:
+# target_date 12:00Z) and drives the UNIVERSE FILTER — never a target_date
+# derivation (2D §C forbids that; target_date comes from the caller).
+# `uma_resolution_status` separates a genuine 'No' from a market that simply never
+# resolved: without it every unresolved market reads as a loss, silently, and a
+# backtest would settle against a world that has not happened yet.
+# The fee fields are D19's "read feesEnabled/feeSchedule PER MARKET; never infer
+# from the date" — the activation was by batch, not by creation order, so a date
+# rule gets it wrong for the 30-mar cohort.
+# NUMBERED 6, NOT 5: session A landed `measurement_rule_code` as migration 5 in
+# parallel. Two different statement sets under one version number is worse than a
+# collision in a document — a base that already recorded version 5 would never run
+# the other one, so whichever merged second would exist in CI (fresh bases) and be
+# absent in `data/pmw.duckdb` (already stamped). Silent, and only visible when
+# something settles in one place and refuses in the other.
+_DDL_V6 = [
+    "ALTER TABLE markets ADD COLUMN IF NOT EXISTS end_date TIMESTAMPTZ;",
+    "ALTER TABLE markets ADD COLUMN IF NOT EXISTS uma_resolution_status VARCHAR;",
+    "ALTER TABLE markets ADD COLUMN IF NOT EXISTS fees_enabled BOOLEAN;",
+    "ALTER TABLE markets ADD COLUMN IF NOT EXISTS fee_rate DOUBLE;",
+    "ALTER TABLE markets ADD COLUMN IF NOT EXISTS fee_exponent DOUBLE;",
+    "ALTER TABLE markets ADD COLUMN IF NOT EXISTS fee_taker_only BOOLEAN;",
+]
+
 
 # Ordered, idempotent migrations. Add a new dict (version+1) for future changes;
 # never edit a shipped migration in place.
@@ -629,6 +656,11 @@ MIGRATIONS: list[dict] = [
         "version": 5,
         "name": "r30_measurement_rule_code",
         "statements": _DDL_V5,
+    },
+    {
+        "version": 6,
+        "name": "r19_settlement_and_fee_substrate",
+        "statements": _DDL_V6,
     },
     {
         "version": 7,
@@ -716,6 +748,9 @@ def init_db(con=None, db_path: str | None = None):
                 [mig["version"], mig["name"], _utcnow_iso()],
             )
             con.execute("COMMIT;")
+            # The cache first: it is keyed on the connection and the schema just
+            # changed under it (session B). Then the flush.
+            invalidate_column_cache(con)
             # FORCE THE DDL INTO THE DATABASE FILE, out of the write-ahead log.
             #
             # ISOLATED, not inferred. The first account of this — "a migration
@@ -750,8 +785,10 @@ def init_db(con=None, db_path: str | None = None):
                 # A read-only or in-memory connection has nothing to flush and says
                 # so by raising. That is not a failure of the migration.
                 con.execute("CHECKPOINT;")
+
         except Exception:
             con.execute("ROLLBACK;")
+            invalidate_column_cache(con)
             raise
     # Phase 2C (Alt C): operational discovery checkpoint table, created idempotently
     # OUTSIDE the numbered MIGRATIONS. It does NOT bump SCHEMA_VERSION (currently 3,
@@ -770,12 +807,81 @@ def table_names(con) -> list[str]:
     return [r[0] for r in rows]
 
 
+#: Column lists are SCHEMA, and re-reading `information_schema` once per call cost
+#: the R19 backtest 28 % of its wall clock. But a GLOBAL, perpetual cache was
+#: wrong, and session A reproduced both ways it breaks:
+#:
+#:   1. any DDL outside `init_db`'s migration loop leaves it lying. Verified: warm
+#:      the cache, `ALTER TABLE markets ADD COLUMN probe_yyy`, and `column_names`
+#:      still does not list it while `information_schema` does. Tests in this repo
+#:      do bare ALTERs, and `_ensure_checkpoint_table` creates a table AFTER the
+#:      loop.
+#:   2. `id(con)` is REUSED. Six successive connections returned the same id, and
+#:      `init_db` only invalidates when a migration actually runs — so on an
+#:      already-migrated base, which is the production case, it never invalidates
+#:      and a fresh connection can inherit a dead one's entry.
+#:
+#: Neither failure raises. `discovery.ingest_event` decides from `column_names`
+#: whether to write `contract_source` and `measurement_rule_code`; a stale answer
+#: makes it silently stop writing them. That is precisely the class of defect this
+#: project has spent its day on: the gap that produces a plausible value instead of
+#: an error.
+#:
+#: So the cache is OFF unless a caller opts in for an explicit, bounded, read-only
+#: pass. Outside `column_cache()` every call queries, exactly as before, and the
+#: dangerous callers never opt in. The keys are the connection OBJECTS in a
+#: WeakKeyDictionary (DuckDB connections support weakref, verified), so a dead
+#: connection's entry dies with it and no reused id can resurrect it.
+_COLUMN_CACHE: "weakref.WeakKeyDictionary | None" = None
+
+
+@contextlib.contextmanager
+def column_cache():
+    """Cache column lists for the duration of this block.
+
+    THE SCHEMA MUST NOT CHANGE INSIDE THE BLOCK. That is a real constraint and it
+    is why the cache is opt-in and scoped rather than global: a short analytical
+    pass can promise it, and `ingest_event` running for hours cannot. Call
+    `invalidate_column_cache(con)` if you must alter something anyway.
+
+    Re-entrant: a nested block reuses the outer cache and the outer state is
+    restored on exit.
+    """
+    global _COLUMN_CACHE
+    outer = _COLUMN_CACHE
+    if outer is None:
+        _COLUMN_CACHE = weakref.WeakKeyDictionary()
+    try:
+        yield
+    finally:
+        _COLUMN_CACHE = outer
+
+
+def invalidate_column_cache(con=None) -> None:
+    """Drop cached column lists — all of them, or one connection's. A no-op when
+    no cache is active, so callers never have to ask whether one is."""
+    if _COLUMN_CACHE is None:
+        return
+    if con is None:
+        _COLUMN_CACHE.clear()
+    else:
+        _COLUMN_CACHE.pop(con, None)
+
+
 def column_names(con, table: str) -> list[str]:
+    cache = _COLUMN_CACHE
+    if cache is not None:
+        per = cache.get(con)
+        if per is not None and table in per:
+            return per[table]
     rows = con.execute(
         "SELECT column_name FROM information_schema.columns WHERE table_name = ?",
         [table],
     ).fetchall()
-    return [r[0] for r in rows]
+    cols = [r[0] for r in rows]
+    if cache is not None:
+        cache.setdefault(con, {})[table] = cols
+    return cols
 
 
 # =============================================================================
@@ -870,7 +976,6 @@ def insert_many(con, table: str, rows: Sequence[Mapping[str, Any]]) -> int:
     con.executemany(sql, [[_prep(r[c]) for c in cols] for r in rows])
     return len(rows)
 
-
 def upsert(con, table: str, row: Mapping[str, Any], conflict_cols: Iterable[str]) -> None:
     """INSERT ... ON CONFLICT (conflict_cols) DO UPDATE. `conflict_cols` must be a
     PRIMARY KEY or UNIQUE constraint. Idempotent re-ingest of the same
@@ -893,6 +998,60 @@ def upsert(con, table: str, row: Mapping[str, Any], conflict_cols: Iterable[str]
         sql = head + "DO NOTHING"
     con.execute(sql, [_prep(row[c]) for c in cols])
 
+
+
+def upsert_many(
+    con, table: str, rows: Sequence[Mapping[str, Any]], conflict_cols: Iterable[str]
+) -> int:
+    """`upsert` for many rows in ONE prepared statement, via executemany.
+
+    Row-at-a-time upserting is not a style preference here. Writing one market's
+    2 861 price points cost 25 s against 0.19 s of network, so 99 % of a backfill's
+    runtime was the write loop and a full pass came to 19 hours.
+
+    Measured, because the obvious fix was not the fast one:
+        one INSERT per row     24.99 s
+        executemany            16.47 s   (only 2x — not a bulk path in DuckDB)
+        INSERT ... SELECT       0.05 s   (478x)
+    Same ON CONFLICT semantics, same caller-owned transaction, verified idempotent.
+
+    Every row must carry the same columns; a ragged batch would silently bind
+    values to the wrong parameters.
+    """
+    rows = list(rows)
+    if not rows:
+        return 0
+    cols = list(rows[0].keys())
+    colset = set(cols)
+    for k, r in enumerate(rows):
+        if set(r.keys()) != colset:
+            raise ValueError(
+                f"row {k} has columns {sorted(set(r.keys()))}, expected {sorted(cols)}; "
+                "a ragged batch would bind values to the wrong parameters"
+            )
+    conflict = list(conflict_cols)
+    updates = [c for c in cols if c not in conflict]
+    sql_bulk = (
+        f"INSERT INTO {_q(table)} ({', '.join(_q(c) for c in cols)}) "
+        f"SELECT {', '.join(_q(c) for c in cols)} FROM __BATCH__ "
+        f"ON CONFLICT ({', '.join(_q(c) for c in conflict)}) "
+    )
+    if updates:
+        sql_bulk += "DO UPDATE SET " + ", ".join(
+            f"{_q(c)} = excluded.{_q(c)}" for c in updates
+        )
+    else:
+        sql_bulk += "DO NOTHING"
+    import pandas as pd
+
+    frame = pd.DataFrame([{c: _prep(r[c]) for c in cols} for r in rows])
+    name = f"_upsert_batch_{id(frame):x}"
+    con.register(name, frame)
+    try:
+        con.execute(sql_bulk.replace("__BATCH__", name))
+    finally:
+        con.unregister(name)
+    return len(rows)
 
 def query(con, sql: str, params: Sequence[Any] | None = None) -> list[dict]:
     """Run a SELECT and return a list of dict rows."""
