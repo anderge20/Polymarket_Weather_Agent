@@ -667,7 +667,11 @@ def stage_paper(cy: Cycle, con, *, dataset_version: str, session_id: str,
 #: leaving the next reader to guess.
 _SETTLE_REQUIRED = {
     "weather_observations": ("observed_value", "observed_unit", "series"),
-    "markets": ("contract_source",),
+    # BOTH halves of the terna. `contract_source` alone was listed, and the other
+    # half was silently supplied as the human measurement_rule string, which the
+    # frozen core rejects as "terna outside the 11-class partition" — every
+    # market, always.
+    "markets": ("contract_source", "measurement_rule_code"),
 }
 
 
@@ -704,6 +708,49 @@ def _station_tz(icao: str | None) -> str | None:
         return stations.timezone_of(icao)
     except (KeyError, ValueError):
         return None      # unknown station: refuse later, never invent a zone
+
+
+#: THE TWO MODULES NAME THE SAME SERIES DIFFERENTLY, and nothing connected them.
+#:
+#: `settlement` is FROZEN (SETTLEMENT_OPERATOR_CORE.v3, sha a6d92667…) and its
+#: operators require `metar_body_c` / `metar_tgroup_tmpf`. `observations.to_row`
+#: — the only thing that has ever written `weather_observations`, prospectively or
+#: in the backfill — writes `IEM_ASOS_METAR_1C`, `IEM_ASOS_TMPF_1F` and
+#: `IEM_ASOS_TMPF_0.1F`. So every settlement refused with `series_mismatch`.
+#: Verified live on a real position: the terna resolved, the operator was found,
+#: and the observation was thrown out for carrying the wrong series name.
+#:
+#: The ONLY place `metar_body_c` had ever appeared outside the frozen core was a
+#: FIXTURE in this repository's own tests. Settlement had therefore never been
+#: exercised against a row any ingester produced, and R24's P4 was closed against
+#: that fixture.
+#:
+#: The core cannot be edited — it is frozen by sha — so the correspondence is
+#: declared HERE, at the boundary, and only where it is certain:
+#:
+#:   IEM_ASOS_METAR_1C -> metar_body_c
+#:       Both name the whole-degree Celsius value of the METAR body, and
+#:       `observations.station_series` assigns it to exactly the stations that are
+#:       not on the Fahrenheit list — which is the population of the Celsius
+#:       operators. Certain.
+#:
+#: The two Fahrenheit series are NOT mapped, on purpose. `metar_tgroup_tmpf` names
+#: the METAR T-group; `IEM_ASOS_TMPF_1F` and `IEM_ASOS_TMPF_0.1F` are IEM's `tmpf`
+#: at two DIFFERENT resolutions, and the operator's own comment says the
+#: resolution decides ("with a tenths series, quantisation NONE and FLOOR stop
+#: being the same label for 97.7 F"). Collapsing both onto one name would settle
+#: KBKF off its own grid, which is exactly what A-42 established must not happen.
+#: A correspondence that is not certain is refused, not guessed: those markets
+#: come back as `series_correspondence_undeclared` and wait for the audit to say
+#: which IEM series the frozen operator was written against.
+SERIES_CORRESPONDENCE = {
+    "IEM_ASOS_METAR_1C": settlement.SERIES_METAR_C,
+}
+
+
+def to_core_series(series: str | None) -> str | None:
+    """The frozen core's name for an ingested series, or None when undeclared."""
+    return SERIES_CORRESPONDENCE.get(series or "")
 
 
 def stage_observations(cy: Cycle, con, *, dataset_version: str, now: datetime) -> dict:
@@ -836,7 +883,8 @@ def stage_settle(cy: Cycle, con, *, dataset_version: str) -> dict:
     for pos in open_rows:
         rows = db.query(
             con,
-            "SELECT m.market_id, m.event_id, m.contract_source, m.measurement_rule, "
+            "SELECT m.market_id, m.event_id, m.contract_source, "
+            "       m.measurement_rule_code, "
             "       m.unit, m.rounding_rule, m.station_identifier, "
             "       o.band_label, o.outcome_label, "
             "       json_extract_string(m.source_timestamps, '$.endDate') AS end_raw "
@@ -857,28 +905,41 @@ def stage_settle(cy: Cycle, con, *, dataset_version: str) -> dict:
             continue
 
         icao = m.get("station_identifier")
+        if not m.get("measurement_rule_code"):
+            # Never substitute the prose. The partition is keyed on the P_* code
+            # and a sentence in its place is refused as an unknown terna, which
+            # reads as "this market has no operator" when the truth is "this row
+            # was never classified".
+            refusals["no_measurement_rule_code"] = \
+                refusals.get("no_measurement_rule_code", 0) + 1
+            continue
         ctx = settlement.MarketContext(
             market_id=m["market_id"], event_id=m["event_id"],
             contract_source=m["contract_source"],
-            measurement_rule_code=m["measurement_rule"], unit=m["unit"],
+            measurement_rule_code=m["measurement_rule_code"], unit=m["unit"],
             rounding_rule=m.get("rounding_rule"), target_date=target,
             station_icao=icao, station_tz=_station_tz(icao),
+        )
+        raw_obs = db.query(
+            con,
+            "SELECT observation_time, observed_value, observed_unit, series, "
+            "       available_at, record_version FROM weather_observations "
+            "WHERE station = ? AND dataset_version = ?",
+            [icao, dataset_version],
         )
         obs = [
             settlement.Observation(
                 ts_utc=r["observation_time"], value=r["observed_value"],
-                unit=r["observed_unit"], series=r["series"],
+                unit=r["observed_unit"], series=to_core_series(r["series"]),
                 available_at=r.get("available_at"),
                 record_version=r.get("record_version") or 1,
             )
-            for r in db.query(
-                con,
-                "SELECT observation_time, observed_value, observed_unit, series, "
-                "       available_at, record_version FROM weather_observations "
-                "WHERE station = ? AND dataset_version = ?",
-                [icao, dataset_version],
-            )
+            for r in raw_obs if to_core_series(r["series"]) is not None
         ]
+        if raw_obs and not obs:
+            refusals["series_correspondence_undeclared"] = \
+                refusals.get("series_correspondence_undeclared", 0) + 1
+            continue
         # asof=None: `available_at` on the observation history is the download
         # instant, not a real availability (A-30), so an as-of gate here would be
         # a claim we cannot support. The result carries Y_FINAL_UNKNOWN_ASOF and

@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 
 from weather_agent import database, database as db_mod, store
+from weather_agent import observations as obs_mod
 
 _SPEC = importlib.util.spec_from_file_location(
     "paper_cycle", Path(__file__).resolve().parents[1] / "scripts" / "paper_cycle.py")
@@ -447,12 +448,20 @@ def test_settle_skips_loudly_rather_than_guessing_a_winner(con, monkeypatch):
 
 def _settleable_market(con, *, band="17°C", outcome="Yes", token="t1"):
     from weather_agent.polymarket import resolution as res
+    # The CODE in `measurement_rule_code` and the PROSE in `measurement_rule` —
+    # which is what live discovery writes. The old fixture put the P_* code in
+    # `measurement_rule`, a value discovery never produces there, so the suite
+    # could not see that `stage_settle` was feeding the human string into the
+    # partition key. Fourth fixture today certifying a world that does not exist.
     con.execute(
-        "INSERT INTO markets (market_id, event_id, contract_source, measurement_rule, "
+        "INSERT INTO markets (market_id, event_id, contract_source, "
+        "measurement_rule_code, measurement_rule, "
         "unit, rounding_rule, station_identifier, source_timestamps, "
         "ingestion_timestamp, dataset_version, record_version) "
-        "VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-        ["m1", "e1", res.SRC_NOAA, res.P_NOAA_TEMPCOL, "C", "whole degree", "EGLC",
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+        ["m1", "e1", res.SRC_NOAA, res.P_NOAA_TEMPCOL,
+         res.MEASUREMENT_RULE_TEXT[res.P_NOAA_TEMPCOL],
+         "C", "whole degree", "EGLC",
          '{"endDate":"2026-09-10T12:00:00Z"}', T0, "ds1", 1])
     con.execute(
         "INSERT INTO outcomes (market_id, token_id, band_label, outcome_label, "
@@ -463,7 +472,12 @@ def _settleable_market(con, *, band="17°C", outcome="Yes", token="t1"):
         "observed_value, observed_unit, series, source, ingestion_timestamp, "
         "dataset_version, record_version) VALUES (?,?,?,?,?,?,?,?,?,?)",
         ["EGLC", datetime(2026, 9, 10, 14, tzinfo=timezone.utc), 17.0, 17.0, "C",
-         "metar_body_c", "IEM", T0, "ds1", 1])
+         # What the INGESTER writes, not what the frozen core requires. The old
+         # fixture wrote `metar_body_c` — a value no ingester has ever produced —
+         # so the suite could not see that every real settlement was refused for
+         # `series_mismatch`. Fifth fixture today certifying a world that is not
+         # the one the code runs in.
+         obs_mod.SERIES_1C, "IEM", T0, "ds1", 1])
     from weather_agent import paper as _paper
     fill = _paper.Fill(shares=100.0, notional=50.0, vwap=0.5, fee=0.6,
                        outlay=50.6, executable=True)
@@ -522,7 +536,7 @@ def test_a_refused_settlement_leaves_the_position_open_with_its_reason(con, monk
     from weather_agent.polymarket import resolution as res
     _with_b_substrate(con); _fake_stations(monkeypatch)
     tid = _settleable_market(con)
-    con.execute("UPDATE markets SET measurement_rule = ? WHERE market_id = 'm1'",
+    con.execute("UPDATE markets SET measurement_rule_code = ? WHERE market_id = 'm1'",
                 [res.P_BY_FORECAST])
     con.execute("UPDATE markets SET contract_source = ? WHERE market_id = 'm1'",
                 [res.SRC_WU])
@@ -886,3 +900,38 @@ def test_a_settled_position_stops_pulling_its_label(con, monkeypatch):
         _cycle(), con, dataset_version="ds1",
         now=datetime(2026, 9, 12, tzinfo=timezone.utc))
     assert out["wanted"] == 0 and calls == []
+
+
+def test_settlement_refuses_when_the_rule_CODE_was_never_classified(con, monkeypatch):
+    """The partition is keyed on the P_* code. Substituting the human string —
+    which is what the cycle did until the column existed — is refused by the core
+    as an unknown terna, and that reads as "this market has no operator" when the
+    truth is "this row was never classified". The two must not be confusable."""
+    _with_b_substrate(con); _fake_stations(monkeypatch)
+    _settleable_market(con)
+    con.execute("UPDATE markets SET measurement_rule_code = NULL WHERE market_id = 'm1'")
+    out = paper_cycle.stage_settle(_cycle(), con, dataset_version="ds1")
+    assert out["settled"] == 0
+    assert out["refusals"].get("no_measurement_rule_code") == 1
+
+
+def test_a_series_with_no_declared_correspondence_is_refused_not_guessed(con, monkeypatch):
+    """`metar_tgroup_tmpf` names the METAR T-group; IEM_ASOS_TMPF_1F and
+    IEM_ASOS_TMPF_0.1F are `tmpf` at two DIFFERENT resolutions, and the operator's
+    own note says the resolution decides the label. Collapsing both onto one name
+    would settle KBKF off its own grid (A-42). Undeclared means refused."""
+    _with_b_substrate(con); _fake_stations(monkeypatch)
+    _settleable_market(con)
+    con.execute("UPDATE weather_observations SET series = ?", [obs_mod.SERIES_TENTH_F])
+    out = paper_cycle.stage_settle(_cycle(), con, dataset_version="ds1")
+    assert out["settled"] == 0
+    assert out["refusals"].get("series_correspondence_undeclared") == 1
+
+
+def test_the_declared_correspondence_is_the_one_the_ingester_writes():
+    """A mapping keyed on a name no ingester produces is a mapping that never
+    fires. Pinned against `observations`, not against a literal."""
+    assert paper_cycle.to_core_series(obs_mod.SERIES_1C) == "metar_body_c"
+    assert paper_cycle.to_core_series(obs_mod.SERIES_1F) is None
+    assert paper_cycle.to_core_series(obs_mod.SERIES_TENTH_F) is None
+    assert paper_cycle.to_core_series(None) is None

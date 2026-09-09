@@ -47,7 +47,7 @@ from typing import Any, Iterable, Mapping, Sequence
 
 from .config import DB_PATH
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 # Standard provenance columns present on every fact/derived table.
 PROVENANCE_COLUMNS = (
@@ -554,6 +554,25 @@ _DDL_V4 = [
 
 # Ordered, idempotent migrations. Add a new dict (version+1) for future changes;
 # never edit a shipped migration in place.
+# Migration 5 — the OTHER half of the settlement terna.
+#
+# `contract_source` was persisted; `measurement_rule_code` was not, so
+# `stage_settle` fed the HUMAN STRING ("highest reading under the NOAA 'Temp'
+# column ...") into a field named `measurement_rule_code`, and the frozen core
+# refused EVERY market with "terna outside the 11-class partition". Verified live
+# on a real position before this migration existed.
+#
+# It is a NEW version and not a line appended to migration 2. An ALTER added to
+# an ALREADY-APPLIED migration never runs on a database that has recorded that
+# version: fresh databases would get the column — the paper cycle rebuilds its
+# DuckDB from the shards every run — and `data/pmw.duckdb` never would, so
+# settlement would work in CI and refuse in the operation, which is the worst
+# place to find out.
+_DDL_V5 = [
+    "ALTER TABLE markets ADD COLUMN IF NOT EXISTS measurement_rule_code VARCHAR;",
+]
+
+
 MIGRATIONS: list[dict] = [
     {
         "version": 1,
@@ -582,6 +601,11 @@ MIGRATIONS: list[dict] = [
         # reconstruct them. Additive: existing rows gain NULLs, which read as
         # "unknown", never as a default.
         "statements": _DDL_V4,
+    },
+    {
+        "version": 5,
+        "name": "r30_measurement_rule_code",
+        "statements": _DDL_V5,
     },
 ]
 
