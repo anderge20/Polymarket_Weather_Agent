@@ -240,6 +240,13 @@ resultado.
 6. **Ciclos perdidos por artefacto rancio cuentan contra C1**, como cualquier otro ciclo perdido.
    No hay categoría de excusa: si la cadencia se eligió mal, el coste se ve.
 
+7. **La ventana de reajuste no es «cuando dé tiempo»: es ANTES DEL ANCLA.** Como
+   `prediction_time = min(now, T_asof)` (§1), un artefacto ajustado después de `T_asof` cae en la
+   negativa por fuga aunque se haya ajustado «antes del ciclo». En la práctica: el reajuste debe
+   **terminar antes de las 12:00Z** para el ciclo de lead 24 h y **antes de las 03:00Z** para el de
+   lead 9 h. No es una recomendación: verificado en vivo, la primera ejecución con un artefacto
+   ajustado a las 12:39Z fue rechazada por un ciclo cuyo `prediction_time` era 12:00Z.
+
 **Lo que este preregistro NO puede fijar todavía:** el número de horas. Depende de la medida de
 deriva que debe la sesión B (encargo 3). Queda como hueco explícito, del mismo modo que `tau` queda
 como hueco de P2: **si la medida no existe, la corrida no arranca**; no hay cadencia por defecto.

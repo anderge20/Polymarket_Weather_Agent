@@ -2489,3 +2489,47 @@ de B, con `max_age_hours` fijada por su medida de deriva y no a ojo. Hasta enton
 silenciosas.
 **Rama:** `feat/quantile-artifact`, sobre `feat/forecast-stage`. **Ventana D16 hasta 2026-09-09 17:00 UTC.**
 **Estado:** ADOPTADA, PR tras fusionar #11.
+
+## A-56 — Strategy A tampoco resolvía la estación, y el fixture es por qué nadie lo vio · 2026-09-09 · Claude (sesión A)
+
+**Encontrado EJECUTANDO el ciclo contra el universo en vivo**, con un artefacto de prueba en el
+sitio del de M2. `forecasts` llegó a OK con `quantiles=48` y `signals` dijo acto seguido
+`eligible: 0, excluded: 49`, todos con `n_bands_ok: 0` — **incluidos cinco eventos cuyas once bandas
+estaban TODAS cotizadas**. Un venue sin cotizaciones no produce ceros tan limpios.
+
+`strategy_a.generate_event_signals` seleccionaba `markets.station` y se lo pasaba a `build_feature`
+como estación. `weather_forecasts.station` está indexada por **ICAO**, así que la búsqueda del
+pronóstico no devolvía nada y **todas** las bandas salían None.
+
+**Medido en vivo: `markets.station` es NULL en 1.100 de 1.100 filas** —la plantilla NOAA no lleva la
+prosa «recorded at the X Station»— mientras `station_identifier` está poblada en 1.078. No era una
+pérdida parcial: era **total y determinista**, y la corrida de 21 días habría producido un libro
+vacío **que parecería un resultado de estrategia**.
+
+Tercera aparición del mismo lío en un día: `select_universe` devolvía el nombre (A-53),
+`stage_forecasts` lo arrastraba, y esta es la copia que nadie había ejecutado.
+
+**Por qué la suite pasaba, que es la mitad útil.** El fixture insertaba el ICAO en `markets.station`
+—un valor que el descubrimiento en vivo no produce jamás—, así que **las dos columnas eran
+indistinguibles para todos los tests**. El fixture ahora refleja el dato real (ICAO en
+`station_identifier`, `station` a NULL) y con el código viejo **fallan 8 de 18** tests de estrategia,
+con `missing_feature`: la etiqueta exacta que dio la corrida en vivo.
+
+**Extremo a extremo en vivo, tras el arreglo** — primera vez que el pipeline produce una posición:
+
+    universe   49 eventos / 539 mercados / 1.078 tokens
+    forecasts  OK  48 estaciones, quantiles 48, artifact_age_h 5,83
+    signals    OK  49 eventos, 5 elegibles, 44 excluidos, 55 señales
+    paper      OK  21 abiertas, 15 rechazadas (net_edge_below_tau), bankroll 7.353
+    settle     OK  21 rechazadas, context_out_of_snapshot
+
+5 de 49 es **10,2 %**, que es la propiedad del venue medida en §0 de R24 (7 de 51), no un defecto.
+`settle` negándose sobre un objetivo de mañana por falta de observación es el núcleo congelado
+fallando cerrado. 510 verdes.
+
+**Y una restricción operativa que salió porque la guarda de fuga saltó al primer intento.** El
+artefacto de prueba estaba ajustado a las 12:39Z y el ciclo lo rechazó contra un `prediction_time`
+de 12:00Z. Como `prediction_time = min(now, T_asof)`, **el reajuste debe terminar antes de `T_asof`,
+no antes de «ahora»**: antes de las 12:00Z para el lead de 24 h y de las 03:00Z para el de 9 h.
+Añadido como §4bis.7 del preregistro (v4, sha nuevo).
+**Estado:** ADOPTADA.
