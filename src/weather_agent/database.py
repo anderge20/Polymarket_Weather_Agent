@@ -1005,6 +1005,17 @@ def upsert_many(
 ) -> int:
     """`upsert` for many rows in ONE prepared statement, via executemany.
 
+    RETURNS THE NUMBER OF ROWS APPLIED, NOT THE NUMBER OFFERED. Those differ when
+    the batch repeats a conflict key: nine rows over three keys returns 3. The
+    contract changed when deduplication was added below — session B noticed that
+    nobody had named it — and it is stated here because the value reaches
+    `summary["points_written"]` and from there the run reports, where a reader
+    will otherwise take it for "rows I sent".
+    "Applied" is the more useful of the two: with `ON CONFLICT DO UPDATE` a row
+    that collides is UPDATED rather than inserted, so "written" was never a count
+    of insertions. The applied count is a fact about the table; the offered count
+    is a fact about the caller's intention.
+
     Row-at-a-time upserting is not a style preference here. Writing one market's
     2 861 price points cost 25 s against 0.19 s of network, so 99 % of a backfill's
     runtime was the write loop and a full pass came to 19 hours.
