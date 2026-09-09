@@ -156,6 +156,43 @@ class Fill:
     detail: list[dict] = field(default_factory=list)
 
 
+def select_book(con, *, token_id: str, dataset_version: str, asof) -> dict | None:
+    """The ONE way a book is chosen for a fill. Both the live cycle and the replay
+    call this, and that is the point.
+
+    They used to differ: the cycle took the latest book of its own collector
+    session with NO time predicate, while the replay took the latest book at or
+    before `prediction_time`. Two different predicates over the same table select
+    different rows, so the replay could report NOT REPRODUCIBLE for a cycle that
+    was perfectly correct — and, worse, the cycle could fill against a book
+    timestamped AFTER the as-of it claims to respect. Writing the predicate once
+    removes the whole class.
+
+    `asof` is the decision instant. `orderbook_snapshots."timestamp"` is OUR
+    capture instant (the collector sets it), so `timestamp <= asof` is the honest
+    as-of test for a book. Returns the parsed snapshot, or None when no admissible
+    book exists — which is a legitimate reason to decline a trade, not an error."""
+    from . import database as db
+
+    rows = db.query(
+        con,
+        'SELECT book_snapshot FROM orderbook_snapshots '
+        'WHERE token_id = ? AND dataset_version = ? AND "timestamp" <= ? '
+        'ORDER BY "timestamp" DESC LIMIT 1',
+        [str(token_id), dataset_version, asof],
+    )
+    if not rows:
+        return None
+    snap = rows[0]["book_snapshot"]
+    if isinstance(snap, str):
+        import json as _json
+        try:
+            snap = _json.loads(snap)
+        except ValueError:
+            return None
+    return snap if isinstance(snap, dict) else None
+
+
 def _levels_from_snapshot(book_snapshot: dict, side: str) -> list[tuple[float, float]]:
     """Read one side out of a stored snapshot, best-first.
 

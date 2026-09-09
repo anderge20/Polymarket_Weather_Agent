@@ -8,7 +8,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -50,11 +50,15 @@ def _seed(tmp_path, *, entry_price=None, size=None, extra_trade=False,
             "INSERT INTO outcomes (market_id, token_id, outcome_label, band_label, "
             "ingestion_timestamp, dataset_version, record_version) VALUES (?,?,?,?,?,?,?)",
             ["m1", tok, lab, "15C", T0, DSV, 1])
+    # The book is stamped BEFORE prediction_time, which is the real ordering the
+    # cycle produces (collection first, decision instant settled after it). An
+    # earlier fixture put both at the same instant — a situation main() cannot
+    # produce, which is how the replay's predicate mismatch went unnoticed.
     con.execute(
         'INSERT INTO orderbook_snapshots (token_id, "timestamp", market_id, '
         "book_snapshot, ingestion_timestamp, dataset_version, record_version) "
         "VALUES (?,?,?,?,?,?,?)",
-        ["t_yes", T0, "m1", json.dumps(BOOK), T0, DSV, 1])
+        ["t_yes", T0 - timedelta(minutes=5), "m1", json.dumps(BOOK), T0, DSV, 1])
     con.execute(
         'INSERT INTO signals (market_id, token_id, strategy, "timestamp", signal, '
         "fair_value, price_assumption, edge, ingestion_timestamp, dataset_version, "
@@ -179,3 +183,24 @@ def test_the_cli_exit_code_gates_on_the_verdict(tmp_path, capsys):
                             "--store-root", str(tmp_path / "clean")])
     assert rc == 0
     assert "VERDICT: REPRODUCIBLE" in capsys.readouterr().out
+
+
+def test_a_book_stamped_after_the_decision_is_never_used(tmp_path):
+    """The as-of invariant of the execution layer: a fill must not use a book that
+    did not exist yet at prediction_time. Both the cycle and the replay go through
+    paper.select_book, so this pins it for both."""
+    from weather_agent import database, paper
+    con = database.init_db(database.connect(":memory:"))
+    try:
+        for offset, price in ((-5, 0.50), (+5, 0.10)):
+            con.execute(
+                'INSERT INTO orderbook_snapshots (token_id, "timestamp", market_id, '
+                "book_snapshot, ingestion_timestamp, dataset_version, record_version) "
+                "VALUES (?,?,?,?,?,?,?)",
+                ["t", T0 + timedelta(minutes=offset), "m",
+                 json.dumps({"asks": [{"price": price, "size": 1000}], "bids": []}),
+                 T0, DSV, 1])
+        snap = paper.select_book(con, token_id="t", dataset_version=DSV, asof=T0)
+        assert snap["asks"][0]["price"] == 0.50      # the past one, not the future one
+    finally:
+        con.close()

@@ -388,3 +388,54 @@ def test_the_engine_cannot_place_a_real_order():
                       "eth_account", "web3", "post_order", "place_order",
                       "requests.post", "signature"):
         assert forbidden not in src, f"paper.py must not reference {forbidden!r}"
+
+
+# =============================================================================
+# select_book — one predicate, shared by the cycle and the replay
+# =============================================================================
+def test_select_book_honours_the_as_of(con):
+    from datetime import timedelta
+    for offset, price in ((-10, 0.40), (+10, 0.90)):
+        con.execute(
+            'INSERT INTO orderbook_snapshots (token_id, "timestamp", market_id, '
+            "book_snapshot, ingestion_timestamp, dataset_version, record_version) "
+            "VALUES (?,?,?,?,?,?,?)",
+            ["t1", T0 + timedelta(minutes=offset), "m1",
+             __import__("json").dumps({"asks": [{"price": price, "size": 10}],
+                                       "bids": []}),
+             T0, "ds1", 1])
+    snap = paper.select_book(con, token_id="t1", dataset_version="ds1", asof=T0)
+    assert snap["asks"][0]["price"] == 0.40      # the older one, never the future one
+
+
+def test_select_book_returns_none_when_nothing_is_admissible(con):
+    from datetime import timedelta
+    con.execute(
+        'INSERT INTO orderbook_snapshots (token_id, "timestamp", market_id, '
+        "book_snapshot, ingestion_timestamp, dataset_version, record_version) "
+        "VALUES (?,?,?,?,?,?,?)",
+        ["t1", T0 + timedelta(hours=1), "m1", '{"asks":[],"bids":[]}', T0, "ds1", 1])
+    assert paper.select_book(con, token_id="t1", dataset_version="ds1", asof=T0) is None
+
+
+def test_select_book_is_scoped_to_the_dataset_version(con):
+    con.execute(
+        'INSERT INTO orderbook_snapshots (token_id, "timestamp", market_id, '
+        "book_snapshot, ingestion_timestamp, dataset_version, record_version) "
+        "VALUES (?,?,?,?,?,?,?)",
+        ["t1", T0, "m1", '{"asks":[],"bids":[]}', T0, "other_dsv", 1])
+    assert paper.select_book(con, token_id="t1", dataset_version="ds1", asof=T0) is None
+
+
+def test_the_cycle_and_the_replay_call_the_same_selector():
+    """The regression this closes: two different book predicates over the same
+    table select different rows, so the replay reported NOT REPRODUCIBLE for
+    cycles that were correct."""
+    from pathlib import Path as _P
+    root = _P(__file__).resolve().parents[1]
+    cyc = (root / "scripts" / "paper_cycle.py").read_text()
+    rep = (root / "scripts" / "replay_cycle.py").read_text()
+    for src, name in ((cyc, "paper_cycle"), (rep, "replay_cycle")):
+        assert "paper.select_book(" in src, f"{name} must use the shared selector"
+        assert "FROM orderbook_snapshots" not in src, \
+            f"{name} must not hand-roll its own book query"

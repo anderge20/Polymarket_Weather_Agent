@@ -19,9 +19,15 @@ So the replay:
   * reads the `cycle_params` shard the cycle wrote, and takes `prediction_time`,
     `tau`, the sizing parameters and the model FROM IT — never from the clock and
     never from today's defaults,
-  * re-runs the decision path over that state,
-  * and diffs the result against the `signals` and `paper_trades` that were
-    persisted at the time.
+  * re-derives the EXECUTION layer over that state — admissible book, fill price,
+    size, fee — and diffs it against the `paper_trades` persisted at the time.
+
+WHAT IT DOES NOT AUDIT, stated so the criterion cannot overclaim: it does NOT
+recompute the signal. `signal` and `fair_value` are read from the persisted
+`signals` rows and taken as given, so an irreproducible SIGNAL would not be
+caught here. Re-deriving `p_weather` means re-deriving M2's quantiles, which is
+another session's lane. R24's C3 is written against this boundary rather than
+against the broader claim.
 
 Any disagreement is reported per row. A silent "looks fine" is not an outcome:
 the exit code is non-zero when anything differs, so this can gate a run.
@@ -170,18 +176,12 @@ def replay(root: str, session_id: str) -> dict:
             if not comp:
                 continue
             exec_token = str(comp[0]["token_id"])
-        books = db.query(
-            con,
-            'SELECT book_snapshot FROM orderbook_snapshots WHERE token_id = ? '
-            'AND dataset_version = ? AND "timestamp" <= ? '
-            'ORDER BY "timestamp" DESC LIMIT 1',
-            [exec_token, dsv, prediction_time],
-        )
-        if not books:
+        # The SAME selector the cycle used. When these differed, the replay could
+        # report NOT REPRODUCIBLE for a perfectly correct cycle.
+        snap = paper.select_book(con, token_id=exec_token, dataset_version=dsv,
+                                 asof=prediction_time)
+        if snap is None:
             continue
-        snap = books[0]["book_snapshot"]
-        if isinstance(snap, str):
-            snap = json.loads(snap)
         fee_rows = db.query(
             con,
             "SELECT f.fee_regime, f.taker_fee, f.fee_status, f.raw_fee_fields "

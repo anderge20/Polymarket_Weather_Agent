@@ -145,8 +145,13 @@ jobs:
             --model "$MODEL"
             --lead-hours "${{ steps.plan.outputs.lead_hours }}"
             --summary-json "results/cycle_${RUN_ID}.json"
-            --dump-catalogue
           )
+          # Catalogue snapshot ONCE a day, on the 11:40Z firing only. Passing it
+          # on both crons doubled the volume (~21 MB over the run, not ~10) and
+          # contradicted the cadence paper_cycle.py documents for itself.
+          if [ "${{ steps.plan.outputs.lead_hours }}" = "24" ]; then
+            ARGS+=(--dump-catalogue)
+          fi
           if [ "${{ steps.gate.outputs.collect_only }}" = "true" ]; then
             ARGS+=(--collect-only)
           else

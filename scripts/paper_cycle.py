@@ -393,7 +393,30 @@ def stage_signals(cy: Cycle, con, *, dataset_version: str, target_date: date,
                  target_date=str(target_date), model=model)
         return {"eligible": 0, "excluded": 0, "signals": 0}
 
-    events = sorted({r["event_id"] for r in universe if r.get("event_id")})
+    # The DECISION universe is narrower than the COLLECTION universe, and
+    # deliberately so: we collect books for everything discovered (book history is
+    # not recoverable), but a market may only be DECIDED on if we could have known
+    # it existed by `prediction_time`. `markets.available_at` is stamped at the
+    # discovery request (R26). Discovery runs before collection, so on a punctual
+    # cycle every market qualifies; on a cycle that ran past T_asof the clamp puts
+    # `prediction_time` before the discovery instant and the newly-found markets
+    # are correctly excluded.
+    admissible = {
+        r["event_id"] for r in db.query(
+            con,
+            "SELECT DISTINCT event_id FROM markets "
+            "WHERE dataset_version = ? AND available_at IS NOT NULL "
+            "AND available_at <= ?",
+            [dataset_version, prediction_time],
+        ) if r.get("event_id")
+    }
+    all_events = {r["event_id"] for r in universe if r.get("event_id")}
+    dropped = sorted(all_events - admissible)
+    if dropped:
+        cy.stage("signals:asof_universe", OK, dropped=len(dropped),
+                 kept=len(all_events & admissible),
+                 reason="available_at_after_prediction_time")
+    events = sorted(all_events & admissible)
     totals = {"eligible": 0, "excluded": 0, "signals": 0}
     for event_id in events:
         try:
@@ -449,20 +472,18 @@ def stage_paper(cy: Cycle, con, *, dataset_version: str, session_id: str,
                 continue
             exec_token = str(comp[0]["token_id"])
 
-        books = db.query(
-            con,
-            "SELECT book_snapshot FROM orderbook_snapshots "
-            "WHERE token_id = ? AND dataset_version = ? AND collector_session_id = ? "
-            "ORDER BY \"timestamp\" DESC LIMIT 1",
-            [exec_token, dataset_version, session_id],
-        )
-        if not books:
+        # ONE book predicate, shared with the replay (paper.select_book). Note it
+        # is as-of `prediction_time`, NOT "this cycle's collector session": a
+        # cycle that ran past T_asof has books newer than the as-of it claims, and
+        # filling against those would violate C2 while the summary still reported
+        # the nominal lead.
+        snap = paper.select_book(con, token_id=exec_token,
+                                 dataset_version=dataset_version,
+                                 asof=prediction_time)
+        if snap is None:
             rejected += 1
-            reasons["no_book_this_cycle"] = reasons.get("no_book_this_cycle", 0) + 1
+            reasons["no_book_asof"] = reasons.get("no_book_asof", 0) + 1
             continue
-        snap = books[0]["book_snapshot"]
-        if isinstance(snap, str):
-            snap = json.loads(snap)
 
         # `market_fee_schedule` is keyed by fee_regime, NOT by market_id (its PK is
         # (fee_regime, dataset_version, record_version)) — a regime is shared by
