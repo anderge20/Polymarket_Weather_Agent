@@ -4406,3 +4406,48 @@ esa es precisamente su función.
 «esperado, no defecto», razonando que cron aún no había disparado. El razonamiento era correcto,
 pero era *una explicación*, no una comprobación — indistinguible, desde fuera, de un cron que no
 funciona. Que resultara ser cierta no la convierte en verificación. Por eso esta entrada existe.
+
+## A-91
+
+**Fecha:** 2026-09-09 20:27Z
+**Autor:** A (validador, sobre código propio ya revisado por B)
+**Asunto:** `install.sh` tiene la misma trampa de auto-borrado que el launcher — y sobrevivió a dos revisiones
+
+Preparando la tarea #28 leí `ops/hetzner/install.sh` para confirmar el orden de los pasos, y aparece
+esto:
+
+    ROOT=/opt/pmw
+    REPO=$ROOT/repo
+    ...
+    git -C "$REPO" fetch -q origin && git -C "$REPO" reset -q --hard origin/main
+
+El script se invoca como `/opt/pmw/repo/ops/hetzner/install.sh`. **Vive dentro del checkout que
+resetea.** Es, línea por línea, la trampa de A-89: si el ref de destino no contiene `ops/`, el reset
+borra el fichero que bash aún está leyendo, a mitad de ejecución. Sin error, sin log, y con la mitad
+del trabajo hecha — en el script cuya función es dejar el cron en pie.
+
+**Y la condición no es hipotética.** Comprobado hoy, no recordado:
+
+    git ls-tree -r --name-only origin/main -- ops/     -> (vacío)
+    git ls-tree -r --name-only origin/fix/upsert-no-pandas -- ops/  -> 4 ficheros
+
+`ops/` llega a `main` **con el PR #14**. Es decir: durante toda la ventana en que el servidor ya
+corría desde la rama, ejecutar `install.sh` desde el checkout lo habría borrado a mitad. La única
+razón de que no ocurriera es que no lo ejecuté en ese hueco.
+
+**Lo que esto dice de la revisión, que es lo que importa.** A-89 diagnosticó el defecto, escribió la
+lección, y **el arreglo se aplicó sólo al launcher** — que era donde había dolido. `install.sh`, en el
+mismo directorio, en el mismo PR, con la misma forma, se quedó como estaba. Yo lo escribí, yo lo
+revisé, y **B lo revisó y lo aprobó**: el hallazgo no es «se me escapó», es que *arreglar la instancia
+que te mordió no es arreglar la clase*, y ni el autor ni el revisor lo miraron como clase. La segunda
+revisión no es una segunda oportunidad si busca lo mismo que la primera.
+
+**Decisión.** No se toca el #14: su ventana está vencida y su fusión armada, y el defecto **no es
+bloqueante para esa fusión** — precisamente porque al fusionar, `main` pasa a tener `ops/` y la
+condición que lo dispara desaparece para el ref por defecto. Va como **PR #15**, con el guardián que
+relanza el script desde una copia fuera del checkout antes de tocar git, más el añadido de A-90 al
+README.
+
+**Y para la tarea #28 de esta noche**, que se ejecuta antes de que exista ese guardián: `install.sh`
+se copia a `/opt/pmw/bin/` y se ejecuta **desde ahí**, no desde el checkout. La misma disciplina que
+el launcher ya tiene escrita en su cabecera.
