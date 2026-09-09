@@ -186,13 +186,17 @@ def stage_guard_dataset_version(cy: Cycle, con, *, dataset_version: str) -> dict
     feature builder reads WITHOUT filtering.
 
     THE DEFECT THIS GUARDS AGAINST IS NOT MINE TO FIX, BUT THE RISK IS MINE TO
-    CREATE. `features.build_feature` takes `dataset_version` as a parameter and
-    then never uses it: its `price_history` and `weather_forecasts` queries filter
-    on market/station only (features.py, the two `latest_asof` calls), and
-    `strategy_a`'s price-lineage guard repeats the omission. With ONE
-    dataset_version in the database that is harmless, which is why session B's
-    end-to-end run is not affected — measured 2026-09-09: every table carries only
-    `backfill_2b_v1`.
+    CREATE. As of A-37 session B fixed `features.build_feature`, whose two as-of
+    reads now DO filter by `dataset_version`. What remains unfiltered is
+    `strategy_a`'s price-lineage guard, which still re-queries `price_history`
+    without it while its own comment claims to be "matching features.py" — no
+    longer true. With ONE dataset_version in the database that is harmless, which
+    is why session B's end-to-end run is unaffected: measured 2026-09-09, every
+    table carried only `backfill_2b_v1`.
+
+    This docstring said "build_feature never uses it" until PR #8 made that half
+    false. A guard whose stated justification is wrong is a guard the next reader
+    removes by mistake, so it is corrected here rather than left to age.
 
     Paper mode is what makes it dangerous: it introduces a SECOND dataset_version
     (`ds_paper_v1`). The day a database holds both, `build_feature` would silently
