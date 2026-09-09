@@ -856,12 +856,26 @@ def latest_asof(
     base = f"SELECT * FROM {_q(table)} WHERE {' AND '.join(clauses)}"
     if partition_cols:
         part = ", ".join(_q(c) for c in partition_cols)
+        # Ties on the as-of column were broken arbitrarily, so two revisions of the
+        # same observation returned whichever the engine happened to emit first.
+        # The append-only convention is that a higher record_version supersedes,
+        # so make that the tiebreak and the result deterministic.
+        #
+        # NOT as-of-correct for revisions: we cannot tell when a revision became
+        # public, only when we ingested it. Same class of limitation as the label
+        # availability assumption, and declared with it.
+        order_by = f"{_q(time_col)} DESC"
+        if "record_version" in column_names(con, table):
+            order_by += ", record_version DESC"
         sql = (
             f"{base} QUALIFY row_number() OVER "
-            f"(PARTITION BY {part} ORDER BY {_q(time_col)} DESC) = 1"
+            f"(PARTITION BY {part} ORDER BY {order_by}) = 1"
         )
     else:
-        sql = f"{base} ORDER BY {_q(time_col)} DESC LIMIT 1"
+        tail = f"{_q(time_col)} DESC"
+        if "record_version" in column_names(con, table):
+            tail += ", record_version DESC"
+        sql = f"{base} ORDER BY {tail} LIMIT 1"
     return query(con, sql, p)
 
 

@@ -99,8 +99,11 @@ def build_feature(
         time_col="observation_time",
         asof=prediction_time,
         partition_cols=["token_id"],
-        where="market_id = ?",
-        params=[market_id],
+        # A-37: dataset_version was accepted and never used. Latent while only one
+        # version existed; the moment paper mode adds `ds_paper_v1` the as-of read
+        # would mix a backfilled price with a prospective one and raise nothing.
+        where="market_id = ? AND dataset_version = ?",
+        params=[market_id, dataset_version],
     )
 
     if not prices:
@@ -122,8 +125,8 @@ def build_feature(
         time_col="available_at",
         asof=prediction_time,
         partition_cols=["station", "model", "target_date"],
-        where="station = ? AND model = ? AND target_date = ?",
-        params=[station, model, target_date],
+        where="station = ? AND model = ? AND target_date = ? AND dataset_version = ?",
+        params=[station, model, target_date, dataset_version],
     )
 
     if not forecasts:

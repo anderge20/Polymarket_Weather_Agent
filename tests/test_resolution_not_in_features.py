@@ -218,3 +218,43 @@ def test_feature_builds_weather_probability_from_outcome_band():
     assert "winning_outcome" not in row
     assert "resolution_timestamp" not in row
     assert "settlement_timestamp" not in row
+
+
+def test_features_never_cross_dataset_versions():
+    """A-37: build_feature accepted dataset_version and never used it.
+
+    Latent while only one version existed. The moment paper mode adds a second,
+    the as-of read would mix a backfilled price with a prospective one and raise
+    nothing — a feature built from two different worlds.
+    """
+    con, dsv, market_id, token_id = _setup_db()
+    other = "ds_paper_v1"
+
+    # a LATER, cheaper price in the other dataset_version
+    con.execute(
+        """INSERT INTO price_history (market_id, token_id, observation_time,
+               indicative_price, price_semantics, dataset_version)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        [market_id, token_id, PREDICTION_TIME.replace(hour=11, minute=59),
+         0.99, "INDICATIVE", other],
+    )
+    con.execute(
+        """INSERT INTO outcomes (market_id, token_id, outcome_index, band_label,
+               lo, hi, is_winner, dataset_version, record_version)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        [market_id, token_id, 0, "30C", 30.0, 30.0, None, dsv, 1],
+    )
+
+    row = build_feature(
+        con,
+        prediction_time=PREDICTION_TIME,
+        market_id=market_id,
+        token_id=token_id,
+        station="NYC",
+        model="test-model",
+        target_date="2026-08-24",
+        dataset_version=dsv,
+    )
+    assert row is not None
+    # the 0.99 from the other dataset_version is nearer in time and must NOT win
+    assert row["market_prob"] == 0.42
