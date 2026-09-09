@@ -113,7 +113,15 @@ def main() -> int:
         lo, hi = r.get("lo"), r.get("hi")
         lo = None if lo != lo else lo   # NaN -> None (open-ended low)
         hi = None if hi != hi else hi
+        # `labels` was parsed and then thrown away: the INSERT carried
+        # outcome_index and no outcome_label. Everything downstream identifies the
+        # YES token by outcome_label == "Yes" (2D, strategy_a.py:9 — NEVER by
+        # index), so a NULL column meant NO token was ever Yes and Strategy A
+        # produced zero signals over the entire substrate, deterministically and
+        # without an error.
         for idx, tok in enumerate(tokens):
+            label = labels[idx] if idx < len(labels) else None
+            is_yes = (str(label).strip().lower() == "yes")
             # Band applies to the YES token. The NO token is its complement and
             # carries no band of its own; writing the same lo/hi on it would make
             # band_probability answer the YES question for a NO position.
@@ -123,9 +131,14 @@ def main() -> int:
                 {
                     "market_id": str(r["market_id"]),
                     "token_id": str(tok),
-                    "band_label": r.get("group_item_title") if idx == 0 else None,
-                    "lo": float(lo) if idx == 0 and lo is not None else None,
-                    "hi": float(hi) if idx == 0 and hi is not None else None,
+                    "outcome_label": label,
+                    # The band belongs to the YES token, identified by its LABEL.
+                    # The NO token is the complement and carries no band of its
+                    # own; giving it the same lo/hi would make band_probability
+                    # answer the YES question for a NO position.
+                    "band_label": r.get("group_item_title") if is_yes else None,
+                    "lo": float(lo) if is_yes and lo is not None else None,
+                    "hi": float(hi) if is_yes and hi is not None else None,
                     "outcome_index": idx,
                     "is_winner": None,   # a LABEL: never written from here
                     "source": "CATALOG_V2",

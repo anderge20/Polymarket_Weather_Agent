@@ -35,6 +35,7 @@ from typing import Any
 
 from . import database as db
 from . import settlement as st
+from . import stations
 
 LABEL_WINNER = "WINNER"
 LABEL_LOSER = "LOSER"
@@ -57,6 +58,28 @@ class LabelRow:
     reason: str | None
 
 
+def _day_bounds(target_date: date, station: str):
+    """The station-LOCAL day, in UTC. Falls back to the UTC day only when the
+    station's timezone is unknown — and then the operator refuses anyway."""
+    from datetime import timedelta
+    from zoneinfo import ZoneInfo
+
+    try:
+        zone = ZoneInfo(stations.timezone_of(station))
+    except Exception:  # noqa: BLE001 - unknown station: the operator will refuse
+        zone = timezone.utc
+    start = datetime(target_date.year, target_date.month, target_date.day, tzinfo=zone)
+    return start.astimezone(timezone.utc), (start + timedelta(days=1)).astimezone(timezone.utc)
+
+
+def _day_start(target_date: date, station: str) -> datetime:
+    return _day_bounds(target_date, station)[0]
+
+
+def _day_end(target_date: date, station: str) -> datetime:
+    return _day_bounds(target_date, station)[1]
+
+
 def missing_substrate(con) -> list[str]:
     """Which required columns are absent, as `table.column`. Empty means ready."""
     missing = []
@@ -71,9 +94,16 @@ def missing_substrate(con) -> list[str]:
 
 
 def observations_for(
-    con, station: str, dataset_version: str
+    con, station: str, target_date: date, dataset_version: str
 ) -> list[st.Observation]:
-    """The station's readings, on the grid the SOURCE reported them on.
+    """The readings of ONE station-day, on the grid the SOURCE reported them on.
+
+    `target_date` is not optional. Under SOURCE_DAILY_ROW the operator applies no
+    temporal predicate BY DESIGN — its contract is that the caller hands over the
+    source's row for that date. Passing the station's whole history made the
+    aggregation return the maximum of every day on record, and it did not fail
+    closed: it emitted the label of a different day. Masked while the station
+    guard killed stratum 10 first; it opens the moment that guard goes.
 
     `observed_value` + `observed_unit`, never `tmax_observed`: the latter is always
     Celsius, and settling a Fahrenheit market on a converted value settles it off
@@ -85,8 +115,10 @@ def observations_for(
                   available_at, record_version
            FROM weather_observations
            WHERE station = ? AND dataset_version = ? AND observed_unit <> 'UNKNOWN'
+             AND observation_time >= ? AND observation_time < ?
            ORDER BY observation_time""",
-        [station, dataset_version],
+        [station, dataset_version, _day_start(target_date, station).isoformat(),
+         _day_end(target_date, station).isoformat()],
     )
     out = []
     for r in rows:
@@ -107,6 +139,26 @@ def observations_for(
 
 
 def context_for(market: dict, target_date: date) -> st.MarketContext:
+    """Build the operator's context.
+
+    `station_tz` comes from `stations.timezone_of`, NOT from a `markets.station_tz`
+    column — that column does not exist in any DDL or migration, so reading it with
+    .get() returned None silently and every LOCAL_CIVIL_DAY operator (strata 5, 7
+    and 8: 15 213 markets, 89 % of what should be labelled) died with
+    `context_out_of_snapshot`. The correct piece was already in this package and
+    unused; it also raises rather than defaulting to UTC.
+
+    A station with no known timezone yields `fail_closed_reason`, which `settle`
+    TRANSLATES into the closed enum — the caller does not invent reason strings.
+    """
+    icao = market.get("station_identifier")
+    tz = None
+    fail = None
+    if icao:
+        try:
+            tz = stations.timezone_of(icao)
+        except stations.UnknownStation:
+            fail = f"unknown_station_timezone:{icao}"
     return st.MarketContext(
         market_id=str(market["market_id"]),
         event_id=str(market.get("event_id") or ""),
@@ -115,8 +167,9 @@ def context_for(market: dict, target_date: date) -> st.MarketContext:
         unit=market.get("unit") or "",
         rounding_rule=market.get("rounding_rule"),
         target_date=target_date,
-        station_icao=market.get("station_identifier"),
-        station_tz=market.get("station_tz"),
+        station_icao=icao,
+        station_tz=tz,
+        fail_closed_reason=fail,
     )
 
 
@@ -124,45 +177,66 @@ def label_market(
     con,
     market: dict,
     target_date: date,
-    tokens: list[tuple[str, str]],
+    tokens: list[tuple[str, str, str]],
     dataset_version: str,
     asof: datetime | None = None,
 ) -> list[LabelRow]:
-    """Label every token of one market. `tokens` is [(token_id, band_label), ...].
+    """Label every token of one market. `tokens` is
+    [(token_id, band_label, outcome_label), ...].
+
+    The YES token is the one whose `outcome_label` is "Yes" — the rule written in
+    2D and restated in `strategy_a.py:9`: NEVER by `outcome_index`, NEVER by
+    `is_winner`. Position happens to work today (93 221 of 93 221 markets come
+    back as ('Yes','No')), but if it ever did not, every label would be inverted
+    and the PnL would come out sign-flipped and perfectly self-consistent — wrong
+    in the one way nothing downstream can detect.
 
     Returns UNLABELLED rows carrying the operator's own reason when it declines.
     """
+    # NO station guard here. Stratum 10 (HKO, 1 859 markets — the only DIRECT
+    # stratum and the only one with an evaluable holdout) has icao2 NULL BY NATURE,
+    # not by defect, and a guard above the operator meant it never reached
+    # try_settle at all. The operator decides what its own window_kind requires;
+    # this is the same defect A-43 fixed one level down, reintroduced by the caller.
     station = market.get("station_identifier")
-    if not station:
-        return [
-            LabelRow(str(market["market_id"]), t, LABEL_UNLABELLED, None, None,
-                     "no_station_identifier")
-            for t, _ in tokens
-        ]
-    obs = observations_for(con, station, dataset_version)
+    obs = observations_for(con, station, target_date, dataset_version) if station else []
     result, reason = st.try_settle(obs, context_for(market, target_date), asof)
     if result is None:
         return [
             LabelRow(str(market["market_id"]), t, LABEL_UNLABELLED, None, None, reason)
-            for t, _ in tokens
+            for t, _, _ in tokens
         ]
+
+    yes = [(tid, band) for tid, band, olabel in tokens
+           if str(olabel).strip().lower() == "yes"]
+    if len(yes) != 1:
+        # Fail closed: without exactly one YES token the complement is undefined,
+        # and guessing which side is which is how a sign-flipped ledger happens.
+        # The reason is TRANSLATED into the closed enum rather than invented:
+        # settlement.py §4 is a closed set, and writing a caller-made string into
+        # the same `reason` field would quietly stop it being closed downstream.
+        return [
+            LabelRow(str(market["market_id"]), t, LABEL_UNLABELLED,
+                     result.band_key, result.settled_value,
+                     st.R_CONTEXT_OUT_OF_SNAPSHOT)
+            for t, _, _ in tokens
+        ]
+    yes_token, yes_band = yes[0]
 
     out = []
     unit = market.get("unit")
-    for idx, (token_id, band_label) in enumerate(tokens):
-        if idx == 0:
-            # the YES token carries the band
-            won = st.band_key_wins(band_label, result.band_key, unit) if band_label else None
+    for token_id, band_label, _olabel in tokens:
+        if not yes_band:
+            won = None
+        elif token_id == yes_token:
+            won = st.band_key_wins(yes_band, result.band_key, unit)
         else:
-            # the NO token is the complement: it pays when the band did NOT occur
-            yes_band = tokens[0][1]
-            won = (
-                not st.band_key_wins(yes_band, result.band_key, unit)
-                if yes_band else None
-            )
+            # the NO token is the complement: it pays when the YES band did NOT occur
+            won = not st.band_key_wins(yes_band, result.band_key, unit)
         if won is None:
             out.append(LabelRow(str(market["market_id"]), token_id, LABEL_UNLABELLED,
-                                result.band_key, result.settled_value, "no_band_label"))
+                                result.band_key, result.settled_value,
+                                st.R_CONTEXT_OUT_OF_SNAPSHOT))
         else:
             out.append(LabelRow(
                 str(market["market_id"]), token_id,

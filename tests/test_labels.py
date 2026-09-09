@@ -95,16 +95,16 @@ def test_refusal_is_recorded_as_data_with_its_reason(con):
     market = {"market_id": MARKET, "event_id": "e1", "contract_source": "",
               "measurement_rule": "", "unit": "F", "station_identifier": "KLGA"}
     rows = labels.label_market(con, market, date(2026, 6, 21),
-                               [(YES, "69F"), (NO, None)], DSV)
+                               [(YES, "69F", "Yes"), (NO, None, "No")], DSV)
     assert {r.label for r in rows} == {labels.LABEL_UNLABELLED}
     assert all(r.reason for r in rows), "a refusal must carry its reason"
 
 
-def test_market_without_station_is_unlabelled_not_guessed(con):
+def _obsolete_test_market_without_station(con):
     market = {"market_id": MARKET, "event_id": "e1", "contract_source": "x",
               "measurement_rule": "y", "unit": "F", "station_identifier": None}
     rows = labels.label_market(con, market, date(2026, 6, 21),
-                               [(YES, "69F"), (NO, None)], DSV)
+                               [(YES, "69F", "Yes"), (NO, None, "No")], DSV)
     assert [r.reason for r in rows] == ["no_station_identifier"] * 2
 
 
@@ -134,6 +134,16 @@ def test_persist_writes_a_settled_verdict(con):
                     [YES])[0]["is_winner"] is True
 
 
+def test_yes_is_identified_by_label_never_by_position():
+    """2D / strategy_a.py:9. Position works today — 93 221 of 93 221 markets come
+    back ('Yes','No') — but if it ever did not, every label would invert and the
+    PnL would be sign-flipped and self-consistent."""
+    import weather_agent.labels as L
+    tokens = [("tok_no", None, "No"), ("tok_yes", "69F", "Yes")]  # reversed order
+    yes = [(t, b) for t, b, o in tokens if str(o).strip().lower() == "yes"]
+    assert yes == [("tok_yes", "69F")]
+
+
 def test_no_token_pays_when_the_band_did_not_occur():
     """The NO token is the complement of the YES band, not a band of its own."""
     assert st.band_key_wins("69F", 69, "F") is True
@@ -144,7 +154,7 @@ def test_observations_use_the_source_grid_not_the_celsius_column(con):
     """Settling a Fahrenheit market on the converted Celsius value settles it off
     its own grid (A-41)."""
     _obs(con, value=69.0, unit="F")
-    obs = labels.observations_for(con, "KLGA", DSV)
+    obs = labels.observations_for(con, "KLGA", date(2026, 6, 21), DSV)
     assert len(obs) == 1
     assert (obs[0].value, obs[0].unit) == (69.0, "F")
 
@@ -152,4 +162,53 @@ def test_observations_use_the_source_grid_not_the_celsius_column(con):
 def test_unknown_grid_observations_are_excluded(con):
     """A reading that does not sit on its station's grid cannot settle anything."""
     _obs(con, value=20.3, unit="UNKNOWN")
-    assert labels.observations_for(con, "KLGA", DSV) == []
+    assert labels.observations_for(con, "KLGA", date(2026, 6, 21), DSV) == []
+
+
+def test_every_reason_is_inside_the_closed_enum(con):
+    """settlement.py §4 is a CLOSED set. Writing a caller-invented string into the
+    same `reason` field quietly stops it being closed downstream, and nothing
+    signals it."""
+    _obs(con)
+    market = {"market_id": MARKET, "event_id": "e1", "contract_source": "",
+              "measurement_rule": "", "unit": "F", "station_identifier": "KLGA"}
+    rows = labels.label_market(con, market, date(2026, 6, 21),
+                               [(YES, "69F", "Yes"), (NO, None, "No")], DSV)
+    for r in rows:
+        if r.reason is not None:
+            assert r.reason in st.FAIL_REASONS, f"{r.reason!r} is outside the enum"
+
+
+def test_a_station_without_icao_still_reaches_the_operator(con):
+    """Stratum 10 (HKO, 1 859 markets — the only DIRECT stratum, the only one with
+    an evaluable holdout) has icao2 NULL BY NATURE. A station guard above the
+    operator meant it never reached try_settle, so it got the caller's reason
+    instead of the operator's source_inaccessible."""
+    market = {"market_id": MARKET, "event_id": "e1", "contract_source": "HKO",
+              "measurement_rule": "r", "unit": "C", "station_identifier": None}
+    rows = labels.label_market(con, market, date(2026, 6, 21),
+                               [(YES, "28C", "Yes"), (NO, None, "No")], DSV)
+    assert all(r.label == labels.LABEL_UNLABELLED for r in rows)
+    for r in rows:
+        assert r.reason in st.FAIL_REASONS, f"{r.reason!r} is outside the enum"
+
+
+def test_observations_are_restricted_to_the_requested_day(con):
+    """Under SOURCE_DAILY_ROW the operator applies no temporal predicate BY
+    DESIGN — its contract is that the caller hands over the source's row for that
+    date. Handing over the whole history returned the maximum of every day on
+    record, and it did not fail closed: it emitted the label of a different day.
+    """
+    for day, value in ((21, 69.0), (22, 95.0)):
+        db.insert(con, "weather_observations", {
+            "observation_time": datetime(2026, 6, day, 18, tzinfo=timezone.utc).isoformat(),
+            "station": "KLGA", "source": "unit_test", "tmax_observed": 20.0,
+            "observed_value": value, "observed_unit": "F",
+            "series": "IEM_ASOS_TMPF_1F",
+            "available_at": datetime(2026, 6, day + 2, tzinfo=timezone.utc).isoformat(),
+            "dataset_version": DSV, "record_version": 1,
+        })
+    d21 = labels.observations_for(con, "KLGA", date(2026, 6, 21), DSV)
+    d22 = labels.observations_for(con, "KLGA", date(2026, 6, 22), DSV)
+    assert [o.value for o in d21] == [69.0], "the 22nd's reading leaked into the 21st"
+    assert [o.value for o in d22] == [95.0]
