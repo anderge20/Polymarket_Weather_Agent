@@ -36,6 +36,7 @@ import fcntl
 import json
 import os
 import sys
+import time
 import traceback
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -536,10 +537,34 @@ def stage_host_events(cy: Cycle, *, queue_path: str | None, root: str,
     # deep, and the event lost is exactly the one that EXPLAINS a gap, which is
     # the only thing this queue is for. Session B sized it; it is closed rather
     # than written down.
+    # BOUNDED, AND NEVER BLOCKING. The appender waits `-w 30`; this side used a
+    # plain LOCK_EX with no limit — and it runs INSIDE the cycle, holding the run
+    # lock the whole time. So any pathological hold on the queue lock became a
+    # hung cycle, then every later slot skipping, then a schedule stopped in
+    # silence: the exact failure this PR exists to remove, re-entering through
+    # the door the PR itself added. Session B's asymmetry, and it is my own rule
+    # applied where I had not applied it.
+    #
+    # On exhaustion the drain is SKIPPED, not failed: the queue is durable and
+    # the next cycle drains it, so nothing is lost and the cycle cannot hang.
     lock_path = Path(str(q) + ".lock")
     lock_path.parent.mkdir(parents=True, exist_ok=True)
+    budget = float(os.environ.get("PMW_QUEUE_LOCK_WAIT", "30"))
     with open(lock_path, "a+") as lock_fh:
-        fcntl.flock(lock_fh, fcntl.LOCK_EX)
+        deadline, held = time.monotonic() + budget, False
+        while True:
+            try:
+                fcntl.flock(lock_fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                held = True
+                break
+            except OSError:
+                if time.monotonic() >= deadline:
+                    break
+                time.sleep(0.05)
+        if not held:
+            cy.stage("host_events", SKIPPED, reason="queue_locked_elsewhere",
+                     waited_s=budget)
+            return {"rows": 0, "skipped": "queue_locked_elsewhere"}
         try:
             if q.exists() and q.stat().st_size:
                 if sidecar.exists():   # a previous drain died before unlinking

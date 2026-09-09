@@ -1369,6 +1369,43 @@ def test_host_events_drain_waits_for_the_queue_lock(tmp_path):
     assert waited >= 1.0, f"the drain did not wait for the lock (took {waited:.2f}s)"
 
 
+def test_host_events_gives_up_on_the_queue_lock_rather_than_hanging_the_cycle(
+        tmp_path, monkeypatch):
+    """A held queue lock must SKIP the drain, never block the cycle.
+
+    Session B's asymmetry on PR #15: the appender waits `-w 30` while this side
+    used a plain LOCK_EX with no limit — and it runs INSIDE the cycle, holding
+    the run lock throughout. A pathological hold would become a hung cycle, then
+    every later slot skipping, then a schedule stopped in silence: the very
+    failure this PR removes, re-entering through the door the PR added.
+
+    Nothing is lost by giving up: the queue is durable and the next cycle drains
+    it. That is what makes skipping strictly better than blocking here.
+    """
+    import subprocess, sys as _sys, time as _time
+    q = tmp_path / "pending.ndjson"
+    q.write_text('{"event":"lock_timeout","mode":"collect"}\n', encoding="utf-8")
+    lock = str(q) + ".lock"
+    monkeypatch.setenv("PMW_QUEUE_LOCK_WAIT", "0.3")
+    holder = subprocess.Popen(
+        [_sys.executable, "-c",
+         f"import fcntl,time\nfh=open({lock!r},'a+')\n"
+         f"fcntl.flock(fh,fcntl.LOCK_EX)\nprint('held',flush=True)\ntime.sleep(2.0)"],
+        stdout=subprocess.PIPE, text=True)
+    assert holder.stdout.readline().strip() == "held"
+
+    t0 = _time.monotonic()
+    out = paper_cycle.stage_host_events(_cycle(), queue_path=str(q),
+                                        root=str(tmp_path), session_id="cyc")
+    waited = _time.monotonic() - t0
+    holder.wait()
+
+    assert out["skipped"] == "queue_locked_elsewhere"
+    assert waited < 1.5, f"the drain blocked the cycle for {waited:.2f}s"
+    assert q.exists() and q.read_text(encoding="utf-8").strip(), (
+        "the queue must survive so the next cycle drains it")
+
+
 def test_host_events_counts_malformed_lines_instead_of_swallowing_them(tmp_path):
     q = tmp_path / "pending.ndjson"
     q.write_text('{"event":"lock_timeout","mode":"collect"}\n'
