@@ -307,3 +307,85 @@ def test_the_result_carries_its_provenance():
 ])
 def test_band_membership_handles_the_open_ended_bands(label, key, expected):
     assert st.band_key_wins(label, key, "C") is expected
+
+
+# =============================================================================
+# Regressions from the hostile refutation of PR #6. Each of these FAILS on the
+# version that was pushed; none of the original 43 covered them.
+# =============================================================================
+def test_a_caller_reason_outside_the_enum_is_translated_not_raised():
+    """§4 lists `target_date_unresolvable`/`_ambiguous` as the CALLER's and says
+    they arrive as `context_out_of_snapshot`. Passing them through raised
+    AssertionError, which try_settle does not catch — the operator crashed
+    instead of failing closed, in the very function whose job is to return the
+    reason as data."""
+    ctx = _ctx(fail_closed_reason="target_date_unresolvable")
+    r, reason = st.try_settle([], ctx)
+    assert r is None and reason == st.R_CONTEXT_OUT_OF_SNAPSHOT
+
+
+def test_a_caller_reason_inside_the_enum_is_passed_through():
+    ctx = _ctx(fail_closed_reason=st.R_NO_OBS_IN_WINDOW)
+    r, reason = st.try_settle([_obs(12, 20.0)], ctx)
+    assert r is None and reason == st.R_NO_OBS_IN_WINDOW
+
+
+def test_the_stratum_still_wins_over_a_caller_reason():
+    """§4: the stratum is decided BEFORE the ctx, so a stratum-11 market must die
+    of `source_inaccessible` even if the caller attached another reason."""
+    ctx = _ctx(contract_source=res.SRC_CWA, measurement_rule_code=res.P_CWA_TEMPCOL,
+               station_icao=None, station_tz=None,
+               fail_closed_reason=st.R_NO_OBS_IN_WINDOW)
+    r, reason = st.try_settle([], ctx)
+    assert reason == st.R_SOURCE_INACCESSIBLE
+
+
+def test_hko_never_settles_a_row_from_the_wrong_day():
+    """THE WORST ONE: it did not fail closed, it emitted a label from another day.
+
+    HKO publishes in HKT (UTC+8). Deriving a UTC civil-day window and filtering
+    with it discarded the row stamped at the source's own midnight for the target
+    date (2026-09-09T16:00Z for 2026-09-10) and accepted the NEXT day's row
+    instead — in the only DIRECT stratum, and the one that has a holdout."""
+    ctx = _ctx(contract_source=res.SRC_HKO, measurement_rule_code=res.P_HKO_ABSMAX,
+               station_icao=None, station_tz=None)
+    at_hkt_midnight = st.Observation(
+        ts_utc=datetime(2026, 9, 9, 16, tzinfo=UTC), value=27.4, unit="C",
+        series=st.SERIES_HKO)
+    r, reason = st.try_settle([at_hkt_midnight], ctx)
+    assert reason is None, "the source's own row for the date must settle"
+    assert r.band_key == 27
+
+
+def test_source_daily_row_reports_a_null_window_rather_than_inventing_one():
+    """§2 declares the window bounds nullable, and this is the operator that
+    justifies a null: its day boundary is the source's and we cannot derive it."""
+    ctx = _ctx(contract_source=res.SRC_HKO, measurement_rule_code=res.P_HKO_ABSMAX,
+               station_icao=None, station_tz=None)
+    r = st.settle([_obs(6, 27.4, series=st.SERIES_HKO)], ctx)
+    assert r.window_start_utc is None and r.window_end_utc is None
+
+
+def test_a_station_on_a_source_daily_operator_is_refused():
+    """§2's 'sii' is a BICONDITIONAL. Accepting a station here recorded it in
+    `audit` as if it had participated, when the path ignores it entirely — false
+    provenance in the one DIRECT stratum."""
+    ctx = _ctx(contract_source=res.SRC_HKO, measurement_rule_code=res.P_HKO_ABSMAX,
+               station_icao="VHHH", station_tz="Asia/Hong_Kong")
+    r, reason = st.try_settle([_obs(6, 27.4, series=st.SERIES_HKO)], ctx)
+    assert r is None and reason == st.R_CONTEXT_OUT_OF_SNAPSHOT
+
+
+def test_a_superseded_record_version_never_wins_under_max():
+    """D17-C ingests a revision WITHOUT overwriting, so the superseded row lives
+    on beside its correction. A plain max over both returns the superseded value
+    whenever it is the larger — and MAX governs 17,083 of the 18,942 markets with
+    an operator."""
+    t = datetime(2026, 9, 10, 14, tzinfo=UTC)
+    superseded = st.Observation(ts_utc=t, value=31.0, unit="C",
+                                series=st.SERIES_METAR_C, record_version=1)
+    correction = st.Observation(ts_utc=t, value=19.0, unit="C",
+                                series=st.SERIES_METAR_C, record_version=2)
+    r = st.settle([superseded, correction], _ctx(station_tz="UTC"))
+    assert r.settled_value == 19.0, "the correction must win, not the larger value"
+    assert r.n_obs == 1

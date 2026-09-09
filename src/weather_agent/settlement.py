@@ -310,16 +310,22 @@ def local_civil_day_window(target_date: date, tz_name: str) -> tuple[datetime, d
     return start_local.astimezone(timezone.utc), end_local.astimezone(timezone.utc)
 
 
-def source_daily_row_window(target_date: date) -> tuple[datetime, datetime]:
-    """The source's own daily row for `target_date`, taken at face value.
+def source_daily_row_window(target_date: date) -> tuple[None, None]:
+    """SOURCE_DAILY_ROW has NO derivable window, and returning one was a defect.
 
     Stratum 10 (HKO) has no station and no tz — `icao2` is NULL in all 1,859, and
-    §4 says that is NOT a defect — so the window cannot be localised. The source
-    publishes one row per calendar date and the caller is responsible for handing
-    over the row stamped with THAT date. The bounds below exist to key the row and
-    to be reported, not to re-derive the source's own day boundary."""
-    start = datetime.combine(target_date, time(0, 0), tzinfo=timezone.utc)
-    return start, start + timedelta(days=1)
+    §4 says that is NOT a defect — so the day boundary cannot be localised. An
+    earlier version returned the UTC civil day and then FILTERED with it. HKO
+    publishes in HKT (UTC+8), so the row stamped at the source's own midnight for
+    2026-09-10 (= 2026-09-09T16:00Z) fell OUTSIDE that window and was discarded,
+    while the NEXT day's row fell inside and settled. It did not fail closed: it
+    emitted a label from the wrong day, in the only DIRECT stratum and the one
+    that has a holdout.
+
+    §2 declares `window_start_utc`/`window_end_utc` NULLABLE, and this is the
+    operator that justifies a null: the caller hands over the source's row FOR
+    that date, and no temporal predicate is applied to it."""
+    return None, None
 
 
 # --------------------------------------------------------------------------- settle
@@ -345,23 +351,49 @@ def settle(obs: Iterable[Observation], ctx: MarketContext,
 
     Check order is normative (§4): terna -> stratum -> ctx -> clause ->
     series/window/as-of."""
-    # ---- 1. terna -> stratum. Before the ctx, so operator-less rows die of their
-    #         own reason rather than of a missing station.
-    if ctx.fail_closed_reason:
-        raise SettlementUnavailable(ctx.fail_closed_reason)
+    # ---- 1. terna -> stratum. FIRST, and before anything from the ctx: §4 is
+    #         explicit that "el estrato antes que el ctx: las filas sin operador
+    #         mueren por su reason". Reading `ctx.fail_closed_reason` here — as an
+    #         earlier version did — let a stratum-11 market die of some other
+    #         reason instead of `source_inaccessible`, which §4 requires to reach
+    #         all 77 of them.
     op = select_operator(ctx.contract_source, ctx.measurement_rule_code, ctx.unit,
                          ctx.rounding_rule)
 
     # ---- 2. ctx
+    if ctx.fail_closed_reason:
+        # The caller's own refusal. §4 lists `target_date_unresolvable` and
+        # `_ambiguous` as OUTSIDE the enum and says they "llegan como
+        # context_out_of_snapshot" — so anything the caller sends that is not
+        # itself an enum member is TRANSLATED, never passed through. Passing it
+        # through raised AssertionError, which `try_settle` does not catch: the
+        # operator crashed instead of failing closed, in the very function whose
+        # purpose is to return the reason as data.
+        if ctx.fail_closed_reason in FAIL_REASONS:
+            raise SettlementUnavailable(ctx.fail_closed_reason)
+        raise SettlementUnavailable(
+            R_CONTEXT_OUT_OF_SNAPSHOT,
+            detail=f"caller reason {ctx.fail_closed_reason!r}")
     if ctx.target_date is None:
         raise SettlementUnavailable(
             R_CONTEXT_OUT_OF_SNAPSHOT,
             detail="target_date is the caller's parameter (2D §C) and is missing")
+    # §2's "sii" is a BICONDITIONAL, and it writes the prohibitive half separately
+    # so it is not skipped: station non-null IFF LOCAL_CIVIL_DAY, "no con
+    # SOURCE_DAILY_ROW (10)". Implementing only the forward half let an HKO
+    # context carry a station that the UTC-keyed path then ignored — while `audit`
+    # recorded it as if it had participated. False provenance in the one DIRECT
+    # stratum is worse than a refusal.
     if op.requires_station and not (ctx.station_icao and ctx.station_tz):
         raise SettlementUnavailable(
             R_CONTEXT_OUT_OF_SNAPSHOT,
             detail=f"{op.operator_id} needs station_icao and station_tz "
                    f"(window_kind={op.window_kind})")
+    if not op.requires_station and (ctx.station_icao or ctx.station_tz):
+        raise SettlementUnavailable(
+            R_CONTEXT_OUT_OF_SNAPSHOT,
+            detail=f"{op.operator_id} takes NO station (window_kind="
+                   f"{op.window_kind}), got {ctx.station_icao!r}/{ctx.station_tz!r}")
 
     # ---- 3. clause. Strata 5 and 7 have ZERO markets audited WITH the
     #         lowest-bracket clause, so a market carrying it is refused. Stratum 8
@@ -380,9 +412,13 @@ def settle(obs: Iterable[Observation], ctx: MarketContext,
 
     if op.window_kind == WINDOW_LOCAL_CIVIL_DAY:
         win_start, win_end = local_civil_day_window(ctx.target_date, ctx.station_tz)
+        in_window = [o for o in in_series if win_start <= o.ts_utc < win_end]
     else:
+        # SOURCE_DAILY_ROW: no temporal predicate. The row the caller hands over IS
+        # the source's row for `target_date`; filtering it against a window we
+        # cannot derive is how the wrong day's label got emitted.
         win_start, win_end = source_daily_row_window(ctx.target_date)
-    in_window = [o for o in in_series if win_start <= o.ts_utc < win_end]
+        in_window = list(in_series)
     if not in_window:
         raise SettlementUnavailable(R_NO_OBS_IN_WINDOW)
 
@@ -409,16 +445,29 @@ def settle(obs: Iterable[Observation], ctx: MarketContext,
                    f"{op.unit} operator")
 
     # ---- 5. aggregation
+    # `record_version` is applied the SAME way in both branches. It used to be
+    # honoured only under SOURCE_DAILY and ignored under MAX, which governs strata
+    # 5, 7 and 8 — 17,083 of the 18,942 markets with an operator. D17-C ingests a
+    # revision WITHOUT overwriting, so the superseded row survives alongside its
+    # correction; taking a plain max over both would return the SUPERSEDED value
+    # whenever it is the larger. Keep the highest version per observation instant,
+    # then aggregate.
+    # NOT fixed by the frozen core, which only says "record_version D17-C" —
+    # declared here as the implementation's policy, not as the document's.
+    best_by_instant: dict[datetime, Observation] = {}
+    for o in in_window:
+        prev = best_by_instant.get(o.ts_utc)
+        if prev is None or o.record_version > prev.record_version:
+            best_by_instant[o.ts_utc] = o
+    current = list(best_by_instant.values())
     if op.aggregation == AGG_MAX:
-        settled = max(o.value for o in in_window)
-    else:  # SOURCE_DAILY — one published row per day; keep the latest version.
-        top = max(o.record_version for o in in_window)
-        latest = [o for o in in_window if o.record_version == top]
-        settled = max(o.value for o in latest)
+        settled = max(o.value for o in current)
+    else:  # SOURCE_DAILY — one published row per day.
+        settled = max(o.value for o in current)
 
     band_key = _quantize(settled, op.quantization)
     return SettlementResult(
-        band_key=band_key, settled_value=float(settled), n_obs=len(in_window),
+        band_key=band_key, settled_value=float(settled), n_obs=len(current),
         unit=op.unit, window_start_utc=win_start, window_end_utc=win_end, asof=asof,
         window_kind=op.window_kind, aggregation=op.aggregation,
         contract_source=op.contract_source, quantization=op.quantization,
