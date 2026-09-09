@@ -1106,3 +1106,57 @@ def test_the_signals_stage_records_both_rungs_with_their_denominators(con, monke
     assert out["rung1_structural_rate"] == 1.0    # 2 of 2 pass the structural gate
     assert out["rung2_actionable_rate"] == 0.5    # 1 of 2 eligible is actionable
     assert out["tau_signal"] == 0.03
+
+
+def test_venue_coverage_is_fail_closed_per_event_and_runs_without_deciding(con):
+    """Rung 1 measured where it can actually be measured.
+
+    `stage_signals` never runs in Actions — every scheduled cycle is
+    `--collect-only` because `vars.PAPER_TAU` is unset — so instrumentation that
+    lives there records nothing (verified on the real store: `signals` 0 shards).
+    Rung 1 needs only prices, so it runs on every cycle and the multi-day series
+    accumulates for free.
+
+    ONE UNPRICED BAND EXCLUDES THE WHOLE EVENT, because Strategy A is fail-closed
+    per event: the count is the CEILING on what could ever be decided, not a
+    count of what is nearly decidable.
+    """
+    T = datetime(2026, 9, 9, 12, tzinfo=timezone.utc)
+    # e0: both bands priced. e1: one band priced, one not.
+    for mid, ev in (("m1", "e0"), ("m2", "e0"), ("m3", "e1"), ("m4", "e1")):
+        _market(con, market_id=mid, event_id=ev, end_date="2026-09-10T12:00:00Z")
+    for mid in ("m1", "m2", "m3"):
+        con.execute(
+            "INSERT INTO price_history (market_id, token_id, observation_time, "
+            "indicative_price, price_semantics, source, ingestion_timestamp, "
+            "dataset_version, record_version) VALUES (?,?,?,?,?,?,?,?,?)",
+            [mid, f"{mid}_yes", T - timedelta(minutes=5), 0.5,
+             "MIDPOINT_ESTIMATED", "test", T0, "ds1", 1])
+
+    universe = [{"event_id": "e0", "market_id": "m1"}, {"event_id": "e0", "market_id": "m2"},
+                {"event_id": "e1", "market_id": "m3"}, {"event_id": "e1", "market_id": "m4"}]
+    out = paper_cycle.stage_venue_coverage(
+        _cycle(), con, dataset_version="ds1", universe=universe, prediction_time=T)
+
+    assert out["events"] == 2
+    assert out["events_complete"] == 1          # e1 dies for ONE unpriced band
+    assert out["bands"] == 4 and out["bands_priced"] == 3
+    assert out["complete_rate_over_events"] == 0.5
+    assert out["priced_rate_over_bands"] == 0.75
+
+
+def test_venue_coverage_respects_the_as_of_instant(con):
+    """A price stamped after the decision instant does not make a band priced:
+    the ceiling has to be the one that existed at `prediction_time`."""
+    T = datetime(2026, 9, 9, 12, tzinfo=timezone.utc)
+    _market(con, market_id="m1", event_id="e0", end_date="2026-09-10T12:00:00Z")
+    con.execute(
+        "INSERT INTO price_history (market_id, token_id, observation_time, "
+        "indicative_price, price_semantics, source, ingestion_timestamp, "
+        "dataset_version, record_version) VALUES (?,?,?,?,?,?,?,?,?)",
+        ["m1", "m1_yes", T + timedelta(minutes=5), 0.5,
+         "MIDPOINT_ESTIMATED", "test", T0, "ds1", 1])
+    out = paper_cycle.stage_venue_coverage(
+        _cycle(), con, dataset_version="ds1",
+        universe=[{"event_id": "e0", "market_id": "m1"}], prediction_time=T)
+    assert out["events_complete"] == 0 and out["bands_priced"] == 0

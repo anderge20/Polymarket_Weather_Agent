@@ -501,6 +501,69 @@ def stage_forecasts(cy: Cycle, con, *, dataset_version: str, target_date: date,
             "provenance": prov}
 
 
+def stage_venue_coverage(cy: Cycle, con, *, dataset_version: str,
+                         universe: list[dict], prediction_time: datetime) -> dict:
+    """RUNG 1 of the funnel, measured on EVERY cycle including collect-only.
+
+    WHY IT LIVES HERE AND NOT IN `stage_signals`. The number the run needs before
+    `PAPER_TAU` can be set is how many events have ALL their bands priced — the
+    venue property §0 measured once as 86 % exclusion, and which two sessions
+    then spent half an hour comparing against a retrospective substrate whose
+    completeness was an artefact of which events the backfill chose to complete.
+    Getting it live needs several days of it.
+
+    But `stage_signals` never runs in Actions: every scheduled cycle is
+    `--collect-only` because `vars.PAPER_TAU` is unset, which is the correct
+    fail-closed and also means the instrumentation added to that stage would have
+    recorded NOTHING. Measured on the real store: `signals` 0 shards.
+
+    Rung 1 does not need tau, a forecast, a model or a decision — only prices. So
+    it is computed here, on every cycle, and the multi-day series accumulates for
+    free: no quota, no trades, nothing written to the run's ledger.
+
+    COMPLETE means every band of the event has a price for its Yes token at or
+    before `prediction_time`. Strategy A is fail-closed per event: one unpriced
+    band excludes the whole event, so the count IS the ceiling on what could ever
+    be decided.
+    """
+    events = sorted({r["event_id"] for r in universe if r.get("event_id")})
+    if not events:
+        cy.stage("venue_coverage", SKIPPED, reason="empty_universe")
+        return {"events": 0}
+
+    rows = db.query(
+        con,
+        "SELECT m.event_id, o.token_id, "
+        "       (SELECT count(*) FROM price_history p "
+        "         WHERE p.token_id = o.token_id AND p.dataset_version = ? "
+        "           AND p.observation_time <= ?) AS n_prices "
+        "FROM markets m JOIN outcomes o "
+        "  ON o.market_id = m.market_id AND o.dataset_version = m.dataset_version "
+        "WHERE m.dataset_version = ? AND o.outcome_label = 'Yes'",
+        [dataset_version, prediction_time, dataset_version],
+    )
+    per_event: dict[str, list[int]] = {}
+    for r in rows:
+        if r["event_id"] in set(events):
+            per_event.setdefault(r["event_id"], []).append(int(r["n_prices"] or 0))
+
+    complete = sum(1 for v in per_event.values() if v and all(n > 0 for n in v))
+    bands = sum(len(v) for v in per_event.values())
+    priced = sum(sum(1 for n in v if n > 0) for v in per_event.values())
+    out = {
+        "events": len(per_event),
+        "events_complete": complete,
+        "bands": bands,
+        "bands_priced": priced,
+        # The denominators, named, because a rate without one is not a
+        # measurement (A-78).
+        "complete_rate_over_events": round(complete / len(per_event), 4) if per_event else None,
+        "priced_rate_over_bands": round(priced / bands, 4) if bands else None,
+    }
+    cy.stage("venue_coverage", OK, **out)
+    return out
+
+
 def stage_signals(cy: Cycle, con, *, dataset_version: str, target_date: date,
                   universe: list[dict], model: str, tau: float,
                   weather_sum_tolerance: float, market_sum_min: float,
@@ -1335,6 +1398,14 @@ def main(argv: list[str] | None = None) -> int:
         if not args.collect_only:
             stage_guard_dataset_version(cy, con,
                                         dataset_version=args.dataset_version)
+
+        # RUNG 1 ON EVERY CYCLE, deciding or not. It needs only prices, and the
+        # collect-only cycles are the ones that actually run in Actions — so this
+        # is the only place the live measurement can accumulate before
+        # `PAPER_TAU` exists. After collection and after `prediction_time` is
+        # settled, so it counts the prices this cycle just wrote.
+        stage_venue_coverage(cy, con, dataset_version=args.dataset_version,
+                             universe=universe, prediction_time=prediction_time)
 
         if args.collect_only:
             cy.stage("forecasts", SKIPPED, reason="collect_only")
