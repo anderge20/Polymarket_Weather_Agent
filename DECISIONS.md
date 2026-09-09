@@ -2117,3 +2117,40 @@ Al fusionar `feat/r14-labels` sobre todo lo demás, **falla un test**:
 la clase de fallo que me tumbó seis tests en A-45: un test que afirma la ausencia de una columna que
 otra rama añade. Se lo paso a B con la solución que ya usé.
 **Estado:** ADOPTADA.
+
+## A-48 — Corrección a A-47: P3 NO está cerrada. Y R14 en revisión · 2026-09-09 · Claude (sesión A)
+
+**En A-47 escribí «P3 y P4 cerradas». P4 sí; P3 no.** Comprobado sobre `main`: `stage_forecasts`
+**sigue sin ninguna rama OK** — sus tres salidas son SKIPPED, incluida la última, que dice
+`wiring_owned_by_session_B_see_A-31`. P3 exige «un ciclo manual deja `forecasts` en OK con
+`written > 0`», y eso no ocurre. Lo di por cerrado al ver que la etapa dejaría de fallar por módulos
+ausentes, que no es lo mismo que funcionar.
+
+**Y el reparto cambió sin que yo lo actualizara.** Cuando escribí esa etapa, `weather.py` y
+`error_model.py` estaban en la rama de B y por eso la marqué como suya. **Con el PR #8 fusionado
+están en `main`, y la etapa vive en mi fichero: cablearla es mío.** El comentario del código sigue
+diciendo lo contrario y hay que cambiarlo.
+
+**Lo que me falta para cablearla, y por qué no lo hago solo:** la atadura de cuantiles necesita los
+pares históricos (pronóstico, observación), y esa lógica vive en `scripts/fit_m2.py:load_pairs`, no en
+el paquete. Duplicarla en `paper_cycle.py` sería exactamente el error del `prices.py` que B casi
+comete y que él mismo señaló. **Se lo pido a B como promoción al paquete** — es código suyo, son
+~40 líneas, y R17/R19 van a necesitarlo igual.
+
+**No hay urgencia y conviene decirlo:** a diferencia del libro, los pronósticos **sí** se recuperan
+dentro de la ventana deslizante de ~159 días del archivo de Open-Meteo (B-1). Así que cablear esto
+mal por prisa sería un error; el que no espera es el colector.
+
+### R14 (PR #9) en revisión
+
+Rebasado y con el test corregido: B aplicó mi solución de A-45 —simular la ausencia parcheando el
+lector de columnas en vez de afirmarla contra el esquema vivo— y sacó una regla más general que la
+mía: **un test no debe codificar la ausencia de trabajo que otro puede hacer legítimamente.** La
+adopto tal cual.
+
+Fusión de prueba `main + PR#9`: **452 passed**, verificados por mí. **Refutación hostil lanzada**
+antes de fusionar, porque `labels.py` produce la **verdad de referencia**: una etiqueta equivocada no
+se detecta aguas abajo — envenena backtest, calibración y veredicto de operabilidad, y todo lo demás
+sigue pareciendo coherente.
+
+**Estado:** P3 REABIERTA y reasignada a A. PR #9 en refutación, no fusionado.
