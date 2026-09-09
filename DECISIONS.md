@@ -3621,9 +3621,39 @@ magnitud. Su `x_exec = 0,0` **agranda** la discrepancia en vez de explicarla. Y 
 completas son n = 8 con 45 eventos por fecha frente a 9,4 en el resto: **no son una muestra, son el
 trozo que atacó `--complete-events`.**
 
-**Patrón repetido dos veces en una hora, y es la lección:** mis 4,15 contra sus 27, y mi 80,2 %
-contra su 14 % — **dos medidas con el mismo nombre y distinto denominador.** El recuento en vivo
-debe registrar el `tau` usado y la definición de la puerta, o volverá a pasar.
+### 4ter. CERRADO: el embudo de A alinea las magnitudes, y mi 80,2 % era un producto
+A midió su embudo peldaño a peldaño (49 descubiertos → 42 excluidos por `missing_feature` → **7
+estructuralmente elegibles** → 77 señales → 42 accionables → **27 posiciones**) y de sus 7
+elegibles los 7 dieron señal accionable. Alineado con lo mío:
+```
+peldaño 1  completitud                   A 14,3 % (7/49)   ·  B 89,5 % (40,62/45,38)
+peldaño 2  accionables entre completos   A 100 %           ·  B 89,6 % (36,38/40,62)
+compuesto                                A 14,3 %          ·  B 80,2 % (36,38/45,38)
+                                                     comprobación 0,895 × 0,896 = 0,802
+```
+**Mi 80,2 % no era el peldaño 2 sino el PRODUCTO de los dos**, y como mis dos peldaños salen casi
+idénticos (89,5 y 89,6) el compuesto parecía una tasa sola. **Una coincidencia numérica es
+exactamente lo que hace que dos denominadores distintos parezcan el mismo.**
+
+**El peldaño 1 que vale es el de A, no el mío:** mi 89,5 % **no es una tasa medida**, es la
+definición de las fechas que `--complete-events` eligió por completables; su 14,3 % sí es una tasa
+sobre descubrimiento en vivo y coincide con el 86 % de exclusión que R24 §0 tenía medido como
+propiedad del venue.
+```
+proyección alineada: 21 × 49 × 0,143 × 1,000 = 147 bloques
+                     21 × 49 × 0,143 × 0,896 = 132 bloques        mínimo 100
+```
+**Alcanzable con poco margen** — y ese margen es lo que se come un host que pierde ranuras, de ahí
+que siga en pie la cláusula pedida: **un `NO EVALUABLE` se atribuye al HOST y no a la estrategia**,
+con ciclos programados frente a entregados al lado.
+
+**Único número que coincidió a la primera en todo el intercambio: posiciones por evento, 3,86 (A)
+contra 3,07 (B)** — el resto del embudo se comporta igual en los dos sustratos.
+
+**LA LECCIÓN, tres veces en una hora:** mis 4,15 contra sus 27; mi 80,2 % contra su 14 %; y el
+mapeo del 80,2 % dentro del propio embudo. **Tres veces «dos medidas con el mismo nombre y
+distinto denominador».** El recuento en vivo instrumentará **los dos peldaños por separado**, más
+el `tau` de cada puerta y su definición. Instrumentarlo, no acordarse.
 Con 27 la corrida llega; con 4,15 no. **Una de las dos no describe la corrida que va a ocurrir.**
 Hipótesis preferida: la puerta de ejecución se comporta distinto con **libro real** frente al
 `x_exec` supuesto de R21 — que es justo la puerta que ata y justo donde el sustrato retrospectivo
@@ -3734,3 +3764,39 @@ el peldaño más adverso de D19»— al medir yo un medio spread real de 0,0168 
 **falsa de hecho**, y la consecuencia va **a favor** de su resultado: **la estrategia perdió con un
 supuesto de coste optimista, no conservador.** Corrigió una afirmación que le daba la razón por
 accidente.
+
+## A-78 — El embudo instrumentado, y un error de denominador cometido AL ESCRIBIR la guarda contra errores de denominador · 2026-09-09 · Claude (sesión A)
+
+**B aportó el ajuste que cierra A-77:** su 80,2 % no es mi peldaño 2, es el **producto** de sus dos
+peldaños — completitud 89,5 % × accionables entre completos 89,6 % = 80,2 %. **Y ahí está por qué
+parecía una tasa sola: los dos peldaños salían casi idénticos.** Dos peldaños casi iguales que se
+multiplican en algo con aspecto de tasa única es exactamente lo que hace que dos denominadores pasen
+por uno. Alineado:
+
+    peldaño 1  completitud                 A 14,3 % (7/49)  ·  B 89,5 %
+    peldaño 2  accionables entre completos A 100 %          ·  B 89,6 %
+    compuesto                              A 14,3 %         ·  B 80,2 %
+
+**Y el peldaño 1 que vale es el mío**, por la razón que B suscribe: su 89,5 % **no es una tasa
+medida, es la definición de las fechas que `--complete-events` eligió por completables**.
+
+**Proyección con las magnitudes alineadas:** 21 × 49 × 0,143 × [0,896 … 1,000] = **132–147 bloques**
+contra un mínimo de 100. **Alcanzable, con poco margen** — y ese margen es justo lo que se come un
+host que pierde ranuras, que es por lo que §4quater existe.
+
+**INSTRUMENTADO en el ciclo**, para no volver a descubrirlo discutiendo: `events_discovered`,
+`events_admissible`, `eligible`, `events_actionable`, `rung1_structural_rate`,
+`rung2_actionable_rate` y el `tau` de cada puerta. **Una tasa no es una medida hasta que su
+denominador está escrito al lado.**
+
+**Y la primera versión del bloque tenía un error de denominador, cometido al escribir la guarda contra
+errores de denominador:** el peldaño 1 dividía por todo lo **descubierto** mientras `eligible` se
+cuenta sobre lo **admisible** tras el filtro as-of, mezclando dos poblaciones en cuanto el filtro
+descarta algo. Corregido, y los dos recuentos se publican para que la caída as-of quede visible y
+nunca se pliegue dentro. **528 verdes.**
+
+**B da su pista por cerrada:** R19, R20, R21 (NO OPERABLE), R22 (ningún estrato), y sus tres
+correcciones sobre artefactos ya publicados —el `x_exec`, la proyección de `NO EVALUABLE` y el mapeo
+de denominadores— dentro de los documentos y no en los márgenes. **Lo que queda es de A y de la
+usuaria:** medir elegibilidad en vivo varios días, reformular la regla de cobertura sobre la puerta
+que ata, y decidir si se gastan 21 días. **`PAPER_TAU` sigue sin poner.**
