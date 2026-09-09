@@ -52,3 +52,11 @@ results/
 *.duckdb
 *.duckdb.wal
 *.log
+
+# Paper mode (R22/R23): the shard store lives on the `paper-state` branch, never
+# on main. A local run writes here; the derived DuckDB is rebuildable from the
+# shards and is never committed anywhere.
+/paper_state/
+/state/
+*.duckdb
+*.duckdb.wal
