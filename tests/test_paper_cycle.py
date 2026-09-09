@@ -388,7 +388,7 @@ def _with_b_substrate(con):
 
 
 # --------------------------------------------------------------------------- settle
-def test_settle_names_the_substrate_it_is_missing(con):
+def test_settle_names_the_substrate_it_is_missing(con, monkeypatch):
     """A SKIP that says 'not wired yet' leaves the next reader to guess. This one
     names the columns.
 
@@ -397,8 +397,13 @@ def test_settle_names_the_substrate_it_is_missing(con):
     `observed_value` was absent, which was true on one branch and false once
     session B's migration merged. Two green branches broke on merge, and this test
     was the reason."""
-    _with_b_substrate(con)          # works whether or not B's migration is merged
-    con.execute("ALTER TABLE weather_observations DROP COLUMN observed_value")
+    # Reported through `column_names` rather than by dropping the column: DuckDB
+    # refuses to drop one an index depends on, so schema surgery is not a portable
+    # way to simulate absence.
+    real = db_mod.column_names
+    monkeypatch.setattr(
+        db_mod, "column_names",
+        lambda c, t: [x for x in real(c, t) if x != "observed_value"])
     missing = paper_cycle.settle_substrate_missing(con)
     assert any("weather_observations.observed_value" in m for m in missing)
 
@@ -415,11 +420,13 @@ def test_settle_is_a_noop_with_no_open_positions(con):
     assert out == {"positions_open": 0, "settled": 0}
 
 
-def test_settle_skips_loudly_rather_than_guessing_a_winner(con):
+def test_settle_skips_loudly_rather_than_guessing_a_winner(con, monkeypatch):
     """The shortcut this refuses to take — picking a winner from the last traded
     price — is what turns a paper ledger into fiction."""
-    _with_b_substrate(con)
-    con.execute("ALTER TABLE weather_observations DROP COLUMN series")
+    real = db_mod.column_names
+    monkeypatch.setattr(
+        db_mod, "column_names",
+        lambda c, t: [x for x in real(c, t) if x != "series"])
     from weather_agent import paper as _paper
     fill = _paper.Fill(shares=100.0, notional=50.0, vwap=0.5, fee=0.6,
                        outlay=50.6, executable=True)
@@ -463,7 +470,7 @@ def _settleable_market(con, *, band="17°C", outcome="Yes", token="t1"):
 def _fake_stations(monkeypatch):
     import sys, types
     mod = types.ModuleType("weather_agent.stations")
-    mod.timezone_for = lambda icao: "Europe/London"
+    mod.timezone_of = lambda icao: "Europe/London"   # the real name (B's stations.py)
     monkeypatch.setitem(sys.modules, "weather_agent.stations", mod)
 
 

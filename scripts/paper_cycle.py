@@ -553,20 +553,25 @@ def settle_substrate_missing(con) -> list[str]:
 
 
 def _station_tz(icao: str | None) -> str | None:
+    """The station's IANA timezone, from the registry that owns it.
+
+    Calls `stations.timezone_of` BY NAME. An earlier version looped over three
+    plausible names — `timezone_for`, `tz_for`, `get_timezone` — and the real one
+    is none of them, so it silently returned None on the merged tree and every
+    LOCAL_CIVIL_DAY settlement was refused for want of a timezone. Guessing an API
+    instead of reading it is the same failure as assuming a literal instead of
+    verifying it (A-42); if the name ever changes, this raises rather than
+    degrading to None."""
     if not icao:
         return None
     try:
         from weather_agent import stations
     except ImportError:
         return None
-    for attr in ("timezone_for", "tz_for", "get_timezone"):
-        fn = getattr(stations, attr, None)
-        if callable(fn):
-            try:
-                return fn(icao)
-            except Exception:
-                return None
-    return None
+    try:
+        return stations.timezone_of(icao)
+    except (KeyError, ValueError):
+        return None      # unknown station: refuse later, never invent a zone
 
 
 def stage_settle(cy: Cycle, con, *, dataset_version: str) -> dict:
