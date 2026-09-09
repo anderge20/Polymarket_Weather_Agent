@@ -4042,3 +4042,28 @@ minutos:
 sobre la que las dos sesiones llevamos toda la tarde discutiendo —mi n = 1— **es una foto de una hora,
 no una propiedad del venue**. Ni mi 14,3 % ni el 16,3 % ni el 20,4 % son «la» tasa: la tasa es la
 serie. **567 verdes.**
+
+## A-84 — Las tres PR fusionadas; `main` verificado sobre el árbol final · 2026-09-09 · Claude (sesión A)
+
+**PR #11 (16:08:12Z), #12 (17:37:31Z) y #13 (18:15:46Z) fusionadas.** `main` en `8886108`, verificado
+**por ejecución sobre el árbol final** y no por confianza en la fusión:
+
+    567 verdes
+    schema_version 7 · migraciones [1,2,3,4,5,6,7]
+    markets.measurement_rule_code ✓ (A, mig. 5)
+    markets.end_date              ✓ (B, mig. 6)
+    paper_trades.target_date      ✓ (A, mig. 7)
+    artifacts/m2_quantiles.json ✓   ·   prereg/PREREG_M2_ERROR_v2.md ✓
+    D0: sin wallet, firmante, clave ni ruta de orden en `src` ni `scripts`
+
+**Las tres pasaron revisión adversarial cruzada y en las tres la revisión encontró algo real:** en la
+#11, tres defectos latentes propios; en la #12, la caché de columnas que devolvía esquemas obsoletos;
+en la #13, que el trade no llevaba su `target_date` — más una segunda puerta en `stage_settle` que el
+revisor no había visto.
+
+**Aviso dado a B sobre su prueba pendiente, y es del mismo tipo que llevamos cazando:** su condición
+era matar el proceso a mitad para comprobar que la migración 6 sobrevive con el `CHECKPOINT` heredado.
+Pero el disparador aislado en A-69 es **`ALTER` sobre una tabla cuyo DEFAULT llama a `nextval`**, y
+**sólo `paper_trades` califica**. Su migración toca `markets`: **si su prueba pasa, no valida el
+arreglo — valida que su migración nunca lo necesitó.** La que hay que matar para probar el arreglo es
+la 7. *Una prueba que pasa sobre el caso que no está en riesgo no prueba nada del caso que sí lo está.*
