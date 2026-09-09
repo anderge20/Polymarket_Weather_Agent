@@ -1831,3 +1831,56 @@ documento; el estrato 8 pasa de facto a tener la cuantización **NO_DECIDIDA par
 décimas**, igual que los estratos 5 y 7 la tienen NO_DECIDIBLE.
 
 **Estado:** ADOPTADA (verificaciones); enmienda del núcleo PENDIENTE, sin tocar el código.
+
+## A-43 — PR #6 fusionado tras refutación; y el resultado negativo de B-12 entra en R24 · 2026-09-09 · Claude (sesión A)
+
+**PR #6 FUSIONADO (12:26:26Z).** SettlementOperator en `main`. Refutado antes de fusionar, y encontró
+**cuatro defectos míos**, dos bloqueantes:
+
+1. **Emitía un label del DÍA EQUIVOCADO.** `source_daily_row_window` derivaba el día civil UTC y
+   luego **filtraba** con él, contradiciendo su propio docstring, que decía que los límites existían
+   «para clavar la fila y reportarla, no para re-derivar la frontera de día de la fuente». El HKO
+   publica en HKT (UTC+8): la fila sellada en la medianoche de la fuente para el 2026-09-10
+   (`2026-09-09T16:00Z`) se **descartaba** por fuera de ventana, y la del **día siguiente** entraba y
+   liquidaba. En el único estrato `DIRECT` y el único con holdout. **No fallaba cerrado: emitía mal.**
+   §2 declara los límites nulables y éste es justo el operador que lo justifica: sin predicado
+   temporal, límites a `None`.
+2. **El operador reventaba en vez de fallar cerrado.** `ctx.fail_closed_reason` se leía **antes** de
+   `select_operator` —violando el orden del §4— y se pasaba crudo a la excepción. §4 dice que
+   `target_date_unresolvable`/`_ambiguous` son del *caller* y «llegan como `context_out_of_snapshot`»;
+   pasarlas crudas lanzaba `AssertionError`, que `try_settle` **no captura**. La función cuyo único
+   propósito es devolver la razón como dato explotaba.
+3. **El «sii» del §2 es bicondicional** y sólo implementé la mitad. Un ctx de HKO con estación se
+   aceptaba y la estación quedaba en `audit` **como si hubiera participado**, cuando el camino la
+   ignora. Procedencia falsa en el único estrato DIRECT.
+4. **`record_version` tenía dos políticas en una función**: se honraba en SOURCE_DAILY y se ignoraba
+   en MAX, que gobierna **17.083 de los 18.942** mercados con operador. D17-C ingiere revisiones
+   **sin sobrescribir**, así que un `max()` plano devuelve el valor **superado** siempre que sea mayor.
+
+7 tests de regresión; **6 fallan contra la versión que había subido** y pasan con el arreglo. Ninguno
+de los 43 originales cubría nada de esto: **sólo recorrían el camino feliz**, que es el patrón que ya
+ha producido defectos tres veces en esta sesión. 362 passed / 4 skipped.
+
+### El resultado negativo de B-12, y lo que le hace a R24
+
+B intentó la calibración por estación y **fracasó, honestamente**: `§4.1` exigía 70 % de estaciones
+calibradas y salió **13 %**. Y no por falta de cobertura — los pares **corregidos** calibran **peor**
+(5 %) que los **no corregidos** (24 %). La causa, medida: partiendo el periodo por la mitad, la
+correlación entre el sesgo de la primera mitad y el de la segunda es **+0,080**. **El sesgo por
+estación no es persistente**, así que un desplazamiento aprendido del pasado se aplica al futuro como
+ruido.
+
+Mi corrección del encogimiento (A-42) era correcta como estadística y **irrelevante como remedio**:
+el problema no estaba en el estimador sino un nivel más abajo — no hay señal estable que estimar. Lo
+digo así porque es lo que pasó: acerté el cálculo y erré el diagnóstico.
+
+**Lo que entra en `PREREG_PAPER_RUN.md` §9** (v3 re-hasheada): `p_model` está **peor calibrada para un
+mercado concreto que su cifra agregada, y no es corregible**. El p10–p90 es honesto para el conjunto y
+**demasiado estrecho para cualquier estación individual**. Por tanto **`tau_exec` necesita margen por
+descalibración de estación no corregible**, además del de costes y spread, y se declara en la enmienda
+del §0 junto con el número. **El motor paper no asume calibración por mercado: no puede tenerla.**
+
+Es una limitación real del producto y conviene no maquillarla: significa que la ventaja sobre un
+mercado individual es menos fiable que la cifra agregada sugiere, y que el umbral tiene que pagar por
+esa incertidumbre.
+**Estado:** ADOPTADA.

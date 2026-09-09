@@ -322,6 +322,18 @@ detecta con pocas observaciones. **No se presentará como evidencia de buena cal
   universo: son, presumiblemente, los mercados más líquidos.
 - **Un solo `p_model`** (`p_weather`, Strategy A V1). Hereda las limitaciones de M2, incluida la
   disponibilidad de la etiqueta a 24 h, que sigue siendo un supuesto.
+- **`p_model` está PEOR calibrada para un mercado concreto que su cifra agregada, y NO es
+  corregible** (B-12, medido). M2 calibra en agregado y, dentro de ese agregado, 43 de 45 estaciones
+  están descalibradas con sesgos que **se cancelan**. La corrección por estación se intentó y falló:
+  el sesgo **no es persistente** —correlación entre la primera y la segunda mitad del periodo
+  **+0,080**— así que un desplazamiento aprendido del pasado se aplica al futuro como ruido, y los
+  pares corregidos calibran **peor** (5 %) que los no corregidos (24 %).
+  **Consecuencia operativa, y cambia una decisión:** el intervalo p10–p90 es honesto para el conjunto
+  y **demasiado estrecho para cualquier estación individual**. Un edge que parezca suficiente contra
+  la probabilidad agregada puede no serlo contra el mercado real. Por tanto **`tau_exec` necesita
+  margen por descalibración de estación no corregible**, además del margen por costes y spread, y ese
+  margen se declara en la enmienda de §0 junto con el número. El motor paper **no asume** calibración
+  por mercado: no puede tenerla.
 - **`neg_risk: true`** en estos mercados (OBSERVADO 2026-09-09) y **no se modela**.
 - **Sin impacto de mercado:** nuestras órdenes no existen y no mueven el book.
 - **`price_history` la escribe nuestro propio colector** desde el mid del book (P6). Es mejor
