@@ -939,3 +939,36 @@ def test_the_declared_correspondence_is_the_one_the_ingester_writes():
     # fail-closed in the core anyway, so nothing is lost by it.
     assert paper_cycle.to_core_series(obs_mod.SERIES_TENTH_F) is None
     assert paper_cycle.to_core_series(None) is None
+
+
+def test_the_settlement_tail_settles_and_decides_nothing(con, tmp_path, monkeypatch):
+    """R24 §5. A position opened on the last day of the run resolves the day
+    AFTER it, so without these cycles the last two days' positions would stay
+    open and their PnL would not exist — the ledger would close on a tail
+    truncated by the calendar, not by the market."""
+    from weather_agent import observations as obs
+    calls = []
+    monkeypatch.setattr(obs, "ingest_daily_high",
+                        lambda con, i, d, tz, dsv: calls.append(i))
+    monkeypatch.setattr("weather_agent.stations.timezone_of", lambda i: "Europe/London")
+    # A cycle that discovers or collects in the tail would be deciding, and would
+    # also move `markets.available_at`. Both must be untouched.
+    monkeypatch.setattr(paper_cycle, "stage_discover",
+                        lambda *a, **k: pytest.fail("the tail must not discover"))
+    monkeypatch.setattr(paper_cycle, "stage_collect",
+                        lambda *a, **k: pytest.fail("the tail must not collect"))
+
+    store_root = tmp_path / "store"
+    _open_position(con)
+    con.execute("UPDATE weather_observations SET station = 'EGLC'")  # no-op if empty
+    rc = paper_cycle.main([
+        "--target-date", "2026-09-10", "--dataset-version", "ds1",
+        "--store-root", str(store_root), "--db", str(tmp_path / "t.duckdb"),
+        "--settle-only", "--summary-json", str(tmp_path / "s.json")])
+    assert rc == 0
+    import json as _json
+    stages = {s["stage"]: s for s in _json.loads((tmp_path / "s.json").read_text())["stages"]}
+    for st in ("discover", "universe", "collect:books", "forecasts", "signals", "paper"):
+        assert stages[st]["status"] == "SKIPPED"
+        assert stages[st]["reason"] == "settle_only_tail"
+    assert "observations" in stages and "settle" in stages

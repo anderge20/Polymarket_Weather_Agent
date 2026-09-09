@@ -1139,6 +1139,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--max-pages", type=int, default=20)
     p.add_argument("--collect-only", action="store_true",
                    help="Books only: skip signals, paper and settlement.")
+    p.add_argument("--settle-only", action="store_true",
+                   help="THE SETTLEMENT TAIL (R24 §5). Ingest the labels that open "
+                        "positions wait on and settle them; discover nothing, "
+                        "collect nothing, decide nothing. A position opened on the "
+                        "last day of the run resolves the day AFTER it, so without "
+                        "these cycles the last two days' positions would stay open "
+                        "and their PnL would not exist — the ledger would close on "
+                        "a tail truncated by the calendar, not by the market. These "
+                        "cycles do NOT count in the run's 42.")
     p.add_argument("--dump-catalogue", action="store_true",
                    help="Force the markets/outcomes/fees snapshot on a "
                         "--collect-only run. Deciding cycles always take it: the "
@@ -1174,6 +1183,28 @@ def main(argv: list[str] | None = None) -> int:
 
         stage_load_state(cy, con, root=args.store_root)
         discovery.ensure_dataset_version(con, args.dataset_version)
+
+        if args.settle_only:
+            # Nothing is discovered, collected or decided: the tail exists only to
+            # close what is already open. Skipping discovery also keeps it from
+            # touching `markets.available_at`, which a decision cycle depends on.
+            for st in ("discover", "universe", "collect:books", "forecasts",
+                       "signals", "paper"):
+                cy.stage(st, SKIPPED, reason="settle_only_tail")
+            stage_observations(cy, con, dataset_version=args.dataset_version,
+                               now=_utcnow())
+            stage_settle(cy, con, dataset_version=args.dataset_version)
+            stage_params(cy, root=args.store_root, session_id=session_id, args=args,
+                         quantile_provenance={}, timing=plan | {
+                             "prediction_time": plan["t_asof"], "drift_h": 0.0,
+                             "lead_effective_h": plan["lead_nominal_h"]},
+                         dataset_version=args.dataset_version)
+            stage_dump(cy, con, root=args.store_root, session_id=session_id,
+                       dataset_version=args.dataset_version, since=cy.started_at,
+                       dump_catalogue=False)
+            con.close()
+            return _finish(cy, args)
+
         stage_discover(cy, con, dataset_version=args.dataset_version,
                        target_date=target_date, horizon_days=args.horizon_days,
                        session=http, max_pages=args.max_pages)
@@ -1284,6 +1315,12 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         con.close()
 
+    return _finish(cy, args)
+
+
+def _finish(cy: Cycle, args) -> int:
+    """Write and print the summary. One exit point for both the full cycle and the
+    settlement tail, so the tail cannot drift into reporting differently."""
     summary = cy.summary()
     if args.summary_json:
         Path(args.summary_json).parent.mkdir(parents=True, exist_ok=True)
