@@ -402,6 +402,38 @@ def stage_forecasts(cy: Cycle, con, *, dataset_version: str, target_date: date,
                  prediction_time=_iso(prediction_time))
         return {"written": 0, "quantiles": 0}
 
+    # ---- 0. the artifact, BEFORE spending a single request.
+    #
+    # The stratum is keyed by an INTEGER lead (`training_pairs` compares
+    # `p.lead_h == lead_h`, and the artifact is keyed the same way). `int()` on a
+    # non-integral lead would not raise: it would truncate into a NEIGHBOURING
+    # stratum and return quantiles for a horizon nobody asked about.
+    if float(lead_hours) != int(lead_hours):
+        cy.stage("forecasts", STOPPED, reason="non_integral_lead_hours",
+                 lead_hours=lead_hours, written=0)
+        return {"written": 0, "quantiles": 0, "stopped": True}
+    lead_h = int(lead_hours)
+
+    # Checked FIRST, not after the fetch. Without quantiles the cycle produces no
+    # signal at all, so ingesting 50 stations before discovering the artifact is
+    # stale spends 50 Open-Meteo requests on forecasts nothing can use. The user
+    # pays for no key (A-29.1): quota not spent is the point, and a refusal that
+    # arrives after the bill is a refusal that arrived late.
+    try:
+        art = qa.load(artifact_path)
+        q = art.quantiles(lead_h, prediction_time, model=model,
+                          prereg_sha256=m2.PREREG_SHA_V2,
+                          max_age_hours=max_artifact_age_h)
+    except qa.ArtifactUnusable as exc:
+        # Every reason comes from the closed enum, so the shard record carries a
+        # label a later reader can count, not a sentence someone wrote once.
+        cy.stage("forecasts", STOPPED, reason=f"quantile_artifact:{exc.reason}",
+                 detail=exc.detail, artifact=artifact_path,
+                 written=0, quantiles=0, requests_saved=len(stns))
+        return {"written": 0, "quantiles": 0, "stopped": True,
+                "artifact_refusal": exc.reason}
+    prov = art.provenance(lead_h, prediction_time)
+
     # ---- 1. the forecast
     written = 0
     fetch_errors: dict[str, int] = {}
@@ -428,34 +460,7 @@ def stage_forecasts(cy: Cycle, con, *, dataset_version: str, target_date: date,
                  stations=len(stns), errors=json.dumps(fetch_errors))
         return {"written": 0, "quantiles": 0}
 
-    # ---- 2. the uncertainty
-    # The stratum is keyed by an INTEGER lead (`training_pairs` compares
-    # `p.lead_h == lead_h`, and the artifact is keyed the same way). `int()` on a
-    # non-integral lead would not raise: it would truncate into a NEIGHBOURING
-    # stratum and return quantiles for a horizon nobody asked about.
-    if float(lead_hours) != int(lead_hours):
-        cy.stage("forecasts", STOPPED, reason="non_integral_lead_hours",
-                 lead_hours=lead_hours, written=written)
-        return {"written": written, "quantiles": 0, "stopped": True}
-    lead_h = int(lead_hours)
-
-    try:
-        art = qa.load(artifact_path)
-        q = art.quantiles(lead_h, prediction_time, model=model,
-                          prereg_sha256=m2.PREREG_SHA_V2,
-                          max_age_hours=max_artifact_age_h)
-    except qa.ArtifactUnusable as exc:
-        # Every reason here comes from the closed enum, so the shard record
-        # carries a label a later reader can count, not a sentence someone wrote
-        # once. The forecasts already ingested STAY: they cost quota and are
-        # correct; what is refused is attaching a distribution to them.
-        cy.stage("forecasts", STOPPED, reason=f"quantile_artifact:{exc.reason}",
-                 detail=exc.detail, artifact=artifact_path,
-                 written=written, quantiles=0)
-        return {"written": written, "quantiles": 0, "stopped": True,
-                "artifact_refusal": exc.reason}
-    prov = art.provenance(lead_h, prediction_time)
-
+    # ---- 2. the uncertainty, applied
     # `record_version` is PART OF THE PRIMARY KEY of weather_forecasts and was
     # named by NEITHER the read nor the write. With one version per key — all
     # `ingest_run` writes today — the two agree; with two, the SELECT returns both

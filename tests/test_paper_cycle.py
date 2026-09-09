@@ -677,7 +677,8 @@ def test_a_stale_artifact_stops_the_stage_and_writes_no_quantiles(con, monkeypat
         "record_version) VALUES (?,?,?,?,?,?,?,?,?)",
         [issue, date(2026, 9, 10), "EGLC", "icon_seamless", 17.0,
          weather.available_at(issue, "icon_seamless"), T0, "ds_paper_v1", 1])
-    monkeypatch.setattr(weather, "ingest_run", lambda *a, **k: None)
+    calls = []
+    monkeypatch.setattr(weather, "ingest_run", lambda *a, **k: calls.append(a))
     monkeypatch.setattr("weather_agent.stations.timezone_of", lambda i: "Europe/London")
 
     cy = _cycle()
@@ -689,7 +690,11 @@ def test_a_stale_artifact_stops_the_stage_and_writes_no_quantiles(con, monkeypat
                                 fit_instant=t - timedelta(hours=48)))
     assert out["stopped"] is True and out["quantiles"] == 0
     assert out["artifact_refusal"] == "artifact_stale"
-    # the forecast it already paid quota for stays; only the distribution is refused
+    # AND NOT ONE REQUEST WAS MADE. Without quantiles the cycle produces no signal
+    # at all, so fetching 50 stations first would spend 50 Open-Meteo requests on
+    # forecasts nothing can use. The user pays for no key (A-29.1).
+    assert calls == []
+    assert out["written"] == 0
     row = con.execute("SELECT forecast_tmax, forecast_p50 FROM weather_forecasts "
                       "WHERE station = 'EGLC'").fetchone()
     assert row[0] == 17.0 and row[1] is None
