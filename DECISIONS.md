@@ -4717,3 +4717,94 @@ correcta y **una justificación falsa dentro del README**, que es la forma más 
 produce este proyecto.
 
 575 verdes. Ventana hasta 23:35Z.
+
+## A-97
+
+**Fecha:** 2026-09-09 22:25Z
+**Autor:** A (desarrollador y validador), a petición del usuario
+**Asunto:** dónde puede haber edge — dos ramas cerradas con medición, una abierta, y no es de pronóstico
+
+El usuario pidió, primero, un análisis argumentado de dónde podría venir el edge dadas nuestras
+mediciones; después, que buscara fuera a quién le está funcionando. Ambas cosas produjeron resultados
+que cierran ramas, así que quedan aquí y no sólo en la conversación.
+
+### 1. Arbitraje de partición: CERRADO con nuestros propios libros
+
+Las bandas de un evento son una partición y exactamente una paga 1. Si la suma de asks fuera < 1,
+comprar todas sería beneficio sin modelo, sin pronóstico y sin opinión. Medido sobre los shards ya
+almacenados:
+
+    pares (evento, recogida) con TODAS las bandas cotizadas : 714
+      suma de ASKS   mín 1,0030   mediana 1,1030   máx 2,6520   → casos < 1: 0 de 714
+      suma de BIDS   mín 0,8380   mediana 0,9260   máx 0,9900   → casos > 1: 0 de 41
+
+Ni una vez, **y eso es antes de comisiones**. El mercado es internamente coherente con un margen de
+~10 % por el lado comprador. La rama libre de modelo queda cerrada con datos.
+
+*Límites de esta medida, que hay que decir:* un solo día de libros y muestreo cada 3 h — un
+arbitraje de dos minutos no aparecería. Pero un arbitraje de dos minutos tampoco lo podríamos coger,
+así que la conclusión operativa no cambia.
+
+### 2. La infrarreacción del mercado: EXISTE, y por eso mismo no es nuestra
+
+Yo había propuesto una hipótesis que R21 no toca: la estrategia A comparó un **pronóstico** a 9 y 24 h
+contra el precio, y **nunca preguntó si el precio incorpora bien las observaciones ya ocurridas**. Son
+conjuntos de información distintos y el hallazgo de R21 no se transporta.
+
+Angelini y De Angelis (arXiv 2606.07811, junio 2026), sobre contratos NBA en Kalshi con datos de un
+minuto, miden exactamente eso: un cambio de un minuto en la probabilidad de referencia mueve el precio
+sólo **0,64 por cada 1**, y el ajuste que falta **predice la deriva de los minutos siguientes**. La
+infrarreacción es **mayor cuanto menor es la liquidez** — es decir, mayor en mercados como los
+nuestros.
+
+**Confirma la hipótesis y la descarta para nosotros en la misma frase: es un edge de LATENCIA, en
+minutos.** Nuestro colector va cada 3 horas. Y hay confirmación de primera mano: un operador publicó
+el postmortem de sus 32 primeras operaciones perdedoras en Kalshi weather —mismo diseño que la
+estrategia A— y una de sus tres causas es literal: consultaba **cada 15-60 minutos** y *«estaba dando
+liquidez de salida a los bots que llegaron primero»*. Se marchó de meteorología.
+
+**Somos entre 3 y 12 veces más lentos que alguien que ya concluyó que era demasiado lento.**
+
+### 3. Lo que se publica como «estrategia rentable» no se sostiene
+
+El resultado que encabeza las búsquedas —Sharpe 3,44–5,03 en temperaturas de Kalshi, *«las 66
+configuraciones del barrido son rentables»*— apunta a un repositorio que devuelve **404**. Y aunque
+existiera: que las 66 salgan rentables no es robustez, es la firma de una fuga de información. Este
+proyecto ha encontrado esa clase de error en su propio código tres veces. La afirmación asociada de
+sobredispersión del mercado (1,27×) viene del mismo sitio inexistente y no la sostiene ninguna fuente
+independiente — al contrario: un análisis sobre **8.494 mercados de Nueva York ya liquidados** mide el
+error de calibración del mercado **en crudo en 0,0162**, que es coherente con nuestro Brier y deja sin
+hueco a un pronóstico público.
+
+### 4. Lo único que sobrevive no es una estrategia de pronóstico
+
+Polymarket **paga por poner liquidez**: el creador paga cero comisiones, recibe 15–25 % de las
+comisiones del que cruza, y además cobra a diario por tener órdenes cerca del medio **se ejecuten o
+no**, con puntuación `factor^ticks × tamaño`, foto cada segundo y reparto proporcional.
+
+Es lo único encontrado que **no exige batir el pronóstico del mercado** (demostrado que no podemos) ni
+**latencia baja** (no la tenemos). Exige disponibilidad continua, capital y no dejarse arrollar. Y
+**invierte el papel de todo lo construido**: la pila de pronóstico deja de ser el producto y pasa a ser
+el freno de mano; el operador de liquidación —la parte rara y correcta— sigue siendo necesario.
+
+Medido en nuestros libros antes de entusiasmarse, sobre 16.830 snapshots:
+
+    diferencial por banda   mediana 0,010   p90 0,031
+      con diferencial <= 0,03 (umbral típico de premio):  90,0 %
+    tamaño ya en reposo cerca del medio (5 niveles):  mediana 1.185 unidades
+
+Es decir: **el 90 % de las bandas ya está lo bastante ajustado como para que los creadores actuales
+cobren**, y el premio se reparte en proporción — dilución directa. Y la selección adversa la mide
+nuestro propio R21: quien te levanta la orden está mejor informado que nuestro modelo.
+
+### Consecuencia para el proyecto, que es lo que esta entrada existe para decir
+
+**Lo que hoy tiene el proyecto atascado —extender el backfill para reajustar cuantiles (tarea #30)—
+sirve exclusivamente a la rama muerta.** El preregistro, la cadencia de §4bis, el tope del 14 de
+septiembre: todo eso sostiene la estrategia A. Los tres pasos que abrirían la única rama viva
+—verificar el acceso, leer el calendario de premios, y recoger operaciones ejecutadas (`trades` sigue
+en **0 filas**)— **no necesitan nada de eso**.
+
+No se cambia nada de la corrida paper por esto: R24 está preregistrado y su valor es medir el host y
+cerrar el expediente de la estrategia A con datos prospectivos. Pero **queda escrito que continuar por
+§4bis es invertir en lo refutado**, y que la decisión de cambiar de rama es del usuario, no mía.
