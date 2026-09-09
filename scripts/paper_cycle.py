@@ -42,7 +42,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from weather_agent import (collector, config, database as db, paper,  # noqa: E402
-                           settlement, store)
+                           quantile_artifact, settlement, store)
 from weather_agent.polymarket import discovery  # noqa: E402
 
 #: Tables the cycle rebuilds from shards on entry and dumps back on exit — the
@@ -340,7 +340,8 @@ def stage_collect(cy: Cycle, con, *, dataset_version: str, session_id: str,
 
 def stage_forecasts(cy: Cycle, con, *, dataset_version: str, target_date: date,
                     universe: list[dict], model: str, lead_hours: float,
-                    prediction_time: datetime, session=None) -> dict:
+                    prediction_time: datetime, artifact_path: str,
+                    max_artifact_age_h: float | None = None, session=None) -> dict:
     """Fetch the issued forecast for each station and attach M2's error quantiles.
 
     Two halves, and they answer different questions:
@@ -350,16 +351,28 @@ def stage_forecasts(cy: Cycle, con, *, dataset_version: str, target_date: date,
          Publication latency is real (L_MAX 4.76 h for icon_seamless) and picking a
          run by issue time alone would use a forecast that did not exist yet.
 
-      2. THE UNCERTAINTY — `error_model.quantiles_for` over historical pairs,
-         applied as `forecast_pXX = f + percentile_XX(e)`.
+      2. THE UNCERTAINTY — a VERSIONED ARTIFACT (R30), not a refit. Applied as
+         `forecast_pXX = f + percentile_XX(e)`.
 
-    THE TRAINING SUBSTRATE IS A DIFFERENT dataset_version ON PURPOSE, and this is
-    the one thing a reader should not have to guess. M2's error distribution is
-    fitted on the BACKFILL (`m2.DATASET_VERSION`), because that is where the
-    history lives; the cycle itself runs as `ds_paper_v1`, which holds only what we
-    have collected prospectively and contains no realized observations to learn
-    from. Passing it explicitly rather than letting a module constant decide is
-    what makes the crossing visible (A-51).
+    WHY THE UNCERTAINTY IS READ AND NOT FITTED. The cycle has nothing to fit on.
+    M2 trains on the BACKFILL (`m2.DATASET_VERSION`); the cycle runs as
+    `ds_paper_v1`, rebuilt in Actions from the prospective shards, holding no
+    realized observation at all. Refitting here returned `INSUFFICIENT` on every
+    live cycle: forecast rows written, no distribution, `build_feature` returning
+    None, zero signals. So the fit happens out of band
+    (`scripts/fit_quantile_artifact.py`) and the cycle reads its result.
+
+    That is safe for the reason session B gave: an artifact fitted at `t0 < t`
+    uses a SUBSET of what it was entitled to, and using less information than
+    permitted cannot create lookahead. The mirror case is NOT safe, and
+    `quantile_artifact` refuses it — `fit_instant > prediction_time` means the
+    fit saw labels the decision could not. It never happens forward in time; it
+    happens the first time a replay meets a newer artifact.
+
+    STALENESS IS A REFUSAL, NOT A WARNING (B's condition). Past the artifact's
+    declared `max_age_hours` the stage STOPS with the reason, writes no
+    quantiles, and the cycle produces no signal. An old artifact used in silence
+    does not break: it produces a plausible number, which is worse.
 
     Quantiles are written in CELSIUS. `weather_forecasts` is model space, not
     market space; the conversion to the market's contractual unit happens later in
@@ -368,7 +381,8 @@ def stage_forecasts(cy: Cycle, con, *, dataset_version: str, target_date: date,
     QUOTA: the user pays for no Open-Meteo key (A-29.1), so this must stay inside
     the free tier. One request per station per cycle, ~51 stations x 2 cycles/day.
     A 429 stops the stage and is reported; it is never retried through."""
-    from weather_agent import error_model as em, m2, stations, weather
+    from weather_agent import error_model as em, m2, quantile_artifact as qa
+    from weather_agent import stations, weather
 
     # The ICAO, not the station NAME. `markets.station` is prose ("London City
     # Airport"); `stations.timezone_of` and `weather.ingest_run` both key on the
@@ -412,22 +426,32 @@ def stage_forecasts(cy: Cycle, con, *, dataset_version: str, target_date: date,
         return {"written": 0, "quantiles": 0}
 
     # ---- 2. the uncertainty
-    pairs, _issue_by_key, pair_stats = m2.load_pairs(
-        con, dataset_version=m2.DATASET_VERSION)
     # The stratum is keyed by an INTEGER lead (`training_pairs` compares
-    # `p.lead_h == lead_h`). `int()` on a non-integral lead would not raise: it
-    # would truncate into a NEIGHBOURING stratum and return quantiles for a
-    # horizon nobody asked about. Refuse instead.
+    # `p.lead_h == lead_h`, and the artifact is keyed the same way). `int()` on a
+    # non-integral lead would not raise: it would truncate into a NEIGHBOURING
+    # stratum and return quantiles for a horizon nobody asked about.
     if float(lead_hours) != int(lead_hours):
         cy.stage("forecasts", STOPPED, reason="non_integral_lead_hours",
                  lead_hours=lead_hours, written=written)
         return {"written": written, "quantiles": 0, "stopped": True}
-    q = em.quantiles_for(pairs, prediction_time, int(lead_hours))
-    if not q.values:
-        cy.stage("forecasts", OK, written=written, quantiles=0,
-                 quantile_scope=q.scope,
-                 note="forecast rows written WITHOUT quantiles: the stratum has none")
-        return {"written": written, "quantiles": 0}
+    lead_h = int(lead_hours)
+
+    try:
+        art = qa.load(artifact_path)
+        q = art.quantiles(lead_h, prediction_time, model=model,
+                          prereg_sha256=m2.PREREG_SHA_V2,
+                          max_age_hours=max_artifact_age_h)
+    except qa.ArtifactUnusable as exc:
+        # Every reason here comes from the closed enum, so the shard record
+        # carries a label a later reader can count, not a sentence someone wrote
+        # once. The forecasts already ingested STAY: they cost quota and are
+        # correct; what is refused is attaching a distribution to them.
+        cy.stage("forecasts", STOPPED, reason=f"quantile_artifact:{exc.reason}",
+                 detail=exc.detail, artifact=artifact_path,
+                 written=written, quantiles=0)
+        return {"written": written, "quantiles": 0, "stopped": True,
+                "artifact_refusal": exc.reason}
+    prov = art.provenance(lead_h, prediction_time)
 
     # `record_version` is PART OF THE PRIMARY KEY of weather_forecasts and was
     # named by NEITHER the read nor the write. With one version per key — all
@@ -459,11 +483,14 @@ def stage_forecasts(cy: Cycle, con, *, dataset_version: str, target_date: date,
         n_q += 1
 
     cy.stage("forecasts", OK, stations=len(stns), written=written, quantiles=n_q,
-             issue_time=_iso(issue_time), lead_h=lead_hours,
-             quantile_scope=q.scope, training_pairs=len(pairs),
-             training_dsv=m2.DATASET_VERSION,
+             issue_time=_iso(issue_time), lead_h=lead_h,
+             quantile_scope=q.scope, quantile_n=q.n,
+             artifact_id=art.artifact_id[:12],
+             artifact_age_h=round(art.age_at(prediction_time).total_seconds() / 3600, 2),
+             training_dsv=art.dataset_version,
              errors=json.dumps(fetch_errors) if fetch_errors else None)
-    return {"written": written, "quantiles": n_q, "scope": q.scope}
+    return {"written": written, "quantiles": n_q, "scope": q.scope,
+            "provenance": prov}
 
 
 def stage_signals(cy: Cycle, con, *, dataset_version: str, target_date: date,
@@ -773,7 +800,7 @@ def stage_settle(cy: Cycle, con, *, dataset_version: str) -> dict:
 
 
 def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
-                 dataset_version: str) -> dict:
+                 dataset_version: str, quantile_provenance: dict | None = None) -> dict:
     """Persist the parameters this cycle actually ran with.
 
     R24 declares the run void if any frozen parameter changes mid-run, but the
@@ -808,7 +835,15 @@ def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
         "collect_only": bool(args.collect_only),
         "code_commit": os.environ.get("GITHUB_SHA"),
         "run_id": os.environ.get("GITHUB_RUN_ID"),
+        # B's second condition: the cycle records WHICH artifact it used. The id
+        # is a sha over the artifact's canonical content, so it names the fit
+        # exactly — including a refit that produced identical numbers. When the
+        # artifact was REFUSED, the refusal label is recorded instead, so a cycle
+        # that produced no signal says why in the same row that says what it ran
+        # with.
+        "max_artifact_age_h": args.max_artifact_age_h,
     }
+    params.update(quantile_provenance or {})
     out = store.write_shard([params], table="cycle_params", run_id=session_id,
                             root=root)
     cy.stage("params", OK, path=out["path"], tau_signal=args.tau_signal,
@@ -866,6 +901,14 @@ def build_parser() -> argparse.ArgumentParser:
                         "target_date 12:00Z - lead_hours. Operational range {9, 24} "
                         "(PREREG_LEAD_HOURS_RANGE).")
     p.add_argument("--model", default="icon_seamless", help="M1 (D12).")
+    p.add_argument("--quantile-artifact", default=None,
+                   help="M2's fitted quantiles (R30). Default: the repository copy "
+                        "at quantile_artifact.DEFAULT_PATH, resolved against the "
+                        "repo root so a cycle run from any cwd finds the same file.")
+    p.add_argument("--max-artifact-age-h", type=float, default=None,
+                   help="TIGHTEN the artifact's own declared shelf life. A value "
+                        "LARGER than the artifact's is ignored: an operator does "
+                        "not extend the life of an artifact from the command line.")
     p.add_argument("--tau-signal", type=float, default=None,
                    help="Strategy A threshold, on the GROSS edge (fair_value - "
                         "p_market) against the indicative mid. Required for the "
@@ -943,6 +986,14 @@ def main(argv: list[str] | None = None) -> int:
         # start: everything a decision consumes must already exist at
         # `prediction_time`, and the prices this cycle just wrote carry an
         # `observation_time` of a few minutes ago.
+        # Resolved against the REPO ROOT, not the cwd. The workflow runs the
+        # script from the checkout root and a person runs it from anywhere; a
+        # relative default would make "which artifact did it use" depend on where
+        # the shell happened to be.
+        artifact_path = args.quantile_artifact or str(
+            Path(__file__).resolve().parents[1] / quantile_artifact.DEFAULT_PATH)
+        quantile_provenance: dict = {}
+
         timing = decision_time(target_date, args.lead_hours, _utcnow())
         prediction_time = timing["prediction_time"]
         # Usable exactly when the clamp did NOT bind: if `now` is still before
@@ -980,10 +1031,15 @@ def main(argv: list[str] | None = None) -> int:
             cy.stage("signals", SKIPPED, reason=f"{missing}_not_provided_fail_closed")
             cy.stage("paper", SKIPPED, reason=f"{missing}_not_provided_fail_closed")
         else:
-            stage_forecasts(cy, con, dataset_version=args.dataset_version,
-                            target_date=target_date, universe=universe,
-                            model=args.model, lead_hours=args.lead_hours,
-                            prediction_time=prediction_time, session=http)
+            fc = stage_forecasts(cy, con, dataset_version=args.dataset_version,
+                                 target_date=target_date, universe=universe,
+                                 model=args.model, lead_hours=args.lead_hours,
+                                 prediction_time=prediction_time,
+                                 artifact_path=artifact_path,
+                                 max_artifact_age_h=args.max_artifact_age_h,
+                                 session=http)
+            quantile_provenance = fc.get("provenance") or {
+                "quantile_artifact_refusal": fc.get("artifact_refusal")}
             stage_signals(cy, con, dataset_version=args.dataset_version,
                           target_date=target_date, universe=universe,
                           model=args.model, tau=args.tau_signal,
@@ -1003,6 +1059,7 @@ def main(argv: list[str] | None = None) -> int:
             stage_settle(cy, con, dataset_version=args.dataset_version)
 
         stage_params(cy, root=args.store_root, session_id=session_id, args=args,
+                     quantile_provenance=quantile_provenance,
                      timing=timing, dataset_version=args.dataset_version)
         stage_dump(cy, con, root=args.store_root, session_id=session_id,
                    dataset_version=args.dataset_version, since=cy.started_at,

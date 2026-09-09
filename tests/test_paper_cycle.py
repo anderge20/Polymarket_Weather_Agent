@@ -529,6 +529,21 @@ def test_a_refused_settlement_leaves_the_position_open_with_its_reason(con, monk
 
 
 # --------------------------------------------------------------------------- forecasts
+def _artifact(tmp_path, *, fit_instant=None, max_age_hours=336.0, lead=24,
+              values=None, name="m2_quantiles.json"):
+    """A real artifact on disk. The forecast tests go through the same loader and
+    the same guards the cycle uses; a monkeypatched `quantiles_for` would have
+    tested a path that no longer exists."""
+    from weather_agent import error_model as em, m2, quantile_artifact as qa
+    fit_instant = fit_instant or datetime(2026, 9, 9, 6, tzinfo=timezone.utc)
+    values = values or {10: -1.5, 25: -0.5, 50: 0.4, 75: 1.3, 90: 2.2}
+    payload = qa.build_payload(
+        prereg_sha256=m2.PREREG_SHA_V2, model="icon_seamless",
+        dataset_version=m2.DATASET_VERSION, fit_instant=fit_instant,
+        max_age_hours=max_age_hours,
+        strata={lead: em.Quantiles(em.SCOPE_POOLED, 147, values)},
+        windows={lead: (fit_instant - timedelta(days=40), fit_instant)})
+    return str(qa.dump(payload, tmp_path / name) and (tmp_path / name))
 def test_forecasts_picks_the_run_already_published_not_the_newest(con, monkeypatch):
     """Publication latency is real (L_MAX 4.76 h for icon_seamless). Selecting a run
     by issue time alone would use a forecast that did not exist yet at the decision
@@ -541,15 +556,16 @@ def test_forecasts_picks_the_run_already_published_not_the_newest(con, monkeypat
         "the chosen run must already have been published at the decision instant"
 
 
-def test_forecasts_skips_when_no_station_is_in_the_universe(con):
+def test_forecasts_skips_when_no_station_is_in_the_universe(con, tmp_path):
     out = paper_cycle.stage_forecasts(
         _cycle(), con, dataset_version="ds1", target_date=date(2026, 9, 10),
         universe=[], model="icon_seamless", lead_hours=24,
+        artifact_path=_artifact(tmp_path),
         prediction_time=datetime(2026, 9, 9, 12, tzinfo=timezone.utc))
     assert out == {"written": 0, "quantiles": 0}
 
 
-def test_forecasts_stops_on_a_rate_limit_and_never_retries_through(con, monkeypatch):
+def test_forecasts_stops_on_a_rate_limit_and_never_retries_through(con, monkeypatch, tmp_path):
     """Standing constraint: a 429 ends the stage. The user pays for no key."""
     from weather_agent import weather
 
@@ -560,15 +576,18 @@ def test_forecasts_stops_on_a_rate_limit_and_never_retries_through(con, monkeypa
     out = paper_cycle.stage_forecasts(
         _cycle(), con, dataset_version="ds1", target_date=date(2026, 9, 10),
         universe=[{"station_identifier": "EGLC"}, {"station_identifier": "EDDM"}], model="icon_seamless",
-        lead_hours=24, prediction_time=datetime(2026, 9, 9, 12, tzinfo=timezone.utc))
+        lead_hours=24, artifact_path=_artifact(tmp_path),
+        prediction_time=datetime(2026, 9, 9, 12, tzinfo=timezone.utc))
     assert out.get("stopped") is True and out["written"] == 0
 
 
-def test_forecasts_writes_quantiles_in_celsius_from_the_backfill_substrate(con, monkeypatch):
+def test_forecasts_writes_quantiles_in_celsius_from_the_backfill_substrate(
+        con, monkeypatch, tmp_path):
     """The training substrate is a DIFFERENT dataset_version on purpose: M2's error
-    distribution lives in the backfill, the cycle runs as ds_paper_v1. Passing it
-    explicitly is what makes the crossing visible."""
-    from weather_agent import error_model as em, m2, weather
+    distribution lives in the backfill, the cycle runs as ds_paper_v1. Since R30
+    the crossing is not just visible, it is RECORDED — the artifact names the
+    substrate it was fitted on and the cycle writes its id into cycle_params."""
+    from weather_agent import m2, weather
 
     # one forecast row for the cycle's own dataset_version
     t = datetime(2026, 9, 9, 12, tzinfo=timezone.utc)
@@ -581,29 +600,27 @@ def test_forecasts_writes_quantiles_in_celsius_from_the_backfill_substrate(con, 
          weather.available_at(issue, "icon_seamless"), T0, "ds_paper_v1", 1])
     monkeypatch.setattr(weather, "ingest_run", lambda *a, **k: None)
     monkeypatch.setattr("weather_agent.stations.timezone_of", lambda i: "Europe/London")
-    # a pooled stratum with known quantiles, standing in for the backfill history
-    fake_q = em.Quantiles(scope=em.SCOPE_POOLED, n=100,
-                          values={10: -1.5, 25: -0.5, 50: 0.4, 75: 1.3, 90: 2.2})
-    monkeypatch.setattr(m2, "load_pairs", lambda con, dataset_version=None: ([], {}, {}))
-    monkeypatch.setattr(em, "quantiles_for", lambda p, t, l: fake_q)
 
     out = paper_cycle.stage_forecasts(
         _cycle(), con, dataset_version="ds_paper_v1", target_date=date(2026, 9, 10),
         universe=[{"station_identifier": "EGLC"}], model="icon_seamless", lead_hours=24,
-        prediction_time=t)
+        artifact_path=_artifact(tmp_path), prediction_time=t)
     assert out["quantiles"] == 1
+    prov = out["provenance"]
+    assert prov["quantile_artifact_dataset_version"] == m2.DATASET_VERSION
+    assert prov["quantile_stratum_lead_h"] == 24 and prov["quantile_stratum_n"] == 147
     row = con.execute("SELECT forecast_p10, forecast_p50, forecast_p90 "
                       "FROM weather_forecasts WHERE station = 'EGLC'").fetchone()
     # forecast_pXX = f + percentile_XX(e), in Celsius; f = 17.0
     assert row == (pytest.approx(15.5), pytest.approx(17.4), pytest.approx(19.2))
 
 
-def test_quantiles_never_cross_between_record_versions(con, monkeypatch):
+def test_quantiles_never_cross_between_record_versions(con, monkeypatch, tmp_path):
     """`record_version` is part of the PK of weather_forecasts. An UPDATE that does
     not name it writes to EVERY version of the key, so the last forecast processed
     would set the quantiles of all of them — a row whose p50 is not derived from
     its own forecast_tmax. Two versions, two different tmax, two different p50."""
-    from weather_agent import error_model as em, m2, weather
+    from weather_agent import m2, weather
 
     t = datetime(2026, 9, 9, 12, tzinfo=timezone.utc)
     issue = m2.pick_run(t, weather.M1_MODEL)
@@ -616,15 +633,13 @@ def test_quantiles_never_cross_between_record_versions(con, monkeypatch):
              weather.available_at(issue, "icon_seamless"), T0, "ds_paper_v1", rv])
     monkeypatch.setattr(weather, "ingest_run", lambda *a, **k: None)
     monkeypatch.setattr("weather_agent.stations.timezone_of", lambda i: "Europe/London")
-    fake_q = em.Quantiles(scope=em.SCOPE_POOLED, n=100,
-                          values={10: -1.0, 25: -0.5, 50: 0.0, 75: 0.5, 90: 1.0})
-    monkeypatch.setattr(m2, "load_pairs", lambda con, dataset_version=None: ([], {}, {}))
-    monkeypatch.setattr(em, "quantiles_for", lambda p, t, l: fake_q)
 
     out = paper_cycle.stage_forecasts(
         _cycle(), con, dataset_version="ds_paper_v1", target_date=date(2026, 9, 10),
         universe=[{"station_identifier": "EGLC"}], model="icon_seamless",
-        lead_hours=24, prediction_time=t)
+        lead_hours=24, prediction_time=t,
+        artifact_path=_artifact(tmp_path, values={10: -1.0, 25: -0.5, 50: 0.0,
+                                                  75: 0.5, 90: 1.0}))
     assert out["quantiles"] == 2
     got = dict(con.execute(
         "SELECT record_version, forecast_p50 FROM weather_forecasts "
@@ -633,7 +648,8 @@ def test_quantiles_never_cross_between_record_versions(con, monkeypatch):
     assert got[2] == pytest.approx(20.0)
 
 
-def test_a_non_integral_lead_refuses_instead_of_truncating_the_stratum(con, monkeypatch):
+def test_a_non_integral_lead_refuses_instead_of_truncating_the_stratum(
+        con, monkeypatch, tmp_path):
     """`training_pairs` matches `p.lead_h == lead_h` exactly. int(9.5) -> 9 would
     return the 9 h stratum for a 9.5 h decision without raising anything."""
     from weather_agent import weather
@@ -642,5 +658,87 @@ def test_a_non_integral_lead_refuses_instead_of_truncating_the_stratum(con, monk
     out = paper_cycle.stage_forecasts(
         _cycle(), con, dataset_version="ds_paper_v1", target_date=date(2026, 9, 10),
         universe=[{"station_identifier": "EGLC"}], model="icon_seamless",
-        lead_hours=9.5, prediction_time=datetime(2026, 9, 9, 12, tzinfo=timezone.utc))
+        lead_hours=9.5, artifact_path=_artifact(tmp_path),
+        prediction_time=datetime(2026, 9, 9, 12, tzinfo=timezone.utc))
     assert out.get("stopped") is True and out["quantiles"] == 0
+
+
+def test_a_stale_artifact_stops_the_stage_and_writes_no_quantiles(con, monkeypatch, tmp_path):
+    """Session B's condition, at the level where it bites: the cycle REFUSES,
+    it does not warn. `build_feature` needs the five quantiles and returns None
+    without them, so a stale artifact used in silence would not raise — it would
+    quietly produce a distribution fitted on a world that has moved."""
+    from weather_agent import m2, weather
+    t = datetime(2026, 9, 9, 12, tzinfo=timezone.utc)
+    issue = m2.pick_run(t, weather.M1_MODEL)
+    con.execute(
+        "INSERT INTO weather_forecasts (issue_time, target_date, station, model, "
+        "forecast_tmax, available_at, ingestion_timestamp, dataset_version, "
+        "record_version) VALUES (?,?,?,?,?,?,?,?,?)",
+        [issue, date(2026, 9, 10), "EGLC", "icon_seamless", 17.0,
+         weather.available_at(issue, "icon_seamless"), T0, "ds_paper_v1", 1])
+    monkeypatch.setattr(weather, "ingest_run", lambda *a, **k: None)
+    monkeypatch.setattr("weather_agent.stations.timezone_of", lambda i: "Europe/London")
+
+    cy = _cycle()
+    out = paper_cycle.stage_forecasts(
+        cy, con, dataset_version="ds_paper_v1", target_date=date(2026, 9, 10),
+        universe=[{"station_identifier": "EGLC"}], model="icon_seamless",
+        lead_hours=24, prediction_time=t,
+        artifact_path=_artifact(tmp_path, max_age_hours=1.0,
+                                fit_instant=t - timedelta(hours=48)))
+    assert out["stopped"] is True and out["quantiles"] == 0
+    assert out["artifact_refusal"] == "artifact_stale"
+    # the forecast it already paid quota for stays; only the distribution is refused
+    row = con.execute("SELECT forecast_tmax, forecast_p50 FROM weather_forecasts "
+                      "WHERE station = 'EGLC'").fetchone()
+    assert row[0] == 17.0 and row[1] is None
+
+
+def test_an_artifact_fitted_after_the_decision_stops_the_stage(con, monkeypatch, tmp_path):
+    """The replay case. Forward in time it cannot happen; reproducing an old
+    cycle against a refitted artifact is exactly where it does."""
+    from weather_agent import weather
+    t = datetime(2026, 9, 9, 12, tzinfo=timezone.utc)
+    monkeypatch.setattr(weather, "ingest_run", lambda *a, **k: None)
+    monkeypatch.setattr("weather_agent.stations.timezone_of", lambda i: "Europe/London")
+    out = paper_cycle.stage_forecasts(
+        _cycle(), con, dataset_version="ds_paper_v1", target_date=date(2026, 9, 10),
+        universe=[{"station_identifier": "EGLC"}], model="icon_seamless",
+        lead_hours=24, prediction_time=t,
+        artifact_path=_artifact(tmp_path, fit_instant=t + timedelta(hours=1)))
+    assert out["artifact_refusal"] == "artifact_fitted_after_decision"
+
+
+def test_a_missing_artifact_is_a_labelled_refusal_not_a_crash(con, monkeypatch, tmp_path):
+    from weather_agent import weather
+    monkeypatch.setattr(weather, "ingest_run", lambda *a, **k: None)
+    monkeypatch.setattr("weather_agent.stations.timezone_of", lambda i: "Europe/London")
+    out = paper_cycle.stage_forecasts(
+        _cycle(), con, dataset_version="ds_paper_v1", target_date=date(2026, 9, 10),
+        universe=[{"station_identifier": "EGLC"}], model="icon_seamless",
+        lead_hours=24, prediction_time=datetime(2026, 9, 9, 12, tzinfo=timezone.utc),
+        artifact_path=str(tmp_path / "there-is-no-artifact.json"))
+    assert out["artifact_refusal"] == "artifact_missing"
+
+
+def test_the_cycle_records_which_artifact_it_used(tmp_path):
+    """B's second condition, end to end: the id lands in the `cycle_params`
+    shard, so a later reader can say which fit produced a given cycle's numbers
+    without trusting a commit date."""
+    import argparse
+    args = argparse.Namespace(
+        target_date=date(2026, 9, 10), model="icon_seamless", tau_signal=0.03,
+        tau_exec=0.03, bankroll=10_000.0, fixed_fraction=0.02, size_cap=0.02,
+        x_exec=0.0, exit_mode="hold_to_resolution", weather_sum_tolerance=0.05,
+        market_sum_min=0.9, market_sum_max=1.1, collect_only=False,
+        max_artifact_age_h=48.0)
+    timing = {"t_end": T0, "t_asof": T0, "prediction_time": T0,
+              "lead_nominal_h": 24.0, "lead_effective_h": 24.0, "drift_h": 0.0}
+    prov = {"quantile_artifact_id": "abc123", "quantile_stratum_n": 147}
+    params = paper_cycle.stage_params(
+        _cycle(), root=str(tmp_path), session_id="cyc_prov", args=args,
+        timing=timing, dataset_version="ds_paper_v1", quantile_provenance=prov)
+    assert params["quantile_artifact_id"] == "abc123"
+    assert params["quantile_stratum_n"] == 147
+    assert params["max_artifact_age_h"] == 48.0
