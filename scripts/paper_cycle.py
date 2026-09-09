@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import traceback
 from datetime import date, datetime, timedelta, timezone
@@ -64,7 +65,7 @@ CATALOGUE_TABLES = ("markets", "outcomes", "market_fee_schedule")
 #: Append-mostly state. Every row is a new observation or a new decision, so the
 #: `since` filter is exact and these are dumped on every cycle.
 LEDGER_TABLES = (
-    "orderbook_snapshots", "trades",
+    "orderbook_snapshots", "price_history", "trades",
     "weather_forecasts", "weather_observations",
     "predictions", "signals", "markets_excluded", "paper_trades",
 )
@@ -253,7 +254,9 @@ def stage_collect(cy: Cycle, con, *, dataset_version: str, session_id: str,
     )
     cy.stage("collect:books", STOPPED if out["stopped"] else OK,
              tokens=out["tokens_requested"], pending=out["tokens_pending"],
-             rows=out["rows_written"], requests=out["requests"], error=out["error"])
+             rows=out["rows_written"], prices=out["prices_written"],
+             one_sided=out["prices_skipped_one_sided"],
+             requests=out["requests"], error=out["error"])
     return out
 
 
@@ -268,7 +271,13 @@ def stage_forecasts(cy: Cycle, con, *, dataset_version: str, target_date: date,
     this runs with no edit here.
 
     It is imported lazily and by name for exactly that reason: a missing module is
-    a SCHEDULING fact (B has not merged yet), not a crash."""
+    a SCHEDULING fact (B has not merged yet), not a crash.
+
+    HONEST LIMIT: this stage has NO `OK` branch and writes nothing, even when the
+    import succeeds. Wiring the forecast pull and the M2 quantile attachment is
+    session B's work, not a line to be flipped here — an earlier version of this
+    docstring claimed it would "run with no edit here" once the merge landed, which
+    was false. R24's precondition P3 is written against this reality."""
     try:
         from weather_agent import weather as weather_mod      # noqa: F401
         from weather_agent import error_model                 # noqa: F401
@@ -445,6 +454,49 @@ def stage_settle(cy: Cycle, con, *, dataset_version: str) -> dict:
     return {"positions_open": n_open}
 
 
+def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
+                 dataset_version: str) -> dict:
+    """Persist the parameters this cycle actually ran with.
+
+    R24 declares the run void if any frozen parameter changes mid-run, but the
+    workflow reads them from repository variables (`vars.PAPER_TAU`, ...), which a
+    person can edit in the GitHub UI leaving no trace in any repository history.
+    Without this the rule would be unauditable — you could not tell afterwards
+    which tau a given cycle used. Writing the effective values into the shard store
+    makes every cycle carry its own parameters, so a change shows up as a diff in
+    an append-only, commit-timestamped record."""
+    params = {
+        "session_id": session_id,
+        "dataset_version": dataset_version,
+        "target_date": str(args.target_date),
+        "recorded_at": _iso(_utcnow()),
+        "t_end": _iso(timing["t_end"]),
+        "t_asof": _iso(timing["t_asof"]),
+        "prediction_time": _iso(timing["prediction_time"]),
+        "lead_nominal_h": timing["lead_nominal_h"],
+        "lead_effective_h": timing["lead_effective_h"],
+        "drift_h": timing["drift_h"],
+        "model": args.model,
+        "tau": args.tau,
+        "bankroll": args.bankroll,
+        "fixed_fraction": args.fixed_fraction,
+        "size_cap": args.size_cap,
+        "x_exec": args.x_exec,
+        "exit_mode": args.exit_mode,
+        "weather_sum_tolerance": args.weather_sum_tolerance,
+        "market_sum_min": args.market_sum_min,
+        "market_sum_max": args.market_sum_max,
+        "collect_only": bool(args.collect_only),
+        "code_commit": os.environ.get("GITHUB_SHA"),
+        "run_id": os.environ.get("GITHUB_RUN_ID"),
+    }
+    out = store.write_shard([params], table="cycle_params", run_id=session_id,
+                            root=root)
+    cy.stage("params", OK, path=out["path"], tau=args.tau,
+             bankroll=args.bankroll, x_exec=args.x_exec)
+    return params
+
+
 def stage_dump(cy: Cycle, con, *, root: str, session_id: str,
                dataset_version: str, since: datetime,
                dump_catalogue: bool = False) -> None:
@@ -601,6 +653,8 @@ def main(argv: list[str] | None = None) -> int:
                         prediction_time=prediction_time)
             stage_settle(cy, con, dataset_version=args.dataset_version)
 
+        stage_params(cy, root=args.store_root, session_id=session_id, args=args,
+                     timing=timing, dataset_version=args.dataset_version)
         stage_dump(cy, con, root=args.store_root, session_id=session_id,
                    dataset_version=args.dataset_version, since=cy.started_at,
                    dump_catalogue=bool(args.dump_catalogue))

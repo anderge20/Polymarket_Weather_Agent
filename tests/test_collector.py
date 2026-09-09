@@ -359,3 +359,59 @@ def test_a_shallow_book_is_not_flagged_truncated():
         collector_started_at=t0, dataset_version="ds1",
     )
     assert row["book_snapshot"]["truncated"] is False
+
+
+# --------------------------------------------------------------------------- prices
+def test_a_book_yields_the_matching_indicative_price():
+    """The gap that made the whole cycle unable to trade: build_feature reads
+    `price_history`, and nothing in the paper pipeline wrote it."""
+    t0 = datetime(2026, 9, 9, 7, 0, tzinfo=timezone.utc)
+    row = collector.price_row_from_book(_book(), collected_at=t0,
+                                        dataset_version="ds1")
+    assert row["indicative_price"] == pytest.approx(0.50)   # mid of 0.48 / 0.52
+    assert row["observation_time"] == t0.isoformat()
+    assert row["price_semantics"] == "MIDPOINT_ESTIMATED"
+    assert row["price_semantics"] != "EXECUTABLE"           # build_feature rejects that
+    assert row["price_source"] == collector.SOURCE_BOOK_MID
+    assert row["fidelity"] is None                          # a point, not a 1-min series
+
+
+def test_a_one_sided_book_yields_no_price_rather_than_half_a_market():
+    t0 = datetime(2026, 9, 9, 7, 0, tzinfo=timezone.utc)
+    assert collector.price_row_from_book(_book(bids=[]), collected_at=t0,
+                                         dataset_version="ds1") is None
+    assert collector.price_row_from_book(_book(asks=[]), collected_at=t0,
+                                         dataset_version="ds1") is None
+
+
+def test_collect_books_writes_price_history_alongside_the_book(con):
+    s = FakeSession([FakeResp(200, [_book("A"), _book("B")])])
+    out = collector.collect_books(con, ["A", "B"], dataset_version="ds1",
+                                  collector_session_id="cyc1", session=s, delay_s=0)
+    assert out["prices_written"] == 2 and out["prices_skipped_one_sided"] == 0
+    rows = con.execute("SELECT token_id, indicative_price, price_semantics "
+                       "FROM price_history ORDER BY token_id").fetchall()
+    assert rows == [("A", 0.5, "MIDPOINT_ESTIMATED"), ("B", 0.5, "MIDPOINT_ESTIMATED")]
+
+
+def test_the_price_and_the_book_come_from_the_same_observation(con):
+    """They must never disagree: a decision priced off one and filled against the
+    other would be measuring two different markets."""
+    s = FakeSession([FakeResp(200, [_book("A")])])
+    collector.collect_books(con, ["A"], dataset_version="ds1",
+                            collector_session_id="cyc1", session=s, delay_s=0)
+    ts_book = con.execute('SELECT "timestamp" FROM orderbook_snapshots').fetchone()[0]
+    ts_price = con.execute("SELECT observation_time FROM price_history").fetchone()[0]
+    assert ts_book == ts_price
+    mid = con.execute("SELECT mid FROM orderbook_snapshots").fetchone()[0]
+    px = con.execute("SELECT indicative_price FROM price_history").fetchone()[0]
+    assert mid == px
+
+
+def test_a_one_sided_book_is_counted_not_silently_dropped(con):
+    s = FakeSession([FakeResp(200, [_book("A", bids=[])])])
+    out = collector.collect_books(con, ["A"], dataset_version="ds1",
+                                  collector_session_id="cyc1", session=s, delay_s=0)
+    assert out["rows_written"] == 1          # the book IS recorded
+    assert out["prices_written"] == 0
+    assert out["prices_skipped_one_sided"] == 1

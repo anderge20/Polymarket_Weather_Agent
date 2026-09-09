@@ -84,6 +84,8 @@ DATA_TRADES_URL = f"{config.DATA_API}/trades"
 
 SOURCE_BOOK = "clob_books_poll"
 SOURCE_TRADES = "data_api_trades"
+#: Provenance for the indicative price derived from OUR book snapshot.
+SOURCE_BOOK_MID = "clob_book_midpoint"
 
 #: Depth levels materialised into the *_depth_1 / *_depth_5 / *_depth_10 columns.
 DEPTH_LEVELS: tuple[int, ...] = (1, 5, 10)
@@ -250,6 +252,65 @@ def book_snapshot_row(
         "collector_session_id": collector_session_id,
         "collector_started_at": _iso(collector_started_at),
         "source": SOURCE_BOOK,
+        "source_timestamp": _iso(collected_at),
+        "ingestion_timestamp": _iso(_utcnow()),
+        "dataset_version": dataset_version,
+        "record_version": 1,
+    }
+
+
+def price_row_from_book(
+    book: dict,
+    *,
+    collected_at: datetime,
+    dataset_version: str,
+    market_id: str | None = None,
+) -> dict | None:
+    """Derive the `price_history` row that goes with a book snapshot.
+
+    WHY THIS EXISTS — the gap it closes. The collector fills
+    `orderbook_snapshots`, but `features.build_feature` reads the market price
+    from `price_history` and returns None without it, and Strategy A re-queries
+    the same table for its price-lineage guard. Nothing else in the paper pipeline
+    writes `price_history` (the only other writer in the repo is a validation
+    script). Without this the two halves never meet: the cycle would collect books
+    every day, exclude every band for `missing_feature`, and produce exactly zero
+    signals and zero trades — deterministically, and while reporting OK.
+
+    The midpoint of a book we observed ourselves is a BETTER-provenanced indicative
+    price than the `prices-history` endpoint's, which is estimated server-side over
+    a window we do not control: here `observation_time` is our own capture instant
+    and the price is reproducible from the stored ladder.
+
+    Returns None for a one-sided or empty book — with no mid there is no indicative
+    price, and inventing one from a single side would fabricate a market. The band
+    is then excluded downstream, which is the correct outcome."""
+    top = book_top(book)
+    if top["mid"] is None:
+        return None
+    token_id = str(book.get("asset_id") or "")
+    if not token_id:
+        return None
+    return {
+        "observation_time": _iso(collected_at),
+        "market_id": market_id if market_id is not None else book.get("market"),
+        "token_id": token_id,
+        "indicative_price": top["mid"],
+        # MIDPOINT_ESTIMATED is the controlled-vocabulary value that matches what
+        # this is. It is emphatically NOT 'EXECUTABLE' — build_feature rejects that
+        # semantics outright, and a mid is not a fill.
+        "price_semantics": "MIDPOINT_ESTIMATED",
+        # Distinct from the schema default 'CLOB_PRICES_HISTORY' on purpose: these
+        # rows did not come from that endpoint, and conflating the two would erase
+        # the provenance difference.
+        "price_source": SOURCE_BOOK_MID,
+        # NULL, not 1: `fidelity` is a binning resolution in minutes, and this is a
+        # point observation from an irregular polling cadence, not a 1-minute
+        # series. Writing 1 would claim a resolution the collector does not have.
+        "fidelity": None,
+        "source_window": "DIRECT",
+        "fetched_at": _iso(collected_at),
+        "source": SOURCE_BOOK_MID,
         "source_timestamp": _iso(collected_at),
         "ingestion_timestamp": _iso(_utcnow()),
         "dataset_version": dataset_version,
@@ -481,6 +542,8 @@ def collect_books(
         "tokens_pending": len(pending),
         "books_received": 0,
         "rows_written": 0,
+        "prices_written": 0,
+        "prices_skipped_one_sided": 0,
         "requests": 0,
         "stopped": False,
         "error": None,
@@ -516,6 +579,20 @@ def collect_books(
         db.upsert(con, "orderbook_snapshots", row,
                   ["token_id", "timestamp", "dataset_version", "record_version"])
         summary["rows_written"] += 1
+
+        # The matching indicative price. Written from the SAME book object and the
+        # SAME instant, so the price a decision sees and the ladder it fills
+        # against can never disagree.
+        price = price_row_from_book(
+            book, collected_at=collected_at, dataset_version=dataset_version,
+            market_id=(market_id_by_token or {}).get(token),
+        )
+        if price is None:
+            summary["prices_skipped_one_sided"] += 1
+            continue
+        db.upsert(con, "price_history", price,
+                  ["token_id", "observation_time", "dataset_version", "record_version"])
+        summary["prices_written"] += 1
     return summary
 
 
