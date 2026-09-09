@@ -26,9 +26,62 @@ mitad, ¿sigue siendo una sola corrida? §4bis la responde congelando la REGLA, 
 
 ## §0. Qué gobierna, y cómo se decidirá si el PnL puede ser criterio
 
+> ### AVISO ANTEPUESTO, 2026-09-09: R21 MIDIÓ LA ESTRATEGIA Y NO ES OPERABLE
+>
+> Este preregistro se escribió esperando que R21 entregara un `tau`. **R21 se ejecutó y el
+> veredicto, preregistrado por adelantado y publicado tal cual, es NO OPERABLE:**
+>
+>     candidatos 10 000 · pasan ejecución 1 139 · tomadas 468
+>     §4.1 n>=100        CUMPLE   ← EVALUABLE, no vacío
+>     §4.2 mediana>0     FALLA    −0,0236 por operación
+>     §4.3 LOO estación  FALLA    negativa en las 47
+>     §4.4 sin mes mayor FALLA    −0,0184
+>     sensibilidad: con x_exec = 0 sigue en −0,0131 · H2 −0,0253 · H3 −0,0258
+>     acierto 0,0556 frente a una tasa base de 0,0744
+>
+> **No existe umbral operable.** El walk-forward eligió el techo de la rejilla congelada
+> (`tau_signal` = 0,20, máximo de §3) en **239 de 271 decisiones** y aun así perdió; y ni con
+> ejecución gratuita cambia el signo, de modo que el resultado **no** es un artefacto del supuesto
+> adverso de deslizamiento.
+>
+> **Y la causa NO es que el modelo esté roto.** Medida la calibración sobre los 10 000 candidatos —no
+> sólo sobre lo tomado, que es donde la primera lectura se equivocó— `p_model` está **bien
+> calibrada** (razón real/predicha 1,0–1,4× en todos los cubos por encima de 0,1). Brier:
+> **`p_model` 0,05191 · mercado 0,04215 · tasa base 0,06801**. Los dos baten a la base —el modelo
+> **tiene** habilidad— pero **el mercado tiene más**. Y de ahí sale todo:
+>
+> > La regla opera **donde `p_model` más se separa de `p_mid`**. Si el mercado está mejor calibrado
+> > que el modelo, el sitio donde más discrepan es el sitio **donde el modelo se equivoca**. El
+> > «edge» que la estrategia mide es, sistemáticamente, **su propio error**.
+>
+> Selección adversa contra una contraparte mejor informada. Explica el factor 22 en el cubo
+> `[0,2 · 0,3)` (0,2215 sobre todos los candidatos frente a 0,010 sobre los tomados), explica el
+> acierto por debajo del azar, y explica por qué **ningún umbral lo arregla**: subir `tau` aprieta con
+> más fuerza sobre el mismo criterio equivocado.
+>
+> **Es un problema de DISEÑO, no de estimación.** «Opera donde más discrepas del mercado» sólo
+> funciona si eres mejor que el mercado. Haría falta un criterio que identifique **dónde** el modelo
+> supera al mercado, no **cuánto** discrepa de él, y ese criterio no existe todavía.
+>
+> **QUÉ SIGNIFICA ESTO PARA ESTA CORRIDA, declarado ANTES de arrancar.** La corrida se declara
+> **prueba de la CADENA y no de la ESTRATEGIA**. Es lo que P1–P10 miden de verdad y es lo que el
+> 2026-09-09 quedó cerrado de extremo a extremo hasta un PnL realizado. **No se espera beneficio, y
+> decirlo ahora es lo que hace informativo cualquier resultado:** si la corrida arrancara prometiendo
+> PnL y diera cero, el resultado sería ambiguo entre «la cadena falla» y «la estrategia no vale».
+> Declarado así, un PnL negativo confirma R21 y una cadena verde confirma P1–P10, y las dos cosas se
+> leen por separado.
+>
+> **Lo que NO se hace:** no se amplía la rejilla de `tau`, no se toca el margen, no se cambia el
+> constructor de colas y no se prueba otra regla de selección **hasta publicar por qué falló ésta**.
+> Cualquiera de esas cosas después de ver el resultado es elegir el criterio a posteriori, que es lo
+> que este documento existe para impedir. Una R21.2 necesita su propio preregistro.
+>
+> **Y la decisión de gastar 21 días en validar una cadena cuya señal ya se sabe negativa NO es de las
+> sesiones: es del usuario.** Se le plantea con estos números delante.
+
 Gobierna la corrida de N días que decide si el sistema está **listo para operar**, que aquí
 significa exactamente una cosa: *que sólo falte el permiso explícito del usuario para levantar D0*.
-No significa rentable.
+No significa rentable — y desde R21 se sabe, medido, que **no lo es**.
 
 **El techo del universo, MEDIDO (no supuesto).** v1 escribía «5 op/día» sin derivarlo de nada. El
 número real se mide, y lo he medido sobre el universo en vivo del 2026-09-10 (ciclo real,
@@ -485,8 +538,17 @@ detecta con pocas observaciones. **No se presentará como evidencia de buena cal
   - **Cobertura: 399 de los 410 eventos son de abril y mayo**; junio a septiembre aportan 11 entre los
     cuatro. Es una muestra del primer tercio del periodo, no del periodo. **No se puede afirmar que la
     tasa sea estable en verano**, que es cuando la corrida ocurre.
-  `stage_observations` hereda este sesgo, así que **toda cifra de PnL de esta corrida lo lleva
-  dentro**; se reporta pegada a ella (§7), con la tasa de la anchura de banda que corresponda.
+  - **Y NO contamina el PnL en la magnitud que el 6,8 % sugiere. Corregido 2026-09-09.** Sobre las
+    468 operaciones que R21 tomó, la discrepancia entre etiquetas es del **0,85 %**, la **mediana del
+    PnL es idéntica** con una y con otra (−0,023600 las dos), y el total difiere en **2,00 USDC**, en
+    la dirección de hacer la estrategia parecer **mejor**. La razón es estructural y no casual: el
+    6,8 % se mide sobre bandas **ganadoras**, pegadas al valor realizado, donde un error de un grado
+    decide; **las bandas que la estrategia compra están lejos del valor realizado, y ahí las dos
+    etiquetas coinciden en que perdieron.** El 6,8 % es la fragilidad de la etiqueta **donde se juega
+    la resolución**, no la contaminación de un PnL, y §7 tiene que decir las dos cosas o parecerá lo
+    segundo.
+  `stage_observations` hereda este sesgo; se reporta pegado a cada cifra (§7) con la tasa de la
+  anchura de banda que corresponda, y junto al 0,85 % medido sobre operaciones tomadas.
 - **La estimación de cuantiles se mueve entre reajustes.** Como dispersión es pequeña —σ_inst
   0,037 °C (lead 9) y 0,055 °C (lead 24) a Δ = 5 días, un 0,5 % del margen— **porque M2 v2 agrupa
   entre estaciones y su localización se estima con ~2.000 pares; es una propiedad de v2, no del
@@ -503,6 +565,14 @@ detecta con pocas observaciones. **No se presentará como evidencia de buena cal
   COLECTOR capturó antes del ancla. Con el colector a tres horas y entregando con retraso, esa
   antigüedad puede acercarse a las tres horas. No invalida la decisión —el as-of se respeta— pero la
   información es más vieja de lo que el lead sugiere, y eso se reporta por ciclo.
+- **El constructor de la distribución tiene las colas mal, y la corrida lo lleva dentro.**
+  `quantiles_to_distribution` extiende linealmente sólo **un grado** más allá de p10/p90 y asigna
+  **cero** después: sobrecarga la cola cercana **×1,8–2,4** (0,0968 frente a 0,0408 empírico en
+  p50−2, lead 9) y **trunca a cero** la lejana, donde la realidad tiene un 2 %. Se corrigió aparte un
+  error aritmético —la CDF de la cola inferior devolvía valores **negativos** y su magnitud se sumaba
+  al bin más bajo, el 34 % de ese bin— pero **la forma de las colas sigue siendo la declarada aquí**,
+  porque cambiarla después de ver el resultado de R21 sería elegir el modelo a posteriori. Ninguna
+  cifra de esta corrida debe leerse como calidad de la señal.
 - **`SIMULATED_EXECUTABLE` no es un fill.** Se simula contra el book observado en el ciclo, que pudo
   cambiar entre la captura y `prediction_time`.
 - **La escalera almacenada está truncada a 10 niveles.** Un fill que la agote se marca

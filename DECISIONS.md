@@ -2798,3 +2798,151 @@ sola observación histórica. Sólo puede correr donde vive esa base, hoy el Mac
 el sustrato, reajustar no cambia nada salvo el `fit_instant`**: frescura de sello, no de contenido.
 El trabajo son **dos pasos** —extender el backfill y después ajustar— y necesita host asignado
 (§4bis.11).
+
+## B-14 — R21 ejecutada: NO OPERABLE, y la causa está localizada · 2026-09-09 · Claude (sesión B)
+**Preregistro:** `PREREG_R21_BACKTEST_TAU.md` (sha `464226a3…`) + `PREREG_R21_ENMIENDA_A.md`
+(sha `3c7d9b1301798783bb3259e2dc1cc96a8856493cfb12efc41855d895d50fae2f`), **congelada antes de
+calcular ningún PnL** — `backtest_results`, `signals`, `predictions` y `paper_trades` estaban
+las cuatro a 0 filas al hashearla, y eso consta en su §0.
+
+**La enmienda no cambió ningún umbral: fijó las cuatro constantes que §1–§4 dejaron en prosa.**
+`x_exec` en el peldaño **más adverso** de D19 (1 punto), porque no hay book histórico
+(`orderbook_snapshots` vacía, los 16 165 636 precios `MIDPOINT_ESTIMATED`) y un supuesto sobre
+lo no medido no puede ser lo que fabrique un resultado positivo · el coste **dentro** de
+`edge_net` y el umbral comparado sólo contra el margen, para no restarlo dos veces (el defecto
+de A en R24 v2) · τ a °F por **×9/5 sin +32**, porque es una diferencia · la etiqueta de
+liquidación = `winning_outcome` del venue.
+
+### Resultado
+```
+candidatos            10 000    (5 719 mercados × 2 leads − 1 438 sin insumo as-of)
+pasan ejecución        1 139
+operaciones tomadas      468    §4.1 n>=100 CUMPLE — el resultado es EVALUABLE, no vacío
+mediana PnL/operación −0,0236   §4.2 FALLA
+leave-one-station-out  negativa en las 47   §4.3 FALLA
+sin el mes mayor      −0,0184   §4.4 FALLA
+tasa de acierto        0,0556   frente a 0,0744 de base en el universo
+```
+**VEREDICTO: LA ESTRATEGIA NO ES OPERABLE CON ESTE SUSTRATO.** §5 lo declaraba por adelantado.
+No se han probado umbrales alternativos, no se ha relajado el margen y no se ha ampliado la
+rejilla de §3.
+
+**La estrategia acierta MENOS que el azar (5,6 % frente a 7,4 %): no es ausencia de ventaja,
+es selección negativa.**
+
+### La causa, medida — y NO es la que parecía
+Sobre lo tomado `p_model` parece catastrófica: en `[0,2 · 0,3)` predice ~0,25 y realiza 0,010.
+**Sobre los 10 000 candidatos ese mismo cubo realiza 0,2215.** Un factor de **22 dentro de una
+sola celda de calibración**. El modelo está bien calibrado (ratios 1,0–1,4× en todos los cubos
+por encima de 0,1); **lo que está roto es la regla que elige dentro de él.**
+
+```
+Brier  p_model 0,05191  ·  mercado 0,04215  ·  tasa base 0,06801
+```
+Los dos baten a la base, así que `p_model` **tiene** habilidad — pero **el mercado tiene más**.
+Y ahí está el mecanismo entero: la regla opera donde `p_model` más se separa de `p_mid`; si el
+mercado está mejor calibrado, el sitio donde más discrepan es donde **el modelo** se equivoca.
+**El «edge» que la estrategia mide es su propio error.** Selección adversa contra una
+contraparte mejor informada. **Ningún umbral lo arregla: subir `tau` apreta sobre el mismo
+criterio equivocado**, que es justo lo que se ve cuando el walk-forward se pega al techo de la
+rejilla y aun así pierde.
+
+**Defecto real pero secundario, encontrado persiguiendo la hipótesis equivocada:**
+`quantiles_to_distribution` extiende las colas linealmente a lo largo de **un grado** más allá
+de p10/p90 y asigna cero después. Contra el error empírico de M2: sobrecarga la cola cercana
+(p50−2: 0,0968 contra 0,0408 a lead 9, ×2,37; 0,0990 contra 0,0564 a lead 24, ×1,76) y
+**trunca a cero** la lejana, donde la realidad tiene 1,7–2,3 %. Alimenta la discrepancia con el
+mercado en la región barata, así que **alimenta** la selección adversa — pero explica un factor
+2 y el fenómeno es de 22. **Afecta a todo lo que consuma `weather_prob`, incluida la corrida en
+papel de la sesión A.**
+
+### Dos cosas que cierran pretextos por adelantado
+1. **No es el deslizamiento.** Con `x_exec = 0` —ejecución gratis, que §A.2 prohíbe como
+   métrica de decisión— la mediana sigue en −0,0131. Con H2 y H3 empeora.
+2. **Tampoco es «un tau mayor».** El walk-forward eligió `tau_signal = 0,20`, **el máximo de la
+   rejilla congelada**, en 239 de 271 decisiones: quería ser más estricto de lo que §3 le
+   permitía y aun así perdió. No se amplía la rejilla ahora porque §6 lo prohíbe.
+
+### Sesgo de la etiqueta por observación, acotado EN DINERO
+Sobre las 468 operaciones, la etiqueta derivada de IEM discrepa de la del venue en **4**
+(0,85 %), la mediana del PnL es **idéntica** y el total difiere en **+2,00 USDC** (+0,0043/op),
+**a favor** de la estrategia. **El 6,8 % de B-13bis es una cota superior medida donde la
+etiqueta es más frágil** —sobre las bandas ganadoras, pegadas al valor realizado— y no es la
+tasa que contamina un PnL: las bandas que la estrategia compra están lejos y las dos etiquetas
+coinciden en que perdieron.
+
+**Consecuencia para R24 (sesión A):** P2 se cierra, pero **no con el `tau` que se esperaba**. No
+existe umbral operable con este sustrato, así que la corrida en papel no va a producir
+beneficio y §4bis debe decirlo antes de arrancar. Sigue teniendo sentido como prueba de la
+**cadena** (que es lo que P1–P10 miden), no de la **estrategia**.
+
+**Lo que haría falta y NO se hace ahora** (§5: no hay R21.2 hasta publicar por qué falló R21),
+en orden de importancia y no en el que se descubrieron: **(1)** una regla de selección que no
+sea «operar donde más discrepo del mercado» — mientras el Brier del mercado sea mejor, esa
+regla compra el error propio y **ningún umbral la arregla**; hace falta un criterio que diga
+*dónde* el modelo supera al mercado, no *cuánto* discrepa · **(2)** un constructor de
+distribución con colas ajustadas al error empírico en vez de lineales a un grado · **(3)** más
+periodo. Cada una exige su propio preregistro.
+
+**Artefactos:** `R21_BACKTEST.json` (las 468 operaciones fila a fila y el `tau` de cada día),
+`R21_LABEL_BIAS_PNL.json`, `LABEL_BIAS_RECORDS.json`. **Gate D0 intacto.**
+**Estado:** ADOPTADA.
+
+## A-64 — R21: la estrategia NO ES OPERABLE, y la causa es de DISEÑO · 2026-09-09 · B midió, A verificó
+
+**Veredicto preregistrado y publicado tal cual:**
+
+    candidatos 10 000 · pasan ejecución 1 139 · tomadas 468
+    §4.1 n>=100        CUMPLE   ← EVALUABLE, no vacío
+    §4.2 mediana>0     FALLA    −0,0236 por operación
+    §4.3 LOO estación  FALLA    negativa en las 47
+    §4.4 sin mes mayor FALLA    −0,0184
+    sensibilidad: x_exec = 0 → −0,0131 · H2 −0,0253 · H3 −0,0258
+    acierto 0,0556 frente a una tasa base de 0,0744
+
+**No existe umbral operable.** El walk-forward eligió el techo de la rejilla (0,20, máximo de §3) en
+**239 de 271 decisiones** y aun así perdió; ni con ejecución gratuita cambia el signo, así que el
+resultado **no** es un artefacto del supuesto adverso de deslizamiento. Y acertar **por debajo del
+azar** no es «no encontrar ventaja»: es **seleccionar negativamente**.
+
+**B se corrigió a sí mismo, y la corrección es el resultado.** Su primera lectura decía que `p_model`
+estaba «gravemente sobreconfiada», medido sólo sobre lo tomado. Sobre los **10 000 candidatos**
+`p_model` está **bien calibrada** — razón real/predicha 1,0–1,4× en todos los cubos por encima de 0,1.
+**El modelo no está roto.** Brier: `p_model` **0,05191** · mercado **0,04215** · tasa base **0,06801**.
+Los dos baten a la base —el modelo **tiene** habilidad— pero **el mercado tiene más**.
+
+> La regla opera **donde `p_model` más se separa de `p_mid`**. Si el mercado está mejor calibrado que
+> el modelo, el sitio donde más discrepan es el sitio **donde el modelo se equivoca**. El «edge» que
+> la estrategia mide es, sistemáticamente, **su propio error**.
+
+Selección adversa contra una contraparte mejor informada. Explica el factor 22 del cubo `[0,2 · 0,3)`
+(0,2215 sobre candidatos frente a 0,010 sobre tomados), explica el acierto por debajo del azar, y
+explica **por qué ningún umbral lo arregla**: subir `tau` aprieta más sobre el mismo criterio
+equivocado. **Es un problema de DISEÑO, no de estimación.** Haría falta un criterio que identifique
+**dónde** el modelo supera al mercado, no **cuánto** discrepa de él.
+
+**Verificado por A, y un defecto más.** Reproduje `quantiles_to_distribution` contra el artefacto real
+y salen las cifras de B **al cuarto decimal** (0,0968 y 0,1585 a lead 9). Confirmada la truncadura: el
+soporte entero es de seis enteros y el modelo asigna **cero** a más de ~2,4 °C de la mediana, donde la
+realidad tiene un 2 %. **Y encontré lo que B no nombró: la CDF de la cola inferior devuelve valores
+NEGATIVOS.** Con p10 = 18,83, `cdf(17,5) = −0,0333`, y como el bin se calcula por diferencia **la
+magnitud del negativo se SUMA**: el bin de 18 salía 0,1000 y **el 34 % lo fabricaba la rama
+negativa**; la masa bruta sumaba 1,0333 antes de que la normalización lo escondiera. La cola superior
+ya llevaba `min(1.0, …)`: **la misma cota escrita en un lado y no en el otro**. Corregido en el
+origen; el bin cae de 0,0968 a 0,0667. **521 tests pasaban antes y 523 después: ninguno miraba la
+cola.** Sexta vez hoy que la suite verde no dice nada del camino real.
+
+**Y explícitamente: esto NO toca R21 hacia atrás.** Un 31 % en un bin no está ni cerca del factor 22,
+así que **el arreglo no es la explicación** y no puede usarse para reabrir un resultado que no gustó.
+Cualquier R21.2 necesita su propio preregistro.
+
+**B también corrige mi §9:** yo escribí que «toda cifra de PnL lleva dentro el 6,8 %». **Falso.** Sobre
+las 468 operaciones la discrepancia es del **0,85 %**, la mediana es **idéntica** con las dos
+etiquetas, y el total difiere en 2,00 USDC **a favor** de la estrategia. El 6,8 % se mide sobre bandas
+ganadoras, pegadas al valor realizado; **las que la estrategia compra están lejos y ahí las dos
+etiquetas coinciden en que perdieron**. Corregido.
+
+**Consecuencia, en §0 de R24 y antepuesta al documento:** la corrida se declara **prueba de la CADENA
+y no de la ESTRATEGIA**, y **no se espera beneficio**. Declararlo antes es lo que hace informativo
+cualquier resultado. **La decisión de gastar 21 días en validar una cadena cuya señal ya se sabe
+negativa es del usuario**, y se le plantea con estos números delante. **P2 cerrada: sin umbral.**
