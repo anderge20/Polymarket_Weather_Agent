@@ -161,7 +161,7 @@ La corrida **no empieza** mientras alguna falle. El informe declara la fecha en 
 | P3 | **Etapa `forecasts` implementada.** Hoy `stage_forecasts` **no tiene ninguna rama OK** y no escribe nada; el cableado es pista de B | un ciclo manual deja `forecasts` en OK con `written > 0` |
 | P4 | **Liquidación cableada** con la etiqueta real bajo el SettlementOperator del mercado. *(revisada 2026-09-09, A-60: se había dado por cerrada contra un FIXTURE. El único sitio donde `metar_body_c` —la serie que el núcleo congelado exige— había aparecido fuera del núcleo era un test de este repo, así que la liquidación no había tocado nunca una fila producida por ningún ingestor.)* | `settle` en OK con `settled > 0` **sobre una observación ingerida por `stage_observations` en el propio ciclo**, no sembrada por un test. Se cita el `paper_trade_id`, la estación, el día y el valor observado |
 | **P9** | **La etiqueta la ingiere el ciclo** (`stage_observations`). Sin esto `settle` no lee nada: `weather_observations` la puebla el backfill bajo OTRO `dataset_version` y las fechas objetivo están en el futuro cuando se abre la posición, así que **toda posición quedaría abierta los 21 días y el libro reportaría PnL cero por no haber resuelto nada, no por no haber ganado nada** | un ciclo manual deja `observations` en OK con `ingested > 0`, y la fila lleva `available_at` = instante de descarga (D17) |
-| **P10** | **La correspondencia de series está declarada para la población que va a operar.** Los dos módulos nombran distinto la misma serie (núcleo: `metar_body_c` / `metar_tgroup_tmpf`; ingestor: `IEM_ASOS_METAR_1C` / `IEM_ASOS_TMPF_1F` / `IEM_ASOS_TMPF_0.1F`). La de °C está declarada; **las dos de °F NO**, porque `metar_tgroup_tmpf` nombra el T-group y esas son `tmpf` a dos resoluciones distintas, y colapsarlas liquidaría KBKF fuera de su rejilla (A-42) | o el audit dice contra qué serie se escribió `metar_tgroup_tmpf` y se declara, o **las 11 estaciones en °F quedan fuera del universo** y se dice en §3 y en §9. No se resuelve por descarte |
+| **P10** | **La correspondencia de series está declarada para la población que va a operar.** *(CERRADA 2026-09-09 por evidencia del audit, A-61.)* `IEM_ASOS_METAR_1C → metar_body_c` y `IEM_ASOS_TMPF_1F → metar_tgroup_tmpf`; sobre las 14 filas en °F del audit sólo `H_LOCAL_tmpf` cae dentro de la banda ganadora, **14/14 y en grados enteros**, frente a 0/14 de las otras tres columnas. `IEM_ASOS_TMPF_0.1F` queda sin declarar y **no cuesta ningún mercado**: su única estación es KBKF, cuyo estrato (9, `P_NOAA_HourlyData`) el núcleo ya cierra por `series_filter_unverified` | el test fija las dos correspondencias contra `observations`, no contra literales |
 | P5 | **Colector con ≥ 7 días continuos previos**, definido como: para cada uno de los 7 días naturales anteriores existe ≥ 1 shard de `orderbook_snapshots` con ≥ 1 fila | `store.iter_shards` por fecha |
 | **P6** | **`price_history` poblada por el propio ciclo** (el hueco que hacía la corrida estructuralmente estéril) | un ciclo manual deja `collect:books` con `prices > 0`, y `price_history` está en `LEDGER_TABLES` |
 | **P7** | **Existe la herramienta de re-ejecución que C3 invoca** (`scripts/replay_cycle.py`): reconstruye la DuckDB desde los shards y re-evalúa cada decisión con el `prediction_time` y los parámetros registrados de ese ciclo | la herramienta existe y reproduce un ciclo de prueba al 100 % |
@@ -284,12 +284,20 @@ resultado.
    120 h da 24 h de margen sobre el mínimo. Es una decisión de operación, no de modelo, y se declara
    como tal.
 
-10. **La inestabilidad medida NO desaparece por declararla.** Un salto de hasta 0,39 °C entre dos
-    ajustes consecutivos es el **70 % de la rejilla fina** (0,556 °C en los mercados en °F), es
-    decir, la propia estimación de cuantiles se mueve a la escala que decide una banda. Es una
-    segunda fuente de incertidumbre no corregible, junto a la descalibración por estación de B-12, y
-    **`tau_exec` debe cubrir las dos** (entra en el preregistro de R21, P2). Queda además como
-    limitación declarada en §9.
+10. **La inestabilidad medida, con el estadístico que corresponde a cada pregunta.** *(corregido
+    2026-09-09: la primera redacción comparaba un MÁXIMO de valores absolutos con una dispersión, que
+    son cosas distintas.)*
+    - **Como dispersión**, que es lo que entra en cuadratura con `tau`: desplazamiento **signado** de
+      la mediana a Δ = 5 días —justo la `max_age_hours` fijada— **σ_inst = 0,0373 °C** (lead 9) y
+      **0,0548 °C** (lead 24). Contra `τ_est = 0,545` mueve el margen un **0,5 %**. Es pequeño, y el
+      motivo importa: M2 v2 **agrupa entre estaciones**, así que su localización se estima con ~2.000
+      pares y cinco días apenas la mueven. **La estabilidad es una propiedad de v2 por ser agrupado,
+      no del fenómeno**, y NO se transporta a un M2 por estación.
+    - **Como peor caso de una decisión concreta**, que es otra pregunta y no desaparece: el máximo
+      observado entre dos ajustes consecutivos llega a **0,39 °C**, el 70 % de la rejilla fina. Una
+      decisión individual puede verlo.
+    `tau_exec` cubre la dispersión; el peor caso queda declarado en §9 junto a la descalibración por
+    estación de B-12.
 
 **Lo que este preregistro sigue SIN poder fijar:** `tau` (P2). Sigue siendo hueco explícito: **si la
 calibración de R21 no existe, la corrida no arranca**; no hay `tau` por defecto.
@@ -414,17 +422,23 @@ detecta con pocas observaciones. **No se presentará como evidencia de buena cal
 
 ## §9. Limitaciones declaradas ANTES
 
-- **El operador en °F puede no estar validado contra ninguna serie.** El núcleo congelado exige
-  `metar_tgroup_tmpf` y ningún ingestor de este repositorio ha escrito nunca ese nombre. Si el audit
-  de R12/R14 no comprobó la columna `series`, ese operador está sin validar y afecta a **10
-  estaciones más KBKF de 48**. Mientras no se resuelva, esos mercados se niegan con
-  `series_correspondence_undeclared`, que es el estado correcto y no uno silencioso (P10).
-- **La estimación de cuantiles es inestable a la escala que decide una banda.** Entre dos ajustes
-  consecutivos los cuantiles se mueven hasta **0,39 °C** (lead 24) y **0,24 °C** (lead 9), contra una
-  rejilla de resolución de 1,0 °C en los mercados en °C y **0,556 °C** en los de °F. El máximo **no
-  se reduce reajustando más a menudo** (§4bis.8): no es deriva, son escalones del percentil empírico
-  sobre un dato cuantizado. No es corregible con los datos disponibles; se declara, y `tau_exec`
-  tiene que cubrirla.
+- **El operador en °F está auditado sobre SEIS filas y seis estaciones** (estrato 8: KATL, KAUS,
+  KHOU, KORD, KSEA, KSFO; `tmpf` dentro de la banda 6/6). Los 121 mercados y 11 eventos que la tabla
+  del núcleo asocia al estrato son su **población**, no la muestra del audit. Es cobertura muestral
+  estrecha, no ausencia de validación: validación hay y es 6/6.
+- **Etiquetar desde observaciones se equivoca el 6,8 % de las veces, y con signo.** Cruzando la
+  resolución del venue contra las observaciones IEM en los 410 eventos donde el sustrato tiene la
+  banda ganadora: **382 concuerdan, 28 no (0,932)**. De las 28, **25 con la observación POR DEBAJO**
+  de la banda —la cota inferior por muestreo horario— y sólo 3 por encima (ZGSZ ×2, RKSI ×1) sin
+  causa identificada. **No es ruido: es un sesgo que subestima sistemáticamente la máxima y por tanto
+  favorece las bandas bajas.** `stage_observations` hereda ese sesgo, así que **toda cifra de PnL de
+  esta corrida lo lleva dentro** y se reporta junto a ella (§7).
+- **La estimación de cuantiles se mueve entre reajustes.** Como dispersión es pequeña —σ_inst
+  0,037 °C (lead 9) y 0,055 °C (lead 24) a Δ = 5 días, un 0,5 % del margen— **porque M2 v2 agrupa
+  entre estaciones y su localización se estima con ~2.000 pares; es una propiedad de v2, no del
+  fenómeno, y no se transporta a un M2 por estación.** Como peor caso de una decisión concreta llega
+  a **0,39 °C**, el 70 % de la rejilla fina, y **no se reduce reajustando más a menudo** (§4bis.8):
+  no es deriva, son escalones del percentil empírico sobre un dato cuantizado.
 - **Los cuantiles vienen de un ajuste ANTERIOR a la decisión, no del instante de la decisión.** Es
   deliberado y es conservador —un ajuste en `t₀ < t` usa un subconjunto de lo permitido, y usar menos
   información de la permitida no puede crear fuga— pero significa que la distribución aplicada

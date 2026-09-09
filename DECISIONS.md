@@ -2686,3 +2686,58 @@ en §9: son 10 estaciones más KBKF de 48.
 ICAO en `markets.station`, el código P_* en `measurement_rule`, `metar_body_c` en `series`, la sesión
 falsa del CLOB de B, y el `--collect-only` de los smoke tests. **La suite verde no dice nada del
 camino en vivo.** 520 verdes, y las 520 no habrían encontrado ninguna de las tres.
+
+## A-61 — La serie del operador en °F, resuelta por evidencia; y tres correcciones de B a mí · 2026-09-09 · B midió, A validó
+
+**`metar_tgroup_tmpf` = `IEM_ASOS_TMPF_1F`.** Sobre las 14 filas en °F de `E2_RESULTS.json`, cuatro
+columnas candidatas:
+
+    H_LOCAL_tmpf   dentro de la banda ganadora 14/14   enteros 14/14
+    H_LOCAL_tg     dentro de la banda ganadora  0/14   (está en décimas de °C)
+    H_LOCAL_body   dentro de la banda ganadora  0/14
+    H_LOCAL_tmpc   dentro de la banda ganadora  0/14
+
+El audit calculó el T-group y el `tmpf` en **columnas distintas** y liquidó contra el `tmpf`. Coincide
+con lo que el núcleo dice de sí mismo (v3 §2.1): *«un producto derivado por IEM:
+`tmpf = round(F(grupo T en décimas))`, rejilla 1 °F; NO es una regla de la fuente contractual»*. **El
+nombre dice T-group; la cosa es el `tmpf` redondeado a 1 °F.** Declarada. No por descarte.
+
+**KBKF no necesita la correspondencia, y eso corrige mi razonamiento, no sólo mi conclusión.** Su fila
+auditada lleva `P_NOAA_HourlyData` → **estrato 9**, que el núcleo ya cierra por
+`series_filter_unverified`. Queda excluido **aguas arriba por su propio estrato** y no se pierde
+ningún mercado dejando `IEM_ASOS_TMPF_0.1F` sin declarar. Y dos hechos suyos que parecen contradecirse
+y no: la serie en décimas describe **la rejilla con la que la estación reporta** (A-42, sigue
+correcto), mientras que el `tmpf` con el que liquidaría su estrato es de **grado entero** (su fila
+auditada trae `tmpf = 91,0` contra banda 90-91 °F). Colapsarlos en cualquier dirección es el error.
+
+**Corrección de B a §9, y es a mi favor:** el operador en °F **sí** está validado — 6/6 sobre seis
+filas y seis estaciones del estrato 8. Los 121 mercados / 11 eventos son la **población** del estrato,
+no la muestra. Es cobertura muestral estrecha, no ausencia de validación. Redactado así.
+
+**Corrección de B a sí mismo, y yo la había amplificado:** su aviso de inestabilidad comparaba un
+**máximo de valores absolutos** con una **dispersión**. Medido como dispersión —desplazamiento
+signado de la mediana a Δ = 5 días, justo la `max_age_hours` fijada— **σ_inst = 0,0373 °C** (lead 9) y
+**0,0548 °C** (lead 24); en cuadratura con `τ_est = 0,545` mueve el margen un **0,5 %**. Y el motivo
+importa más que el número: **M2 v2 agrupa entre estaciones**, su localización se estima con ~2.000
+pares y cinco días apenas la mueven — **la estabilidad es propiedad de v2 por ser agrupado, no del
+fenómeno, y no se transporta a un M2 por estación.** §4bis.10 y §9 reescritos con los DOS
+estadísticos, cada uno respondiendo a su pregunta: la dispersión entra en cuadratura con `tau`, el
+peor caso de 0,39 °C sigue existiendo para una decisión concreta y queda declarado.
+
+**Lo nuevo y lo más serio, medido por B:** **etiquetar desde observaciones se equivoca el 6,8 % de las
+veces, con signo.** Cruzando la resolución del venue contra IEM en los 410 eventos con banda ganadora
+en el sustrato: **382 concuerdan, 28 no**. De las 28, **25 con la observación POR DEBAJO** de la banda
+—la cota inferior por muestreo horario— y sólo 3 por encima (ZGSZ ×2, RKSI ×1). **No es ruido: es un
+sesgo que subestima la máxima y favorece las bandas bajas.** `stage_observations` lo hereda, así que
+**toda cifra de PnL de esta corrida lo lleva dentro**. A §9 y a §7.
+
+**P10 CERRADA.** **Colisión de migración:** B también había puesto una 5 y se ha movido a la 6; la 5 es
+mía (`r30_measurement_rule_code`). Su `data/pmw.duckdb` había sellado la fila 5 con su nombre y la ha
+liberado. **Al fusionar hay que comprobar `SELECT version, name FROM schema_version`**: una 5 con
+nombre `r19_settlement_and_fee_substrate` es una copia contaminada y hay que liberar esa fila antes de
+`init_db`.
+
+**El artefacto real está ajustado**, ahora que el backfill terminó: `61f20fd1a83e…`, `max_age_hours`
+120, lead 9 n=1347 (spread 3,37 °C), lead 24 n=1348 (spread 3,70 °C), ventana 2026-04-09 → 2026-09-05.
+Los cuantiles de lead 24 salen −1,40 / +0,40 / +2,30, **exactamente la fila que B calculó por su
+cuenta** para el mismo corte. Dos caminos, un número.
