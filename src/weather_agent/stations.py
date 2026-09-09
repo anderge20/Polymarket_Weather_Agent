@@ -134,3 +134,42 @@ def coords(icao: str) -> tuple[float, float]:
 
 def all_icaos() -> list[str]:
     return sorted(load())
+
+
+#: Timezone per ICAO. The daily high is a LOCAL-day quantity, so a station
+#: without a known timezone is a refusal, never a guess of UTC.
+TZ_BY_ICAO = {
+    "KLGA": "America/New_York", "KATL": "America/New_York", "KMIA": "America/New_York",
+    "KORD": "America/Chicago", "KDAL": "America/Chicago", "KHOU": "America/Chicago",
+    "KAUS": "America/Chicago", "KDEN": "America/Denver", "KBKF": "America/Denver",
+    "KLAX": "America/Los_Angeles", "KSFO": "America/Los_Angeles",
+    "KSEA": "America/Los_Angeles", "KPHX": "America/Phoenix",
+    "EGLC": "Europe/London", "LFPG": "Europe/Paris", "LFPB": "Europe/Paris",
+    "EDDM": "Europe/Berlin", "EHAM": "Europe/Amsterdam", "LEMD": "Europe/Madrid",
+    "LIMC": "Europe/Rome", "EPWA": "Europe/Warsaw", "EFHK": "Europe/Helsinki",
+    "UUWW": "Europe/Moscow", "LTFM": "Europe/Istanbul", "LTAC": "Europe/Istanbul",
+    "LLBG": "Asia/Jerusalem", "OEJN": "Asia/Riyadh", "OPKC": "Asia/Karachi",
+    "VILK": "Asia/Kolkata", "VHHH": "Asia/Hong_Kong", "RCTP": "Asia/Taipei",
+    "RCSS": "Asia/Taipei", "RJTT": "Asia/Tokyo", "RKSI": "Asia/Seoul",
+    "RKPK": "Asia/Seoul", "ZBAA": "Asia/Shanghai", "ZSPD": "Asia/Shanghai",
+    "ZSQD": "Asia/Shanghai", "ZSJN": "Asia/Shanghai", "ZGGG": "Asia/Shanghai",
+    "ZGSZ": "Asia/Shanghai", "ZHHH": "Asia/Shanghai", "ZHCC": "Asia/Shanghai",
+    "ZUUU": "Asia/Shanghai", "ZUCK": "Asia/Shanghai",
+    "WSSS": "Asia/Singapore", "WMKK": "Asia/Kuala_Lumpur", "WIHH": "Asia/Jakarta",
+    "RPLL": "Asia/Manila", "VTBS": "Asia/Bangkok",
+    "SBGR": "America/Sao_Paulo", "SAEZ": "America/Argentina/Buenos_Aires",
+    "MMMX": "America/Mexico_City", "MPMG": "America/Panama",
+    "CYYZ": "America/Toronto", "NZWN": "Pacific/Auckland",
+    "FACT": "Africa/Johannesburg", "DNMM": "Africa/Lagos",
+}
+
+
+def timezone_of(icao: str) -> str:
+    """The station's timezone. Raises rather than defaulting to UTC."""
+    try:
+        return TZ_BY_ICAO[icao.upper()]
+    except KeyError as e:
+        raise UnknownStation(
+            f"no timezone for {icao!r}; the daily high is a local-day quantity "
+            "and assuming UTC would silently shift the window"
+        ) from e
