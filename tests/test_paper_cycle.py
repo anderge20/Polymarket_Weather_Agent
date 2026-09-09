@@ -526,3 +526,73 @@ def test_a_refused_settlement_leaves_the_position_open_with_its_reason(con, monk
     assert out["refusals"].get("no_settlement_operator:by_forecast") == 1
     assert con.execute("SELECT exit_time FROM paper_trades WHERE paper_trade_id = ?",
                        [tid]).fetchone()[0] is None
+
+
+# --------------------------------------------------------------------------- forecasts
+def test_forecasts_picks_the_run_already_published_not_the_newest(con, monkeypatch):
+    """Publication latency is real (L_MAX 4.76 h for icon_seamless). Selecting a run
+    by issue time alone would use a forecast that did not exist yet at the decision
+    instant."""
+    from weather_agent import m2, weather
+    t = datetime(2026, 9, 9, 12, 0, tzinfo=timezone.utc)
+    issue = m2.pick_run(t, weather.M1_MODEL)
+    assert issue is not None
+    assert weather.available_at(issue, weather.M1_MODEL) <= t, \
+        "the chosen run must already have been published at the decision instant"
+
+
+def test_forecasts_skips_when_no_station_is_in_the_universe(con):
+    out = paper_cycle.stage_forecasts(
+        _cycle(), con, dataset_version="ds1", target_date=date(2026, 9, 10),
+        universe=[], model="icon_seamless", lead_hours=24,
+        prediction_time=datetime(2026, 9, 9, 12, tzinfo=timezone.utc))
+    assert out == {"written": 0, "quantiles": 0}
+
+
+def test_forecasts_stops_on_a_rate_limit_and_never_retries_through(con, monkeypatch):
+    """Standing constraint: a 429 ends the stage. The user pays for no key."""
+    from weather_agent import weather
+
+    def boom(*a, **k):
+        raise RuntimeError("HTTP 429 Too Many Requests")
+    monkeypatch.setattr(weather, "ingest_run", boom)
+    monkeypatch.setattr("weather_agent.stations.timezone_of", lambda i: "Europe/London")
+    out = paper_cycle.stage_forecasts(
+        _cycle(), con, dataset_version="ds1", target_date=date(2026, 9, 10),
+        universe=[{"station_identifier": "EGLC"}, {"station_identifier": "EDDM"}], model="icon_seamless",
+        lead_hours=24, prediction_time=datetime(2026, 9, 9, 12, tzinfo=timezone.utc))
+    assert out.get("stopped") is True and out["written"] == 0
+
+
+def test_forecasts_writes_quantiles_in_celsius_from_the_backfill_substrate(con, monkeypatch):
+    """The training substrate is a DIFFERENT dataset_version on purpose: M2's error
+    distribution lives in the backfill, the cycle runs as ds_paper_v1. Passing it
+    explicitly is what makes the crossing visible."""
+    from weather_agent import error_model as em, m2, weather
+
+    # one forecast row for the cycle's own dataset_version
+    t = datetime(2026, 9, 9, 12, tzinfo=timezone.utc)
+    issue = m2.pick_run(t, weather.M1_MODEL)
+    con.execute(
+        "INSERT INTO weather_forecasts (issue_time, target_date, station, model, "
+        "forecast_tmax, available_at, ingestion_timestamp, dataset_version, "
+        "record_version) VALUES (?,?,?,?,?,?,?,?,?)",
+        [issue, date(2026, 9, 10), "EGLC", "icon_seamless", 17.0,
+         weather.available_at(issue, "icon_seamless"), T0, "ds_paper_v1", 1])
+    monkeypatch.setattr(weather, "ingest_run", lambda *a, **k: None)
+    monkeypatch.setattr("weather_agent.stations.timezone_of", lambda i: "Europe/London")
+    # a pooled stratum with known quantiles, standing in for the backfill history
+    fake_q = em.Quantiles(scope=em.SCOPE_POOLED, n=100,
+                          values={10: -1.5, 25: -0.5, 50: 0.4, 75: 1.3, 90: 2.2})
+    monkeypatch.setattr(m2, "load_pairs", lambda con, dataset_version=None: ([], {}, {}))
+    monkeypatch.setattr(em, "quantiles_for", lambda p, t, l: fake_q)
+
+    out = paper_cycle.stage_forecasts(
+        _cycle(), con, dataset_version="ds_paper_v1", target_date=date(2026, 9, 10),
+        universe=[{"station_identifier": "EGLC"}], model="icon_seamless", lead_hours=24,
+        prediction_time=t)
+    assert out["quantiles"] == 1
+    row = con.execute("SELECT forecast_p10, forecast_p50, forecast_p90 "
+                      "FROM weather_forecasts WHERE station = 'EGLC'").fetchone()
+    # forecast_pXX = f + percentile_XX(e), in Celsius; f = 17.0
+    assert row == (pytest.approx(15.5), pytest.approx(17.4), pytest.approx(19.2))

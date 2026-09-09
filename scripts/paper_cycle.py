@@ -287,7 +287,8 @@ def select_universe(con, *, dataset_version: str, target_date: date) -> list[dic
     rows = db.query(
         con,
         """
-        SELECT m.market_id, m.event_id, m.station, m.unit, m.rounding_rule,
+        SELECT m.market_id, m.event_id, m.station, m.station_identifier, m.unit,
+               m.rounding_rule,
                o.token_id, o.outcome_label, o.band_label,
                json_extract_string(m.source_timestamps, '$.endDate') AS end_date_raw
         FROM markets m
@@ -338,39 +339,114 @@ def stage_collect(cy: Cycle, con, *, dataset_version: str, session_id: str,
 
 
 def stage_forecasts(cy: Cycle, con, *, dataset_version: str, target_date: date,
-                    universe: list[dict], model: str, session) -> dict:
+                    universe: list[dict], model: str, lead_hours: float,
+                    prediction_time: datetime, session=None) -> dict:
     """Fetch the issued forecast for each station and attach M2's error quantiles.
 
-    This stage is the seam with session B's lane. `weather_agent.weather` and
-    `weather_agent.error_model` live on `feat/ingest-2b`; until that branch merges
-    they are simply absent from `main`, and the stage reports SKIPPED with the
-    module name rather than pretending to have forecasts. When the merge lands,
-    this runs with no edit here.
+    Two halves, and they answer different questions:
 
-    It is imported lazily and by name for exactly that reason: a missing module is
-    a SCHEDULING fact (B has not merged yet), not a crash.
+      1. THE FORECAST — `weather.ingest_run` for the run that was already PUBLISHED
+         at `prediction_time` (`m2.pick_run`), never the newest run in existence.
+         Publication latency is real (L_MAX 4.76 h for icon_seamless) and picking a
+         run by issue time alone would use a forecast that did not exist yet.
 
-    HONEST LIMIT: this stage has NO `OK` branch and writes nothing, even when the
-    import succeeds. Wiring the forecast pull and the M2 quantile attachment is
-    session B's work, not a line to be flipped here — an earlier version of this
-    docstring claimed it would "run with no edit here" once the merge landed, which
-    was false. R24's precondition P3 is written against this reality."""
-    try:
-        from weather_agent import weather as weather_mod      # noqa: F401
-        from weather_agent import error_model                 # noqa: F401
-    except ImportError as exc:
-        cy.stage("forecasts", SKIPPED, reason="ingestion_modules_not_on_this_branch",
-                 missing=str(exc).split("'")[-2] if "'" in str(exc) else str(exc))
-        return {"written": 0}
+      2. THE UNCERTAINTY — `error_model.quantiles_for` over historical pairs,
+         applied as `forecast_pXX = f + percentile_XX(e)`.
 
-    stations = sorted({r["station"] for r in universe if r.get("station")})
-    if not stations:
+    THE TRAINING SUBSTRATE IS A DIFFERENT dataset_version ON PURPOSE, and this is
+    the one thing a reader should not have to guess. M2's error distribution is
+    fitted on the BACKFILL (`m2.DATASET_VERSION`), because that is where the
+    history lives; the cycle itself runs as `ds_paper_v1`, which holds only what we
+    have collected prospectively and contains no realized observations to learn
+    from. Passing it explicitly rather than letting a module constant decide is
+    what makes the crossing visible (A-51).
+
+    Quantiles are written in CELSIUS. `weather_forecasts` is model space, not
+    market space; the conversion to the market's contractual unit happens later in
+    `build_feature` (B-7), and doing it here would convert twice.
+
+    QUOTA: the user pays for no Open-Meteo key (A-29.1), so this must stay inside
+    the free tier. One request per station per cycle, ~51 stations x 2 cycles/day.
+    A 429 stops the stage and is reported; it is never retried through."""
+    from weather_agent import error_model as em, m2, stations, weather
+
+    # The ICAO, not the station NAME. `markets.station` is prose ("London City
+    # Airport"); `stations.timezone_of` and `weather.ingest_run` both key on the
+    # identifier, and passing the name silently resolved nothing.
+    stns = sorted({r["station_identifier"] for r in universe
+                   if r.get("station_identifier")})
+    if not stns:
         cy.stage("forecasts", SKIPPED, reason="no_stations_in_universe")
-        return {"written": 0}
-    cy.stage("forecasts", SKIPPED,
-             reason="wiring_owned_by_session_B_see_A-31",
-             stations=len(stations), target_date=str(target_date), model=model)
-    return {"written": 0}
+        return {"written": 0, "quantiles": 0}
+
+    issue_time = m2.pick_run(prediction_time, model)
+    if issue_time is None:
+        cy.stage("forecasts", SKIPPED, reason="no_run_published_at_prediction_time",
+                 prediction_time=_iso(prediction_time))
+        return {"written": 0, "quantiles": 0}
+
+    # ---- 1. the forecast
+    written = 0
+    fetch_errors: dict[str, int] = {}
+    for icao in stns:
+        try:
+            tz = stations.timezone_of(icao)
+        except Exception:
+            fetch_errors["unknown_station"] = fetch_errors.get("unknown_station", 0) + 1
+            continue
+        try:
+            weather.ingest_run(con, icao, target_date, tz, issue_time, dataset_version,
+                               model=model)
+            written += 1
+        except Exception as exc:
+            key = "rate_limited" if "429" in str(exc) else type(exc).__name__
+            fetch_errors[key] = fetch_errors.get(key, 0) + 1
+            if key == "rate_limited":
+                cy.stage("forecasts", STOPPED, reason="http_429_rate_limited",
+                         written=written, stations=len(stns))
+                return {"written": written, "quantiles": 0, "stopped": True}
+
+    if not written:
+        cy.stage("forecasts", SKIPPED, reason="no_forecast_ingested",
+                 stations=len(stns), errors=json.dumps(fetch_errors))
+        return {"written": 0, "quantiles": 0}
+
+    # ---- 2. the uncertainty
+    pairs, _issue_by_key, pair_stats = m2.load_pairs(
+        con, dataset_version=m2.DATASET_VERSION)
+    q = em.quantiles_for(pairs, prediction_time, int(lead_hours))
+    if not q.values:
+        cy.stage("forecasts", OK, written=written, quantiles=0,
+                 quantile_scope=q.scope,
+                 note="forecast rows written WITHOUT quantiles: the stratum has none")
+        return {"written": written, "quantiles": 0}
+
+    rows = db.query(
+        con,
+        "SELECT station, issue_time, target_date, forecast_tmax FROM weather_forecasts "
+        "WHERE dataset_version = ? AND model = ? AND target_date = ? "
+        "AND issue_time = ? AND forecast_tmax IS NOT NULL",
+        [dataset_version, model, target_date, issue_time],
+    )
+    n_q = 0
+    for r in rows:
+        qs = em.forecast_quantiles_c(float(r["forecast_tmax"]), q)
+        con.execute(
+            "UPDATE weather_forecasts SET forecast_p10 = ?, forecast_p25 = ?, "
+            "forecast_p50 = ?, forecast_p75 = ?, forecast_p90 = ? "
+            "WHERE station = ? AND model = ? AND issue_time = ? AND target_date = ? "
+            "AND dataset_version = ?",
+            [qs[10], qs[25], qs[50], qs[75], qs[90],
+             r["station"], model, r["issue_time"], r["target_date"], dataset_version],
+        )
+        n_q += 1
+
+    cy.stage("forecasts", OK, stations=len(stns), written=written, quantiles=n_q,
+             issue_time=_iso(issue_time), lead_h=lead_hours,
+             quantile_scope=q.scope, training_pairs=len(pairs),
+             training_dsv=m2.DATASET_VERSION,
+             errors=json.dumps(fetch_errors) if fetch_errors else None)
+    return {"written": written, "quantiles": n_q, "scope": q.scope}
 
 
 def stage_signals(cy: Cycle, con, *, dataset_version: str, target_date: date,
@@ -889,7 +965,8 @@ def main(argv: list[str] | None = None) -> int:
         else:
             stage_forecasts(cy, con, dataset_version=args.dataset_version,
                             target_date=target_date, universe=universe,
-                            model=args.model, session=http)
+                            model=args.model, lead_hours=args.lead_hours,
+                            prediction_time=prediction_time, session=http)
             stage_signals(cy, con, dataset_version=args.dataset_version,
                           target_date=target_date, universe=universe,
                           model=args.model, tau=args.tau_signal,
