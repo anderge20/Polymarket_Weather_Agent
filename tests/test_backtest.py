@@ -25,7 +25,7 @@ def _cand(**kw):
         market_id="m", token_id="t", station="EGLC", target_date=date(2026, 5, 1),
         lead_h=24, decision_time=datetime(2026, 4, 30, 12, tzinfo=timezone.utc),
         label_available_at=datetime(2026, 5, 3, 0, tzinfo=timezone.utc),
-        unit="C", spec=WEATHER_FEES, p_mid=0.20, p_model=0.40, edge_gross=0.20, edge_net=0.10,
+        unit="C", lo=20.0, hi=20.0, q_market=dict(Q_C), spec=WEATHER_FEES, p_mid=0.20, p_model=0.40, edge_gross=0.20, edge_net=0.10,
         p_exec=0.21, fee=0.008, margin=0.05, won=True, pnl=0.8)
     base.update(kw)
     return backtest.Candidate(**base)
@@ -163,3 +163,20 @@ def test_a_cheaper_execution_never_makes_a_trade_worse():
         nets.append(r.edge_net); pnls.append(r.pnl)
     assert nets == sorted(nets)
     assert pnls == sorted(pnls)
+
+
+# --------------------------------------------------------------- band_position
+def test_band_position_is_declared_from_the_forecast_not_the_outcome():
+    """R22 §2: the axis must be observable at the decision instant. It reads only
+    the quantiles and the band edges — never `won`."""
+    assert backtest.band_position(Q_C, 20.0, 20.0) == "centro"
+    assert backtest.band_position(Q_C, 18.5, 18.5) == "cola_cercana"
+    assert backtest.band_position(Q_C, 30.0, 30.0) == "cola_lejana"
+
+
+def test_a_tail_band_uses_its_open_edge_and_not_an_invented_midpoint():
+    """A band with one open side has no midpoint; averaging against a made-up
+    bound would place it somewhere the contract never said."""
+    assert backtest.band_position(Q_C, None, 14.0) == "cola_lejana"
+    assert backtest.band_position(Q_C, 26.0, None) == "cola_lejana"
+    assert backtest.band_position(Q_C, None, None) == "abierta_ambos"

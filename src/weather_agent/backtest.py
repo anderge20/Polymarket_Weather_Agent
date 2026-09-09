@@ -68,6 +68,14 @@ class Candidate:
     decision_time: datetime
     label_available_at: datetime
     unit: str
+    #: Band edges and the quantiles in the MARKET's unit. Carried on the row
+    #: because R22 stratifies by where the band sits relative to the forecast, and
+    #: recomputing that from the database afterwards would be a second, divergent
+    #: implementation of the unit conversion — the defect that nearly shipped two
+    #: `prices.py`.
+    lo: float | None
+    hi: float | None
+    q_market: dict
     spec: costs.FeeSpec
     p_mid: float
     p_model: float
@@ -85,6 +93,24 @@ class Candidate:
         (unreadable fee schedule) and is NOT a rejection by threshold — it is
         counted separately so a substrate gap can never be read as a signal."""
         return self.edge_net is not None and self.edge_net > self.margin
+
+
+def band_position(q_market: dict, lo, hi) -> str:
+    """Where the band sits relative to the forecast, in the market's own unit.
+
+    Declared ex ante and observable at the decision instant (R22 §2). The band's
+    representative point is its midpoint for a closed band and its open edge for a
+    tail band, because a tail band has no midpoint and defaulting to one would
+    invent a location.
+    """
+    if lo is None and hi is None:
+        return "abierta_ambos"
+    x = hi if lo is None else lo if hi is None else (lo + hi) / 2.0
+    if q_market[25] <= x <= q_market[75]:
+        return "centro"
+    if q_market[10] <= x <= q_market[90]:
+        return "cola_cercana"
+    return "cola_lejana"
 
 
 def calibration_margin(quantiles_c: dict[int, float], *, unit: str,
@@ -206,6 +232,9 @@ def candidates(con, target_dates, *, leads=LEADS,
                     continue
                 out.append(Candidate(
                     market_id=r["market_id"], token_id=r["token_id"], spec=spec,
+                    lo=(None if r["lo"] is None else float(r["lo"])),
+                    hi=(None if r["hi"] is None else float(r["hi"])),
+                    q_market=em.to_market_unit(quantiles_c, r["unit"]),
                     station=r["station"], target_date=d, lead_h=lead,
                     decision_time=t, label_available_at=label_available_at(d, tz),
                     unit=r["unit"], p_mid=p_mid, p_model=p_model,
