@@ -333,6 +333,15 @@ calibración de R21 no existe, la corrida no arranca**; no hay `tau` por defecto
   después de `T_asof`, luego la decisión se tomó con información recortada al clamp y no con la
   información fresca que el lead permitía). `drift_h` se registra por ciclo y **sí varía**.
 - Un día perdido **no se recupera** y cuenta contra C1.
+- **COLA DE LIQUIDACIÓN: dos días más, y no cuentan como ciclos de decisión.** Una posición abierta el
+  día N se liquida cuando termina el día local de su objetivo, que es el día N+1 como pronto; y la
+  etiqueta la ingiere el ciclo siguiente (P9). Si la corrida parase en seco en el ciclo 42, **las
+  posiciones de los últimos dos días quedarían abiertas y su PnL no existiría** — el libro cerraría
+  con una cola sin resolver y cualquier cifra agregada estaría tomada sobre una muestra truncada
+  **por el calendario, no por el mercado**. Así que tras el ciclo 42 se ejecutan **dos días más de
+  ciclos en modo sólo-liquidación** (`observations` + `settle`, sin abrir posiciones nuevas). Esos
+  ciclos **no entran en el denominador de 42** ni en C1: no deciden nada. Lo que quede abierto al
+  final de la cola se reporta como `unsettled` con su razón del enum, nunca como PnL cero.
 - **MEDIDO 2026-09-09, y cambia lo que hay que esperar de §5.** El cron de Actions **entrega, pero
   tarde**: el disparo de las 11:40Z llegó a las **15:15Z**, con `drift_h = 3,292`,
   `late_firing = True` y `own_prices_usable = False` — el clamp llevó `prediction_time` a `T_asof` y
