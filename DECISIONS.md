@@ -2344,3 +2344,57 @@ Y su observación final es la buena: **mi 86 % de eventos incompletos en vivo (A
 1,5 son el mismo problema por dos caminos**, con una diferencia que decide — **el suyo tiene arreglo
 y el mío no**, porque el mío es una propiedad del venue.
 **Estado:** ADOPTADA.
+
+## A-53 — El clasificador NUNCA resolvió la estación de un mercado NOAA. Y era mío · 2026-09-09 · Claude (sesión A)
+
+**PR #9 (R14) FUSIONADO.** Los tres bloqueantes de A-50 corregidos y **re-verificados por mí** contra
+la rama final: el caso perfecto NOAA/°C etiqueta `WINNER` con `band_key=28`; el estrato 10 (HKO, sin
+ICAO por naturaleza) etiqueta **el día pedido y no otro** —27 con un 34 esperando en la tabla del día
+siguiente—; y los 77 de Taipéi mueren de `source_inaccessible`, dentro del enum. 468 verdes.
+
+**PR #10 (`m2`) fusionado** antes, 453 verdes. Con eso cableé `stage_forecasts` — y al ejecutarla en
+vivo apareció esto.
+
+### El hallazgo
+
+`_URL_RE` en `resolution.py` era:
+
+```python
+_URL_RE = re.compile(r"https://www\.wunderground\.com/history/daily/\S+", re.I)
+```
+
+**Sólo casa URLs de Wunderground.** Los mercados NOAA llevan
+`https://www.weather.gov/wrh/timeseries?site=eglc`, que **nunca** casa. Y de esa coincidencia salen
+**dos** campos: `resolution_source` y `station_identifier`. Sin ella, **ningún mercado NOAA obtiene
+estación jamás**.
+
+Medido en vivo sobre el universo abierto: **319 de 330 sin estación**. Tras ampliar la expresión a las
+dos formas de URL: **429 de 440 con estación**, 39 ICAO distintos. Los 11 restantes son HKO/CWA, que
+legítimamente no tienen.
+
+**Por qué nadie lo vio, y es lo que más me interesa del hallazgo:** el trabajo histórico nunca usó
+este clasificador para la estación — usaba `v3.icao2` del catálogo, poblado por otra vía en la
+construcción de `CATALOG_V2` (97,9 % de cobertura). **El hueco sólo existe en el descubrimiento en
+vivo**, que es exactamente lo que el modo papel necesita y lo que nadie había ejercitado. Los 93.221
+mercados validados por el validador de R29 no lo tocaban: ese validador comprueba `contract_source` y
+`measurement_rule`, no la estación.
+
+**Es mío**: R29 es trabajo de la sesión A, y el comentario del propio código lo decía sin que yo lo
+leyera como una limitación — *«ICAO is the LAST path segment of the **Wunderground** URL»*. Estaba
+escrito que sólo contemplaba una fuente.
+
+**No regresa nada:** el validador de R29 sobre los 93.221 sigue dando **VERDICT: PASS**, 0 desacuerdos
+inexplicados, 77 residuos explicados — idéntico a antes. El arreglo **sólo añade** `resolution_source`
+y `station_identifier` a los NOAA; no cambia una sola clasificación de fuente ni de regla. 39 tests
+del clasificador en verde.
+
+### Y un segundo, mío y más tonto
+
+`select_universe` devolvía `m.station` —el **nombre** en prosa, «London City Airport»— y
+`stage_forecasts` se lo pasaba a `stations.timezone_of`, que espera un **ICAO**. Resolvía cero
+estaciones en silencio. Corregido a `station_identifier`.
+
+**Lección repetida por tercera vez hoy, ahora en datos:** lo que se prueba con el sustrato histórico
+no dice nada del camino en vivo. El colector, el clasificador y ahora la estación — los tres fallaban
+sólo hacia delante.
+**Estado:** ADOPTADA.
