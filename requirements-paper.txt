@@ -6,17 +6,20 @@
 # full pipeline tier (pandas + numpy + scipy + scikit-learn) would add minutes of
 # wheel resolution per run to import nothing the cycle uses.
 #
-# Verified by inspection of the import graph reachable from scripts/paper_cycle.py
-# (weather_agent.{collector,store,paper,config,database,features,probability,
-# labeling}, weather_agent.polymarket.*, weather_agent.strategy.*): the only
-# third-party names are `duckdb` and `requests`, both imported lazily inside
-# functions. If that ever stops being true, this file has to grow — and a run
-# will fail loudly at import rather than silently degrade.
+# Inspecting the Python import graph is NOT sufficient here, and assuming it was
+# cost a failed Actions run. `pytz` appears in no `import` statement anywhere in
+# this tree, yet DuckDB's native extension loads it at RUNTIME to materialise a
+# TIMESTAMPTZ into a Python object. Every one of these tables has TIMESTAMPTZ
+# columns, so the very first `dump_table` died with:
+#     _duckdb.InvalidInputException: Required module 'pytz' failed to import
+# It passed locally only because pytz happened to be installed. A native
+# extension's runtime dependencies do not show up in a grep for `import`.
 #
 # Install:  pip install -r requirements-paper.txt
 
 duckdb>=1.1            # the derived store; shards are rebuilt into it each run
 requests>=2.32         # public gamma / CLOB / data-api GETs and POSTs
+pytz>=2024.1           # NOT imported by our code: DuckDB needs it to hand back TIMESTAMPTZ
 
 # NOT here, and not by omission:
 #   * no wallet, signer, web3 or py-clob-client — gate D0 is structural, and the
