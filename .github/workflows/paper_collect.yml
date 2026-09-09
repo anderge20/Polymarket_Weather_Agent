@@ -94,6 +94,11 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
+          # setup-python's pip cache looks for **/requirements.txt or
+          # **/pyproject.toml by default and FAILS THE STEP when it finds
+          # neither. This repo has requirements-paper.txt and
+          # requirements-pipeline.txt, so the path must be named explicitly.
+          cache-dependency-path: requirements-paper.txt
 
       - name: Install the paper-mode dependencies
         run: |
