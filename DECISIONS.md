@@ -2201,3 +2201,60 @@ usar la regla del proyecto en vez de la posición.
 
 **Estado:** ADOPTADA. PR #9 sigue **sin fusionar**: (2) se corrige antes. (1) es de B y es urgente,
 porque su propio camino crítico depende de ello.
+
+## A-50 — R14 refutado: emite CERO de las 17.072 etiquetas, y una función certifica «listo» · 2026-09-09 · Claude (sesión A)
+
+Refuté R14 con más dureza que el resto porque produce la **verdad de referencia**. Bien empleado:
+**3 bloqueantes**, y juntos dejan la capa de etiquetas en **0 de 17.072**.
+
+### 1. `context_for` lee una columna que no existe
+
+`station_tz=market.get("station_tz")` — y **`markets.station_tz` no existe**: ni en el DDL, ni en
+ninguna migración, ni en la base. `.get()` devuelve `None` en silencio y **todo** operador
+`LOCAL_CIVIL_DAY` (estratos 5, 7 y 8) muere con `context_out_of_snapshot`. Son **15.213** mercados,
+el 89 % de los que §5 dice que deben emitir label.
+
+Reproducido por mí, caso perfecto — NOAA/°C, KLGA, observación de 28 °C dentro de la ventana:
+
+```
+CASO PERFECTO:                     yes -> UNLABELLED  reason='context_out_of_snapshot'
+IDÉNTICO con station_tz inyectada: yes -> WINNER  band_key=28
+```
+
+**La única diferencia entre etiquetar y no etiquetar es una clave que ninguna fila puede llevar.**
+
+Y dos agravantes: el reason emitido es el **terminal**, del que el núcleo dice «0 casos hoy,
+alcanzable sólo hacia delante» — así que el diagnóstico aguas abajo queda envenenado, dirá «ctx no
+construible» cuando lo que falta es cablear la tz. Y **`missing_substrate()` devuelve `[]`**, es
+decir **certifica «listo»**, porque `REQUIRED_COLUMNS` no lista `station_tz`. Una función cuyo
+propósito declarado es nombrar lo que falta, certificando un sustrato que no puede etiquetar nada.
+
+La pieza correcta **está en el mismo paquete y no se usa**: `stations.timezone_of(icao)`, 51 ICAO,
+que además falla en vez de caer a UTC por defecto.
+
+### 2. La guarda de estación va ANTES de la terna — el defecto de A-43, un nivel más arriba
+
+`label_market` comprueba `station_identifier` antes de consultar la terna. Es **exactamente** lo que
+corregí dentro de `settlement.py` y que el changelog del núcleo explica: «sin eso la fila 10
+(`icao2` NULL en 1.859) no emitía label, ni la 11 su `source_inaccessible`».
+
+Efectos: el estrato 10 (HKO, **1.859 mercados, el único H, el único DIRECT y el único con holdout
+evaluable**) tiene `icao2` NULL por naturaleza —el núcleo dice «no es defecto»— y **nunca llega a
+`try_settle`**. Los 77 de Taipéi mueren con `no_station_identifier` en vez de `source_inaccessible`.
+Y `no_station_identifier`/`no_band_label` **no pertenecen al enum cerrado**, pero se escriben en el
+mismo campo `reason`: aguas abajo el enum deja de ser cerrado sin que nada lo señale.
+
+**15.213 + 1.859 = 17.072.** El total exacto.
+
+### 3. Y el defecto del día equivocado, reintroducido por el llamante
+
+`observations_for` **no recibe `target_date`**: devuelve el histórico **entero** de la estación. Bajo
+`SOURCE_DAILY_ROW` el operador **no aplica ningún predicado temporal** — por diseño, y mi propio
+docstring dice por qué: «the caller hands over the source's row FOR that date». **`labels.py` es ese
+llamante y no cumple la precondición.** La agregación devuelve el máximo de **todo el histórico**.
+
+No falla cerrado: **emite el label de otro día**. Es el mismo defecto que arreglé en A-43, ahora en el
+llamante. Hoy está enmascarado porque el bloqueante 2 mata el estrato 10 antes de llegar — **se abre
+en el instante en que se corrija la guarda**, que es la corrección obvia.
+
+**Estado:** PR #9 **NO fusionado**. Entregado a B con los tres reproducidos.
