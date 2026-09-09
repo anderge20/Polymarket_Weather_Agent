@@ -84,13 +84,26 @@ mitad, ¿sigue siendo una sola corrida? §4bis la responde congelando la REGLA, 
 > funciona si eres mejor que el mercado. Haría falta un criterio que identifique **dónde** el modelo
 > supera al mercado, no **cuánto** discrepa de él, y ese criterio no existe todavía.
 >
-> **QUÉ SIGNIFICA ESTO PARA ESTA CORRIDA, declarado ANTES de arrancar.** La corrida se declara
-> **prueba de la CADENA y no de la ESTRATEGIA**. Es lo que P1–P10 miden de verdad y es lo que el
-> 2026-09-09 quedó cerrado de extremo a extremo hasta un PnL realizado. **No se espera beneficio, y
-> decirlo ahora es lo que hace informativo cualquier resultado:** si la corrida arrancara prometiendo
-> PnL y diera cero, el resultado sería ambiguo entre «la cadena falla» y «la estrategia no vale».
-> Declarado así, un PnL negativo confirma R21 y una cadena verde confirma P1–P10, y las dos cosas se
-> leen por separado.
+> **QUÉ SIGNIFICA ESTO PARA ESTA CORRIDA, declarado ANTES de arrancar.** La corrida es **prueba de la
+> CADENA y, además, el ÚNICO test PROSPECTIVO fuera de muestra del proyecto.** *(Corregido el
+> 2026-09-09 a instancias de la sesión B: una redacción anterior decía «no prueba la estrategia», y
+> **eso es falso por defecto**.)* Un ciclo en vivo abrió **27 posiciones**; a dos ciclos diarios
+> durante 21 días son del orden de **mil posiciones**, más del doble de las 468 de R21 y sobre datos
+> que R21 no puede tener: **prospectivos**.
+>
+> **Con un matiz que cambia el peso y que no está en el recuento de posiciones.** Esas ~1.000
+> posiciones salen de unos ~7 eventos elegibles por ciclo × 42 ciclos ≈ **294 decisiones de evento**,
+> y el evento es la unidad: sus bandas son una partición que suma 1 y sus errores están acoplados.
+> Contra los **211 bloques de evento** de R21 eso no es «el doble de evidencia», es **~1,4×**. El
+> techo de 294 ya estaba medido en §0 como propiedad del venue. **Se dobla el número de posiciones y
+> se multiplica por 1,4 la muestra efectiva**, y cualquier intervalo se calcula por bloques de evento
+> (la corrección que la sesión A planteó contra R21 y que allí ensanchó el intervalo a
+> [−0,0288 · −0,0205] sin cambiar el signo).
+>
+> **No se espera beneficio**, y decirlo ahora es lo que hace informativo cualquier resultado: si la
+> corrida arrancara prometiendo PnL y diera cero, el resultado sería ambiguo entre «la cadena falla» y
+> «la estrategia no vale». Declarado así, cada cosa se lee por separado — y el PnL se lee bajo §6bis,
+> que se congela **antes** de que exista `PAPER_TAU`.
 >
 > **Lo que NO se hace:** no se amplía la rejilla de `tau`, no se toca el margen, no se cambia el
 > constructor de colas y no se prueba otra regla de selección **hasta publicar por qué falló ésta**.
@@ -235,6 +248,7 @@ La corrida **no empieza** mientras alguna falle. El informe declara la fecha en 
 | P3 | **Etapa `forecasts` implementada.** Hoy `stage_forecasts` **no tiene ninguna rama OK** y no escribe nada; el cableado es pista de B | un ciclo manual deja `forecasts` en OK con `written > 0` |
 | P4 | **Liquidación cableada** con la etiqueta real bajo el SettlementOperator del mercado. *(revisada 2026-09-09, A-60: se había dado por cerrada contra un FIXTURE. El único sitio donde `metar_body_c` —la serie que el núcleo congelado exige— había aparecido fuera del núcleo era un test de este repo, así que la liquidación no había tocado nunca una fila producida por ningún ingestor.)* | `settle` en OK con `settled > 0` **sobre una observación ingerida por `stage_observations` en el propio ciclo**, no sembrada por un test. Se cita el `paper_trade_id`, la estación, el día y el valor observado |
 | **P9** | **La etiqueta la ingiere el ciclo** (`stage_observations`). Sin esto `settle` no lee nada: `weather_observations` la puebla el backfill bajo OTRO `dataset_version` y las fechas objetivo están en el futuro cuando se abre la posición, así que **toda posición quedaría abierta los 21 días y el libro reportaría PnL cero por no haber resuelto nada, no por no haber ganado nada** | un ciclo manual deja `observations` en OK con `ingested > 0`, y la fila lleva `available_at` = instante de descarga (D17) |
+| **P12** | **El criterio de lectura del PnL está congelado ANTES de que exista `vars.PAPER_TAU`** (§6bis y la enmienda de §0). Poner la variable **es** lo que hace operativos los ciclos, así que el orden no es una recomendación: una tau puesta antes del criterio invalida la corrida igual que un cambio de parámetro a mitad | `DECISIONS.md` cita el sha de la enmienda y su fecha es anterior a la creación de la variable |
 | **P11** | **La ruta de decisión completa ha corrido AL MENOS UNA VEZ EN EL HOST**, no sólo en una máquina de desarrollo. Medido en el almacén real el 2026-09-09: `weather_forecasts` **0 shards**, `signals` **0**, `paper_trades` **0** — todos los ciclos programados corrieron `--collect-only` porque `vars.PAPER_TAU` no está puesta, que es el fallo cerrado correcto **y significa que forecasts → signals → paper → observations → settle nunca se ha ejecutado en Actions.** Está verificado de extremo a extremo, pero en el Mac, y el día entero ha consistido en descubrir que verificar donde no corre no es verificar | un ciclo de decisión en Actions deja `forecasts`, `signals` y `paper_trades` con shards, y su `replay` da REPRODUCIBLE. **No se hace escribiendo en `ds_paper_v1`**: el `dataset_version` está fijado en el workflow y un ciclo de prueba contaminaría el libro de la corrida preregistrada. Requiere un `dataset_version` de ensayo, y por tanto un cambio de workflow ANTES de arrancar |
 | **P10** | **La correspondencia de series está declarada para la población que va a operar.** *(CERRADA 2026-09-09 por evidencia del audit, A-61.)* `IEM_ASOS_METAR_1C → metar_body_c` y `IEM_ASOS_TMPF_1F → metar_tgroup_tmpf`; sobre las 14 filas en °F del audit sólo `H_LOCAL_tmpf` cae dentro de la banda ganadora, **14/14 y en grados enteros**, frente a 0/14 de las otras tres columnas. `IEM_ASOS_TMPF_0.1F` queda sin declarar y **no cuesta ningún mercado**: su única estación es KBKF, cuyo estrato (9, `P_NOAA_HourlyData`) el núcleo ya cierra por `series_filter_unverified` | el test fija las dos correspondencias contra `observations`, no contra literales |
 | P5 | **Colector con ≥ 7 días continuos previos**, definido como: para cada uno de los 7 días naturales anteriores existe ≥ 1 shard de `orderbook_snapshots` con ≥ 1 fila | `store.iter_shards` por fecha |
@@ -496,6 +510,45 @@ los datos.
 **C6 declara su límite por delante:** con ≥ 20 liquidadas el IC es ancho y el criterio es **fácil de
 pasar**. Está para atrapar una calibración groseramente rota (de ahí el 0,40, no 0,05), que sí se
 detecta con pocas observaciones. **No se presentará como evidencia de buena calibración.**
+
+---
+
+## §6bis. `PAPER_TAU`, y cómo se leerá el PnL — congelado ANTES de poner la variable
+
+*(Añadido 2026-09-09. La sesión B lo pidió y el argumento es suyo: si la corrida va a producir un PnL
+sobre ~1.000 posiciones, su lectura tiene que estar fijada antes, o en 21 días tendremos un número y
+elegiremos después qué significa.)*
+
+**1. `PAPER_TAU` es un PARÁMETRO DE EJERCICIO, no un umbral con una afirmación detrás.** R21 barrió la
+rejilla congelada `{0,02k}`, k = 1…10, y el walk-forward se pegó al **máximo** en **239 de 271**
+decisiones y aun así perdió. **No existe un tau operable con este sustrato.** Cualquier valor que se
+ponga en la variable se declara aquí como de ejercicio, y el informe lo repite: quien lea el libro no
+debe entender «operaban con tau = X» como si X tuviera respaldo.
+
+**2. La regla para elegirlo es de COBERTURA, no de beneficio:** *el tau más alto que aún abre
+posiciones en la mayoría de los ciclos*, medido sobre ciclos previos a la corrida y declarado con su
+valor antes de poner la variable. Elegirlo para maximizar operaciones sería montar un escaparate;
+elegirlo mirando qué PnL sale es exactamente lo que este documento existe para impedir.
+
+**3. EL ORDEN ES UNA PRECONDICIÓN, no una recomendación.** Poner `vars.PAPER_TAU` **es** lo que
+convierte los ciclos en operativos, así que la enmienda de §0 —el `n_requerido(tau)` y su umbral— y
+esta sección quedan **hasheadas y congeladas antes de que la variable exista**. Una tau puesta antes
+del criterio invalida la corrida igual que un cambio de parámetro a mitad (§8.3).
+
+**4. Cómo se lee el resultado, fijado ahora:**
+- **PnL negativo** → **coherente** con R21, y *no lo confirma automáticamente*: el tau es de ejercicio
+  y una regla peor que la calibrada pierde por construcción. Añade evidencia prospectiva, no una
+  réplica.
+- **PnL positivo** → **no refuta R21 por sí solo.** El intervalo de R21 por bloques de evento es
+  **[−0,0288 · −0,0205]**; refutarlo exige que el IC prospectivo, también por bloques de evento,
+  **excluya ese rango**, no que la mediana salga por encima de cero.
+- **`n` por debajo del mínimo** → **`NO EVALUABLE`**, nunca «no hubo beneficio». Es la cláusula de no
+  vacuidad de §6.0 aplicada al PnL: el mínimo se fija en la misma enmienda que el umbral, con la
+  regla de §4.1 de R21 (n ≥ 100 **decisiones de evento**, no posiciones).
+
+**5. Lo que esta sección NO autoriza:** ni ampliar la rejilla de tau, ni cambiar la regla de
+selección, ni reajustar el constructor de colas, ni volver a correr con otra tau si la primera no
+gusta. Cualquiera de esas cosas es una corrida nueva con su propio preregistro.
 
 ---
 

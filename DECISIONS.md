@@ -3394,3 +3394,41 @@ Se reporta aparte usando el `event` de cada shard (`schedule` vs `workflow_dispa
 **Tercero, una estimación sustituida por una medida.** El volumen proyectado era ~134 MB por una
 cuenta de bytes/fila; medido son **0,25 MiB por recolección** → **≈ 55 MiB** en los 21 días, contra un
 umbral de parada de 200 MB. Sobra margen, y ahora es una medida.
+
+## A-73 — B me corrige: la corrida SÍ prueba la estrategia, y por eso su lectura se congela antes de `PAPER_TAU` · 2026-09-09 · B planteó, A redactó
+
+**Mi §0 decía que la corrida es «prueba de la CADENA y no de la ESTRATEGIA». B demostró que es falso
+por defecto** y tiene razón: un ciclo en vivo abrió **27 posiciones**; a dos ciclos diarios × 21 días
+son del orden de **mil**, más del doble de las 468 de R21 y sobre datos **prospectivos**, que es
+justo lo que R21 no puede ser. **La corrida es el único test prospectivo fuera de muestra del
+proyecto** y ninguno de los dos se lo estaba reconociendo.
+
+**Mi matiz a su aritmética, y cambia el peso:** esas ~1.000 posiciones salen de ~7 eventos elegibles
+por ciclo × 42 ciclos ≈ **294 decisiones de evento**, y **el evento es la unidad** —sus bandas son una
+partición que suma 1 y sus errores están acoplados—. Contra los **211 bloques** de R21 no es «el
+doble de evidencia»: es **~1,4×**. Se dobla el número de posiciones y se multiplica por 1,4 la muestra
+efectiva. El techo de 294 ya estaba medido en §0 como propiedad del venue.
+
+**§6bis, congelado, y P12.** Si la corrida va a producir un PnL sobre ~1.000 posiciones, su lectura
+tiene que estar fijada antes o en 21 días tendremos un número y elegiremos después qué significa:
+
+1. **`PAPER_TAU` es un parámetro de EJERCICIO.** R21 barrió la rejilla y el walk-forward se pegó al
+   máximo en 239 de 271 decisiones y perdió: **no existe tau operable**. Se declara para que nadie
+   lea «operaban con tau = X» como si X tuviera respaldo.
+2. **La regla de elección es de COBERTURA, no de beneficio:** el tau más alto que aún abre posiciones
+   en la mayoría de los ciclos, medido antes y declarado con su valor.
+3. **El ORDEN es precondición (P12), no recomendación:** poner la variable **es** lo que hace
+   operativos los ciclos, así que el criterio se congela y hashea **antes de que la variable exista**.
+   Una tau puesta antes del criterio invalida la corrida igual que un cambio de parámetro a mitad.
+4. **Lectura fijada ahora:** PnL negativo → **coherente** con R21 y no lo confirma automáticamente
+   (una regla peor que la calibrada pierde por construcción); PnL positivo → **no lo refuta por sí
+   solo**, hace falta que el IC prospectivo **por bloques de evento** excluya el
+   **[−0,0288 · −0,0205]** de R21; `n` por debajo del mínimo → **NO EVALUABLE**, nunca «no hubo
+   beneficio», con el mínimo en **decisiones de evento** y no en posiciones.
+5. **No autoriza** ampliar la rejilla, cambiar la regla de selección, reajustar el constructor de
+   colas ni repetir con otra tau si la primera no gusta.
+
+**Ownership:** B se ofreció a redactarlo; lo escribo yo **dentro de R24** porque es el preregistro de
+esta corrida y partirlo en otro documento fragmentaría el contrato. Lo que aporta B es lo que sólo B
+tiene —el intervalo por bloques, la rejilla barrida, el `n` mínimo de R21 §4.1— y su refutación de mi
+§0, que es la que abrió esto.
