@@ -734,17 +734,34 @@ def _station_tz(icao: str | None) -> str | None:
 #:       not on the Fahrenheit list — which is the population of the Celsius
 #:       operators. Certain.
 #:
-#: The two Fahrenheit series are NOT mapped, on purpose. `metar_tgroup_tmpf` names
-#: the METAR T-group; `IEM_ASOS_TMPF_1F` and `IEM_ASOS_TMPF_0.1F` are IEM's `tmpf`
-#: at two DIFFERENT resolutions, and the operator's own comment says the
-#: resolution decides ("with a tenths series, quantisation NONE and FLOOR stop
-#: being the same label for 97.7 F"). Collapsing both onto one name would settle
-#: KBKF off its own grid, which is exactly what A-42 established must not happen.
-#: A correspondence that is not certain is refused, not guessed: those markets
-#: come back as `series_correspondence_undeclared` and wait for the audit to say
-#: which IEM series the frozen operator was written against.
+#:   IEM_ASOS_TMPF_1F -> metar_tgroup_tmpf
+#:       Settled by the audit, not by elimination (B, from E2_RESULTS.json). Of
+#:       the four candidate columns over the 14 Fahrenheit rows:
+#:           H_LOCAL_tmpf  inside the winning band 14/14, whole degrees 14/14
+#:           H_LOCAL_tg    inside the winning band  0/14  (it is tenths of C)
+#:           H_LOCAL_body  inside the winning band  0/14
+#:           H_LOCAL_tmpc  inside the winning band  0/14
+#:       The audit computed the T-group and `tmpf` in SEPARATE columns and settled
+#:       against `tmpf`. The core's own v3 §2.1 says the same thing about itself:
+#:       "an IEM-derived product: tmpf = round(F(T-group in tenths)), 1 F grid; NOT
+#:       a rule of the contractual source". The NAME says T-group; the THING is
+#:       tmpf rounded to 1 F.
+#:
+#: `IEM_ASOS_TMPF_0.1F` stays unmapped, and the reason is no longer uncertainty.
+#: Its only station is KBKF, whose audited row carries P_NOAA_HourlyData — stratum
+#: 9 — which the frozen core already fails closed on `series_filter_unverified`
+#: ("0/4 rows separate H_hourly from H_series"). So KBKF is excluded UPSTREAM by
+#: its own stratum, and no market is lost by leaving this series undeclared.
+#:
+#: Two facts about KBKF that look contradictory and are not, written down so
+#: nobody "fixes" one into the other: `IEM_ASOS_TMPF_0.1F` describes the grid the
+#: STATION REPORTS ON (A-42, still correct), while the `tmpf` its stratum would
+#: settle against is whole-degree — the audited KBKF row carries tmpf = 91.0, a
+#: whole degree, with a 90-91 F band and `whole degree` rounding. Collapsing them
+#: in either direction is the error.
 SERIES_CORRESPONDENCE = {
     "IEM_ASOS_METAR_1C": settlement.SERIES_METAR_C,
+    "IEM_ASOS_TMPF_1F": settlement.SERIES_METAR_F,
 }
 
 

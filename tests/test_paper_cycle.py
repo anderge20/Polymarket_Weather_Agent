@@ -932,6 +932,10 @@ def test_the_declared_correspondence_is_the_one_the_ingester_writes():
     """A mapping keyed on a name no ingester produces is a mapping that never
     fires. Pinned against `observations`, not against a literal."""
     assert paper_cycle.to_core_series(obs_mod.SERIES_1C) == "metar_body_c"
-    assert paper_cycle.to_core_series(obs_mod.SERIES_1F) is None
+    # Settled by the audit: of four candidate columns over the 14 Fahrenheit rows,
+    # only `tmpf` lands inside the winning band, 14/14, on whole degrees.
+    assert paper_cycle.to_core_series(obs_mod.SERIES_1F) == "metar_tgroup_tmpf"
+    # KBKF's series stays undeclared, and its stratum (9, P_NOAA_HourlyData) is
+    # fail-closed in the core anyway, so nothing is lost by it.
     assert paper_cycle.to_core_series(obs_mod.SERIES_TENTH_F) is None
     assert paper_cycle.to_core_series(None) is None
