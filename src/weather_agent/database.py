@@ -1005,6 +1005,17 @@ def upsert_many(
 ) -> int:
     """`upsert` for many rows in ONE prepared statement, via executemany.
 
+    RETURNS THE NUMBER OF ROWS APPLIED, NOT THE NUMBER OFFERED. Those differ when
+    the batch repeats a conflict key: nine rows over three keys returns 3. The
+    contract changed when deduplication was added below — session B noticed that
+    nobody had named it — and it is stated here because the value reaches
+    `summary["points_written"]` and from there the run reports, where a reader
+    will otherwise take it for "rows I sent".
+    "Applied" is the more useful of the two: with `ON CONFLICT DO UPDATE` a row
+    that collides is UPDATED rather than inserted, so "written" was never a count
+    of insertions. The applied count is a fact about the table; the offered count
+    is a fact about the caller's intention.
+
     Row-at-a-time upserting is not a style preference here. Writing one market's
     2 861 price points cost 25 s against 0.19 s of network, so 99 % of a backfill's
     runtime was the write loop and a full pass came to 19 hours.
@@ -1031,6 +1042,31 @@ def upsert_many(
             )
     conflict = list(conflict_cols)
     updates = [c for c in cols if c not in conflict]
+
+    # DEDUPLICATE ON THE CONFLICT KEY FIRST, AND DECLARE WHICH ONE WINS.
+    #
+    # Without this the two paths below DISAGREE, silently, on a batch that
+    # repeats a key: `INSERT ... SELECT` from a frame keeps the FIRST occurrence,
+    # `executemany` applies row by row so the LAST one wins. Measured on the same
+    # two-row batch — with pandas [("dup","primera")], without it
+    # [("dup","SEGUNDA")]. Both return 2, neither raises, and the data depends on
+    # whether a package is installed. Session B caught it: the change that removed
+    # one latent trap had introduced another of the same shape, in the same
+    # function, in the same commit.
+    #
+    # LAST OCCURRENCE WINS, because that is what row-by-row upserting does and
+    # what `ON CONFLICT DO UPDATE` means — a later row is an update of an earlier
+    # one. Applied BEFORE the split, so "identical semantics" is a fact and not an
+    # aspiration.
+    #
+    # Not reachable today: the one caller, `prices.ingest_*`, deduplicates before
+    # writing. That is exactly why it had to be fixed now and not when it starts
+    # mattering.
+    deduped: dict[tuple, Mapping[str, Any]] = {}
+    for r in rows:
+        deduped[tuple(r[c] for c in conflict)] = r
+    if len(deduped) != len(rows):
+        rows = list(deduped.values())
     sql_bulk = (
         f"INSERT INTO {_q(table)} ({', '.join(_q(c) for c in cols)}) "
         f"SELECT {', '.join(_q(c) for c in cols)} FROM __BATCH__ "
@@ -1042,7 +1078,37 @@ def upsert_many(
         )
     else:
         sql_bulk += "DO NOTHING"
-    import pandas as pd
+    # PANDAS IS OPTIONAL HERE, and that is not a style preference.
+    #
+    # `requirements-paper.txt` EXCLUDES pandas on purpose — its own header says
+    # installing the pipeline tier "would add minutes of wheel resolution per run
+    # to import nothing the cycle uses". So a hard `import pandas` inside a
+    # database helper puts a dependency the paper tier refuses to install on a
+    # path any future caller might reach. Found by running the suite on the host
+    # that will actually run it: `ModuleNotFoundError: No module named 'pandas'`,
+    # green on the development machine where pandas happens to exist.
+    #
+    # The frame is only a FAST PATH: registering it lets DuckDB do
+    # INSERT ... SELECT, measured at 0.05 s against 16.47 s for `executemany` and
+    # 24.99 s row by row. Where pandas is absent the fallback is `executemany` —
+    # slower, identical semantics, same ON CONFLICT clause, same transaction.
+    # Correctness never depends on which branch runs; only speed does.
+    try:
+        import pandas as pd
+    except ImportError:
+        pd = None
+
+    if pd is None:
+        placeholders = ", ".join("?" for _ in cols)
+        sql_rows = (
+            f"INSERT INTO {_q(table)} ({', '.join(_q(c) for c in cols)}) "
+            f"VALUES ({placeholders}) "
+            f"ON CONFLICT ({', '.join(_q(c) for c in conflict)}) "
+        ) + ("DO UPDATE SET " + ", ".join(f"{_q(c)} = excluded.{_q(c)}"
+                                          for c in updates)
+             if updates else "DO NOTHING")
+        con.executemany(sql_rows, [[_prep(r[c]) for c in cols] for r in rows])
+        return len(rows)
 
     frame = pd.DataFrame([{c: _prep(r[c]) for c in cols} for r in rows])
     name = f"_upsert_batch_{id(frame):x}"

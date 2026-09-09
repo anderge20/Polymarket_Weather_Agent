@@ -313,6 +313,11 @@ def ingest_history(
         # backfill's runtime (25 s of upserts against 0.19 s of network per
         # market), which put a full pass at 19 hours. Same ON CONFLICT semantics,
         # same transaction.
+        # `points_written` is the count APPLIED, not the count offered: since
+        # `upsert_many` deduplicates on the conflict key, a batch repeating a
+        # (token, timestamp) collapses. Equal here — `by_timestamp` above already
+        # deduplicates on `t` and REFUSES a source that contradicts itself — but
+        # the name would mislead anyone reading a run report without this note.
         summary["points_written"] = db.upsert_many(
             con, "price_history", batch,
             ["token_id", "observation_time", "dataset_version", "record_version"],
