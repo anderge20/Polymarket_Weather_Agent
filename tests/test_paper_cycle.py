@@ -171,3 +171,79 @@ def test_no_tau_means_no_trading_rather_than_a_default_tau():
     args = parser.parse_args(["--target-date", "2026-09-10",
                               "--dataset-version", "ds1"])
     assert args.tau is None                     # fail-closed, not 0.03
+
+
+# --------------------------------------------------------------------------- timing
+def test_t_end_is_noon_utc_on_the_target_date():
+    assert paper_cycle.t_end(date(2026, 9, 10)) == \
+        datetime(2026, 9, 10, 12, 0, tzinfo=timezone.utc)
+
+
+def test_t_asof_is_t_end_minus_the_lead():
+    for lead, expected in ((24, datetime(2026, 9, 9, 12, tzinfo=timezone.utc)),
+                           (9, datetime(2026, 9, 10, 3, tzinfo=timezone.utc))):
+        out = paper_cycle.decision_time(date(2026, 9, 10), lead,
+                                        datetime(2026, 9, 9, 0, tzinfo=timezone.utc))
+        assert out["t_asof"] == expected
+
+
+def test_firing_early_decides_at_now_and_uses_less_information():
+    now = datetime(2026, 9, 9, 11, 40, tzinfo=timezone.utc)     # 20 min early
+    out = paper_cycle.decision_time(date(2026, 9, 10), 24, now)
+    assert out["prediction_time"] == now
+    assert out["fired_early"] is True
+    assert out["lead_effective_h"] == pytest.approx(24 + 1 / 3)  # LONGER lead, safe
+    assert out["drift_h"] < 0
+
+
+def test_firing_late_clamps_to_t_asof_so_the_declared_lead_stays_true():
+    """The defect A-32 found in someone else's document: an availability rule
+    stated in prose and never applied. Without this clamp a drifted run would use
+    data that arrived after T_asof while still claiming to be as-of T_asof."""
+    now = datetime(2026, 9, 9, 14, 30, tzinfo=timezone.utc)     # 2.5 h late
+    out = paper_cycle.decision_time(date(2026, 9, 10), 24, now)
+    assert out["prediction_time"] == out["t_asof"]              # clamped
+    assert out["prediction_time"] < now
+    assert out["lead_effective_h"] == pytest.approx(24.0)
+    assert out["drift_h"] == pytest.approx(2.5)
+
+
+def test_the_decision_instant_is_never_after_t_asof():
+    for offset_h in (-6, -1, 0, 1, 6, 48):
+        now = datetime(2026, 9, 9, 12, tzinfo=timezone.utc) + timedelta(hours=offset_h)
+        out = paper_cycle.decision_time(date(2026, 9, 10), 24, now)
+        assert out["prediction_time"] <= out["t_asof"]
+
+
+# --------------------------------------------------------------------------- fees
+def test_the_fee_lookup_joins_through_the_market_not_the_schedule_key(con):
+    """`market_fee_schedule` is keyed by fee_regime; it has NO market_id column, so
+    querying it by market_id raises a binder error. This test exists because the
+    first version did exactly that, and it would have crashed on the first cycle
+    that produced an actionable signal — never on a collect-only smoke run."""
+    con.execute(
+        "INSERT INTO markets (market_id, event_id, fee_regime, source_timestamps, "
+        "ingestion_timestamp, dataset_version, record_version) VALUES (?,?,?,?,?,?,?)",
+        ["m1", "e1", "weather_fees", '{"endDate":"2026-09-10T12:00:00Z"}', T0, "ds1", 1])
+    con.execute(
+        "INSERT INTO market_fee_schedule (fee_regime, taker_fee, maker_rebate, "
+        "fee_status, raw_fee_fields, ingestion_timestamp, dataset_version, "
+        "record_version) VALUES (?,?,?,?,?,?,?,?)",
+        ["weather_fees", 0.05, 0.25, "KNOWN",
+         '{"feeSchedule":{"exponent":1,"rate":0.05}}', T0, "ds1", 1])
+
+    rows = con.execute(
+        "SELECT f.taker_fee, f.fee_status FROM markets m JOIN market_fee_schedule f "
+        "ON f.fee_regime = m.fee_regime AND f.dataset_version = m.dataset_version "
+        "WHERE m.market_id = ? AND m.dataset_version = ?", ["m1", "ds1"]).fetchall()
+    assert rows == [(0.05, "KNOWN")]
+
+    with pytest.raises(Exception):
+        con.execute("SELECT taker_fee FROM market_fee_schedule WHERE market_id = ?",
+                    ["m1"]).fetchall()
+
+
+def test_the_cycle_source_uses_the_join_and_not_the_broken_predicate():
+    src = (Path(__file__).resolve().parents[1] / "scripts" / "paper_cycle.py").read_text()
+    assert "FROM market_fee_schedule WHERE market_id" not in src
+    assert "JOIN market_fee_schedule f" in src

@@ -82,6 +82,44 @@ def _iso(dt: datetime) -> str:
     return dt.isoformat()
 
 
+def t_end(target_date: date) -> datetime:
+    """`T_end` = target_date 12:00:00Z — the end of the resolution window (R8,
+    verified on 8 557/8 557 events). It only serves to derive the lead; it is
+    never a decision instant."""
+    return datetime.combine(target_date, datetime.min.time(),
+                            tzinfo=timezone.utc) + timedelta(hours=12)
+
+
+def decision_time(target_date: date, lead_hours: float, now: datetime) -> dict:
+    """Resolve the instant the cycle is allowed to decide at.
+
+        T_asof = T_end - lead_hours          (the declared as-of)
+        prediction_time = min(now, T_asof)
+
+    The clamp is the whole point, and it cuts both ways:
+      * fired EARLY (the cron does, deliberately) -> `now` wins, so the decision
+        uses strictly LESS information than the lead allows. Safe.
+      * fired LATE (Actions cron drifts) -> `T_asof` wins, so data that only
+        became available during the drift cannot enter a decision that still
+        claims to be as-of `T_asof`. Without the clamp the declared lead would be
+        a fiction, which is exactly the defect A-32 found in someone else's
+        document — the availability rule stated in prose and never applied.
+
+    `lead_effective` is measured, never assumed: it is what actually happened."""
+    end = t_end(target_date)
+    asof = end - timedelta(hours=float(lead_hours))
+    pt = min(now, asof)
+    return {
+        "t_end": end,
+        "t_asof": asof,
+        "prediction_time": pt,
+        "lead_nominal_h": float(lead_hours),
+        "lead_effective_h": (end - pt).total_seconds() / 3600.0,
+        "fired_early": now < asof,
+        "drift_h": (now - asof).total_seconds() / 3600.0,
+    }
+
+
 class Cycle:
     """Accumulates per-stage results so the job log shows one auditable summary."""
 
@@ -345,11 +383,19 @@ def stage_paper(cy: Cycle, con, *, dataset_version: str, session_id: str,
         if isinstance(snap, str):
             snap = json.loads(snap)
 
+        # `market_fee_schedule` is keyed by fee_regime, NOT by market_id (its PK is
+        # (fee_regime, dataset_version, record_version)) — a regime is shared by
+        # thousands of markets. The link is `markets.fee_regime`, so the lookup has
+        # to go through it. Querying the schedule by market_id raises a binder
+        # error, which would have crashed the first cycle that produced a signal.
         fee_rows = db.query(
             con,
-            "SELECT fee_regime, taker_fee, maker_rebate, fee_status, raw_fee_fields "
-            "FROM market_fee_schedule WHERE market_id = ? LIMIT 1",
-            [sig["market_id"]],
+            "SELECT f.fee_regime, f.taker_fee, f.maker_rebate, f.fee_status, "
+            "       f.raw_fee_fields "
+            "FROM markets m JOIN market_fee_schedule f "
+            "  ON f.fee_regime = m.fee_regime AND f.dataset_version = m.dataset_version "
+            "WHERE m.market_id = ? AND m.dataset_version = ? LIMIT 1",
+            [sig["market_id"], dataset_version],
         )
         fee_row = fee_rows[0] if fee_rows else {}
         if isinstance(fee_row.get("raw_fee_fields"), str):
@@ -443,6 +489,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--store-root", default=store.DEFAULT_ROOT)
     p.add_argument("--db", default=None,
                    help="DuckDB path. Default: in-memory, rebuilt from the shards.")
+    p.add_argument("--lead-hours", type=float, default=24.0,
+                   help="Nominal lead. With --target-date it fixes T_asof = "
+                        "target_date 12:00Z - lead_hours. Operational range {9, 24} "
+                        "(PREREG_LEAD_HOURS_RANGE).")
     p.add_argument("--model", default="icon_seamless", help="M1 (D12).")
     p.add_argument("--tau", type=float, default=None,
                    help="Signal threshold. Required for the signal/paper stages.")
@@ -475,19 +525,38 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     target_date = date.fromisoformat(args.target_date)
     session_id = args.session_id or collector.new_session_id()
-    prediction_time = _utcnow()
+    timing = decision_time(target_date, args.lead_hours, _utcnow())
+    prediction_time = timing["prediction_time"]
 
     cy = Cycle(session_id=session_id, dataset_version=args.dataset_version,
                target_date=str(target_date), model=args.model,
-               collect_only=bool(args.collect_only))
+               collect_only=bool(args.collect_only),
+               t_end=_iso(timing["t_end"]), t_asof=_iso(timing["t_asof"]),
+               prediction_time=_iso(prediction_time),
+               lead_nominal_h=timing["lead_nominal_h"],
+               lead_effective_h=round(timing["lead_effective_h"], 4),
+               drift_h=round(timing["drift_h"], 4))
     print(f"paper_cycle session={session_id} target_date={target_date} "
           f"dataset_version={args.dataset_version}", flush=True)
+    print(f"  T_end={_iso(timing['t_end'])}  T_asof={_iso(timing['t_asof'])}  "
+          f"prediction_time={_iso(prediction_time)}", flush=True)
+    print(f"  lead nominal={timing['lead_nominal_h']:.0f}h  "
+          f"effective={timing['lead_effective_h']:.2f}h  "
+          f"drift={timing['drift_h']:+.2f}h  "
+          f"{'EARLY (safe)' if timing['fired_early'] else 'LATE -> clamped to T_asof'}",
+          flush=True)
 
     con = db.init_db(db.connect(args.db or ":memory:"))
     try:
         import requests
         http = requests.Session()
 
+        cy.stage("timing", OK, t_asof=_iso(timing["t_asof"]),
+                 prediction_time=_iso(prediction_time),
+                 lead_effective_h=round(timing["lead_effective_h"], 3),
+                 drift_h=round(timing["drift_h"], 3),
+                 lead_drift=abs(timing["lead_effective_h"]
+                                - timing["lead_nominal_h"]) > 1.0)
         stage_load_state(cy, con, root=args.store_root)
         discovery.ensure_dataset_version(con, args.dataset_version)
         stage_discover(cy, con, dataset_version=args.dataset_version,

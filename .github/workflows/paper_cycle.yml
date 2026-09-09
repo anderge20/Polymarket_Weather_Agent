@@ -14,12 +14,15 @@ name: Paper mode — daily cycle
 #   * lead 24 h -> T = 12:00Z the day BEFORE the target date  -> cron 11:40Z
 #   * lead  9 h -> T = 03:00Z ON the target date              -> cron 02:40Z
 # Both fire ~20 minutes early because Actions cron on the free tier is best-effort
-# and typically drifts LATE. Drifting late is the safe direction — it can only
-# shorten the effective lead, never lengthen it, so it cannot manufacture
-# information the strategy would not have had. It does mean the realised lead is
-# 24 h MINUS the drift, which R24's preregistration has to declare rather than
-# assume; a run that drifts far enough to change the lead materially is visible in
-# the summary, because every row carries its own timestamps.
+# and typically drifts LATE. The drift does not corrupt the lead, because
+# `paper_cycle.decision_time` clamps the decision instant:
+#     prediction_time = min(now, T_asof)
+# Fired early, `now` wins and the decision is made on LESS information than the
+# lead allows. Fired late, `T_asof` wins, so data that only became available
+# during the drift cannot enter a decision that still claims to be as-of T_asof —
+# without the clamp the declared lead would be a fiction. Either way the realised
+# lead is measured, not assumed: every cycle logs a `timing` stage with
+# lead_effective_h and drift_h, and R24 reports their distribution.
 #
 # FAIL-CLOSED ON tau. Signals and paper execution only run when `vars.PAPER_TAU` is
 # set as a repository variable. No tau, no trades — a threshold picked by a default
@@ -94,14 +97,20 @@ jobs:
           set -euo pipefail
           HOUR="$(date -u +%H)"
           if [ -n "${{ github.event.inputs.target_date }}" ]; then
-            TD="${{ github.event.inputs.target_date }}"; LEAD="manual"
+            # A manual run states the date; the lead follows from the hour it is
+            # actually run at, and paper_cycle.py clamps the decision instant to
+            # T_asof either way, so a hand-fired run cannot claim a lead it did
+            # not have.
+            TD="${{ github.event.inputs.target_date }}"
+            if [ "$HOUR" -ge 10 ]; then LEAD="24"; else LEAD="9"; fi
           elif [ "$HOUR" -ge 10 ]; then
             TD="$(date -u -d '+1 day' +%F)"; LEAD="24"   # 11:40Z firing
           else
             TD="$(date -u +%F)"; LEAD="9"                # 02:40Z firing
           fi
-          echo "target_date=$TD" >> "$GITHUB_OUTPUT"
-          echo "lead=$LEAD"      >> "$GITHUB_OUTPUT"
+          echo "target_date=$TD"   >> "$GITHUB_OUTPUT"
+          echo "lead=$LEAD"        >> "$GITHUB_OUTPUT"
+          echo "lead_hours=$LEAD"  >> "$GITHUB_OUTPUT"
           echo "target_date=$TD  nominal_lead=${LEAD}h  fired_at=$(date -u +%FT%TZ)"
 
       - name: Decide whether the decision stages may run
@@ -134,6 +143,7 @@ jobs:
             --session-id "cyc_${RUN_ID}"
             --store-root state/paper_state
             --model "$MODEL"
+            --lead-hours "${{ steps.plan.outputs.lead_hours }}"
             --summary-json "results/cycle_${RUN_ID}.json"
             --dump-catalogue
           )
