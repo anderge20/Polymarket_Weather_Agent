@@ -385,3 +385,36 @@ def test_asof_defaults_to_available_at_for_weather(con):
     got = db.query_asof(con, "weather_forecasts", asof=T)
     assert len(got) == 1
     assert got[0]["available_at"] is not None
+
+
+def test_upsert_many_is_idempotent_and_rejects_ragged_batches(con):
+    """The bulk path must keep upsert's semantics exactly, or speed would have
+    been bought with correctness."""
+    rows = [
+        {"observation_time": f"2026-04-08T{h:02d}:00:00Z", "market_id": "m",
+         "token_id": "t", "indicative_price": 0.5,
+         "price_semantics": "MIDPOINT_ESTIMATED", "dataset_version": "d",
+         "record_version": 1}
+        for h in range(24)
+    ]
+    key = ["token_id", "observation_time", "dataset_version", "record_version"]
+    assert db.upsert_many(con, "price_history", rows, key) == 24
+    n1 = db.query(con, "SELECT count(*) AS n FROM price_history")[0]["n"]
+    db.upsert_many(con, "price_history", rows, key)
+    n2 = db.query(con, "SELECT count(*) AS n FROM price_history")[0]["n"]
+    assert n1 == n2 == 24, "re-ingesting the same points must not duplicate them"
+
+    with pytest.raises(ValueError):
+        db.upsert_many(con, "price_history", [rows[0], {"token_id": "x"}], key)
+
+
+def test_upsert_many_updates_in_place_like_upsert(con):
+    key = ["token_id", "observation_time", "dataset_version", "record_version"]
+    base = {"observation_time": "2026-04-08T00:00:00Z", "market_id": "m",
+            "token_id": "t", "indicative_price": 0.5,
+            "price_semantics": "MIDPOINT_ESTIMATED", "dataset_version": "d",
+            "record_version": 1}
+    db.upsert_many(con, "price_history", [base], key)
+    db.upsert_many(con, "price_history", [{**base, "indicative_price": 0.9}], key)
+    rows = db.query(con, "SELECT indicative_price FROM price_history")
+    assert len(rows) == 1 and rows[0]["indicative_price"] == 0.9
