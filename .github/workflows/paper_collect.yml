@@ -147,6 +147,13 @@ jobs:
         run: |
           set -euo pipefail
           cd state
+          # This branch effectively no longer fires, and that is deliberate: since
+          # `stage_venue_coverage` every cycle writes at least one row (241 bytes,
+          # 58 KiB over the whole run), so `git status` is never empty. The guard
+          # stays as a safety net, but do NOT "restore" the skip by narrowing it to
+          # book shards — a cycle that ran and collected nothing is exactly the
+          # scheduled-versus-delivered evidence §4quater needs, and it only exists
+          # if that cycle leaves a trace.
           if [ -z "$(git status --porcelain)" ]; then
             echo "no new shards — nothing to commit (a resumed cycle with nothing left to do)"
             exit 0
