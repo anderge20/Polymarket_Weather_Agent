@@ -28,6 +28,15 @@ def _setup_db():
     market_id = "m1"
     token_id = "t1"
 
+    # The market's contractual unit. Added when B-7 made the unit mandatory:
+    # a band cannot be compared against a distribution of unknown scale, so
+    # build_feature now refuses instead of silently assuming Celsius.
+    con.execute(
+        "INSERT INTO markets (market_id, unit, dataset_version, record_version) "
+        "VALUES (?, ?, ?, ?)",
+        [market_id, "C", dataset_version, 1],
+    )
+
     con.execute(
         """
         INSERT INTO price_history (

@@ -11,6 +11,7 @@ from datetime import datetime
 from typing import Any
 
 from weather_agent import database as db
+from weather_agent import error_model
 from weather_agent.probability import (
     band_probability,
     quantiles_to_distribution,
@@ -25,6 +26,27 @@ FORBIDDEN_FEATURE_FIELDS = {
     "settlement_timestamp",
     "is_winner",
 }
+
+
+def _market_unit(con, market_id: str) -> str:
+    """The market's CONTRACTUAL temperature unit.
+
+    Raises rather than defaulting. A market whose unit we do not know cannot have
+    its band compared against any distribution: guessing here is precisely the
+    failure B-6 identified, and it produces a confident wrong answer rather than
+    an error.
+    """
+    rows = db.query(
+        con,
+        "SELECT unit FROM markets WHERE market_id = ? ORDER BY record_version DESC LIMIT 1",
+        [market_id],
+    )
+    if not rows or not rows[0].get("unit"):
+        raise ValueError(
+            f"market {market_id!r} has no declared unit; refusing to compare a band "
+            "against a distribution of unknown scale"
+        )
+    return rows[0]["unit"]
 
 
 def build_feature(
@@ -141,12 +163,32 @@ def build_feature(
     weather_prob = None
 
     if outcome is not None:
+        # UNITS (decision B-7). The quantiles in weather_forecasts are CELSIUS;
+        # the band's lo/hi are in the market's CONTRACTUAL unit, and 23 % of the
+        # catalogue trades in Fahrenheit. The distribution is indexed by integer
+        # temperatures and the contract resolves on whole degrees in ITS unit, so
+        # the DISTRIBUTION moves to the band's unit — converting the band instead
+        # would make a 1 F band 0.56 C wide and misaligned with the integer grid.
+        #
+        # Without this, a "27F or below" band read against a Celsius distribution
+        # asks "is the high <= 27 C?" — near-certain where the truth is a low-tail
+        # event. No exception, no failing test: a confident, inverted probability.
+        quantiles_c = {
+            10: forecast.get("forecast_p10"),
+            25: forecast.get("forecast_p25"),
+            50: forecast.get("forecast_p50"),
+            75: forecast.get("forecast_p75"),
+            90: forecast.get("forecast_p90"),
+        }
+        if any(v is None for v in quantiles_c.values()):
+            # M2 emitted no quantiles here (training window too short, or a
+            # rejected stratum). No characterised error, no honest probability.
+            return None
+
+        q = error_model.to_market_unit(quantiles_c, _market_unit(con, market_id))
+
         distribution = quantiles_to_distribution(
-            p10=forecast.get("forecast_p10"),
-            p25=forecast.get("forecast_p25"),
-            p50=forecast.get("forecast_p50"),
-            p75=forecast.get("forecast_p75"),
-            p90=forecast.get("forecast_p90"),
+            p10=q[10], p25=q[25], p50=q[50], p75=q[75], p90=q[90]
         )
 
         weather_prob = band_probability(
