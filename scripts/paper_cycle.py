@@ -570,7 +570,8 @@ def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
         "lead_effective_h": timing["lead_effective_h"],
         "drift_h": timing["drift_h"],
         "model": args.model,
-        "tau": args.tau,
+        "tau_signal": args.tau_signal,
+        "tau_exec": args.tau_exec,
         "bankroll": args.bankroll,
         "fixed_fraction": args.fixed_fraction,
         "size_cap": args.size_cap,
@@ -585,7 +586,8 @@ def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
     }
     out = store.write_shard([params], table="cycle_params", run_id=session_id,
                             root=root)
-    cy.stage("params", OK, path=out["path"], tau=args.tau,
+    cy.stage("params", OK, path=out["path"], tau_signal=args.tau_signal,
+             tau_exec=args.tau_exec,
              bankroll=args.bankroll, x_exec=args.x_exec)
     return params
 
@@ -639,8 +641,15 @@ def build_parser() -> argparse.ArgumentParser:
                         "target_date 12:00Z - lead_hours. Operational range {9, 24} "
                         "(PREREG_LEAD_HOURS_RANGE).")
     p.add_argument("--model", default="icon_seamless", help="M1 (D12).")
-    p.add_argument("--tau", type=float, default=None,
-                   help="Signal threshold. Required for the signal/paper stages.")
+    p.add_argument("--tau-signal", type=float, default=None,
+                   help="Strategy A threshold, on the GROSS edge (fair_value - "
+                        "p_market) against the indicative mid. Required for the "
+                        "signal stage.")
+    p.add_argument("--tau-exec", type=float, default=None,
+                   help="Execution threshold, on the NET edge (after fees, against "
+                        "the achievable VWAP). A DIFFERENT quantity from --tau-signal; "
+                        "it may take the same value, but that is a stated choice, not "
+                        "an identity. Required for the paper stage.")
     p.add_argument("--bankroll", type=float, default=config.DEFAULTS["bankroll"])
     p.add_argument("--fixed-fraction", type=float,
                    default=config.DEFAULTS["fixed_fraction"])
@@ -741,23 +750,25 @@ def main(argv: list[str] | None = None) -> int:
             cy.stage("forecasts", SKIPPED, reason="collect_only")
             cy.stage("signals", SKIPPED, reason="collect_only")
             cy.stage("paper", SKIPPED, reason="collect_only")
-        elif args.tau is None:
-            cy.stage("signals", SKIPPED, reason="tau_not_provided_fail_closed")
-            cy.stage("paper", SKIPPED, reason="tau_not_provided_fail_closed")
+        elif args.tau_signal is None or args.tau_exec is None:
+            missing = "tau_signal" if args.tau_signal is None else "tau_exec"
+            cy.stage("signals", SKIPPED, reason=f"{missing}_not_provided_fail_closed")
+            cy.stage("paper", SKIPPED, reason=f"{missing}_not_provided_fail_closed")
         else:
             stage_forecasts(cy, con, dataset_version=args.dataset_version,
                             target_date=target_date, universe=universe,
                             model=args.model, session=http)
             stage_signals(cy, con, dataset_version=args.dataset_version,
                           target_date=target_date, universe=universe,
-                          model=args.model, tau=args.tau,
+                          model=args.model, tau=args.tau_signal,
                           weather_sum_tolerance=args.weather_sum_tolerance,
                           market_sum_min=args.market_sum_min,
                           market_sum_max=args.market_sum_max,
                           prediction_time=prediction_time)
             params = paper.PaperParams(
                 bankroll=args.bankroll, fixed_fraction=args.fixed_fraction,
-                size_cap=args.size_cap, tau=args.tau, exit_mode=args.exit_mode,
+                size_cap=args.size_cap, tau_exec=args.tau_exec,
+                exit_mode=args.exit_mode,
                 x_exec=args.x_exec,
             )
             stage_paper(cy, con, dataset_version=args.dataset_version,

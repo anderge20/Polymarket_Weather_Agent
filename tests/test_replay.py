@@ -66,7 +66,7 @@ def _seed(tmp_path, *, entry_price=None, size=None, extra_trade=False,
         ["m1", "t_yes", "strategy_a_v1", T0, "BUY", 0.70, 0.50, 0.20, T0, DSV, 1])
 
     params = paper.PaperParams(bankroll=10_000.0, fixed_fraction=0.02, size_cap=0.02,
-                              tau=tau, exit_mode="hold_to_resolution", x_exec=0.0)
+                              tau_exec=tau, exit_mode="hold_to_resolution", x_exec=0.0)
     decision = paper.decide_and_fill(signal="BUY", p_model=0.70, book_snapshot=BOOK,
                                      fee=paper.FeeParams(0.05, 1.0, "weather_fees"),
                                      params=params)
@@ -96,7 +96,7 @@ def _seed(tmp_path, *, entry_price=None, size=None, extra_trade=False,
 
     store.write_shard([{
         "session_id": SESSION, "dataset_version": DSV, "prediction_time": PT,
-        "target_date": "2026-09-10", "tau": tau, "bankroll": 10_000.0,
+        "target_date": "2026-09-10", "tau_exec": tau, "bankroll": 10_000.0,
         "fixed_fraction": 0.02, "size_cap": 0.02, "x_exec": 0.0,
         "exit_mode": "hold_to_resolution", "model": "icon_seamless",
     }], table="cycle_params", run_id=SESSION, root=tmp_path, when=T0)
@@ -121,7 +121,7 @@ def test_the_replay_uses_the_recorded_prediction_time_not_the_clock(tmp_path):
 def test_the_replay_uses_the_recorded_parameters_not_todays_defaults(tmp_path):
     _seed(tmp_path, tau=0.03)
     out = replay_cycle.replay(str(tmp_path), SESSION)
-    assert out["params"]["tau"] == 0.03
+    assert out["params"]["tau_exec"] == 0.03
     assert out["ok"] is True
 
 
@@ -165,7 +165,7 @@ def test_a_cycle_with_no_recorded_params_cannot_be_replayed(tmp_path):
 
 def test_a_collect_only_cycle_replays_as_trivially_reproducible(tmp_path):
     store.write_shard([{"session_id": "c0", "dataset_version": DSV,
-                        "prediction_time": PT, "tau": None}],
+                        "prediction_time": PT, "tau_exec": None}],
                       table="cycle_params", run_id="c0", root=tmp_path, when=T0)
     out = replay_cycle.replay(str(tmp_path), "c0")
     assert out["ok"] is True

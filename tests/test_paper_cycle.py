@@ -170,7 +170,27 @@ def test_no_tau_means_no_trading_rather_than_a_default_tau():
     parser = paper_cycle.build_parser()
     args = parser.parse_args(["--target-date", "2026-09-10",
                               "--dataset-version", "ds1"])
-    assert args.tau is None                     # fail-closed, not 0.03
+    assert args.tau_signal is None              # fail-closed, not 0.03
+    assert args.tau_exec is None
+
+
+def test_the_two_thresholds_are_separate_parameters():
+    """One number applied to two different operands is a threshold with two
+    meanings. Strategy A gates the GROSS edge against the indicative mid; the
+    paper engine gates the NET edge against the achievable VWAP. They may take
+    the same value, but that has to be stated, not assumed."""
+    parser = paper_cycle.build_parser()
+    args = parser.parse_args(["--target-date", "2026-09-10",
+                              "--dataset-version", "ds1",
+                              "--tau-signal", "0.03", "--tau-exec", "0.01"])
+    assert args.tau_signal == 0.03 and args.tau_exec == 0.01
+
+
+def test_paper_params_rejects_the_old_single_tau_name():
+    from weather_agent import paper as _paper
+    with pytest.raises(TypeError):
+        _paper.PaperParams(bankroll=1.0, fixed_fraction=0.02, size_cap=0.02,
+                           tau=0.03, exit_mode="hold_to_resolution", x_exec=0.0)
 
 
 # --------------------------------------------------------------------------- timing

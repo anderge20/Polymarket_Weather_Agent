@@ -25,7 +25,11 @@ name: Paper mode — daily cycle
 # lead_effective_h and drift_h, and R24 reports their distribution.
 #
 # FAIL-CLOSED ON tau. Signals and paper execution only run when `vars.PAPER_TAU` is
-# set as a repository variable. No tau, no trades — a threshold picked by a default
+# set as a repository variable. Note there are TWO thresholds, because they gate two
+# different quantities: `--tau-signal` on Strategy A's GROSS edge against the
+# indicative mid, and `--tau-exec` on the NET edge against the achievable VWAP.
+# `vars.PAPER_TAU_EXEC` overrides the second; absent, it takes the same value, and
+# R24 has to state that it did. No tau, no trades — a threshold picked by a default
 # is a parameter nobody preregistered, and R24 exists precisely to fix it in
 # advance. Until then this workflow still collects, discovers and persists.
 
@@ -156,7 +160,8 @@ jobs:
             ARGS+=(--collect-only)
           else
             ARGS+=(
-              --tau "${{ steps.gate.outputs.tau }}"
+              --tau-signal "${{ steps.gate.outputs.tau }}"
+              --tau-exec "${{ vars.PAPER_TAU_EXEC || steps.gate.outputs.tau }}"
               --bankroll "${{ vars.PAPER_BANKROLL || '10000' }}"
               --fixed-fraction "${{ vars.PAPER_FIXED_FRACTION || '0.02' }}"
               --size-cap "${{ vars.PAPER_SIZE_CAP || '0.02' }}"

@@ -116,7 +116,7 @@ def compare(persisted: list[dict], recomputed: list[dict], fields, key) -> dict:
     }
 
 
-def replay(root: str, session_id: str) -> dict:
+def replay(root: str, session_id: str, *, x_exec: float | None = None) -> dict:
     params = load_params(root, session_id)
     if params is None:
         return {"ok": False, "error": f"no cycle_params recorded for {session_id!r}",
@@ -144,7 +144,7 @@ def replay(root: str, session_id: str) -> dict:
     # Re-derive the fills from the persisted signals and the stored books, using
     # the RECORDED parameters. This is the part C3 actually checks: that the same
     # book and the same parameters produce the same price and the same size.
-    if params.get("tau") is None:
+    if params.get("tau_exec", params.get("tau")) is None:
         result["trades"] = {"skipped": "cycle ran without tau (collect-only)"}
         result["signals"] = {"persisted": len(persisted_signals)}
         result["ok"] = not persisted_trades
@@ -155,9 +155,14 @@ def replay(root: str, session_id: str) -> dict:
         bankroll=float(params["bankroll"]),
         fixed_fraction=float(params["fixed_fraction"]),
         size_cap=float(params["size_cap"]),
-        tau=float(params["tau"]),
+        tau_exec=float(params["tau_exec"] if params.get("tau_exec") is not None
+                       else params["tau"]),
         exit_mode=params["exit_mode"],
-        x_exec=float(params["x_exec"]),
+        # §4 of R24 mandates two stress variants (0.5*tick and 1 point) computed
+        # over the SAME recorded decisions rather than by re-trading. This
+        # override is the instrument that makes that possible; without it the
+        # mandate would name a tool nobody wrote.
+        x_exec=float(params["x_exec"]) if x_exec is None else float(x_exec),
     )
 
     recomputed: list[dict] = []
@@ -227,10 +232,13 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Replay a paper cycle from shards.")
     ap.add_argument("--session-id", required=True)
     ap.add_argument("--store-root", default=store.DEFAULT_ROOT)
+    ap.add_argument("--x-exec", type=float, default=None,
+                    help="Override x_exec to recompute a stress variant (R24 §4) "
+                         "over the recorded decisions. Omit to use what the cycle ran with.")
     ap.add_argument("--json", action="store_true", help="machine-readable output")
     args = ap.parse_args(argv)
 
-    out = replay(args.store_root, args.session_id)
+    out = replay(args.store_root, args.session_id, x_exec=args.x_exec)
     if args.json:
         print(json.dumps(out, indent=2, default=str))
     else:

@@ -315,19 +315,26 @@ class PaperParams:
     bankroll: float
     fixed_fraction: float
     size_cap: float
-    tau: float
+    #: Execution threshold. NOT the same quantity as Strategy A's `tau`, and the
+    #: two must not share a name: `strategy_a` compares `fair_value - p_market`
+    #: (GROSS edge against the indicative mid) while this gates
+    #: `net_edge_per_share` (NET of fees, against the VWAP actually achievable).
+    #: One number applied to two different operands is a threshold with two
+    #: meanings — the defect class that sank another preregistration's `n >= 30`.
+    #: They may hold the same value, but that has to be a stated choice.
+    tau_exec: float
     exit_mode: str                    # 'hold_to_resolution' | 'taker_close'
     x_exec: float                     # spread/slippage add-on, USDC per share
     min_shares: float = MIN_ORDER_SHARES
     min_notional: float = MIN_ORDER_NOTIONAL_USDC
 
     def __post_init__(self) -> None:
-        for name in ("bankroll", "fixed_fraction", "size_cap", "tau", "x_exec"):
+        for name in ("bankroll", "fixed_fraction", "size_cap", "tau_exec", "x_exec"):
             _require(name, getattr(self, name))
         if self.exit_mode not in ("hold_to_resolution", "taker_close"):
             raise ValueError(f"paper: unknown exit_mode {self.exit_mode!r}")
-        if not self.tau > 0:
-            raise ValueError("paper: tau must be > 0")
+        if not self.tau_exec > 0:
+            raise ValueError("paper: tau_exec must be > 0")
         if self.x_exec < 0:
             raise ValueError("paper: x_exec must be >= 0")
         if not 0 < self.fixed_fraction <= 1 or not 0 < self.size_cap <= 1:
@@ -402,7 +409,7 @@ def decide_and_fill(
     edge = net_edge_per_share(p_model=p_target, fill_price=fill.vwap, fee=fee,
                               params=params)
     out["net_edge"] = edge
-    if edge < params.tau:
+    if edge < params.tau_exec:
         out["reason"] = "net_edge_below_tau"
         return out
 

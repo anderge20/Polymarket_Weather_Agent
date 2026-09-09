@@ -22,7 +22,7 @@ FEE = paper.FeeParams(rate=0.05, exponent=1.0, regime="weather_fees")
 
 PARAMS = paper.PaperParams(
     bankroll=10_000.0, fixed_fraction=0.02, size_cap=0.02,
-    tau=0.03, exit_mode="hold_to_resolution", x_exec=0.0,
+    tau_exec=0.03, exit_mode="hold_to_resolution", x_exec=0.0,
 )
 
 
@@ -202,17 +202,17 @@ def test_malformed_levels_are_skipped_not_priced():
 # =============================================================================
 def test_position_cash_takes_the_tighter_of_fraction_and_cap():
     p = paper.PaperParams(bankroll=10_000.0, fixed_fraction=0.10, size_cap=0.02,
-                          tau=0.03, exit_mode="hold_to_resolution", x_exec=0.0)
+                          tau_exec=0.03, exit_mode="hold_to_resolution", x_exec=0.0)
     assert paper.position_cash(p) == pytest.approx(200.0)
 
 
 def test_params_reject_an_unknown_exit_mode_and_bad_numbers():
-    base = dict(bankroll=1.0, fixed_fraction=0.02, size_cap=0.02, tau=0.03,
+    base = dict(bankroll=1.0, fixed_fraction=0.02, size_cap=0.02, tau_exec=0.03,
                 x_exec=0.0)
     with pytest.raises(ValueError):
         paper.PaperParams(exit_mode="yolo", **base)
     with pytest.raises(ValueError):
-        paper.PaperParams(exit_mode="hold_to_resolution", **{**base, "tau": 0.0})
+        paper.PaperParams(exit_mode="hold_to_resolution", **{**base, "tau_exec": 0.0})
     with pytest.raises(ValueError):
         paper.PaperParams(exit_mode="hold_to_resolution", **{**base, "x_exec": -0.1})
     with pytest.raises(ValueError):
@@ -226,7 +226,7 @@ def test_net_edge_charges_the_entry_fee_and_nothing_else_when_held():
 
 
 def test_taker_close_charges_an_exit_fee_too():
-    p = paper.PaperParams(bankroll=1.0, fixed_fraction=0.02, size_cap=0.02, tau=0.01,
+    p = paper.PaperParams(bankroll=1.0, fixed_fraction=0.02, size_cap=0.02, tau_exec=0.01,
                           exit_mode="taker_close", x_exec=0.0)
     e = paper.net_edge_per_share(p_model=0.60, fill_price=0.50, fee=FEE, params=p,
                                  exit_price=0.50)
@@ -234,7 +234,7 @@ def test_taker_close_charges_an_exit_fee_too():
 
 
 def test_x_exec_is_subtracted_as_declared():
-    p = paper.PaperParams(bankroll=1.0, fixed_fraction=0.02, size_cap=0.02, tau=0.01,
+    p = paper.PaperParams(bankroll=1.0, fixed_fraction=0.02, size_cap=0.02, tau_exec=0.01,
                           exit_mode="hold_to_resolution", x_exec=0.005)
     e = paper.net_edge_per_share(p_model=0.60, fill_price=0.50, fee=FEE, params=p)
     assert e == pytest.approx(0.10 - 0.0125 - 0.005)
