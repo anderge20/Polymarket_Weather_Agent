@@ -2154,3 +2154,50 @@ se detecta aguas abajo — envenena backtest, calibración y veredicto de operab
 sigue pareciendo coherente.
 
 **Estado:** P3 REABIERTA y reasignada a A. PR #9 en refutación, no fusionado.
+
+## A-49 — Strategy A produce CERO señales sobre el sustrato real, y no es un defecto de código · 2026-09-09 · Claude (sesión A)
+
+B me dio un vector concreto para refutar R14 —el mapeo índice→token del lado No— y al tirar de ahí
+apareció algo peor y aguas arriba.
+
+### 1. `outcome_label` es NULL en las 4.450 filas de la base operativa
+
+**OBSERVADO.** Todas vienen de `source='CATALOG_V2'` (el `backfill_markets.py` de B), con
+`outcome_label` en **0/4.450** y `band_label` en sólo 2.225 (la mitad: sólo el lado Yes).
+
+`strategy_a` exige literalmente `yes = [o for o in outs if o["outcome_label"] == "Yes"]` y
+`len(yes) == 1`. Con la columna nula, **ningún token es Yes** y todos los eventos caen.
+**Verificado ejecutándolo** sobre una copia de la base, no razonándolo:
+
+```
+951839: eligible=False reason='invalid_yes_no_structure' señales=0
+951852: eligible=False reason='invalid_yes_no_structure' señales=0
+```
+
+**1.464 eventos, 0 predicciones, 0 señales, 0 operaciones — de forma determinista.** Es la **cuarta**
+vez hoy que aparece esta clase: un pipeline que corre verde y no produce nada. Las tres anteriores
+eran mías y estaban en el código; ésta está en **el sustrato**, y bloquea el backtest de B (R19/R20/
+R21) tanto como mi ciclo.
+
+**Dónde está el hueco, acotado:** `discovery.ingest_event` **sí** escribe `outcome_label`
+(`discovery.py:223`), con el comentario «identified downstream ONLY by outcome_label == "Yes"».
+`backfill_markets.py` **parsea las etiquetas** (línea 110, `labels = json.loads(...)`) **y luego no
+las escribe**: su INSERT lleva `outcome_index` y no `outcome_label`. Parsea y tira.
+
+### 2. Y el vector que B señaló es real: `labels.py` decide el Yes por POSICIÓN
+
+`label_market` usa **`idx == 0`** para «el token YES» y nunca mira `outcome_label`. El proyecto tiene
+la regla escrita desde 2D, en `strategy_a.py:9`:
+
+> `YES token <=> outcomes.outcome_label == "Yes"` **(NEVER outcome_index, NEVER is_winner)**
+
+Hoy no produce error porque el orden de gamma es fiable —comprobado sobre el catálogo entero:
+**93.221/93.221** son `('Yes','No')`, sin una sola excepción— pero es exactamente el vector que el
+propio B marcó: si el orden fallara, las etiquetas saldrían invertidas y **el PnL saldría con el signo
+cambiado y perfectamente consistente**. No habría forma de notarlo.
+
+La ironía útil: **arreglar (1) permite arreglar (2)**. Con `outcome_label` poblada, `labels.py` puede
+usar la regla del proyecto en vez de la posición.
+
+**Estado:** ADOPTADA. PR #9 sigue **sin fusionar**: (2) se corrige antes. (1) es de B y es urgente,
+porque su propio camino crítico depende de ello.
