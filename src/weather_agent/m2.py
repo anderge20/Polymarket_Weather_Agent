@@ -62,7 +62,8 @@ def pick_run(t: datetime, model: str, issue_hours=(0, 6, 12, 18), max_age_h=36):
     return None
 
 
-def load_pairs(con, dataset_version: str = DATASET_VERSION):
+def load_pairs(con, dataset_version: str = DATASET_VERSION,
+               model: str = weather.M1_MODEL):
     """(pairs, issue_by_key, stats). Pairing by LOCAL day, in Python — the SQL
     join on `CAST(observation_time AS DATE)` is what made the sample depend on a
     session variable.
@@ -76,6 +77,14 @@ def load_pairs(con, dataset_version: str = DATASET_VERSION):
     applied to today's forecast, so the training pairs SHOULD come from the
     backfill. What was wrong was that it was implicit. Same family as A-37 — a
     parameter that exists and a constant that decides. Harmless until it is not.
+
+    `model` is likewise explicit and filtered. It is part of `weather_forecasts`'
+    primary key and the query named no predicate for it, so a substrate holding
+    two models would have produced a MIXTURE — and nothing in a `Pair` records
+    which model it came from, so the quantiles would describe no model in
+    particular, silently. This is the other half of the key defect already fixed
+    in `fit_m2.py`; a guard outside this module can only refuse to publish, it
+    cannot stop the mixture forming here.
     """
     obs = db.query(
         con,
@@ -99,8 +108,8 @@ def load_pairs(con, dataset_version: str = DATASET_VERSION):
         con,
         """SELECT station, target_date, issue_time, forecast_tmax
            FROM weather_forecasts
-           WHERE dataset_version = ? AND forecast_tmax IS NOT NULL""",
-        [dataset_version],
+           WHERE dataset_version = ? AND model = ? AND forecast_tmax IS NOT NULL""",
+        [dataset_version, model],
     )
     pairs: list[em.Pair] = []
     issue_by_key: dict[tuple, object] = {}
