@@ -220,3 +220,86 @@ def to_market_unit(quantiles_c: dict[int, float], unit: str) -> dict[int, float]
         f"unit {unit!r} is neither C nor F; refusing to guess — an unknown unit "
         "silently compared against a band is the failure this rule exists to prevent"
     )
+
+
+# ---------------------------------------------------------------------------
+# v3: per-station location shift with empirical-Bayes shrinkage
+# ---------------------------------------------------------------------------
+
+#: v3 §3 — a station needs this many admissible pairs before it gets its own shift.
+MIN_SHIFT_N = 20
+
+#: v3 §2 — bootstrap settings for the SE of the median. Seeded so the shrinkage
+#: factor is reproducible; the preregistration names this seed.
+BOOTSTRAP_REPS = 200
+BOOTSTRAP_SEED = 20260909
+
+SHIFT_NONE = "NONE"
+SHIFT_STATION = "STATION"
+
+
+def _median(values: Sequence[float]) -> float:
+    return percentile(sorted(values), 50)
+
+
+def _se_median_bootstrap(values: Sequence[float], rng) -> float:
+    """SE of the sample median, by bootstrap — no distributional assumption.
+
+    The normal-theory formula 1.2533*sigma/sqrt(n) overestimates it by ~25 % on
+    this sample, which is skewed. Using it would shrink too hard and leave a real
+    station bias uncorrected (v3 §1).
+    """
+    n = len(values)
+    if n < 2:
+        return float("inf")
+    meds = []
+    for _ in range(BOOTSTRAP_REPS):
+        meds.append(_median([values[rng.randrange(n)] for _ in range(n)]))
+    m = sum(meds) / len(meds)
+    return (sum((x - m) ** 2 for x in meds) / len(meds)) ** 0.5
+
+
+def station_shifts(pairs: Sequence[Pair], rng=None) -> tuple[dict[str, float], dict]:
+    """Shrunk per-station location shifts, from ONE training window (v3 §2).
+
+    Returns (shift_by_station, diagnostics). The shrinkage factor `w` is estimated
+    from this window's own variance decomposition — never fixed by hand, and it
+    collapses to 0 on its own when the between-station variance is all noise.
+    """
+    import random
+
+    rng = rng or random.Random(BOOTSTRAP_SEED)
+    by_station: dict[str, list[float]] = {}
+    for p in pairs:
+        by_station.setdefault(p.station, []).append(p.error_c)
+    usable = {s: v for s, v in by_station.items() if len(v) >= MIN_SHIFT_N}
+    if len(usable) < 2:
+        return {}, {"w": 0.0, "tau2": 0.0, "n_stations": len(usable)}
+
+    medians = {s: _median(v) for s, v in usable.items()}
+    ses = {s: _se_median_bootstrap(v, rng) for s, v in usable.items()}
+    mean_se2 = sum(se ** 2 for se in ses.values()) / len(ses)
+    mm = sum(medians.values()) / len(medians)
+    obs2 = sum((m - mm) ** 2 for m in medians.values()) / len(medians)
+    tau2 = max(obs2 - mean_se2, 0.0)
+    w = tau2 / (tau2 + mean_se2) if (tau2 + mean_se2) > 0 else 0.0
+    shifts = {s: w * m for s, m in medians.items()}
+    return shifts, {
+        "w": w, "tau2": tau2, "obs2": obs2, "mean_se2": mean_se2,
+        "n_stations": len(usable),
+    }
+
+
+def forecast_quantiles_v3(
+    forecast_c: float, q: Quantiles, shift: float
+) -> dict[int, float]:
+    """Pooled SHAPE, per-station LOCATION (v3 §2).
+
+    `f + shift_s + (pXX - median)` — the pooled quantiles are re-centred on the
+    station's own shrunk bias. With ~30 points a median is estimable; nine
+    per-station quantiles are not, which is why v2 dropped the per-station stratum.
+    """
+    if not q.values:
+        raise ValueError(f"stratum {q.scope} has no quantiles to apply")
+    centre = q.values[50]
+    return {lvl: forecast_c + shift + (q.values[lvl] - centre) for lvl in LEVELS}

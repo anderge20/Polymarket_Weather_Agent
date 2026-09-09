@@ -47,7 +47,7 @@ from typing import Any, Iterable, Mapping, Sequence
 
 from .config import DB_PATH
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 # Standard provenance columns present on every fact/derived table.
 PROVENANCE_COLUMNS = (
@@ -317,7 +317,10 @@ _DDL: list[str] = [
         city                VARCHAR,
         station             VARCHAR,
         source              VARCHAR,              -- obs provider == provenance source
-        tmax_observed       DOUBLE,
+        tmax_observed       DOUBLE,               -- ALWAYS Celsius (derived; see unit/series)
+        observed_unit       VARCHAR,              -- 'C' | 'F': the unit the SOURCE reported in
+        observed_value      DOUBLE,               -- the value AS REPORTED, in observed_unit
+        series              VARCHAR,              -- e.g. METAR_TGROUP_TMPF | METAR_BODY_C
         daily_high_time     TIMESTAMPTZ,          -- when the daily high occurred
         available_at        TIMESTAMPTZ,          -- when the obs became AVAILABLE at the source (as-of engine filters on THIS, not ingestion_timestamp)
         fetched_at          TIMESTAMPTZ,
@@ -540,6 +543,13 @@ _DDL_V3 = [
     "ALTER TABLE outcomes ADD COLUMN IF NOT EXISTS outcome_label VARCHAR;",
 ]
 
+_DDL_V4 = [
+    "ALTER TABLE weather_observations ADD COLUMN IF NOT EXISTS observed_unit VARCHAR",
+    "ALTER TABLE weather_observations ADD COLUMN IF NOT EXISTS observed_value DOUBLE",
+    "ALTER TABLE weather_observations ADD COLUMN IF NOT EXISTS series VARCHAR",
+]
+
+
 # Ordered, idempotent migrations. Add a new dict (version+1) for future changes;
 # never edit a shipped migration in place.
 MIGRATIONS: list[dict] = [
@@ -557,6 +567,19 @@ MIGRATIONS: list[dict] = [
         "version": 3,
         "name": "phase2d_outcome_label",
         "statements": _DDL_V3,
+    },
+    {
+        "version": 4,
+        "name": "phase2b_observation_source_grid",
+        # A-41: `tmax_observed` is always Celsius, but the SOURCE grid differs —
+        # 10 US stations report whole degrees Fahrenheit (their Celsius values have
+        # fractional parts of exactly n/9), the other 38 whole Celsius, and KBKF
+        # mixes both. Converting to Celsius destroys the source grid, and settling
+        # a Fahrenheit market on the converted value settles it off its own grid.
+        # These columns keep the reported value and its unit so no consumer has to
+        # reconstruct them. Additive: existing rows gain NULLs, which read as
+        # "unknown", never as a default.
+        "statements": _DDL_V4,
     },
 ]
 

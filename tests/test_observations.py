@@ -115,3 +115,26 @@ def test_observation_window_matches_the_forecast_window():
     assert weather.target_day_window(TARGET, TZ) == weather.target_day_window(TARGET, TZ)
     start, end = weather.target_day_window(TARGET, TZ)
     assert start == _utc(20, 21) and end == _utc(21, 21)
+
+
+def test_grid_is_a_property_of_the_station_not_the_value():
+    """A per-value test labels a Celsius station as Fahrenheit one day in five.
+
+    Every multiple of 5 C is a whole number of Fahrenheit too (20 C = 68 F), so
+    asking "is the Fahrenheit value an integer?" mislabels EHAM whenever the high
+    lands on 20 C. The grid belongs to the station's series (A-41).
+    """
+    assert obs.detect_grid("EHAM", 20.0, 68.0) == ("C", 20.0)
+    assert obs.detect_grid("KATL", 20.5555556, 69.0) == ("F", 69.0)
+
+
+def test_mixed_grid_station_refuses_rather_than_picking_one():
+    """KBKF reports on both grids; a settlement computed off its own grid is worse
+    than one that refuses."""
+    unit, _ = obs.detect_grid("KBKF", 20.0, 68.0)
+    assert unit == "UNKNOWN"
+
+
+def test_unknown_station_grid_falls_back_to_celsius_only_when_whole():
+    assert obs.detect_grid("ZZZZ", 21.0, 69.8) == ("C", 21.0)
+    assert obs.detect_grid("ZZZZ", 21.3, 70.34)[0] == "UNKNOWN"

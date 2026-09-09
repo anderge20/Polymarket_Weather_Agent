@@ -69,6 +69,48 @@ class NoObservation(LookupError):
     """No observation covers the requested station-day."""
 
 
+#: IEM always serves `tmpf`, but the GRID underneath differs by station: ten US
+#: stations report whole degrees Fahrenheit, the rest whole Celsius (their C values
+#: are integers, their F values are not). Settling a Fahrenheit market on a value
+#: converted to Celsius settles it off its own grid, so the native grid and the
+#: value on it are stored rather than left for the consumer to reconstruct (A-41).
+SERIES = "IEM_ASOS_TMPF"
+_EPS = 1e-6
+
+
+def _is_int(x: float) -> bool:
+    return abs(x - round(x)) < _EPS
+
+
+#: Stations whose METAR series is on a whole-FAHRENHEIT grid, measured over the
+#: 2026-04..09 sample: their Celsius values carry fractional parts of exactly n/9.
+#: Every other station reports whole Celsius. KBKF mixes both and is left UNKNOWN
+#: rather than forced — it is also the station D6 could not verify against HOMR.
+#:
+#: A per-VALUE test cannot decide this: every multiple of 5 C is a whole number of
+#: Fahrenheit too (20 C = 68 F), so it would label a Celsius-grid station like EHAM
+#: as Fahrenheit one day in five. The grid is a property of the STATION's series.
+FAHRENHEIT_GRID_STATIONS = frozenset(
+    {"KATL", "KAUS", "KDAL", "KHOU", "KLAX", "KLGA", "KMIA", "KORD", "KSEA", "KSFO"}
+)
+MIXED_GRID_STATIONS = frozenset({"KBKF"})
+
+
+def detect_grid(station: str, tmax_c: float, tmax_f: float) -> tuple[str, float]:
+    """(unit, value) on the STATION's native grid.
+
+    Returns UNKNOWN rather than guessing when the station's grid is not known or
+    the value does not sit on it: a settlement computed off its own grid is worse
+    than one that refuses to compute.
+    """
+    st = (station or "").upper()
+    if st in FAHRENHEIT_GRID_STATIONS:
+        return ("F", float(round(tmax_f))) if _is_int(tmax_f) else ("UNKNOWN", tmax_c)
+    if st in MIXED_GRID_STATIONS:
+        return "UNKNOWN", tmax_c
+    return ("C", float(round(tmax_c))) if _is_int(tmax_c) else ("UNKNOWN", tmax_c)
+
+
 @dataclass(frozen=True)
 class DailyHigh:
     station: str
@@ -76,6 +118,7 @@ class DailyHigh:
     tmax_c: float
     when_utc: datetime
     n_obs: int
+    tmax_f: float | None = None
 
 
 def _ssl_context() -> ssl.SSLContext:
@@ -192,7 +235,15 @@ def daily_high(icao: str, target_date: date, tz: str, fetcher=fetch_metar) -> Da
             "cannot give the daily high"
         )
     when, tmax = max(inside, key=lambda x: x[1])
-    return DailyHigh(icao.upper(), target_date, tmax, when, len(inside))
+    return DailyHigh(
+        icao.upper(), target_date, tmax, when, len(inside),
+        tmax_f=tmax * 9.0 / 5.0 + 32.0,
+    )
+
+
+def _grid(dh: DailyHigh) -> tuple[str, float]:
+    f = dh.tmax_f if dh.tmax_f is not None else dh.tmax_c * 9.0 / 5.0 + 32.0
+    return detect_grid(dh.station, dh.tmax_c, f)
 
 
 def to_row(dh: DailyHigh, dataset_version: str, fetched_at: datetime | None = None) -> dict:
@@ -202,7 +253,10 @@ def to_row(dh: DailyHigh, dataset_version: str, fetched_at: datetime | None = No
         "observation_time": dh.when_utc.isoformat(),
         "station": dh.station,
         "source": SOURCE,
-        "tmax_observed": dh.tmax_c,
+        "tmax_observed": dh.tmax_c,   # always Celsius, derived
+        "observed_unit": _grid(dh)[0],
+        "observed_value": _grid(dh)[1],
+        "series": SERIES,
         "daily_high_time": dh.when_utc.isoformat(),
         # true by construction, and fail-closed: see the module docstring
         "available_at": now.isoformat(),
