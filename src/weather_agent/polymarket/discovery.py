@@ -377,7 +377,9 @@ def ingest_event(con, event: dict, dataset_version: str, *,
     registry_added: list[str] = []
     # R29: write markets.contract_source ONLY if the schema has that column (it does
     # not in v3; R27/v4 adds it). Checked once per event, outside the transaction.
-    markets_has_contract_source = "contract_source" in db.column_names(con, "markets")
+    markets_cols = set(db.column_names(con, "markets"))
+    markets_has_contract_source = "contract_source" in markets_cols
+    markets_has_rule_code = "measurement_rule_code" in markets_cols
     con.execute("BEGIN TRANSACTION;")
     try:
         for rec in records:
@@ -388,6 +390,12 @@ def ingest_event(con, event: dict, dataset_version: str, *,
             evidence = dict(rec["evidence"])
             if markets_has_contract_source:
                 m["contract_source"] = evidence["resolution_contract"]["contract_source"]
+            # The rule CODE, not the human string. `settlement` keys its 11-class
+            # partition on (contract_source, measurement_rule_code, unit); persisting
+            # only the prose left the core refusing every market.
+            if markets_has_rule_code:
+                m["measurement_rule_code"] = \
+                    evidence["resolution_contract"]["measurement_rule_code"]
             evidence["available_at_policy"] = res.UNKNOWN
             # R26: the prior persisted row (same PK) is consulted in BOTH modes.
             # db.upsert is ON CONFLICT DO UPDATE over EVERY column, so anything we

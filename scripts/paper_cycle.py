@@ -42,7 +42,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from weather_agent import (collector, config, database as db, paper,  # noqa: E402
-                           settlement, store)
+                           quantile_artifact, settlement, store)
 from weather_agent.polymarket import discovery  # noqa: E402
 
 #: Tables the cycle rebuilds from shards on entry and dumps back on exit — the
@@ -54,9 +54,12 @@ from weather_agent.polymarket import discovery  # noqa: E402
 #: Slowly-changing catalogue. Re-discovered from gamma on EVERY cycle, which
 #: re-stamps `ingestion_timestamp` on every row — so the `since` filter cannot
 #: tell a genuinely new market from one seen eight times today, and dumping these
-#: each cycle would add ~500 KB × 8/day ≈ 120 MB/month of near-identical shards to
-#: git. They are therefore dumped once a day, under `--dump-catalogue`, which the
-#: daily workflow passes and the frequent collector does not.
+#: each cycle would add near-identical shards to git. MEASURED, not estimated:
+#: 206 KiB compressed per snapshot (markets 83 + outcomes 123 + fees 0.3, at
+#: 1 100 / 2 200 / 1 rows). They are therefore dumped on every cycle that DECIDES
+#: — two a day, 8.5 MiB over the run, which is the price of C3 being reproducible
+#: — and skipped on the eight daily collect-only cycles, which decide nothing and
+#: leave the replay nothing to reproduce.
 #: Losing the intra-day copies costs nothing: `discovery.ingest_event` already
 #: keeps the EARLIEST `available_at` and `discovered_at` across re-ingests, so the
 #: first-discovery instant survives in the daily snapshot rather than being
@@ -340,7 +343,8 @@ def stage_collect(cy: Cycle, con, *, dataset_version: str, session_id: str,
 
 def stage_forecasts(cy: Cycle, con, *, dataset_version: str, target_date: date,
                     universe: list[dict], model: str, lead_hours: float,
-                    prediction_time: datetime, session=None) -> dict:
+                    prediction_time: datetime, artifact_path: str,
+                    max_artifact_age_h: float | None = None, session=None) -> dict:
     """Fetch the issued forecast for each station and attach M2's error quantiles.
 
     Two halves, and they answer different questions:
@@ -350,16 +354,28 @@ def stage_forecasts(cy: Cycle, con, *, dataset_version: str, target_date: date,
          Publication latency is real (L_MAX 4.76 h for icon_seamless) and picking a
          run by issue time alone would use a forecast that did not exist yet.
 
-      2. THE UNCERTAINTY — `error_model.quantiles_for` over historical pairs,
-         applied as `forecast_pXX = f + percentile_XX(e)`.
+      2. THE UNCERTAINTY — a VERSIONED ARTIFACT (R30), not a refit. Applied as
+         `forecast_pXX = f + percentile_XX(e)`.
 
-    THE TRAINING SUBSTRATE IS A DIFFERENT dataset_version ON PURPOSE, and this is
-    the one thing a reader should not have to guess. M2's error distribution is
-    fitted on the BACKFILL (`m2.DATASET_VERSION`), because that is where the
-    history lives; the cycle itself runs as `ds_paper_v1`, which holds only what we
-    have collected prospectively and contains no realized observations to learn
-    from. Passing it explicitly rather than letting a module constant decide is
-    what makes the crossing visible (A-51).
+    WHY THE UNCERTAINTY IS READ AND NOT FITTED. The cycle has nothing to fit on.
+    M2 trains on the BACKFILL (`m2.DATASET_VERSION`); the cycle runs as
+    `ds_paper_v1`, rebuilt in Actions from the prospective shards, holding no
+    realized observation at all. Refitting here returned `INSUFFICIENT` on every
+    live cycle: forecast rows written, no distribution, `build_feature` returning
+    None, zero signals. So the fit happens out of band
+    (`scripts/fit_quantile_artifact.py`) and the cycle reads its result.
+
+    That is safe for the reason session B gave: an artifact fitted at `t0 < t`
+    uses a SUBSET of what it was entitled to, and using less information than
+    permitted cannot create lookahead. The mirror case is NOT safe, and
+    `quantile_artifact` refuses it — `fit_instant > prediction_time` means the
+    fit saw labels the decision could not. It never happens forward in time; it
+    happens the first time a replay meets a newer artifact.
+
+    STALENESS IS A REFUSAL, NOT A WARNING (B's condition). Past the artifact's
+    declared `max_age_hours` the stage STOPS with the reason, writes no
+    quantiles, and the cycle produces no signal. An old artifact used in silence
+    does not break: it produces a plausible number, which is worse.
 
     Quantiles are written in CELSIUS. `weather_forecasts` is model space, not
     market space; the conversion to the market's contractual unit happens later in
@@ -368,7 +384,8 @@ def stage_forecasts(cy: Cycle, con, *, dataset_version: str, target_date: date,
     QUOTA: the user pays for no Open-Meteo key (A-29.1), so this must stay inside
     the free tier. One request per station per cycle, ~51 stations x 2 cycles/day.
     A 429 stops the stage and is reported; it is never retried through."""
-    from weather_agent import error_model as em, m2, stations, weather
+    from weather_agent import error_model as em, m2, quantile_artifact as qa
+    from weather_agent import stations, weather
 
     # The ICAO, not the station NAME. `markets.station` is prose ("London City
     # Airport"); `stations.timezone_of` and `weather.ingest_run` both key on the
@@ -384,6 +401,38 @@ def stage_forecasts(cy: Cycle, con, *, dataset_version: str, target_date: date,
         cy.stage("forecasts", SKIPPED, reason="no_run_published_at_prediction_time",
                  prediction_time=_iso(prediction_time))
         return {"written": 0, "quantiles": 0}
+
+    # ---- 0. the artifact, BEFORE spending a single request.
+    #
+    # The stratum is keyed by an INTEGER lead (`training_pairs` compares
+    # `p.lead_h == lead_h`, and the artifact is keyed the same way). `int()` on a
+    # non-integral lead would not raise: it would truncate into a NEIGHBOURING
+    # stratum and return quantiles for a horizon nobody asked about.
+    if float(lead_hours) != int(lead_hours):
+        cy.stage("forecasts", STOPPED, reason="non_integral_lead_hours",
+                 lead_hours=lead_hours, written=0)
+        return {"written": 0, "quantiles": 0, "stopped": True}
+    lead_h = int(lead_hours)
+
+    # Checked FIRST, not after the fetch. Without quantiles the cycle produces no
+    # signal at all, so ingesting 50 stations before discovering the artifact is
+    # stale spends 50 Open-Meteo requests on forecasts nothing can use. The user
+    # pays for no key (A-29.1): quota not spent is the point, and a refusal that
+    # arrives after the bill is a refusal that arrived late.
+    try:
+        art = qa.load(artifact_path)
+        q = art.quantiles(lead_h, prediction_time, model=model,
+                          prereg_sha256=m2.PREREG_SHA_V2,
+                          max_age_hours=max_artifact_age_h)
+    except qa.ArtifactUnusable as exc:
+        # Every reason comes from the closed enum, so the shard record carries a
+        # label a later reader can count, not a sentence someone wrote once.
+        cy.stage("forecasts", STOPPED, reason=f"quantile_artifact:{exc.reason}",
+                 detail=exc.detail, artifact=artifact_path,
+                 written=0, quantiles=0, requests_saved=len(stns))
+        return {"written": 0, "quantiles": 0, "stopped": True,
+                "artifact_refusal": exc.reason}
+    prov = art.provenance(lead_h, prediction_time)
 
     # ---- 1. the forecast
     written = 0
@@ -411,24 +460,7 @@ def stage_forecasts(cy: Cycle, con, *, dataset_version: str, target_date: date,
                  stations=len(stns), errors=json.dumps(fetch_errors))
         return {"written": 0, "quantiles": 0}
 
-    # ---- 2. the uncertainty
-    pairs, _issue_by_key, pair_stats = m2.load_pairs(
-        con, dataset_version=m2.DATASET_VERSION)
-    # The stratum is keyed by an INTEGER lead (`training_pairs` compares
-    # `p.lead_h == lead_h`). `int()` on a non-integral lead would not raise: it
-    # would truncate into a NEIGHBOURING stratum and return quantiles for a
-    # horizon nobody asked about. Refuse instead.
-    if float(lead_hours) != int(lead_hours):
-        cy.stage("forecasts", STOPPED, reason="non_integral_lead_hours",
-                 lead_hours=lead_hours, written=written)
-        return {"written": written, "quantiles": 0, "stopped": True}
-    q = em.quantiles_for(pairs, prediction_time, int(lead_hours))
-    if not q.values:
-        cy.stage("forecasts", OK, written=written, quantiles=0,
-                 quantile_scope=q.scope,
-                 note="forecast rows written WITHOUT quantiles: the stratum has none")
-        return {"written": written, "quantiles": 0}
-
+    # ---- 2. the uncertainty, applied
     # `record_version` is PART OF THE PRIMARY KEY of weather_forecasts and was
     # named by NEITHER the read nor the write. With one version per key — all
     # `ingest_run` writes today — the two agree; with two, the SELECT returns both
@@ -459,11 +491,102 @@ def stage_forecasts(cy: Cycle, con, *, dataset_version: str, target_date: date,
         n_q += 1
 
     cy.stage("forecasts", OK, stations=len(stns), written=written, quantiles=n_q,
-             issue_time=_iso(issue_time), lead_h=lead_hours,
-             quantile_scope=q.scope, training_pairs=len(pairs),
-             training_dsv=m2.DATASET_VERSION,
+             issue_time=_iso(issue_time), lead_h=lead_h,
+             quantile_scope=q.scope, quantile_n=q.n,
+             artifact_id=art.artifact_id[:12],
+             artifact_age_h=round(art.age_at(prediction_time).total_seconds() / 3600, 2),
+             training_dsv=art.dataset_version,
              errors=json.dumps(fetch_errors) if fetch_errors else None)
-    return {"written": written, "quantiles": n_q, "scope": q.scope}
+    return {"written": written, "quantiles": n_q, "scope": q.scope,
+            "provenance": prov}
+
+
+def stage_venue_coverage(cy: Cycle, con, *, dataset_version: str,
+                         universe: list[dict], prediction_time: datetime,
+                         root: str, session_id: str, target_date: date) -> dict:
+    """RUNG 1 of the funnel, measured on EVERY cycle including collect-only.
+
+    WHY IT LIVES HERE AND NOT IN `stage_signals`. The number the run needs before
+    `PAPER_TAU` can be set is how many events have ALL their bands priced — the
+    venue property §0 measured once as 86 % exclusion, and which two sessions
+    then spent half an hour comparing against a retrospective substrate whose
+    completeness was an artefact of which events the backfill chose to complete.
+    Getting it live needs several days of it.
+
+    But `stage_signals` never runs in Actions: every scheduled cycle is
+    `--collect-only` because `vars.PAPER_TAU` is unset, which is the correct
+    fail-closed and also means the instrumentation added to that stage would have
+    recorded NOTHING. Measured on the real store: `signals` 0 shards.
+
+    Rung 1 does not need tau, a forecast, a model or a decision — only prices. So
+    it is computed here, on every cycle, at no cost in quota and without writing a
+    single trade to the run's ledger.
+
+    AND IT IS WRITTEN TO THE SHARD STORE, not only to the summary. The first
+    version reported it in `cy.stage` and stopped there — which lands in the
+    cycle summary, which the workflow uploads as a per-run ARTIFACT that GitHub
+    keeps for 90 days and that nobody aggregates. Only `paper_state/` is committed
+    to the data branch. So "the multi-day series accumulates for free" was FALSE
+    AS BUILT: the numbers would have existed in 42 separate artifacts and in no
+    series at all. It goes to a shard, like `cycle_params`, and the workflow's
+    `git add -A paper_state` carries it.
+
+    COMPLETE means every band of the event has a price for its Yes token at or
+    before `prediction_time`. Strategy A is fail-closed per event: one unpriced
+    band excludes the whole event, so the count IS the ceiling on what could ever
+    be decided.
+    """
+    events = sorted({r["event_id"] for r in universe if r.get("event_id")})
+    if not events:
+        cy.stage("venue_coverage", SKIPPED, reason="empty_universe")
+        return {"events": 0}
+
+    rows = db.query(
+        con,
+        "SELECT m.event_id, o.token_id, "
+        "       (SELECT count(*) FROM price_history p "
+        "         WHERE p.token_id = o.token_id AND p.dataset_version = ? "
+        "           AND p.observation_time <= ?) AS n_prices "
+        "FROM markets m JOIN outcomes o "
+        "  ON o.market_id = m.market_id AND o.dataset_version = m.dataset_version "
+        "WHERE m.dataset_version = ? AND o.outcome_label = 'Yes'",
+        [dataset_version, prediction_time, dataset_version],
+    )
+    per_event: dict[str, list[int]] = {}
+    for r in rows:
+        if r["event_id"] in set(events):
+            per_event.setdefault(r["event_id"], []).append(int(r["n_prices"] or 0))
+
+    complete = sum(1 for v in per_event.values() if v and all(n > 0 for n in v))
+    bands = sum(len(v) for v in per_event.values())
+    priced = sum(sum(1 for n in v if n > 0) for v in per_event.values())
+    out = {
+        "events": len(per_event),
+        "events_complete": complete,
+        "bands": bands,
+        "bands_priced": priced,
+        # The denominators, named, because a rate without one is not a
+        # measurement (A-78).
+        "complete_rate_over_events": round(complete / len(per_event), 4) if per_event else None,
+        "priced_rate_over_bands": round(priced / bands, 4) if bands else None,
+    }
+    row = {
+        "session_id": session_id,
+        "dataset_version": dataset_version,
+        "target_date": str(target_date),
+        "prediction_time": _iso(prediction_time),
+        "recorded_at": _iso(_utcnow()),
+        # The event of the run that produced it: a series that cannot tell a
+        # scheduled cycle from a hand-dispatched one measures the operator's
+        # attention, not the host (A-72).
+        "github_event": os.environ.get("GITHUB_EVENT_NAME"),
+        "run_id": os.environ.get("GITHUB_RUN_ID"),
+        **out,
+    }
+    written = store.write_shard([row], table="venue_coverage", run_id=session_id,
+                                root=root)
+    cy.stage("venue_coverage", OK, path=written["path"], **out)
+    return out
 
 
 def stage_signals(cy: Cycle, con, *, dataset_version: str, target_date: date,
@@ -531,13 +654,60 @@ def stage_signals(cy: Cycle, con, *, dataset_version: str, target_date: date,
         totals["eligible"] += 1 if out.get("eligible") else 0
         totals["excluded"] += 0 if out.get("eligible") else 1
         totals["signals"] += out.get("signals_written", 0)
+
+    # THE FUNNEL, RUNG BY RUNG, WITH ITS DENOMINATORS NAMED.
+    #
+    # Half an hour of cross-session argument went into discovering, TWICE, that
+    # two numbers called "eligible" had different denominators: one session's
+    # 14 % was structural completeness (7 of 49 events pass the band/price gates)
+    # and the other's 80.2 % was actionable-among-already-complete — and the
+    # second turned out to be the PRODUCT of two rungs that happened to be almost
+    # equal (0.895 x 0.896), which is exactly what makes two denominators look
+    # like one. A rate is not a measurement until its denominator is written down
+    # next to it, so the cycle writes them instead of leaving them to be inferred:
+    #
+    #   rung 1  structural   eligible / discovered      the venue property
+    #   rung 2  actionable   with a BUY|FADE / eligible what the rule adds
+    #
+    # Both, plus the tau of EACH gate, because they are different quantities over
+    # different operands (A-32's lesson) and a reader comparing runs needs to know
+    # which threshold produced which count.
+    actionable_events = {
+        r["event_id"] for r in db.query(
+            con,
+            "SELECT DISTINCT m.event_id FROM signals s JOIN markets m "
+            "  ON m.market_id = s.market_id AND m.dataset_version = s.dataset_version "
+            "WHERE s.dataset_version = ? AND s.\"timestamp\" = ? "
+            "  AND s.signal IN ('BUY','FADE')",
+            [dataset_version, prediction_time],
+        ) if r.get("event_id")
+    }
+    # AND THE DENOMINATOR OF RUNG 1 IS THE ADMISSIBLE SET, NOT EVERYTHING
+    # DISCOVERED. `eligible` is counted over the events that survived the as-of
+    # filter, so dividing it by everything discovered would mix two populations —
+    # the very defect this block exists to prevent, committed while writing it.
+    # Both counts are published so the as-of drop is visible and never folded in.
+    totals["events_discovered"] = len(all_events)
+    totals["events_admissible"] = len(events)
+    totals["events_actionable"] = len(actionable_events)
+    totals["rung1_structural_rate"] = (
+        round(totals["eligible"] / len(events), 4) if events else None)
+    totals["rung2_actionable_rate"] = (
+        round(len(actionable_events) / totals["eligible"], 4)
+        if totals["eligible"] else None)
+    totals["tau_signal"] = tau
     cy.stage("signals", OK, events=len(events), **totals)
     return totals
 
 
 def stage_paper(cy: Cycle, con, *, dataset_version: str, session_id: str,
-                params: paper.PaperParams, prediction_time: datetime) -> dict:
-    """Turn actionable signals into simulated fills against the observed book."""
+                params: paper.PaperParams, prediction_time: datetime,
+                target_date: date) -> dict:
+    """Turn actionable signals into simulated fills against the observed book.
+
+    `target_date` is the CALLER'S parameter (2D §C) and is stored on every
+    position, because nothing downstream may rebuild it from `endDate` — which is
+    re-discovered every cycle and can move under an open trade."""
     signals = db.query(
         con,
         "SELECT market_id, token_id, signal, fair_value, timestamp "
@@ -620,6 +790,11 @@ def stage_paper(cy: Cycle, con, *, dataset_version: str, session_id: str,
             con, backtest_id=session_id, market_id=sig["market_id"],
             token_id=exec_token, entry_time=prediction_time, fill=fill,
             bankroll_after=bankroll, dataset_version=dataset_version,
+            # The caller's parameter, carried WITH the position. Everything
+            # downstream reads it from here instead of rebuilding it from
+            # `endDate`, which 2D §C prohibits — and which `markets` can revise
+            # under an open position.
+            target_date=target_date,
         )
         opened += 1
     cy.stage("paper", OK, opened=opened, rejected=rejected,
@@ -632,7 +807,11 @@ def stage_paper(cy: Cycle, con, *, dataset_version: str, session_id: str,
 #: leaving the next reader to guess.
 _SETTLE_REQUIRED = {
     "weather_observations": ("observed_value", "observed_unit", "series"),
-    "markets": ("contract_source",),
+    # BOTH halves of the terna. `contract_source` alone was listed, and the other
+    # half was silently supplied as the human measurement_rule string, which the
+    # frozen core rejects as "terna outside the 11-class partition" — every
+    # market, always.
+    "markets": ("contract_source", "measurement_rule_code"),
 }
 
 
@@ -671,6 +850,182 @@ def _station_tz(icao: str | None) -> str | None:
         return None      # unknown station: refuse later, never invent a zone
 
 
+#: THE TWO MODULES NAME THE SAME SERIES DIFFERENTLY, and nothing connected them.
+#:
+#: `settlement` is FROZEN (SETTLEMENT_OPERATOR_CORE.v3, sha a6d92667…) and its
+#: operators require `metar_body_c` / `metar_tgroup_tmpf`. `observations.to_row`
+#: — the only thing that has ever written `weather_observations`, prospectively or
+#: in the backfill — writes `IEM_ASOS_METAR_1C`, `IEM_ASOS_TMPF_1F` and
+#: `IEM_ASOS_TMPF_0.1F`. So every settlement refused with `series_mismatch`.
+#: Verified live on a real position: the terna resolved, the operator was found,
+#: and the observation was thrown out for carrying the wrong series name.
+#:
+#: The ONLY place `metar_body_c` had ever appeared outside the frozen core was a
+#: FIXTURE in this repository's own tests. Settlement had therefore never been
+#: exercised against a row any ingester produced, and R24's P4 was closed against
+#: that fixture.
+#:
+#: The core cannot be edited — it is frozen by sha — so the correspondence is
+#: declared HERE, at the boundary, and only where it is certain:
+#:
+#:   IEM_ASOS_METAR_1C -> metar_body_c
+#:       Both name the whole-degree Celsius value of the METAR body, and
+#:       `observations.station_series` assigns it to exactly the stations that are
+#:       not on the Fahrenheit list — which is the population of the Celsius
+#:       operators. Certain.
+#:
+#:   IEM_ASOS_TMPF_1F -> metar_tgroup_tmpf
+#:       Settled by the audit, not by elimination (B, from E2_RESULTS.json). Of
+#:       the four candidate columns over the 14 Fahrenheit rows:
+#:           H_LOCAL_tmpf  inside the winning band 14/14, whole degrees 14/14
+#:           H_LOCAL_tg    inside the winning band  0/14  (it is tenths of C)
+#:           H_LOCAL_body  inside the winning band  0/14
+#:           H_LOCAL_tmpc  inside the winning band  0/14
+#:       The audit computed the T-group and `tmpf` in SEPARATE columns and settled
+#:       against `tmpf`. The core's own v3 §2.1 says the same thing about itself:
+#:       "an IEM-derived product: tmpf = round(F(T-group in tenths)), 1 F grid; NOT
+#:       a rule of the contractual source". The NAME says T-group; the THING is
+#:       tmpf rounded to 1 F.
+#:
+#: `IEM_ASOS_TMPF_0.1F` stays unmapped, and the reason is no longer uncertainty.
+#: Its only station is KBKF, whose audited row carries P_NOAA_HourlyData — stratum
+#: 9 — which the frozen core already fails closed on `series_filter_unverified`
+#: ("0/4 rows separate H_hourly from H_series"). So KBKF is excluded UPSTREAM by
+#: its own stratum, and no market is lost by leaving this series undeclared.
+#:
+#: Two facts about KBKF that look contradictory and are not, written down so
+#: nobody "fixes" one into the other: `IEM_ASOS_TMPF_0.1F` describes the grid the
+#: STATION REPORTS ON (A-42, still correct), while the `tmpf` its stratum would
+#: settle against is whole-degree — the audited KBKF row carries tmpf = 91.0, a
+#: whole degree, with a 90-91 F band and `whole degree` rounding. Collapsing them
+#: in either direction is the error.
+SERIES_CORRESPONDENCE = {
+    "IEM_ASOS_METAR_1C": settlement.SERIES_METAR_C,
+    "IEM_ASOS_TMPF_1F": settlement.SERIES_METAR_F,
+}
+
+
+def to_core_series(series: str | None) -> str | None:
+    """The frozen core's name for an ingested series, or None when undeclared."""
+    return SERIES_CORRESPONDENCE.get(series or "")
+
+
+#: How long after the station-local day ends before its high is read. NOT the 24 h
+#: of `error_model.ASSUMED_LABEL_LAG` — that is M2's TRAINING assumption about when
+#: a label could first be known, and using it here would delay every settlement by
+#: a day for no reason. This is the operational margin for the last METAR of the
+#: day to reach IEM, and it is deliberately small: routine METARs are hourly, so
+#: two hours covers the last observation plus a late feed without pushing the
+#: settlement into the next cycle.
+LABEL_PUBLICATION_MARGIN = timedelta(hours=2)
+
+
+def stage_observations(cy: Cycle, con, *, dataset_version: str, now: datetime) -> dict:
+    """Ingest the realized daily high for the station-days open positions wait on.
+
+    WITHOUT THIS THE LEDGER NEVER CLOSES. `stage_settle` reads
+    `weather_observations`, and in paper mode NOTHING wrote it: the table is
+    populated by the historical backfill under a different `dataset_version`, and
+    the run's own target dates are in the future when the position is opened. So
+    every position would sit open for the whole run, refused for
+    `context_out_of_snapshot`, and the ledger would report a PnL of zero not
+    because the strategy earned nothing but because nothing ever resolved.
+
+    Same shape as `stage_forecasts` before it was wired: the module existed
+    (`observations.ingest_daily_high`), the cycle never called it.
+
+    WHAT IS FETCHED, and no more. One request per (station, local day) that:
+      * some OPEN position depends on,
+      * whose station-local calendar day has ALREADY ENDED at `now` — the METAR
+        high of a day still in progress is not that day's high, and ingesting it
+        would write a label that is wrong and then never revisit it, and
+      * is not already in the table for this dataset_version.
+    Everything else is counted as `pending` and reported, not fetched.
+
+    A 429 stops the stage and is never retried through (D0/D21).
+
+    The row carries `available_at` = the download instant (D17): the run
+    accumulates a genuine as-of history of when each label could first be known,
+    which is exactly what the retrospective backfill cannot prove."""
+    from weather_agent import observations as obs, weather
+
+    # `t.target_date`, NOT `endDate`. The day a position was opened for is the
+    # caller's parameter (2D §C) and it travels WITH the trade; rebuilding it from
+    # `markets.source_timestamps` would read the source §C prohibits, and
+    # `markets` is re-discovered every cycle — a revised `endDate` under an open
+    # position would fetch the label of a different day, write it, and never look
+    # again because the row then exists.
+    waiting = db.query(
+        con,
+        "SELECT DISTINCT m.station_identifier AS icao, t.target_date AS target "
+        "FROM paper_trades t JOIN markets m "
+        "  ON m.market_id = t.market_id AND m.dataset_version = t.dataset_version "
+        "WHERE t.dataset_version = ? AND t.exit_time IS NULL "
+        "  AND m.station_identifier IS NOT NULL",
+        [dataset_version],
+    )
+    if not waiting:
+        cy.stage("observations", OK, wanted=0, ingested=0,
+                 reason="no_open_position_waiting_on_a_label")
+        return {"wanted": 0, "ingested": 0}
+
+    wanted: set[tuple[str, date]] = set()
+    no_target = 0
+    for r in waiting:
+        target = r["target"]
+        if target is None:
+            # A position written before this column existed. It is NOT settled by
+            # guessing the day from `endDate`: it is counted and left open.
+            no_target += 1
+            continue
+        wanted.add((str(r["icao"]).upper(), target.date()
+                    if hasattr(target, "date") else target))
+
+    ingested = pending = already = 0
+    errors: dict[str, int] = {}
+    for icao, target in sorted(wanted):
+        tz = _station_tz(icao)
+        if tz is None:
+            errors["unknown_station_tz"] = errors.get("unknown_station_tz", 0) + 1
+            continue
+        day_start, day_end = weather.target_day_window(target, tz)
+        # A PUBLICATION MARGIN, not just "the day ended". The window closing does
+        # not mean IEM already holds the day's last METAR, and the failure mode is
+        # the worst kind: an incomplete maximum written once and never revisited,
+        # because the next cycle sees a row for that station-day and skips it. A
+        # label that is plausible and wrong is worse than no label — `settle`
+        # refusing costs a cycle, a wrong label costs the ledger.
+        if now < day_end + LABEL_PUBLICATION_MARGIN:
+            pending += 1
+            continue
+        have = db.query(
+            con,
+            "SELECT 1 FROM weather_observations WHERE station = ? "
+            "AND observation_time >= ? AND observation_time < ? "
+            "AND dataset_version = ? LIMIT 1",
+            [icao, day_start, day_end, dataset_version],
+        )
+        if have:
+            already += 1
+            continue
+        try:
+            obs.ingest_daily_high(con, icao, target, tz, dataset_version)
+            ingested += 1
+        except Exception as exc:
+            key = "rate_limited" if "429" in str(exc) else type(exc).__name__
+            errors[key] = errors.get(key, 0) + 1
+            if key == "rate_limited":
+                cy.stage("observations", STOPPED, reason="http_429_rate_limited",
+                         ingested=ingested, wanted=len(wanted))
+                return {"wanted": len(wanted), "ingested": ingested, "stopped": True}
+
+    cy.stage("observations", OK, wanted=len(wanted), ingested=ingested,
+             already_had=already, day_not_over=pending,
+             trades_without_target_date=no_target or None,
+             errors=json.dumps(errors) if errors else None)
+    return {"wanted": len(wanted), "ingested": ingested, "pending": pending}
+
+
 def stage_settle(cy: Cycle, con, *, dataset_version: str) -> dict:
     """Settle open positions against the realized label, via the SettlementOperator.
 
@@ -686,7 +1041,7 @@ def stage_settle(cy: Cycle, con, *, dataset_version: str) -> dict:
     # when the cycle that opened it happens to run again.
     open_rows = db.query(
         con,
-        "SELECT paper_trade_id, market_id, token_id, entry_time "
+        "SELECT paper_trade_id, market_id, token_id, entry_time, target_date "
         "FROM paper_trades WHERE dataset_version = ? AND exit_time IS NULL "
         "ORDER BY paper_trade_id",
         [dataset_version],
@@ -707,10 +1062,10 @@ def stage_settle(cy: Cycle, con, *, dataset_version: str) -> dict:
     for pos in open_rows:
         rows = db.query(
             con,
-            "SELECT m.market_id, m.event_id, m.contract_source, m.measurement_rule, "
+            "SELECT m.market_id, m.event_id, m.contract_source, "
+            "       m.measurement_rule_code, "
             "       m.unit, m.rounding_rule, m.station_identifier, "
-            "       o.band_label, o.outcome_label, "
-            "       json_extract_string(m.source_timestamps, '$.endDate') AS end_raw "
+            "       o.band_label, o.outcome_label "
             "FROM markets m JOIN outcomes o "
             "  ON o.market_id = m.market_id AND o.dataset_version = m.dataset_version "
             "WHERE m.market_id = ? AND o.token_id = ? AND m.dataset_version = ? LIMIT 1",
@@ -720,36 +1075,53 @@ def stage_settle(cy: Cycle, con, *, dataset_version: str) -> dict:
             refusals["no_market_row"] = refusals.get("no_market_row", 0) + 1
             continue
         m = rows[0]
-        try:
-            target = datetime.fromisoformat(
-                str(m["end_raw"]).replace("Z", "+00:00")).astimezone(timezone.utc).date()
-        except (TypeError, ValueError):
-            refusals["unparseable_end_date"] = refusals.get("unparseable_end_date", 0) + 1
+        # THE SAME DEFECT LIVED HERE TOO, and settlement is where it bites hardest:
+        # this is the day the realized label is looked up for, so deriving it from
+        # a re-discoverable `endDate` could settle a trade against a day it was
+        # never opened for. The position carries its own `target_date` (2D §C).
+        target = pos.get("target_date")
+        if target is None:
+            refusals["trade_without_target_date"] = \
+                refusals.get("trade_without_target_date", 0) + 1
             continue
+        target = target.date() if hasattr(target, "date") else target
 
         icao = m.get("station_identifier")
+        if not m.get("measurement_rule_code"):
+            # Never substitute the prose. The partition is keyed on the P_* code
+            # and a sentence in its place is refused as an unknown terna, which
+            # reads as "this market has no operator" when the truth is "this row
+            # was never classified".
+            refusals["no_measurement_rule_code"] = \
+                refusals.get("no_measurement_rule_code", 0) + 1
+            continue
         ctx = settlement.MarketContext(
             market_id=m["market_id"], event_id=m["event_id"],
             contract_source=m["contract_source"],
-            measurement_rule_code=m["measurement_rule"], unit=m["unit"],
+            measurement_rule_code=m["measurement_rule_code"], unit=m["unit"],
             rounding_rule=m.get("rounding_rule"), target_date=target,
             station_icao=icao, station_tz=_station_tz(icao),
+        )
+        raw_obs = db.query(
+            con,
+            "SELECT observation_time, observed_value, observed_unit, series, "
+            "       available_at, record_version FROM weather_observations "
+            "WHERE station = ? AND dataset_version = ?",
+            [icao, dataset_version],
         )
         obs = [
             settlement.Observation(
                 ts_utc=r["observation_time"], value=r["observed_value"],
-                unit=r["observed_unit"], series=r["series"],
+                unit=r["observed_unit"], series=to_core_series(r["series"]),
                 available_at=r.get("available_at"),
                 record_version=r.get("record_version") or 1,
             )
-            for r in db.query(
-                con,
-                "SELECT observation_time, observed_value, observed_unit, series, "
-                "       available_at, record_version FROM weather_observations "
-                "WHERE station = ? AND dataset_version = ?",
-                [icao, dataset_version],
-            )
+            for r in raw_obs if to_core_series(r["series"]) is not None
         ]
+        if raw_obs and not obs:
+            refusals["series_correspondence_undeclared"] = \
+                refusals.get("series_correspondence_undeclared", 0) + 1
+            continue
         # asof=None: `available_at` on the observation history is the download
         # instant, not a real availability (A-30), so an as-of gate here would be
         # a claim we cannot support. The result carries Y_FINAL_UNKNOWN_ASOF and
@@ -773,7 +1145,7 @@ def stage_settle(cy: Cycle, con, *, dataset_version: str) -> dict:
 
 
 def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
-                 dataset_version: str) -> dict:
+                 dataset_version: str, quantile_provenance: dict | None = None) -> dict:
     """Persist the parameters this cycle actually ran with.
 
     R24 declares the run void if any frozen parameter changes mid-run, but the
@@ -808,7 +1180,15 @@ def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
         "collect_only": bool(args.collect_only),
         "code_commit": os.environ.get("GITHUB_SHA"),
         "run_id": os.environ.get("GITHUB_RUN_ID"),
+        # B's second condition: the cycle records WHICH artifact it used. The id
+        # is a sha over the artifact's canonical content, so it names the fit
+        # exactly — including a refit that produced identical numbers. When the
+        # artifact was REFUSED, the refusal label is recorded instead, so a cycle
+        # that produced no signal says why in the same row that says what it ran
+        # with.
+        "max_artifact_age_h": args.max_artifact_age_h,
     }
+    params.update(quantile_provenance or {})
     out = store.write_shard([params], table="cycle_params", run_id=session_id,
                             root=root)
     cy.stage("params", OK, path=out["path"], tau_signal=args.tau_signal,
@@ -827,7 +1207,30 @@ def stage_dump(cy: Cycle, con, *, root: str, session_id: str,
     them and grow the store by a full copy on every retry. `ingestion_timestamp`
     is stamped in this process, so it separates what was produced now from what
     was merely reloaded — and it is the one column every one of these tables has,
-    which is why the filter is uniform instead of per-table."""
+    which is why the filter is uniform instead of per-table.
+
+    THE CATALOGUE GOES OUT ON EVERY CYCLE THAT DECIDES, and it used to go out once
+    a day. The daily snapshot was a size optimisation, and measuring it killed it:
+    the three catalogue tables compress to **206 KiB per snapshot** (markets 83,
+    outcomes 123, fee schedule 0.3, at 1 100 / 2 200 / 1 rows), so the two daily
+    decision cycles cost **8.5 MiB over the 42-cycle run**, against a 200 MB stop
+    threshold and ~125 MB of projected volume. What the optimisation bought was
+    negligible; what it cost was C3.
+
+    `replay_cycle.py` rebuilds its DuckDB from the shards. Without a catalogue
+    shard of its own, a cycle is replayed against the most recent daily snapshot —
+    up to 15 h older than the decisions it audits — so every market discovered in
+    between is simply absent, its trades come back as `only_persisted`, and the
+    verdict is NOT REPRODUCIBLE for a reason that has nothing to do with
+    reproducibility. Verified on a live cycle: 21 trades persisted, 0 recomputed,
+    21 spurious `only_persisted`, purely because `markets` and `outcomes` had no
+    shard. A criterion that fails for half the run on an artefact of the dump
+    schedule is not a criterion.
+
+    COLLECT-ONLY CYCLES STILL SKIP IT, and that is the whole saving: the collector
+    fires 8 times a day and decides nothing, so its cycles have nothing for the
+    replay to reproduce (`replay` returns "trivially reproducible" for them). The
+    catalogue is dumped where it is needed and nowhere else."""
     tables = LEDGER_TABLES + (CATALOGUE_TABLES if dump_catalogue else ())
     total = 0
     for table in tables:
@@ -844,8 +1247,9 @@ def stage_dump(cy: Cycle, con, *, root: str, session_id: str,
         if out["n_rows"]:
             cy.stage(f"dump:{table}", OK, rows=out["n_rows"], path=out["path"])
     if not dump_catalogue:
-        cy.stage("dump:catalogue", SKIPPED, reason="daily_snapshot_only")
-    cy.stage("dump", OK, tables=len(tables), rows_written=total)
+        cy.stage("dump:catalogue", SKIPPED, reason="collect_only_nothing_to_replay")
+    cy.stage("dump", OK, tables=len(tables), rows_written=total,
+             catalogue="dumped" if dump_catalogue else "skipped")
 
 
 # --------------------------------------------------------------------------- main
@@ -866,6 +1270,14 @@ def build_parser() -> argparse.ArgumentParser:
                         "target_date 12:00Z - lead_hours. Operational range {9, 24} "
                         "(PREREG_LEAD_HOURS_RANGE).")
     p.add_argument("--model", default="icon_seamless", help="M1 (D12).")
+    p.add_argument("--quantile-artifact", default=None,
+                   help="M2's fitted quantiles (R30). Default: the repository copy "
+                        "at quantile_artifact.DEFAULT_PATH, resolved against the "
+                        "repo root so a cycle run from any cwd finds the same file.")
+    p.add_argument("--max-artifact-age-h", type=float, default=None,
+                   help="TIGHTEN the artifact's own declared shelf life. A value "
+                        "LARGER than the artifact's is ignored: an operator does "
+                        "not extend the life of an artifact from the command line.")
     p.add_argument("--tau-signal", type=float, default=None,
                    help="Strategy A threshold, on the GROSS edge (fair_value - "
                         "p_market) against the indicative mid. Required for the "
@@ -892,9 +1304,20 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--max-pages", type=int, default=20)
     p.add_argument("--collect-only", action="store_true",
                    help="Books only: skip signals, paper and settlement.")
+    p.add_argument("--settle-only", action="store_true",
+                   help="THE SETTLEMENT TAIL (R24 §5). Ingest the labels that open "
+                        "positions wait on and settle them; discover nothing, "
+                        "collect nothing, decide nothing. A position opened on the "
+                        "last day of the run resolves the day AFTER it, so without "
+                        "these cycles the last two days' positions would stay open "
+                        "and their PnL would not exist — the ledger would close on "
+                        "a tail truncated by the calendar, not by the market. These "
+                        "cycles do NOT count in the run's 42.")
     p.add_argument("--dump-catalogue", action="store_true",
-                   help="Also snapshot markets/outcomes/fees. Once a day, not on "
-                        "every collection cycle (see CATALOGUE_TABLES).")
+                   help="Force the markets/outcomes/fees snapshot on a "
+                        "--collect-only run. Deciding cycles always take it: the "
+                        "replay needs the universe the cycle decided on, not a "
+                        "snapshot up to 15 h older (see CATALOGUE_TABLES).")
     p.add_argument("--summary-json", default=None,
                    help="Write the cycle summary to this path.")
     return p
@@ -925,6 +1348,28 @@ def main(argv: list[str] | None = None) -> int:
 
         stage_load_state(cy, con, root=args.store_root)
         discovery.ensure_dataset_version(con, args.dataset_version)
+
+        if args.settle_only:
+            # Nothing is discovered, collected or decided: the tail exists only to
+            # close what is already open. Skipping discovery also keeps it from
+            # touching `markets.available_at`, which a decision cycle depends on.
+            for st in ("discover", "universe", "collect:books", "forecasts",
+                       "signals", "paper"):
+                cy.stage(st, SKIPPED, reason="settle_only_tail")
+            stage_observations(cy, con, dataset_version=args.dataset_version,
+                               now=_utcnow())
+            stage_settle(cy, con, dataset_version=args.dataset_version)
+            stage_params(cy, root=args.store_root, session_id=session_id, args=args,
+                         quantile_provenance={}, timing=plan | {
+                             "prediction_time": plan["t_asof"], "drift_h": 0.0,
+                             "lead_effective_h": plan["lead_nominal_h"]},
+                         dataset_version=args.dataset_version)
+            stage_dump(cy, con, root=args.store_root, session_id=session_id,
+                       dataset_version=args.dataset_version, since=cy.started_at,
+                       dump_catalogue=False)
+            con.close()
+            return _finish(cy, args)
+
         stage_discover(cy, con, dataset_version=args.dataset_version,
                        target_date=target_date, horizon_days=args.horizon_days,
                        session=http, max_pages=args.max_pages)
@@ -943,6 +1388,14 @@ def main(argv: list[str] | None = None) -> int:
         # start: everything a decision consumes must already exist at
         # `prediction_time`, and the prices this cycle just wrote carry an
         # `observation_time` of a few minutes ago.
+        # Resolved against the REPO ROOT, not the cwd. The workflow runs the
+        # script from the checkout root and a person runs it from anywhere; a
+        # relative default would make "which artifact did it use" depend on where
+        # the shell happened to be.
+        artifact_path = args.quantile_artifact or str(
+            Path(__file__).resolve().parents[1] / quantile_artifact.DEFAULT_PATH)
+        quantile_provenance: dict = {}
+
         timing = decision_time(target_date, args.lead_hours, _utcnow())
         prediction_time = timing["prediction_time"]
         # Usable exactly when the clamp did NOT bind: if `now` is still before
@@ -971,19 +1424,35 @@ def main(argv: list[str] | None = None) -> int:
             stage_guard_dataset_version(cy, con,
                                         dataset_version=args.dataset_version)
 
+        # RUNG 1 ON EVERY CYCLE, deciding or not. It needs only prices, and the
+        # collect-only cycles are the ones that actually run in Actions — so this
+        # is the only place the live measurement can accumulate before
+        # `PAPER_TAU` exists. After collection and after `prediction_time` is
+        # settled, so it counts the prices this cycle just wrote.
+        stage_venue_coverage(cy, con, dataset_version=args.dataset_version,
+                             universe=universe, prediction_time=prediction_time,
+                             root=args.store_root, session_id=session_id,
+                             target_date=target_date)
+
         if args.collect_only:
             cy.stage("forecasts", SKIPPED, reason="collect_only")
             cy.stage("signals", SKIPPED, reason="collect_only")
             cy.stage("paper", SKIPPED, reason="collect_only")
+            cy.stage("observations", SKIPPED, reason="collect_only")
         elif args.tau_signal is None or args.tau_exec is None:
             missing = "tau_signal" if args.tau_signal is None else "tau_exec"
             cy.stage("signals", SKIPPED, reason=f"{missing}_not_provided_fail_closed")
             cy.stage("paper", SKIPPED, reason=f"{missing}_not_provided_fail_closed")
         else:
-            stage_forecasts(cy, con, dataset_version=args.dataset_version,
-                            target_date=target_date, universe=universe,
-                            model=args.model, lead_hours=args.lead_hours,
-                            prediction_time=prediction_time, session=http)
+            fc = stage_forecasts(cy, con, dataset_version=args.dataset_version,
+                                 target_date=target_date, universe=universe,
+                                 model=args.model, lead_hours=args.lead_hours,
+                                 prediction_time=prediction_time,
+                                 artifact_path=artifact_path,
+                                 max_artifact_age_h=args.max_artifact_age_h,
+                                 session=http)
+            quantile_provenance = fc.get("provenance") or {
+                "quantile_artifact_refusal": fc.get("artifact_refusal")}
             stage_signals(cy, con, dataset_version=args.dataset_version,
                           target_date=target_date, universe=universe,
                           model=args.model, tau=args.tau_signal,
@@ -999,17 +1468,35 @@ def main(argv: list[str] | None = None) -> int:
             )
             stage_paper(cy, con, dataset_version=args.dataset_version,
                         session_id=session_id, params=params,
-                        prediction_time=prediction_time)
+                        prediction_time=prediction_time,
+                        target_date=target_date)
+            # The label BEFORE the settlement that consumes it, and after the
+            # positions that name which labels are needed. Same ordering lesson as
+            # `prediction_time` settled after collection: a stage that reads what
+            # another writes has to run after it, not before.
+            stage_observations(cy, con, dataset_version=args.dataset_version,
+                               now=_utcnow())
             stage_settle(cy, con, dataset_version=args.dataset_version)
 
         stage_params(cy, root=args.store_root, session_id=session_id, args=args,
+                     quantile_provenance=quantile_provenance,
                      timing=timing, dataset_version=args.dataset_version)
         stage_dump(cy, con, root=args.store_root, session_id=session_id,
                    dataset_version=args.dataset_version, since=cy.started_at,
-                   dump_catalogue=bool(args.dump_catalogue))
+                   # Every DECIDING cycle carries its own catalogue, so the
+                   # replay reproduces it against the universe it actually
+                   # decided on. `--dump-catalogue` survives as an override for a
+                   # collect-only run someone wants snapshotted anyway.
+                   dump_catalogue=(not args.collect_only) or bool(args.dump_catalogue))
     finally:
         con.close()
 
+    return _finish(cy, args)
+
+
+def _finish(cy: Cycle, args) -> int:
+    """Write and print the summary. One exit point for both the full cycle and the
+    settlement tail, so the tail cannot drift into reporting differently."""
     summary = cy.summary()
     if args.summary_json:
         Path(args.summary_json).parent.mkdir(parents=True, exist_ok=True)

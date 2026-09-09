@@ -66,8 +66,14 @@ def _seed_forecast(con, available_at=AVAIL, dsv=DSV):
 
 def _seed_band(con, market_id, band_label, lo, hi, yes_token, no_token, yes_price,
                yes_index=0, dsv=DSV, no_price=None):
+    # The ICAO goes in `station_identifier` and `station` stays NULL, which is
+    # what LIVE discovery produces (1 100 of 1 100 markets have station NULL; the
+    # NOAA template carries no "recorded at the X Station" prose). The old fixture
+    # put the ICAO in `station`, so the suite could not tell the two columns apart
+    # and passed while the live path produced zero signals for every event.
     db.insert(con, "markets", {
-        "market_id": market_id, "event_id": EVENT, "station": STATION, "unit": "C",
+        "market_id": market_id, "event_id": EVENT,
+        "station_identifier": STATION, "station": None, "unit": "C",
         "source": "test", "ingestion_timestamp": ISSUE,
         "dataset_version": dsv, "record_version": 1,
     })

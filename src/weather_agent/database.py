@@ -45,11 +45,12 @@ import contextlib
 import os
 import weakref
 from datetime import datetime, timezone
+import contextlib
 from typing import Any, Iterable, Mapping, Sequence
 
 from .config import DB_PATH
 
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 
 # Standard provenance columns present on every fact/derived table.
 PROVENANCE_COLUMNS = (
@@ -581,6 +582,47 @@ _DDL_V6 = [
 
 # Ordered, idempotent migrations. Add a new dict (version+1) for future changes;
 # never edit a shipped migration in place.
+# Migration 5 — the OTHER half of the settlement terna.
+#
+# `contract_source` was persisted; `measurement_rule_code` was not, so
+# `stage_settle` fed the HUMAN STRING ("highest reading under the NOAA 'Temp'
+# column ...") into a field named `measurement_rule_code`, and the frozen core
+# refused EVERY market with "terna outside the 11-class partition". Verified live
+# on a real position before this migration existed.
+#
+# It is a NEW version and not a line appended to migration 2. An ALTER added to
+# an ALREADY-APPLIED migration never runs on a database that has recorded that
+# version: fresh databases would get the column — the paper cycle rebuilds its
+# DuckDB from the shards every run — and `data/pmw.duckdb` never would, so
+# settlement would work in CI and refuse in the operation, which is the worst
+# place to find out.
+_DDL_V5 = [
+    "ALTER TABLE markets ADD COLUMN IF NOT EXISTS measurement_rule_code VARCHAR;",
+]
+
+
+# Migration 7 — the target date a position was OPENED for.
+#
+# 2D §C makes `target_date` an OBLIGATORY parameter of the caller and forbids
+# deriving it from `endDate`, `close_time`, the question or the slug. The cycle
+# obeys that at the point of decision — and then THREW THE VALUE AWAY, so
+# `stage_observations` and `stage_settle` reconstructed it days later from
+# `markets.source_timestamps.endDate`, the very source §C names as prohibited.
+#
+# Not a formality: `markets` is re-discovered every cycle. If the venue revises
+# `endDate` while a position is open, those stages would fetch the label of a
+# DIFFERENT day from the one traded, write it, and — since the next pass sees a
+# row for that station-day — never look again. A plausible, wrong label written
+# once and never revisited.
+#
+# Same family as `measurement_rule_code` never being persisted and as
+# `outcome_label` NULL in 4,450 of 4,450: the authoritative value existed and was
+# not stored, so a later stage rebuilt it from a weaker source.
+_DDL_V7 = [
+    "ALTER TABLE paper_trades ADD COLUMN IF NOT EXISTS target_date DATE;",
+]
+
+
 MIGRATIONS: list[dict] = [
     {
         "version": 1,
@@ -611,9 +653,19 @@ MIGRATIONS: list[dict] = [
         "statements": _DDL_V4,
     },
     {
+        "version": 5,
+        "name": "r30_measurement_rule_code",
+        "statements": _DDL_V5,
+    },
+    {
         "version": 6,
         "name": "r19_settlement_and_fee_substrate",
         "statements": _DDL_V6,
+    },
+    {
+        "version": 7,
+        "name": "r30_paper_trade_target_date",
+        "statements": _DDL_V7,
     },
 ]
 
@@ -696,7 +748,44 @@ def init_db(con=None, db_path: str | None = None):
                 [mig["version"], mig["name"], _utcnow_iso()],
             )
             con.execute("COMMIT;")
+            # The cache first: it is keyed on the connection and the schema just
+            # changed under it (session B). Then the flush.
             invalidate_column_cache(con)
+            # FORCE THE DDL INTO THE DATABASE FILE, out of the write-ahead log.
+            #
+            # ISOLATED, not inferred. The first account of this — "a migration
+            # that lives only in the WAL has to be replayed and replaying DDL is
+            # what breaks" — was WRONG, and session B refused it because they
+            # could not reproduce it on migration 6 in six scenarios. They were
+            # right to. The real trigger is narrower and it reproduces in twenty
+            # lines with no project code at all, on duckdb 1.5.5:
+            #
+            #     CREATE SEQUENCE s START 1;
+            #     CREATE TABLE t (id BIGINT PRIMARY KEY DEFAULT nextval('s'), ...);
+            #     ALTER TABLE t ADD COLUMN y DATE;      -- then die, no checkpoint
+            #     -- reopening: INTERNAL Error, Failure while replaying WAL file
+            #
+            # The IDENTICAL ALTER on a table WITHOUT the sequence-backed default
+            # replays fine (247 B of WAL, reopens, column present). So it is not
+            # DDL in the WAL, and not the number of migrations: it is ALTER on a
+            # table whose default calls `nextval`. Confirmed against the project
+            # too — pointing migration 7 at `markets` instead of `paper_trades`
+            # makes the three checkpoint/resume tests pass again.
+            #
+            # In this schema exactly ONE table qualifies: `paper_trades`, the only
+            # one with `DEFAULT nextval('seq_paper_trades')`. So the blast radius
+            # is one table — and it is the ledger, altered by a process that runs
+            # where jobs get cancelled.
+            #
+            # The CHECKPOINT stays anyway: flushing a migration costs one write,
+            # they run once, and it removes this and anything else that would have
+            # needed a WAL replay. But it is a GUARD, not the cure, and if the
+            # error ever appears WITH it in place then this diagnosis is wrong too.
+            with contextlib.suppress(Exception):
+                # A read-only or in-memory connection has nothing to flush and says
+                # so by raising. That is not a failure of the migration.
+                con.execute("CHECKPOINT;")
+
         except Exception:
             con.execute("ROLLBACK;")
             invalidate_column_cache(con)

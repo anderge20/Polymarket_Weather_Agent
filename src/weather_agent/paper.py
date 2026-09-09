@@ -427,9 +427,16 @@ def record_paper_trade(
     fill: Fill,
     bankroll_after: float,
     dataset_version: str,
+    target_date: Any,
     slippage: float = 0.0,
 ) -> int:
     """Persist an OPEN paper position. Exit fields stay NULL until settlement.
+
+    `target_date` is REQUIRED and is the caller's parameter (2D §C), not something
+    to be recovered later from `endDate`. A position that does not carry the day
+    it was opened for forces every downstream stage to re-derive it from a source
+    §C prohibits — and `markets` is re-discovered every cycle, so a revised
+    `endDate` would silently move the day a settled trade is settled against.
 
     `gross_pnl`/`net_pnl` are NULL while open — writing 0 there would make an
     unsettled position indistinguishable from a flat one in every aggregate."""
@@ -437,14 +444,14 @@ def record_paper_trade(
     con.execute(
         """
         INSERT INTO paper_trades (
-            backtest_id, market_id, token_id, entry_time, entry_price,
-            fees, slippage, size, bankroll_after, price_layer,
+            backtest_id, market_id, token_id, entry_time, target_date,
+            entry_price, fees, slippage, size, bankroll_after, price_layer,
             source, source_timestamp, ingestion_timestamp,
             dataset_version, record_version
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         RETURNING paper_trade_id
         """,
-        [backtest_id, market_id, token_id, entry_time, fill.vwap,
+        [backtest_id, market_id, token_id, entry_time, target_date, fill.vwap,
          fill.fee, slippage, fill.shares, bankroll_after, PRICE_LAYER,
          SOURCE, entry_time, now, dataset_version, 1],
     )

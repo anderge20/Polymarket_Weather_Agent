@@ -277,6 +277,8 @@ def test_weather_band_probability_from_forecast_quantiles():
     )
 
 
+
+
 def test_band_covering_the_whole_support_is_exactly_one():
     """Found by the R21 backtest on real data, not by this suite: KSEA, a
     '62 F or above' band whose distribution lived entirely in [68, 75]. The sum of
@@ -294,7 +296,6 @@ def test_a_genuinely_broken_probability_is_still_returned_unclamped():
     """The clamp must not become a silencer: only rounding is absorbed."""
     from weather_agent.probability import band_probability
     assert band_probability({20: 0.8, 21: 0.8}, lo=None, hi=None) == pytest.approx(1.6)
-
 def test_the_lower_tail_cdf_never_goes_negative(tmp_path):
     """A CDF that returns a negative value is an arithmetic error, not a modelling
     choice, and `max(0.0, upper - lower)` cannot repair it because the damage is in

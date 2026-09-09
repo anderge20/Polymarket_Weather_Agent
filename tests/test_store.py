@@ -7,6 +7,7 @@ indistinguishable from the original.
 from __future__ import annotations
 
 import datetime as dt
+from datetime import date
 import gzip
 import json
 
@@ -16,6 +17,11 @@ from weather_agent import collector, store
 
 
 T0 = dt.datetime(2026, 9, 9, 7, 30, tzinfo=dt.timezone.utc)
+
+#: The caller's target_date (2D §C). A trade carries the day it was opened
+#: for; nothing downstream rebuilds it from `endDate`.
+TD_TEST = date(2026, 9, 10)
+
 
 
 def _rows(n=3, token_prefix="TOK"):
@@ -253,7 +259,7 @@ def test_the_paper_trade_sequence_survives_a_rebuild(con, tmp_path):
                       outlay=50.625, executable=True)
     ids = [paper.record_paper_trade(
         con, backtest_id="r", market_id="m", token_id=f"t{i}",
-        entry_time=T0, fill=fill, bankroll_after=1.0, dataset_version="ds1")
+        entry_time=T0, fill=fill, bankroll_after=1.0, dataset_version="ds1", target_date=TD_TEST)
         for i in range(3)]
     assert ids == [1, 2, 3]
     store.dump_table(con, "paper_trades", run_id="r", root=tmp_path, when=T0)
@@ -265,7 +271,7 @@ def test_the_paper_trade_sequence_survives_a_rebuild(con, tmp_path):
         assert out["sequence_restarted_at"] == 4
         new_id = paper.record_paper_trade(
             fresh, backtest_id="r", market_id="m", token_id="t9", entry_time=T0,
-            fill=fill, bankroll_after=1.0, dataset_version="ds1")
+            fill=fill, bankroll_after=1.0, dataset_version="ds1", target_date=TD_TEST)
         assert new_id == 4                      # continues, does not collide
         n = fresh.execute("SELECT count(*) FROM paper_trades").fetchone()[0]
         assert n == 4
