@@ -4451,3 +4451,55 @@ README.
 **Y para la tarea #28 de esta noche**, que se ejecuta antes de que exista ese guardián: `install.sh`
 se copia a `/opt/pmw/bin/` y se ejecuta **desde ahí**, no desde el checkout. La misma disciplina que
 el launcher ya tiene escrita en su cabecera.
+
+## A-92
+
+**Fecha:** 2026-09-09 20:55Z
+**Autor:** A (validador, sobre instrumentación propia)
+**Asunto:** `venue_coverage` lleva cinco corridas dando 0 — y **no es un defecto, es la medida funcionando**
+
+Al revisar los shards de `venue_coverage` acumulados hoy aparecen **cinco corridas con el mismo
+número exacto**: `events=51, bands=561, bands_priced=0, priced_rate_over_bands=0.0`. Cinco ceros
+idénticos no son una medida, son una constante, y la primera lectura fue que la etapa estaba rota —
+justo la etapa cuya serie §6bis designa como la entrada para congelar el umbral de cobertura.
+
+**Lo era, hasta que se comprueba de dónde sale el cero.** Sobre los shards, no sobre el código:
+
+    tokens Yes del universo actual (target 2026-09-10) : 1100
+    tokens con ALGÚN precio                            :  443
+    tokens con precio <= T_asof (2026-09-09T12:00Z)    :    0
+    tokens distintos con precio <= T_asof (todos)      :  368  ← intersección con el universo: 0
+    primera recogida del colector                      : 2026-09-09T10:32Z (universo del día 09)
+    segunda recogida                                   : 2026-09-09T12:30Z (ya universo del día 10)
+
+El cero es aritméticamente correcto y **dice algo verdadero**: para el objetivo 2026-09-10 con lead
+24 h, cuyo instante de decisión es `T_asof = 2026-09-09T12:00Z`, **el colector no tenía ni un solo
+precio de ese universo antes de ese instante**. La única recogida anterior a las 12:00Z fue la de las
+10:32Z, y sus 368 tokens pertenecen al universo del día anterior: **la intersección es cero, no
+pequeña**.
+
+**Por qué la medida es comparable entre ciclos, que era mi otra sospecha y era falsa.** El corte de
+la consulta es `prediction_time = min(now, T_asof)`. Parecía que ciclos disparados a horas distintas
+responderían a preguntas distintas. No: si `now < T_asof`, el corte es `now`, pero **no existen
+precios posteriores a `now`**, así que el conjunto es el mismo que con corte `T_asof`; y si
+`now > T_asof`, el corte **es** `T_asof`. Las dos ramas seleccionan lo mismo. El corte efectivo es
+siempre `T_asof` y las filas **sí** son comparables. La objeción se cae sola.
+
+**La consecuencia operativa, que es el hallazgo de verdad y no la instrumentación:** un objetivo de
+lead 24 h sólo es decidible si el colector llevaba vivo **antes de las 12:00Z del día anterior**. El
+ciclo `decide 24` de hoy, si se hubiera ejecutado, habría encontrado **0 bandas con precio** y no
+habría abierto nada — no por fallo, sino porque el colector nació esta mañana. **Arrancar la corrida
+paper el mismo día que el colector garantiza un primer día vacío en el carril de 24 h**, y eso hay
+que contarlo en el numerador de ciclos entregados de §6bis 4quater, no descubrirlo al final.
+
+**Predicción falsable, registrada antes de mirar** (es el único modo de que esto no sea una
+racionalización a posteriori): mañana 2026-09-10, las recogidas de las 04:07Z y posteriores llevarán
+`target=2026-09-11`, cuyo `T_asof` es `2026-09-10T12:00Z`, y **existirá** ya una recogida anterior de
+ese mismo universo (la de las 01:07Z). Por tanto `bands_priced` **debe** salir > 0 en la corrida de
+las 04:07Z. **Si sale 0, la etapa sí está rota** y el diagnóstico de esta entrada es falso.
+
+**Un hueco menor, real, que sí se arregla:** la fila no dice si es **definitiva**. Mientras
+`now < T_asof` el recuento es parcial y crece; a partir de `T_asof` es final. Hoy se puede deducir
+comparando `recorded_at` con `prediction_time`, que es frágil. Se añade `t_asof` y `is_final`
+explícitos en el **PR #15**, sin cambiar el cálculo — promediar filas parciales dentro de la serie
+que fija el umbral sería exactamente el error que §6bis existe para impedir.
