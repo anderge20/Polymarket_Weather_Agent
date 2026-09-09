@@ -26,6 +26,11 @@ _SPEC.loader.exec_module(paper_cycle)
 
 T0 = datetime(2026, 9, 9, 7, 30, tzinfo=timezone.utc)
 
+#: The caller's target_date (2D §C). A trade carries the day it was opened
+#: for; nothing downstream rebuilds it from `endDate`.
+TD_TEST = date(2026, 9, 10)
+
+
 
 @pytest.fixture
 def con():
@@ -140,7 +145,7 @@ def test_the_ledger_is_dumped_incrementally(con, tmp_path):
                       outlay=50.625, executable=True)
     paper.record_paper_trade(con, backtest_id="cyc1", market_id="m", token_id="t",
                              entry_time=T0, fill=fill, bankroll_after=1.0,
-                             dataset_version="ds1")
+                             dataset_version="ds1", target_date=TD_TEST)
     # a cutoff after the row was written must exclude it
     paper_cycle.stage_dump(_cycle(), con, root=str(tmp_path), session_id="cyc1",
                            dataset_version="ds1", since=T0 + timedelta(days=365))
@@ -438,7 +443,7 @@ def test_settle_skips_loudly_rather_than_guessing_a_winner(con, monkeypatch):
                        outlay=50.6, executable=True)
     _paper.record_paper_trade(con, backtest_id="r", market_id="m1", token_id="t1",
                               entry_time=T0, fill=fill, bankroll_after=1.0,
-                              dataset_version="ds1")
+                              dataset_version="ds1", target_date=TD_TEST)
     out = paper_cycle.stage_settle(_cycle(), con, dataset_version="ds1")
     assert out["positions_open"] == 1 and out["settled"] == 0
     assert out["missing"], "it must say what it lacks"
@@ -483,7 +488,7 @@ def _settleable_market(con, *, band="17°C", outcome="Yes", token="t1"):
                        outlay=50.6, executable=True)
     return _paper.record_paper_trade(
         con, backtest_id="r", market_id="m1", token_id=token, entry_time=T0,
-        fill=fill, bankroll_after=1.0, dataset_version="ds1")
+        fill=fill, bankroll_after=1.0, dataset_version="ds1", target_date=TD_TEST)
 
 
 def _fake_stations(monkeypatch):
@@ -809,12 +814,16 @@ def _open_position(con, *, market_id="m1", end_date="2026-09-10T12:00:00Z",
                    station="EGLC", dsv="ds1"):
     _market(con, market_id=market_id, event_id="e1", end_date=end_date,
             dsv=dsv, station=station)
+    # `target_date` travels WITH the position (2D §C). A fixture that leaves it
+    # NULL is a fixture for a trade written before the column existed — which is a
+    # real case, tested separately, but not the normal one.
     con.execute(
         "INSERT INTO paper_trades (backtest_id, market_id, token_id, entry_time, "
-        "entry_price, fees, size, price_layer, ingestion_timestamp, "
-        "dataset_version, record_version) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-        ["cyc", market_id, f"{market_id}_yes", T0, 0.5, 0.1, 10.0,
-         "SIMULATED_EXECUTABLE", T0, dsv, 1])
+        "target_date, entry_price, fees, size, price_layer, ingestion_timestamp, "
+        "dataset_version, record_version) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+        ["cyc", market_id, f"{market_id}_yes", T0,
+         datetime.fromisoformat(end_date.replace("Z", "+00:00")).date(),
+         0.5, 0.1, 10.0, "SIMULATED_EXECUTABLE", T0, dsv, 1])
 
 
 def test_the_label_is_fetched_only_once_the_station_local_day_has_ended(con, monkeypatch):
@@ -980,3 +989,26 @@ def test_the_settlement_tail_settles_and_decides_nothing(con, tmp_path, monkeypa
         assert stages[st]["status"] == "SKIPPED"
         assert stages[st]["reason"] == "settle_only_tail"
     assert "observations" in stages and "settle" in stages
+
+
+def test_a_trade_with_no_target_date_is_left_open_not_guessed(con, monkeypatch):
+    """A position written before `target_date` existed is NOT settled by
+    recovering the day from `endDate`. 2D §C makes that a prohibited derivation,
+    and `markets` is re-discovered every cycle: a revised `endDate` under an open
+    position would fetch — and settle against — a day it was never opened for."""
+    from weather_agent import observations as obs
+    calls = []
+    monkeypatch.setattr(obs, "ingest_daily_high",
+                        lambda con, i, d, tz, dsv: calls.append(i))
+    monkeypatch.setattr("weather_agent.stations.timezone_of", lambda i: "Europe/London")
+    _open_position(con)
+    con.execute("UPDATE paper_trades SET target_date = NULL")
+    out = paper_cycle.stage_observations(
+        _cycle(), con, dataset_version="ds1",
+        now=datetime(2026, 9, 12, tzinfo=timezone.utc))
+    assert calls == [] and out["wanted"] == 0
+
+    _with_b_substrate(con); _fake_stations(monkeypatch)
+    settled = paper_cycle.stage_settle(_cycle(), con, dataset_version="ds1")
+    assert settled["settled"] == 0
+    assert settled["refusals"].get("trade_without_target_date") == 1

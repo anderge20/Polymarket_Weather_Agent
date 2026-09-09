@@ -43,11 +43,12 @@ from __future__ import annotations
 import json
 import os
 from datetime import datetime, timezone
+import contextlib
 from typing import Any, Iterable, Mapping, Sequence
 
 from .config import DB_PATH
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 7
 
 # Standard provenance columns present on every fact/derived table.
 PROVENANCE_COLUMNS = (
@@ -573,6 +574,28 @@ _DDL_V5 = [
 ]
 
 
+# Migration 7 — the target date a position was OPENED for.
+#
+# 2D §C makes `target_date` an OBLIGATORY parameter of the caller and forbids
+# deriving it from `endDate`, `close_time`, the question or the slug. The cycle
+# obeys that at the point of decision — and then THREW THE VALUE AWAY, so
+# `stage_observations` and `stage_settle` reconstructed it days later from
+# `markets.source_timestamps.endDate`, the very source §C names as prohibited.
+#
+# Not a formality: `markets` is re-discovered every cycle. If the venue revises
+# `endDate` while a position is open, those stages would fetch the label of a
+# DIFFERENT day from the one traded, write it, and — since the next pass sees a
+# row for that station-day — never look again. A plausible, wrong label written
+# once and never revisited.
+#
+# Same family as `measurement_rule_code` never being persisted and as
+# `outcome_label` NULL in 4,450 of 4,450: the authoritative value existed and was
+# not stored, so a later stage rebuilt it from a weaker source.
+_DDL_V7 = [
+    "ALTER TABLE paper_trades ADD COLUMN IF NOT EXISTS target_date DATE;",
+]
+
+
 MIGRATIONS: list[dict] = [
     {
         "version": 1,
@@ -606,6 +629,11 @@ MIGRATIONS: list[dict] = [
         "version": 5,
         "name": "r30_measurement_rule_code",
         "statements": _DDL_V5,
+    },
+    {
+        "version": 7,
+        "name": "r30_paper_trade_target_date",
+        "statements": _DDL_V7,
     },
 ]
 
@@ -688,6 +716,24 @@ def init_db(con=None, db_path: str | None = None):
                 [mig["version"], mig["name"], _utcnow_iso()],
             )
             con.execute("COMMIT;")
+            # FORCE THE DDL INTO THE DATABASE FILE, out of the write-ahead log.
+            #
+            # A migration that lives only in the WAL has to be REPLAYED if the
+            # process dies before DuckDB checkpoints on its own, and replaying DDL
+            # is where this DuckDB version breaks: adding one more ALTER made
+            # `test_checkpoint_resume` fail with "Failure while replaying WAL file
+            # ... GetDefaultDatabase with no default database set" — an internal
+            # assertion, on a database that was fine one migration earlier.
+            #
+            # The hazard belongs to EVERY migration, not to this one; this one only
+            # crossed whatever boundary triggers it. And the cycle runs where
+            # processes get killed: a cancelled Actions job during the first run
+            # against a new schema would leave a database that cannot be reopened
+            # at all. One flush per migration — they run once — removes the class.
+            with contextlib.suppress(Exception):
+                # A read-only or in-memory connection has nothing to flush and says
+                # so by raising. That is not a failure of the migration.
+                con.execute("CHECKPOINT;")
         except Exception:
             con.execute("ROLLBACK;")
             raise

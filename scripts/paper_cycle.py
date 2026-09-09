@@ -655,6 +655,11 @@ def stage_paper(cy: Cycle, con, *, dataset_version: str, session_id: str,
             con, backtest_id=session_id, market_id=sig["market_id"],
             token_id=exec_token, entry_time=prediction_time, fill=fill,
             bankroll_after=bankroll, dataset_version=dataset_version,
+            # The caller's parameter, carried WITH the position. Everything
+            # downstream reads it from here instead of rebuilding it from
+            # `endDate`, which 2D §C prohibits — and which `markets` can revise
+            # under an open position.
+            target_date=target_date,
         )
         opened += 1
     cy.stage("paper", OK, opened=opened, rejected=rejected,
@@ -809,10 +814,15 @@ def stage_observations(cy: Cycle, con, *, dataset_version: str, now: datetime) -
     which is exactly what the retrospective backfill cannot prove."""
     from weather_agent import observations as obs, weather
 
+    # `t.target_date`, NOT `endDate`. The day a position was opened for is the
+    # caller's parameter (2D §C) and it travels WITH the trade; rebuilding it from
+    # `markets.source_timestamps` would read the source §C prohibits, and
+    # `markets` is re-discovered every cycle — a revised `endDate` under an open
+    # position would fetch the label of a different day, write it, and never look
+    # again because the row then exists.
     waiting = db.query(
         con,
-        "SELECT DISTINCT m.station_identifier AS icao, "
-        "       json_extract_string(m.source_timestamps, '$.endDate') AS end_raw "
+        "SELECT DISTINCT m.station_identifier AS icao, t.target_date AS target "
         "FROM paper_trades t JOIN markets m "
         "  ON m.market_id = t.market_id AND m.dataset_version = t.dataset_version "
         "WHERE t.dataset_version = ? AND t.exit_time IS NULL "
@@ -825,15 +835,16 @@ def stage_observations(cy: Cycle, con, *, dataset_version: str, now: datetime) -
         return {"wanted": 0, "ingested": 0}
 
     wanted: set[tuple[str, date]] = set()
-    unparseable = 0
+    no_target = 0
     for r in waiting:
-        try:
-            target = datetime.fromisoformat(
-                str(r["end_raw"]).replace("Z", "+00:00")).astimezone(timezone.utc).date()
-        except (TypeError, ValueError):
-            unparseable += 1
+        target = r["target"]
+        if target is None:
+            # A position written before this column existed. It is NOT settled by
+            # guessing the day from `endDate`: it is counted and left open.
+            no_target += 1
             continue
-        wanted.add((str(r["icao"]).upper(), target))
+        wanted.add((str(r["icao"]).upper(), target.date()
+                    if hasattr(target, "date") else target))
 
     ingested = pending = already = 0
     errors: dict[str, int] = {}
@@ -875,7 +886,7 @@ def stage_observations(cy: Cycle, con, *, dataset_version: str, now: datetime) -
 
     cy.stage("observations", OK, wanted=len(wanted), ingested=ingested,
              already_had=already, day_not_over=pending,
-             unparseable_end_date=unparseable or None,
+             trades_without_target_date=no_target or None,
              errors=json.dumps(errors) if errors else None)
     return {"wanted": len(wanted), "ingested": ingested, "pending": pending}
 
@@ -895,7 +906,7 @@ def stage_settle(cy: Cycle, con, *, dataset_version: str) -> dict:
     # when the cycle that opened it happens to run again.
     open_rows = db.query(
         con,
-        "SELECT paper_trade_id, market_id, token_id, entry_time "
+        "SELECT paper_trade_id, market_id, token_id, entry_time, target_date "
         "FROM paper_trades WHERE dataset_version = ? AND exit_time IS NULL "
         "ORDER BY paper_trade_id",
         [dataset_version],
@@ -919,8 +930,7 @@ def stage_settle(cy: Cycle, con, *, dataset_version: str) -> dict:
             "SELECT m.market_id, m.event_id, m.contract_source, "
             "       m.measurement_rule_code, "
             "       m.unit, m.rounding_rule, m.station_identifier, "
-            "       o.band_label, o.outcome_label, "
-            "       json_extract_string(m.source_timestamps, '$.endDate') AS end_raw "
+            "       o.band_label, o.outcome_label "
             "FROM markets m JOIN outcomes o "
             "  ON o.market_id = m.market_id AND o.dataset_version = m.dataset_version "
             "WHERE m.market_id = ? AND o.token_id = ? AND m.dataset_version = ? LIMIT 1",
@@ -930,12 +940,16 @@ def stage_settle(cy: Cycle, con, *, dataset_version: str) -> dict:
             refusals["no_market_row"] = refusals.get("no_market_row", 0) + 1
             continue
         m = rows[0]
-        try:
-            target = datetime.fromisoformat(
-                str(m["end_raw"]).replace("Z", "+00:00")).astimezone(timezone.utc).date()
-        except (TypeError, ValueError):
-            refusals["unparseable_end_date"] = refusals.get("unparseable_end_date", 0) + 1
+        # THE SAME DEFECT LIVED HERE TOO, and settlement is where it bites hardest:
+        # this is the day the realized label is looked up for, so deriving it from
+        # a re-discoverable `endDate` could settle a trade against a day it was
+        # never opened for. The position carries its own `target_date` (2D §C).
+        target = pos.get("target_date")
+        if target is None:
+            refusals["trade_without_target_date"] = \
+                refusals.get("trade_without_target_date", 0) + 1
             continue
+        target = target.date() if hasattr(target, "date") else target
 
         icao = m.get("station_identifier")
         if not m.get("measurement_rule_code"):

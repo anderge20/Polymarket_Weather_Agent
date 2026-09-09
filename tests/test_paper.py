@@ -9,7 +9,7 @@ If someone ever "fixes" the fee model to use the bps fields, these fail.
 from __future__ import annotations
 
 import math
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 import pytest
 
@@ -17,6 +17,11 @@ from weather_agent import database, paper
 
 
 T0 = datetime(2026, 9, 9, 7, 30, tzinfo=timezone.utc)
+
+#: The caller's target_date (2D §C). A trade carries the day it was opened
+#: for; nothing downstream rebuilds it from `endDate`.
+TD_TEST = date(2026, 9, 10)
+
 
 FEE = paper.FeeParams(rate=0.05, exponent=1.0, regime="weather_fees")
 
@@ -321,7 +326,7 @@ def _open_one(con, *, p_model=0.70, ask=0.50):
     return paper.record_paper_trade(
         con, backtest_id="run1", market_id="m1", token_id="t1", entry_time=T0,
         fill=out["fill"], bankroll_after=9_800.0, dataset_version="ds1",
-    ), out["fill"]
+        target_date=TD_TEST), out["fill"]
 
 
 def test_an_open_position_has_no_pnl_yet(con):
