@@ -100,6 +100,21 @@ mitad, ¿sigue siendo una sola corrida? §4bis la responde congelando la REGLA, 
 > (la corrección que la sesión A planteó contra R21 y que allí ensanchó el intervalo a
 > [−0,0288 · −0,0205] sin cambiar el signo).
 >
+> **Y HAY DOS PREGUNTAS QUE SÓLO ESTA CORRIDA PUEDE CONTESTAR**, porque su sustrato no se recupera
+> hacia atrás. Verificado en el almacén prospectivo el 2026-09-09: los shards de
+> `orderbook_snapshots` llevan `best_bid`, `best_ask`, `spread`, `mid`, `imbalance` y profundidad a 1,
+> 5 y 10 niveles, con la escalera completa y su bandera de truncamiento.
+> 1. **R21 tuvo que SUPONER el deslizamiento.** No había libro histórico —tabla vacía, los 16.165.636
+>    precios `MIDPOINT_ESTIMATED`— así que `x_exec` se fijó en el peldaño más adverso de D19 **por
+>    disciplina, no por medida**. Aquí se recorre el libro de verdad: el precio alcanzable deja de ser
+>    un supuesto, y **cuánto se equivocaba el supuesto es un resultado en sí mismo**.
+> 2. **R22 no pudo evaluar el eje de SPREAD** — el que la propia hipótesis señalaba como el más
+>    informativo, y cuya ausencia quedó declarada como *«la rama negativa es más débil de lo que podría
+>    haber sido»*. **Aquí sí hay spread.**
+>
+> Por eso **cada ranura de libro perdida es una de esas dos respuestas que no se podrá dar**, y por eso
+> la fiabilidad del host (§5) no es una molestia operativa sino una pérdida de evidencia.
+>
 > **No se espera beneficio**, y decirlo ahora es lo que hace informativo cualquier resultado: si la
 > corrida arrancara prometiendo PnL y diera cero, el resultado sería ambiguo entre «la cadena falla» y
 > «la estrategia no vale». Declarado así, cada cosa se lee por separado — y el PnL se lee bajo §6bis,
@@ -545,6 +560,22 @@ del criterio invalida la corrida igual que un cambio de parámetro a mitad (§8.
 - **`n` por debajo del mínimo** → **`NO EVALUABLE`**, nunca «no hubo beneficio». Es la cláusula de no
   vacuidad de §6.0 aplicada al PnL: el mínimo se fija en la misma enmienda que el umbral, con la
   regla de §4.1 de R21 (n ≥ 100 **decisiones de evento**, no posiciones).
+
+**4bis. Los umbrales, en la forma directamente comprobable que propuso la sesión B:**
+- **Coherente con R21:** mediana ≤ 0, **o** intervalo (por bloques de evento) que incluya el cero.
+- **Contradictorio con R21:** mediana > 0 **y** intervalo por bloques que **no** incluya el cero,
+  sobre **≥ 100 operaciones LIQUIDADAS**. *(Esta condición implica la formulación anterior —un
+  intervalo positivo que excluye el cero excluye por fuerza el [−0,0288 · −0,0205] de R21, que es
+  enteramente negativo— y es preferible porque se comprueba directamente.)*
+- **`n` < 100 liquidadas → `NO EVALUABLE`**, ni APTA ni NO APTA. No «no hubo beneficio».
+- **La etiqueta es `winning_outcome` del venue**, la misma que R21 §A.5, para que las dos corridas se
+  midan contra la misma vara. El sesgo de la etiqueta por observación (§9) se reporta aparte y **no**
+  sustituye a ésta.
+
+**4ter. `PAPER_TAU` NO SE TOCA A MITAD. Si se cambia, la corrida SE PARTE.** Los tramos se reportan
+**por separado y no se agregan**: un PnL agregado sobre dos taus distintas no es el PnL de ninguna
+regla. Aportación de la sesión B, y cierra el hueco que dejaba §8.3 —que anula por cambio de
+parámetro— para el caso en que alguien decida partir en vez de anular.
 
 **5. Lo que esta sección NO autoriza:** ni ampliar la rejilla de tau, ni cambiar la regla de
 selección, ni reajustar el constructor de colas, ni volver a correr con otra tau si la primera no

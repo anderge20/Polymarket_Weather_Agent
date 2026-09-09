@@ -3432,3 +3432,39 @@ tiene que estar fijada antes o en 21 días tendremos un número y elegiremos des
 esta corrida y partirlo en otro documento fragmentaría el contrato. Lo que aporta B es lo que sólo B
 tiene —el intervalo por bloques, la rejilla barrida, el `n` mínimo de R21 §4.1— y su refutación de mi
 §0, que es la que abrió esto.
+
+## A-74 — El sustrato prospectivo contesta dos preguntas que R21 y R22 tuvieron que dejar abiertas · 2026-09-09 · B lo vio, A lo verificó
+
+**B propuso el reencuadre y lo verifiqué antes de adoptarlo.** Los shards de `orderbook_snapshots` del
+almacén prospectivo llevan `best_bid`, `best_ask`, `spread`, `mid`, `imbalance` y profundidad a **1, 5
+y 10 niveles**, más la escalera completa con su bandera de truncamiento y los conteos reales
+(`n_bid_levels`, `n_ask_levels`). Comprobado sobre un shard real, no sobre el resumen.
+
+**Eso es exactamente lo que faltó DOS veces:**
+
+1. **R21 tuvo que SUPONER el deslizamiento.** Sin libro histórico —tabla vacía, los 16.165.636 precios
+   `MIDPOINT_ESTIMATED`— `x_exec` se fijó en el peldaño más adverso de D19 **por disciplina, no por
+   medida**. En la corrida se recorre el libro de verdad: el precio alcanzable deja de ser un
+   supuesto, y **cuánto se equivocaba el supuesto es un resultado**.
+2. **R22 no pudo evaluar el eje de SPREAD**, el que la propia hipótesis señalaba como el más
+   informativo y cuya ausencia quedó declarada como «la rama negativa es más débil de lo que podría
+   haber sido». **Aquí sí hay spread.**
+
+**Reencuadra la decisión de los 21 días**, y ésta es la forma en que hay que subirla: no son «21 días
+para volver a mirar una señal ya medida», son **21 días para contestar dos preguntas que quedaron
+abiertas por falta de sustrato, y ese sustrato no se recupera hacia atrás**. **Cada ranura de libro
+perdida es una de esas dos respuestas que no se podrá dar** — con una ranura perdida del todo el primer
+día (A-70), eso deja de ser una advertencia genérica.
+
+**§6bis completado con el contenido del borrador de B**, que redactó en paralelo mientras yo escribía
+el mío: umbrales en forma directamente comprobable (coherente = mediana ≤ 0 **o** IC que incluya el
+cero; contradictorio = mediana > 0 **y** IC por bloques que **no** incluya el cero sobre **≥ 100
+liquidadas**; por debajo, `NO EVALUABLE`), etiqueta = `winning_outcome` del venue como en R21 §A.5, y
+**`PAPER_TAU` no se toca a mitad: si se cambia, la corrida SE PARTE y los tramos se reportan por
+separado y no se agregan** — que cierra el hueco que §8.3 dejaba para quien prefiriera partir en vez
+de anular.
+
+**Decisión de ownership, ya comunicada:** vive en **R24**, no en un R25 aparte. Partir el criterio de
+aceptación en otro documento fragmentaría el contrato justo donde hace falta que sea uno. El borrador
+`PREREG_R25_PROSPECTIVE.draft.md` queda **SUPERADO** por §6bis y se marca como tal para que no haya dos
+contratos. La autoría de cada cláusula está citada.
