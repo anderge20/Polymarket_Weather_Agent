@@ -1949,3 +1949,61 @@ cumple lo que A-29.2 pedía, y habría que subir a la opción siguiente del usua
 el disparo. **No decido nada todavía: dos ranuras perdidas no son una serie.** Si fallan también las
 de 15:07 y 18:07, es un patrón y hay que actuar.
 **Estado:** ADOPTADA; ranura de 15:07 EN OBSERVACIÓN.
+
+## A-45 — Dos ramas verdes que rompen al fusionarse, y una migración que no existía · 2026-09-09 · Claude (sesión A)
+
+B abrió el PR #8 (ingestión 2B + M2, +5.349/−67 en 19 ficheros) y me pidió que lo fusionara porque sus
+puertas de sesión se lo impiden. **No lo fusiono por eso.** Lo reviso como cualquier otro y, si entra,
+será por mi propia evidencia bajo D16. Está en refutación hostil; no fusiono hasta que vuelva. Sus 383
+tests los verifiqué yo en su rama: pasan.
+
+### El hallazgo de método: `mergeable = MERGEABLE` no dice nada sobre si funciona
+
+Hice la **fusión de prueba** `main + PR#8 + PR#7` en local y **seis tests fallaron**, con cada rama
+verde por separado. **Ninguna CI que pruebe ramas por separado lo habría cazado**, y git no ve nada
+porque no hay conflicto textual. Todos los defectos eran míos, y ninguno lo era del código: eran de
+mis **tests, que asumían un estado del mundo**.
+
+1. Mi fixture hacía `ALTER TABLE weather_observations ADD COLUMN observed_value` para simular la
+   migración 4 de B — correcto mientras su rama no esté fusionada, error duro en cuanto entra. Ahora
+   es **idempotente**.
+2. Mi test «settle nombra lo que le falta» afirmaba que faltaban **justo las columnas que B añade**.
+   Ahora reporta a través de `column_names` en vez de operar sobre el esquema: `DROP COLUMN` no vale
+   porque DuckDB se niega cuando un índice depende de una columna posterior.
+
+### `markets.contract_source` no la creaba NINGUNA migración
+
+R29 clasifica la fuente de settlement y `discovery.ingest_event` la escribe **«sólo si el esquema
+tiene esa columna»**, con un comentario que dice que la añade R27/v4. **No la añade.** Ninguna
+migración la creó nunca, así que **la salida del clasificador no se persistía jamás** y `settle`
+habría seguido en SKIP incluso fusionando las dos ramas: `settle_substrate_missing` sobre la fusión de
+prueba devolvía `['markets.contract_source']`. **B lo confirmó de forma independiente** desde su
+propio chequeo de sustrato de R14. Añadida en PR #7.
+
+Añadirla hizo fallar dos tests de R29, **y tenían razón en fallar**: codificaban «esta columna todavía
+no existe», afirmando su ausencia y creándola ellos. Esa suposición es justo lo que ocultó el hueco
+tanto tiempo. Ahora los dos afirman que existe y que la ingesta la rellena.
+
+### Y un defecto mío que merece nombrarse
+
+`_station_tz` recorría **tres nombres plausibles** —`timezone_for`, `tz_for`, `get_timezone`— esperando
+que alguno existiera. El real en el registro de B es **`timezone_of`**, ninguno de los tres. En el
+árbol fusionado devolvía `None` en silencio y **toda** liquidación `LOCAL_CIVIL_DAY` se rechazaba por
+falta de huso, sin error en ninguna parte. **Adivinar una API en vez de leerla es el mismo fallo que
+suponer un literal en vez de verificarlo** (A-42, donde di por hecho `UNKNOWN` y era `SIN_CLAUSULA`).
+Los dos los cazó ejecutar contra la cosa real; ninguno, un test unitario.
+
+**Fusión de prueba final: 442 passed.** Las dos ramas pueden entrar sin romper.
+
+### Reparto aclarado
+
+**R14 es de B**, no mía: el título «R12/R14» de mi PR #6 era engañoso. Yo hice **R12**, el mecanismo;
+R14 es producir la tabla de etiquetas y la consumen R19/R20/R21, que son suyas. B ya la ha publicado
+en `feat/r14-labels` usando mi operador sin reimplementar nada, y con la disciplina correcta: **un
+rechazo es dato**, `is_winner` queda en NULL (desconocido) y no en False (perdió).
+
+### Práctica que adopto, por sugerencia de B
+
+**La fusión de prueba es obligatoria antes de fusionar cuando hay dos ramas largas vivas.** No es
+anécdota: es el único sitio donde este defecto aparece.
+**Estado:** ADOPTADA.
