@@ -333,6 +333,18 @@ calibración de R21 no existe, la corrida no arranca**; no hay `tau` por defecto
   después de `T_asof`, luego la decisión se tomó con información recortada al clamp y no con la
   información fresca que el lead permitía). `drift_h` se registra por ciclo y **sí varía**.
 - Un día perdido **no se recupera** y cuenta contra C1.
+- **MEDIDO 2026-09-09, y cambia lo que hay que esperar de §5.** El cron de Actions **entrega, pero
+  tarde**: el disparo de las 11:40Z llegó a las **15:15Z**, con `drift_h = 3,292`,
+  `late_firing = True` y `own_prices_usable = False` — el clamp llevó `prediction_time` a `T_asof` y
+  el ciclo cayó, correctamente, al último precio recogido antes del ancla. Con retrasos de ese orden
+  **casi todos los ciclos serán LATE_FIRING**, así que ese indicador dejará de discriminar y lo que
+  importa pasa a ser **cuán viejo es el precio que se usa**, no si el ciclo llegó tarde. Se reporta
+  por ciclo (§7) la antigüedad del precio empleado respecto de `T_asof`.
+- **El colector, en el mismo periodo, entregó CERO de dos ranuras programadas** (12:07Z y 15:07Z),
+  mientras el ciclo diario entregó una de una. Puenteadas a mano cuatro recolecciones. La asimetría
+  no está explicada y el criterio acordado en A-29.2 es la tasa de fallo **del colector**, porque una
+  ranura de precio se recupera dentro de la ventana de Open-Meteo y **una de book no se recupera
+  nunca**. Si persiste, el cambio de host es **decisión del usuario** y se le plantea con la medida.
 
 ---
 
@@ -442,13 +454,30 @@ detecta con pocas observaciones. **No se presentará como evidencia de buena cal
   KHOU, KORD, KSEA, KSFO; `tmpf` dentro de la banda 6/6). Los 121 mercados y 11 eventos que la tabla
   del núcleo asocia al estrato son su **población**, no la muestra del audit. Es cobertura muestral
   estrecha, no ausencia de validación: validación hay y es 6/6.
-- **Etiquetar desde observaciones se equivoca el 6,8 % de las veces, y con signo.** Cruzando la
-  resolución del venue contra las observaciones IEM en los 410 eventos donde el sustrato tiene la
-  banda ganadora: **382 concuerdan, 28 no (0,932)**. De las 28, **25 con la observación POR DEBAJO**
-  de la banda —la cota inferior por muestreo horario— y sólo 3 por encima (ZGSZ ×2, RKSI ×1) sin
-  causa identificada. **No es ruido: es un sesgo que subestima sistemáticamente la máxima y por tanto
-  favorece las bandas bajas.** `stage_observations` hereda ese sesgo, así que **toda cifra de PnL de
-  esta corrida lo lleva dentro** y se reporta junto a ella (§7).
+- **Etiquetar desde observaciones falla, con signo, y el número que importa NO es el agregado.**
+  Cruzando la resolución del venue contra las observaciones IEM en los 410 eventos donde el sustrato
+  tiene la banda ganadora: 382 concuerdan, 28 no (**6,8 % agregado**). Medido como distancia FUERA de
+  `[lo, hi]` —el único estadístico válido; usar el `lo` como «centro» da 47/72 y no significa nada—:
+  **25 con la observación por debajo, 3 por encima, y 22 de las 25 fallan por exactamente un paso de
+  rejilla.** No es una cola, es un escalón: la firma del muestreo horario, que no ve el máximo.
+  - **El 6,8 % no es una tasa de error del instrumento: es la tasa a la que un error de un paso cruza
+    el borde de la banda, y eso depende de la ANCHURA DE LA BANDA tanto como del sensor.** Una banda
+    en °C es un entero único; una en °F abarca dos, y es aproximadamente el doble de tolerante.
+    Por anchura: **entero único (°C) 9,7 %** (n=268) · **dos enteros (°F) 2,0 %** (n=51) · **banda
+    abierta de cola 1,1 %** (n=91). Decir «las estaciones en °F observan mejor» sería escribir una
+    propiedad del CONTRATO como si fuera del sensor.
+  - **Y el universo en vivo está dominado por el caso malo.** Medido sobre los 1.100 mercados
+    abiertos del 2026-09-09: **63,8 % banda de entero único en °C**, 18,0 % dos enteros en °F, 18,2 %
+    banda abierta. Ponderando las tres tasas por esa mezcla sale **≈ 6,8 %**, pero la cifra que va
+    pegada a una decisión concreta en °C es **9,7 %**, no la agregada.
+  - **El sesgo NO es homogéneo y por tanto es acotable por estrato.** De 45 estaciones con ≥5
+    eventos, **32 no fallan ni una vez**; cinco cargan el 71 % (EGLC 8/44, ZGSZ 5/8, RKSI 3/9,
+    WSSS 2/8, EPWA 2/9). ZGSZ con 5 de 8 no es compatible con una tasa base del 6,8 % por azar.
+  - **Cobertura: 399 de los 410 eventos son de abril y mayo**; junio a septiembre aportan 11 entre los
+    cuatro. Es una muestra del primer tercio del periodo, no del periodo. **No se puede afirmar que la
+    tasa sea estable en verano**, que es cuando la corrida ocurre.
+  `stage_observations` hereda este sesgo, así que **toda cifra de PnL de esta corrida lo lleva
+  dentro**; se reporta pegada a ella (§7), con la tasa de la anchura de banda que corresponda.
 - **La estimación de cuantiles se mueve entre reajustes.** Como dispersión es pequeña —σ_inst
   0,037 °C (lead 9) y 0,055 °C (lead 24) a Δ = 5 días, un 0,5 % del margen— **porque M2 v2 agrupa
   entre estaciones y su localización se estima con ~2.000 pares; es una propiedad de v2, no del
@@ -460,6 +489,11 @@ detecta con pocas observaciones. **No se presentará como evidencia de buena cal
   información de la permitida no puede crear fuga— pero significa que la distribución aplicada
   describe un pasado algo más corto que el disponible. La magnitud de esa diferencia es justamente lo
   que mide P8; por encima de `max_age_hours` deja de ser una limitación y pasa a ser una negativa.
+- **El precio con el que se decide puede ser varias horas anterior a `T_asof`.** El cron llega tarde
+  (§5), el clamp fija `prediction_time = T_asof`, y entonces el precio utilizable es el último que el
+  COLECTOR capturó antes del ancla. Con el colector a tres horas y entregando con retraso, esa
+  antigüedad puede acercarse a las tres horas. No invalida la decisión —el as-of se respeta— pero la
+  información es más vieja de lo que el lead sugiere, y eso se reporta por ciclo.
 - **`SIMULATED_EXECUTABLE` no es un fill.** Se simula contra el book observado en el ciclo, que pudo
   cambiar entre la captura y `prediction_time`.
 - **La escalera almacenada está truncada a 10 niveles.** Un fill que la agote se marca
