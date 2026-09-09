@@ -2398,3 +2398,94 @@ estaciones en silencio. Corregido a `station_identifier`.
 no dice nada del camino en vivo. El colector, el clasificador y ahora la estación — los tres fallaban
 sólo hacia delante.
 **Estado:** ADOPTADA.
+
+## A-54 — Refutación hostil de PR #11: tres hallazgos, los tres latentes · 2026-09-09 · Claude (sesión A)
+
+**Refutado por ejecución, no por lectura.** La ampliación de `_URL_RE` la medí contra las **93.221**
+descripciones ejecutando las dos expresiones sobre ellas:
+
+    old casaba y new no (regresión):                0
+    URL weather.gov/timeseries presente, sin casar: 0
+    URL wunderground presente, sin casar:           0
+    resolution_source truncado:                     0
+    códigos site=: 11.528 apariciones, TODOS de 4 caracteres, 50 distintos
+
+Y por separado comparé la estación que ahora deriva el clasificador contra **`v3.icao2`** —la columna
+que usó el trabajo histórico, poblada por **otra vía** en la construcción del catálogo:
+
+    coinciden 91.285 · discrepan 0 · sólo-nuevo 0 · sólo-catálogo 0 · ninguno 1.936
+
+Los 1.936 son exactamente los **1.859 HKO** (sin ICAO por naturaleza) más los **77 CWA**. El arreglo
+reproduce, mercado a mercado, una asignación de estación producida por un camino con el que no
+comparte una línea de código. Es la evidencia más fuerte disponible aquí y por eso el cambio se queda.
+
+**Los tres hallazgos que sí produjo la refutación:**
+
+1. **`re.I` se había perdido** al ensanchar la expresión. Ninguna descripción del catálogo lleva URL
+   con mayúsculas, así que **ni la suite ni el catálogo podían cazar el estrechamiento** — que es
+   justamente la razón de restaurarlo en vez de argumentar que da igual. La extracción de `site=`
+   también es insensible a mayúsculas ahora.
+2. **`record_version` es parte de la PK de `weather_forecasts` y no lo nombraba ni el SELECT ni el
+   UPDATE** que adjunta los cuantiles. Con una versión por clave coinciden; con dos, el SELECT
+   devuelve las dos filas y cada UPDATE sin ámbito escribe en AMBAS, así que el último
+   `forecast_tmax` procesado fija los cuantiles de todas las versiones. El test siembra tmax 10,0 y
+   20,0 en versiones 1 y 2 y sin el arreglo falla con `assert 20.0 == 10.0`. Misma clase que «la
+   lectura de precio devolvía el precio de otro token», cazada antes de dispararse.
+   **B confirmó el mismo agujero en `fit_m2.py`** —ni `model` ni `record_version` en su SELECT ni en
+   su UPDATE— y lo corrigió. Era el hallazgo que R19 le dejaba diferido; salió antes por otro camino.
+3. **`int(lead_hours)` truncaba en vez de negarse.** `training_pairs` compara `p.lead_h == lead_h`
+   exacto, así que `int(9.5) → 9` devolvía el estrato de 9 h para una decisión de 9,5 h, sin
+   excepción. Ahora la etapa PARA con `non_integral_lead_hours`.
+
+Los tres tests se ejecutaron contra el código sin arreglar y **los tres fallan allí**. 475 verdes;
+validador R29 sobre los 93.221: PASS, 0 desacuerdos inexplicados, los mismos 77 residuos explicados.
+**Ventana de objeción D16 hasta 2026-09-09 16:07 UTC.**
+**Estado:** ADOPTADA.
+
+## A-55 (R30) — Los cuantiles de M2 como artefacto versionado; rancio y fuga son negativas · 2026-09-09 · Claude (sesión A)
+
+**El problema, medido en vivo:** el ciclo escribía pronósticos y ninguna distribución
+(`quantiles=0 quantile_scope=INSUFFICIENT`), `build_feature` devolvía None y no había ni una señal.
+No es un fallo del ajuste: **el ciclo no tiene sobre qué ajustar.** M2 entrena sobre el backfill; la
+DuckDB del ciclo se reconstruye en Actions desde los shards prospectivos y no contiene ni una
+observación realizada.
+
+**La decisión fue de B, porque M2 es suyo.** Le propuse la opción 3 (artefacto versionado) diciendo
+explícitamente que era un argumento mío y quería que lo validara él, no darlo por bueno. B la aceptó
+**con una razón mejor que la mía**: diferir el reajuste es CONSERVADOR, nunca fugado, porque *«un
+artefacto ajustado en t₀ < t usa un SUBCONJUNTO de aquello a lo que tenía derecho; usar menos
+información de la permitida no puede crear fuga de futuro»*. Y añadió la condición que lo hace
+seguro: el ciclo **se niega** si el artefacto supera una antigüedad declarada, en vez de usarlo —
+*«un artefacto viejo usado en silencio es exactamente la clase de fallo que llevamos dos días
+cazándonos: no rompe, produce un número plausible»*.
+
+**La cuarta guarda es mía y es el corolario de su propio argumento.** Si diferir es seguro PORQUE usa
+un subconjunto, adelantar es fuga porque usa un superconjunto: `fit_instant > prediction_time` es una
+negativa, no un aviso. Hacia delante en el tiempo no puede ocurrir; `replay_cycle.py` se la encuentra
+la primera vez que se reproduzca un ciclo antiguo contra un artefacto reajustado después — lookahead
+por la puerta que abrimos para cerrar otra. B: *«yo di el argumento y no vi el corolario»*.
+
+**Y la quinta condición es de B, sobre mi contrato:** el ciclo registra también la **antigüedad
+efectiva** en el momento de uso, no sólo el `fit_instant`. Cuando haya que auditar una decisión, la
+antigüedad calculada es el dato; dejar que un lector reste dos instantes de filas distintas es como
+una auditoría se equivoca en la aritmética.
+
+**Lo entregado:** `src/weather_agent/quantile_artifact.py` (formato, cargador, guardas),
+`scripts/fit_quantile_artifact.py` (el único escritor), `prereg/PREREG_M2_ERROR_v2.md` versionado en
+el repo — así `m2.PREREG_SHA_V2`, que era una constante que nada podía comprobar, pasa a ser
+verificable. Enum cerrado de negativas, `--max-artifact-age-h` sólo puede ENDURECER la vida declarada
+por el artefacto, y el `artifact_id` es un sha del contenido canónico: un cuantil retocado a mano en
+el JSON se rechaza en vez de usarse.
+
+El ajustador se niega a publicar dos cosas: un sustrato con **más de un modelo** bajo un mismo
+`dataset_version` (`m2.load_pairs` lee `weather_forecasts` sin predicado de modelo aunque `model` es
+PK, así que los pares serían una MEZCLA y nada en un `Pair` dice de qué modelo viene), y un reajuste
+**peor** que el artefacto en disco. `code_sha256` se registra y deliberadamente NO cierra el paso.
+
+38 tests nuevos, casi todos construyendo un artefacto malo a propósito; el ajustador se prueba
+**ejecutándolo**. 510 verdes. **El artefacto todavía no existe**: se ajusta cuando termine el backfill
+de B, con `max_age_hours` fijada por su medida de deriva y no a ojo. Hasta entonces la etapa para con
+`quantile_artifact:artifact_missing` — las mismas cero señales de antes, ahora etiquetadas en vez de
+silenciosas.
+**Rama:** `feat/quantile-artifact`, sobre `feat/forecast-stage`. **Ventana D16 hasta 2026-09-09 17:00 UTC.**
+**Estado:** ADOPTADA, PR tras fusionar #11.

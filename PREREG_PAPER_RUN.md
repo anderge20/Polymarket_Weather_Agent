@@ -1,10 +1,14 @@
-# PREREGISTRO — Corrida de modo papel (R24) · **v3**
+# PREREGISTRO — Corrida de modo papel (R24) · **v4**
 
-**Estado:** BORRADOR v3, **NO CONGELADO**. Por A-29.4 no se congela hasta pasar refutación hostil
+**Estado:** BORRADOR v4, **NO CONGELADO**. Por A-29.4 no se congela hasta pasar refutación hostil
 sin bloqueantes abiertos.
 **v1 REFUTADA** (2/2 refutadores, 25 hallazgos) → v2. **v2 REFUTADA** (3 bloqueantes: el fill no aplicaba
 predicado as-of sobre el libro; el replay usaba un predicado distinto del ciclo que audita; y §0
 invertía el signo del efecto de la correlación) → **v3**, que es esta.
+**v3 → v4 (2026-09-09):** los cuantiles de M2 dejan de ajustarse dentro del ciclo y pasan a ser un
+**artefacto versionado** (R30/A-55). Eso crea un parámetro congelable que v3 no contemplaba y una
+pregunta que **hay que responder antes de la corrida, no después**: si el artefacto se reajusta a
+mitad, ¿sigue siendo una sola corrida? §4bis la responde congelando la REGLA, no el valor.
 **Fecha:** 2026-09-09 · **Autor:** Claude (sesión A) · **Pista:** A-31
 **Host:** GitHub Actions (decisión del usuario, A-29.2) · **Código:** `feat/paper-actions` (PR #3)
 
@@ -152,6 +156,7 @@ La corrida **no empieza** mientras alguna falle. El informe declara la fecha en 
 | # | Precondición | Comprobación mecánica |
 |---|---|---|
 | P1 | **M2 produce cuantiles fiables**; los bloqueantes de A-32 resueltos y re-ejecutados | `weather_forecasts.forecast_p10..p90` no nulos para el universo de §3 **y** una entrada en `DECISIONS.md` que declare cerrados los bloqueantes de A-32, citando el sha del preregistro corregido |
+| **P8** | **El artefacto de cuantiles existe y su vida útil es una MEDIDA** (R30). No basta con que el fichero esté: `max_age_hours` debe salir de la deriva medida de los cuantiles agrupados al añadir historia, y el informe que la mide se cita aquí. Un artefacto con una vida elegida a ojo es exactamente el silencio que el artefacto venía a cerrar | un ciclo manual deja `forecasts` en OK con `quantiles > 0`, `quantile_artifact_id` no nulo y `quantile_artifact_age_h` dentro del límite, **y** `DECISIONS.md` cita la medida de deriva que fija `max_age_hours` |
 | P2 | **`tau` fijado por calibración fuera de muestra (R21)** | el informe de R21 nombra `tau` y su procedimiento. **Si R21 no existe, la corrida no arranca**: no hay tau por defecto (§4) |
 | P3 | **Etapa `forecasts` implementada.** Hoy `stage_forecasts` **no tiene ninguna rama OK** y no escribe nada; el cableado es pista de B | un ciclo manual deja `forecasts` en OK con `written > 0` |
 | P4 | **Liquidación cableada** con la etiqueta real bajo el SettlementOperator del mercado | `settle` en OK con `positions_settled > 0` |
@@ -197,10 +202,47 @@ precondición y se espera.
 | `model` (M1) | `icon_seamless` | D12 |
 | `rebate` de maker | 0, con la cota superior reportada aparte | D19 |
 
+| **`quantile_artifact_id`** | **el sha del artefacto vigente**, fijado al arrancar la corrida | R30. Es un sha del contenido canónico: dos ajustes con los mismos números tienen el mismo id, y un cuantil retocado a mano cambia el id y se rechaza |
+| **`max_artifact_age_h`** del ciclo | **igual a la del artefacto**, o menor | R30. La línea de comandos sólo puede ENDURECER; un valor mayor se ignora |
+
 **Auditabilidad del congelado.** El workflow lee estos valores de variables de repositorio, que se
 editan sin dejar traza. Por eso cada ciclo **escribe sus parámetros efectivos** en el almacén
 (`stage_params` → shard `cycle_params`), en un registro append-only y fechado por commit. Un cambio
 a mitad de corrida es entonces un diff visible, y §8.3 pasa a ser auditable en vez de declarativa.
+
+---
+
+## §4bis. El reajuste del artefacto a mitad de corrida
+
+El artefacto de cuantiles (R30) es un parámetro de §4, y §8.3 anula la corrida si un parámetro de §4
+cambia durante ella. Pero un artefacto **tiene** que envejecer: pasada su `max_age_hours` el ciclo se
+niega y deja de producir señales, así que «no reajustar nunca» no es una opción neutra — es elegir
+que la corrida se apague sola. La pregunta se responde **aquí y ahora**, antes de ver un solo
+resultado.
+
+**Se congela la REGLA, no el valor** (mismo patrón que §0 con el PnL):
+
+1. **El reajuste está PERMITIDO y programado**, no improvisado. La cadencia se declara antes de
+   arrancar, en horas, y **sale de la medida de deriva de P8**, no de la comodidad. Una vez
+   arrancada la corrida la cadencia no se toca.
+2. **Un reajuste fuera de esa cadencia anula la corrida** (§8.3, punto 3). Reajustar porque los
+   resultados no gustan es cambiar un parámetro después de ver resultados.
+3. **Cada reajuste usa sólo lo disponible en su instante de ajuste.** Lo garantiza el código, no la
+   buena intención: `fit_instant` es un corte sobre `label_available_at`, y el ciclo **se niega** si
+   `fit_instant > prediction_time` (fuga) o si la antigüedad supera el límite (rancio).
+4. **Un reajuste NO segmenta la corrida.** Los criterios de §6 se evalúan sobre los 42 ciclos
+   completos. Declararlo ahora es lo que impide elegir después el corte que más favorezca: cada
+   ciclo registra su `quantile_artifact_id`, así que **una partición por artefacto es computable a
+   posteriori y por eso mismo no es criterio** — se reporta en §7, nunca decide.
+5. **Un reajuste que empeore el ajuste no se publica.** El ajustador se niega ante un estrato
+   perdido, un `POOLED` que pasa a `INSUFFICIENT` o una `n` menor, salvo `--allow-regression`
+   explícito, que en corrida **no se usa**: usarlo es el punto 2.
+6. **Ciclos perdidos por artefacto rancio cuentan contra C1**, como cualquier otro ciclo perdido.
+   No hay categoría de excusa: si la cadencia se eligió mal, el coste se ve.
+
+**Lo que este preregistro NO puede fijar todavía:** el número de horas. Depende de la medida de
+deriva que debe la sesión B (encargo 3). Queda como hueco explícito, del mismo modo que `tau` queda
+como hueco de P2: **si la medida no existe, la corrida no arranca**; no hay cadencia por defecto.
 
 ---
 
@@ -293,7 +335,8 @@ detecta con pocas observaciones. **No se presentará como evidencia de buena cal
 1. Cualquier indicio de ruta de dinero real: una clave, una firma, un endpoint de orden. Gate D0.
 2. Una violación de C2.
 3. Un cambio de cualquier parámetro de §4 durante la corrida, **detectado como diff entre shards
-   `cycle_params`** (§4).
+   `cycle_params`** (§4). Incluye `quantile_artifact_id`: un cambio de artefacto **fuera de la
+   cadencia declarada en §4bis** anula la corrida; dentro de ella, no (§4bis.1).
 4. Escritura en `main` desde un workflow.
 
 **Parada con corrida conservada y declarada corta:**
@@ -311,6 +354,11 @@ detecta con pocas observaciones. **No se presentará como evidencia de buena cal
 
 ## §9. Limitaciones declaradas ANTES
 
+- **Los cuantiles vienen de un ajuste ANTERIOR a la decisión, no del instante de la decisión.** Es
+  deliberado y es conservador —un ajuste en `t₀ < t` usa un subconjunto de lo permitido, y usar menos
+  información de la permitida no puede crear fuga— pero significa que la distribución aplicada
+  describe un pasado algo más corto que el disponible. La magnitud de esa diferencia es justamente lo
+  que mide P8; por encima de `max_age_hours` deja de ser una limitación y pasa a ser una negativa.
 - **`SIMULATED_EXECUTABLE` no es un fill.** Se simula contra el book observado en el ciclo, que pudo
   cambiar entre la captura y `prediction_time`.
 - **La escalera almacenada está truncada a 10 niveles.** Un fill que la agote se marca
