@@ -63,9 +63,22 @@ def quantiles_to_distribution(
         return {minimum: 1.0}
 
     # Build a CDF by piecewise-linear interpolation.
+    #
+    # THE TAILS ARE CLAMPED, and the lower one was not. Below `p10 - 1` the
+    # expression `0.10 * (x - (p10 - 1))` goes NEGATIVE — cdf(17.5) = -0.033 for a
+    # p10 of 18.83 — and `upper - lower` then adds that magnitude to the lowest
+    # integer bin instead of subtracting nothing. Measured on the real M2 artifact:
+    # the lowest bin came out 0.0968, of which 0.0333 — THIRTY-FOUR PER CENT of the
+    # bin — was manufactured by the negative branch, and the raw mass summed to
+    # 1.0333 before normalisation shrank everything to hide it.
+    #
+    # A CDF that returns a negative value is not a modelling choice, it is an
+    # arithmetic error, and the fix is not a tuning change: `max(0.0, ...)` on the
+    # way out cannot repair it because the damage is in the DIFFERENCE, not in
+    # either endpoint.
     def cdf(x: float) -> float:
         if x <= values[0]:
-            return 0.10 * (x - (values[0] - 1.0)) / 1.0
+            return max(0.0, 0.10 * (x - (values[0] - 1.0)) / 1.0)
 
         for i in range(len(ordered) - 1):
             p_left, x_left = ordered[i]
@@ -78,7 +91,9 @@ def quantiles_to_distribution(
                 fraction = (x - x_left) / (x_right - x_left)
                 return p_left + fraction * (p_right - p_left)
 
-        # Upper tail.
+        # Upper tail. Already clamped at 1.0 by the `min`, which is why only the
+        # lower one was wrong: the same bound was written on one side and not the
+        # other.
         return 0.90 + 0.10 * min(
             1.0,
             (x - values[-1]) / 1.0,
