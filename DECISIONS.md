@@ -1256,3 +1256,108 @@ que el PnL se reporta pero **no es criterio**; los criterios son operativos y bi
 
 **Ventana de objeción (D16):** abierta desde ahora, ≥ 2 h, para PR #3. No bloquea nada de B.
 **Estado:** ADOPTADA.
+
+## A-34 — Cierro el hallazgo que A-32 dejó sin verificar: la exclusión de los `tenths` acierta en el conjunto y falla en el motivo · 2026-09-09 · Claude (sesión A)
+
+En A-32 marqué explícitamente un hallazgo de los refutadores como **«sin verificar por mí»**: que la
+exclusión de los 1.936 mercados `rounding_rule='tenths'` de §9 de B fuera falsa. No pude recomputarla
+porque busqué `CATALOG_V2.duckdb` en `pmw-e2` y está en `~/pmw-catalog-v2/`. Ya lo he verificado.
+
+**OBSERVADO (read-only sobre `~/pmw-catalog-v2/CATALOG_V2.duckdb`):**
+- El recuento de B es **exacto**: `whole degree` 91.285 + `tenths` 1.936 = 93.221. Ahí no hay nada
+  que objetar.
+- **Las bandas de los `tenths` son ENTERAS.** Un evento tenths tiene exactamente la misma rejilla
+  que cualquier otro: `13°C or below, 14°C, 15°C, …, 22°C, 23°C or higher`. Consultado sobre los
+  1.936: **cero bandas no enteras**.
+- Lo que `tenths` describe es la **precisión de la fuente de resolución**, no la rejilla del
+  contrato. Literal de la descripción: *«The resolution source for this market measures temperatures
+  in Celsius to one decimal place (eg, 9.5°C). Thus, this is the level of precision that will be used
+  when resolving the market.»*
+- Los 1.936 son **Hong Kong 1.859 + Taipei 77**, y los 1.936 tienen `station` y
+  `station_identifier` **NULL**.
+
+**Conclusión: la exclusión es correcta en extensión y falsa en su motivo.** §9 dice que «una
+distribución de claves enteras NO PUEDE representarlos». La rejilla de bandas es entera al 100 %:
+sí puede representarlos. Lo que esos mercados no tienen es **estación** — sin ICAO no hay coordenada
+bajo la convención D1, y sin coordenada no hay pronóstico. Es el mismo conjunto por una razón
+distinta.
+
+**Por qué el motivo importa y no es pedantería:**
+1. Bajo el motivo escrito («no representable») quedan excluidos **para siempre**, porque una rejilla
+   entera nunca dejará de ser entera. Bajo el motivo real («sin identificador de estación») son
+   recuperables: el HKO y la CWA son observatorios reales y documentados, y resolver su identidad es
+   un trabajo acotado que alguien podría hacer. **2,1 % del catálogo, y el segundo mayor bloque de
+   mercados del proyecto tras el universo con ICAO.**
+2. El motivo escrito **oculta el problema real**, que sí existe y es del SettlementOperator (R12):
+   con la fuente reportando 14,6 °C y bandas enteras, ¿a qué banda cae? La regla de mapeo
+   tenths→banda **no está resuelta en ningún sitio**, y es una pregunta de operador, no de
+   representabilidad. Excluir por el motivo equivocado hace que nadie trabaje en la correcta.
+
+**Qué propongo a B** (revisión, no puerta, como todo A-32): mantener la exclusión y **cambiarle la
+etiqueta**, de `UNSUPPORTED_ROUNDING` a algo como `NO_STATION_IDENTIFIER`, y anotar la regla de mapeo
+tenths→banda entera como incógnita abierta de R12. El conjunto excluido no cambia; lo que cambia es
+que queda declarado por qué, y qué haría falta para recuperarlo.
+
+**Nota de método:** este hallazgo existe porque A-32 distinguió lo que yo había verificado de lo que
+sólo reportaban los refutadores, en vez de firmar el lote entero. Los tres refutadores decían
+«OBSERVADO FALSO» sobre §9; tenían razón en que el motivo es falso y ninguno señaló que el conjunto
+excluido es, aun así, el correcto — que es la mitad que le ahorra a B rehacer el universo.
+**Estado:** ADOPTADA (verificación); la propuesta a B queda como revisión.
+
+## A-35 — R24 refutado 3/3 y reescrito en v2; el hallazgo grave estaba en MI código · 2026-09-09 · Claude (sesión A)
+
+Sometí `PREREG_PAPER_RUN.md` a la misma refutación hostil con la que acababa de tumbar el
+preregistro de M2 de B. **Los tres refutadores: `refutada = true`, 25+ hallazgos.** No podía exigirle
+a B lo que no me aplicara a mí.
+
+**El hallazgo grave no era del documento, era del código, y lo verifiqué yo:** nadie escribía
+`price_history`. Strategy A lee el precio de mercado **sólo** de esa tabla (`build_feature` devuelve
+None sin ella, y `strategy_a` la re-consulta en su guarda de linaje). El único escritor en todo el
+repo era `scripts/validate_2d.py`, un arnés de tests. **El ciclo habría recogido books todos los
+días, excluido todas las bandas por `missing_feature` y producido cero señales y cero operaciones,
+de forma determinista y reportando OK en cada etapa.** No saltó en los smoke tests porque todos
+corrían `--collect-only`, que es justo la rama que se lo salta. Corregido en origen: el colector
+deriva la fila de `price_history` del **mismo objeto book y el mismo instante**, así que el precio
+que ve una decisión y la escalera contra la que se llena no pueden discrepar.
+
+**Y el segundo hallazgo grave sí era del documento, y es peor de lo que parece:** los seis criterios
+de §6 eran cuantificadores universales sobre conjuntos que pueden ser vacíos («100 % de las
+operaciones», «cobertura sobre las liquidadas»). **Sobre el vacío todos son verdaderos.** Una corrida
+que ejecutase los 42 ciclos sin abrir una sola posición cumplía los seis y se declaraba **APTA** —
+que §10 traduce como «sólo falta que el usuario levante D0». Los dos hallazgos juntos son una
+máquina de producir un falso listo-para-operar. v2 añade §6.0, una **cláusula de no vacuidad** con
+mínimos de sustrato y el veredicto por defecto `NO EVALUABLE`, que no es `APTA` y no autoriza nada.
+
+**Medición que ordena todo lo demás, y que no buscaba esto.** Al derivar el techo real de
+operaciones (el refutador tenía razón: mi «5 op/día» estaba inventado) medí el universo en vivo del
+2026-09-10: de 1.122 tokens, 888 (79 %) tienen book de dos lados, pero **sólo 7 de 51 eventos tienen
+TODAS sus bandas cotizadas**. Strategy A es fail-closed por evento, así que **el 86 % de los eventos
+no llega siquiera a la estrategia**. Eso no es una limitación del preregistro: es una propiedad del
+venue, acota todo lo que viene después, y merece entrar en R21.
+
+**La unidad de análisis era otro error mío, y lo señaló el refutador con precisión:** las bandas de
+un evento son una **partición** —gana exactamente una— luego están fuertemente correlacionadas y
+**no son observaciones independientes**. Usar el modelo i.i.d. para la tabla de potencia y contar
+bandas para el ritmo es mezclar dos modelos incompatibles. v2 fija la unidad en el **evento**: techo
+de **294 eventos independientes en 21 días** frente a las 425–17.749 observaciones que la tabla exige
+en neto. **Ninguna fila cabe.** La conclusión de v1 (el PnL no puede ser criterio) sobrevive, pero
+por un argumento derivado y con margen holgado, no por un número inventado.
+
+**Otras correcciones de v1 → v2:** la tabla usaba edge **bruto** bajo un documento que congela el
+modelo de costes de D19 (subestimaba `n` entre 1,4× y 7,1×); §5 afirmaba que el retraso *acorta* el
+lead cuando con el clamp lo *alarga*, y su regla de deriva era **inalcanzable por construcción**;
+C6 hablaba de «cobertura de los intervalos de `p_model`» y `p_model` es un **escalar** —error de
+categoría—; C5 dependía de un R21 que no existe sin declarar qué pasa entonces; el umbral de parada
+de 50 MB **abortaba la corrida hacia el día 9** (volumen medido ≈ 5,5 MB/día ≈ 115 MB en 21 días);
+y los parámetros «congelados» venían de variables de repositorio que se editan sin dejar traza.
+
+**Tres instrumentos nuevos, porque un criterio que nombra una herramienta inexistente no es un
+criterio:** `stage_params` (cada ciclo escribe sus parámetros efectivos en el almacén, de modo que
+§8.3 pasa de declarativa a auditable), `scripts/replay_cycle.py` (lo que invoca C3: reconstruye la
+DuckDB desde shards y re-evalúa cada decisión con el `prediction_time` y los parámetros
+**registrados**, nunca con el reloj; la mayoría de sus tests corrompen el registro a propósito,
+porque una comprobación de reproducibilidad que no puede fallar no vale nada), y P7, que exige que
+exista antes de arrancar.
+
+**Estado:** `PREREG_PAPER_RUN.md` **v2, BORRADOR, NO CONGELADO** (sha en `.sha256`). No se congela
+hasta una segunda refutación sin bloqueantes. **296 passed, 4 skipped.** PR #3 actualizado.
