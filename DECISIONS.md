@@ -2741,3 +2741,60 @@ nombre `r19_settlement_and_fee_substrate` es una copia contaminada y hay que lib
 120, lead 9 n=1347 (spread 3,37 °C), lead 24 n=1348 (spread 3,70 °C), ventana 2026-04-09 → 2026-09-05.
 Los cuantiles de lead 24 salen −1,40 / +0,40 / +2,30, **exactamente la fila que B calculó por su
 cuenta** para el mismo corte. Dos caminos, un número.
+
+## A-62 — El 6,8 % no es una tasa del instrumento; y el universo en vivo es el caso malo · 2026-09-09 · B midió, A midió la mezcla
+
+**El confusor lo encontró B antes de mandarme la conclusión al revés.** Iba a escribir «las estaciones
+en °F observan mejor» (1,1 % frente a 8,4 %). El número es cierto y la conclusión falsa: **una banda
+en °C es un entero único; una en °F abarca dos** y es el doble de tolerante al mismo error de un
+grado. Por anchura de banda:
+
+    entero único (°C)   n=268   9,7 %
+    dos enteros (°F)    n= 51   2,0 %
+    banda abierta       n= 91   1,1 %
+
+**El 6,8 % agregado no es una tasa de error del instrumento: es la tasa a la que un error de un paso
+de rejilla cruza el borde de la banda**, y eso depende de la anchura del contrato tanto como del
+sensor.
+
+**Medido por A sobre el universo abierto del 2026-09-09** (1.100 mercados), para saber qué tasa aplica
+de verdad: **63,8 % banda de entero único en °C**, 18,0 % dos enteros en °F, 18,2 % banda abierta.
+Ponderando sale ≈ 6,8 %, **coincidencia y no argumento**: la cifra que va pegada a una decisión
+concreta en °C es **9,7 %**, y ese caso es **casi dos tercios del universo que se va a operar**.
+
+**B retira su propio estadístico anterior:** el delta contra el `lo` de la banda daba 47 por debajo /
+72 por encima y no significa nada, porque en una banda cerrada `92-93 °F` una observación de 93 da
+delta +1 y **está dentro**. El válido es la distancia FUERA de `[lo, hi]`: **25 por debajo, 3 por
+encima, y 22 de las 25 fallan por exactamente un paso de rejilla**. Escalón, no cola: la firma del
+muestreo horario.
+
+**El sesgo no es homogéneo, luego es acotable por estrato:** de 45 estaciones con ≥5 eventos, **32 no
+fallan ni una vez**; cinco cargan el 71 % (EGLC 8/44, ZGSZ 5/8, RKSI 3/9, WSSS 2/8, EPWA 2/9). ZGSZ
+con 5 de 8 no es compatible con una tasa base del 6,8 % por azar.
+
+**Y la limitación que más pesa: 399 de los 410 eventos son de abril y mayo.** La corrida ocurre en
+**septiembre**. El 9,7 % es una estimación tomada en otra época del año, con otra estructura diurna y
+otra varianza. Declarado así en §9.
+
+## A-63 — Medida del host: el cron entrega tarde, y el colector no entrega · 2026-09-09 · Claude (sesión A)
+
+**El cron de Actions SÍ dispara, con horas de retraso.** El disparo declarado a las 11:40Z llegó a las
+**15:15Z**: `drift_h = 3,292`, `late_firing = True`, `own_prices_usable = False`. El clamp funcionó
+como está diseñado y el ciclo cayó al último precio anterior al ancla. **Consecuencia para §5: con
+retrasos de ese orden casi todos los ciclos serán LATE_FIRING y ese indicador dejará de discriminar**;
+lo que pasa a importar es **cuán viejo es el precio empleado** respecto de `T_asof`, y eso se reporta
+por ciclo.
+
+**El colector ha entregado CERO de dos ranuras programadas** (12:07Z, 15:07Z) mientras el ciclo diario
+entregaba una de una. La asimetría no está explicada. Cuatro recolecciones puenteadas a mano
+(10:31, 12:29, 13:10, 14:39Z) más la del propio ciclo a las 15:15Z. El criterio de A-29.2 es la tasa
+del **colector**, porque una ranura de precio se recupera dentro de la ventana de Open-Meteo y **una
+de book no se recupera nunca**. **Si persiste, el cambio de host es decisión del usuario** (el orden
+Actions → Hetzner → Mac es suyo) y se le plantea con la medida, no se resuelve por dentro.
+
+**Punto abierto del mismo tipo:** el reajuste del artefacto lee `data/pmw.duckdb` (578 MB), que **no
+existe dentro de Actions** — allí el ciclo reconstruye su DuckDB desde shards prospectivos, sin una
+sola observación histórica. Sólo puede correr donde vive esa base, hoy el Mac. Y **si nadie extiende
+el sustrato, reajustar no cambia nada salvo el `fit_instant`**: frescura de sello, no de contenido.
+El trabajo son **dos pasos** —extender el backfill y después ajustar— y necesita host asignado
+(§4bis.11).
