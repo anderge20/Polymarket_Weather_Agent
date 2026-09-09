@@ -423,11 +423,24 @@ calibración de R21 no existe, la corrida no arranca**; no hay `tau` por defecto
   **casi todos los ciclos serán LATE_FIRING**, así que ese indicador dejará de discriminar y lo que
   importa pasa a ser **cuán viejo es el precio que se usa**, no si el ciclo llegó tarde. Se reporta
   por ciclo (§7) la antigüedad del precio empleado respecto de `T_asof`.
-- **El colector, en el mismo periodo, entregó CERO de dos ranuras programadas** (12:07Z y 15:07Z),
-  mientras el ciclo diario entregó una de una. Puenteadas a mano cuatro recolecciones. La asimetría
-  no está explicada y el criterio acordado en A-29.2 es la tasa de fallo **del colector**, porque una
-  ranura de precio se recupera dentro de la ventana de Open-Meteo y **una de book no se recupera
-  nunca**. Si persiste, el cambio de host es **decisión del usuario** y se le plantea con la medida.
+- **El registro completo del primer día, corregido a las 16:51Z** (una lectura anterior decía «cero de
+  dos» y **era prematura**: la ranura de las 15:07Z llegó después de mirarla):
+
+      colector  12:07Z  →  NUNCA entregada
+      colector  15:07Z  →  entregada a las 16:33:54Z   (+86 min)
+      colector  18:07Z  →  pendiente
+      ciclo     11:40Z  →  entregada a las 15:15:30Z   (+215 min)
+
+  **Dos de tres entregadas, las dos muy tarde, una perdida del todo.** El cron de Actions no está
+  muerto: **entrega tarde y con pérdidas**, con retrasos de 1,5 a 3,6 h en la muestra.
+  Y las dos formas duelen distinto: **el retraso le cuesta DENSIDAD al colector** —el book se captura
+  cuando el job corre, sea a la hora o no— mientras que **una ranura perdida es una ventana de tres
+  horas de historia de libro que no vuelve**. Para el ciclo, el retraso hace que muerda el clamp y que
+  la decisión use la última captura del colector anterior al ancla, que con un colector también
+  retrasado puede ser de varias horas antes: por eso lo que se reporta por ciclo (§7) es **la
+  antigüedad del precio empleado respecto de `T_asof`**, no si el ciclo llegó tarde.
+  El criterio de A-29.2 sigue siendo la tasa del colector, y **la decisión de cambiar de host es del
+  usuario**. Con una muestra de tres ranuras no se decide nada: se sigue midiendo.
 
 ---
 

@@ -3294,3 +3294,29 @@ secuencia` WAL 255 B → reabre) y **comprobó el radio contra `information_sche
 veces:** *un test de una guarda tiene que fallar con la guarda quitada, y hay que comprobarlo
 quitándola.* Verde no es evidencia; **verde-sin-el-arreglo** es la evidencia. La primera versión de mi
 test pasaba con y sin el `CHECKPOINT`, y la habría dejado puesta.
+
+## A-70 — Corrección: el colector SÍ entrega, tarde y con pérdidas. Mi «cero de dos» era prematuro · 2026-09-09 · Claude (sesión A)
+
+**A-63 decía «el colector ha entregado CERO de dos ranuras programadas». Era una lectura prematura:**
+la ranura de las 15:07Z llegó **a las 16:33:54Z**, ochenta y seis minutos después de que yo la diera
+por perdida. Registro completo del primer día:
+
+    colector  12:07Z  →  NUNCA entregada
+    colector  15:07Z  →  entregada 16:33:54Z   (+86 min)
+    colector  18:07Z  →  pendiente
+    ciclo     11:40Z  →  entregada 15:15:30Z   (+215 min)
+
+**Dos de tres, las dos muy tarde, una perdida del todo.** El cron de Actions **no está muerto:
+entrega tarde y con pérdidas**, con retrasos de 1,5 a 3,6 h en la muestra.
+
+**Y las dos formas duelen distinto**, que es lo que hay que llevar a la decisión y no el número
+agregado: el **retraso** le cuesta DENSIDAD al colector —el book se captura cuando el job corre, a la
+hora o no— mientras que una **ranura perdida** es una ventana de tres horas de historia de libro que
+**no vuelve**. Para el ciclo, el retraso hace que muerda el clamp y que decida con la última captura
+anterior al ancla, que con un colector también retrasado puede ser de horas antes; por eso lo que se
+reporta por ciclo es **la antigüedad del precio empleado respecto de `T_asof`** (§7).
+
+**Lección, y es la misma de hoy en otro disfraz:** declaré un fallo del host mirando una ventana de
+minutos, cuando el fenómeno que medía tiene retrasos de horas. **Una medida tomada en una ventana más
+corta que el fenómeno no es una medida.** Con tres ranuras no se decide un cambio de host: se sigue
+midiendo, y la decisión sigue siendo del usuario (A-29.2).
