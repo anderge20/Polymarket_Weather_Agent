@@ -32,7 +32,13 @@ REPO=$ROOT/repo
 # installed and does nothing, which is the failure mode it exists to prevent.
 # Caught by the test, not by reading it: on a host where /opt is a link, the
 # unresolved form would have sailed straight through.
-SELF=$(cd "$(dirname "$0")" && pwd -P)/$(basename "$0")
+# `$0` ENTIRE, not just its directory. `pwd -P` on `dirname` resolves the
+# DIRECTORY while `basename` keeps the LINK's name, so an operator convenience
+# like /usr/local/bin/pmw-install -> $REPO/ops/hetzner/install.sh produced a
+# SELF that matched nothing while the file bash was reading sat squarely inside
+# the checkout. Found by session B, who tried the four invocation forms; the
+# other three (direct path, `bash install.sh`, relative path) already fired.
+SELF=$(readlink -f "$0")
 REPO_P=$(cd "$REPO" 2>/dev/null && pwd -P || echo "$REPO")
 case "$SELF" in
   "$REPO_P"/*)

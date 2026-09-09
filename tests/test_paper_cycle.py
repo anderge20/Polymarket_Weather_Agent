@@ -1233,3 +1233,89 @@ def test_venue_coverage_row_says_whether_the_count_is_FINAL(con, tmp_path, monke
 
     after = _row(T + timedelta(hours=3), T, tmp_path / "b")
     assert after["is_final"] is True
+
+    # THE CASE SESSION B FOUND, and the reason `is_final` may not take a second
+    # clock read. The cron fires ~20 min EARLY on purpose, so the cutoff is set
+    # before `t_asof` and the row is written after it — here a 25-minute cycle
+    # that starts at 11:40 and writes at 12:05. A fresh `_utcnow()` at write
+    # time is past the anchor and stamps a PARTIAL count as final; the cutoff
+    # that produced the count never reached it.
+    monkeypatch.setattr(paper_cycle, "_utcnow", lambda: T + timedelta(minutes=5))
+    root = tmp_path / "early_fire"
+    paper_cycle.stage_venue_coverage(
+        _cycle(), con, dataset_version="ds1",
+        universe=[{"event_id": "e0", "market_id": "m1"}],
+        prediction_time=T - timedelta(minutes=20),   # fired early: cutoff 11:40
+        t_asof=T,                                    # anchor 12:00
+        root=str(root), session_id="cyc", target_date=date(2026, 9, 10))
+    import gzip as _gz
+    row = json.loads(_gz.open(store.iter_shards(root, "venue_coverage")[0],
+                              "rt").readline())
+    assert row["is_final"] is False, (
+        "a count cut at 11:40 is partial no matter what the clock says at 12:05")
+
+
+def _events(root):
+    import gzip as _gz
+    shards = store.iter_shards(root, "host_events")
+    return [json.loads(l) for p in shards
+            for l in _gz.open(p, "rt").read().splitlines()]
+
+
+def test_host_events_queue_reaches_the_store(tmp_path):
+    """A slot lost to the lock must not be indistinguishable from a dead host.
+
+    Session B's finding on PR #15: a skip that lives only in the box's
+    collect.log leaves exactly the trace of a host that never fired — no shard,
+    a hole in "delivered", nothing to tell them apart. That is the distinction
+    §4quater rests on when it attributes NO EVALUABLE to the host, and it also
+    breaks "GitHub stays the record; nothing lives only on the box".
+    """
+    q = tmp_path / "pending.ndjson"
+    q.write_text('{"event":"lock_timeout","mode":"collect","waited_s":900}\n'
+                 '{"event":"lock_timeout","mode":"decide","waited_s":900}\n',
+                 encoding="utf-8")
+    out = paper_cycle.stage_host_events(_cycle(), queue_path=str(q),
+                                        root=str(tmp_path), session_id="cyc")
+    assert out["rows"] == 2
+    rows = _events(tmp_path)
+    assert [r["mode"] for r in rows] == ["collect", "decide"]
+    assert all(r["drained_by_session"] == "cyc" for r in rows)
+    assert not q.exists(), "the queue is consumed, not replayed every cycle"
+
+
+def test_host_events_drain_does_not_lose_a_crashed_previous_drain(tmp_path):
+    """The sidecar is removed only after the shard exists, so a crash re-drains.
+
+    Read-then-truncate would drop whatever the launcher appended between the
+    read and the truncate. The rename is atomic and the leftover is merged.
+    """
+    q = tmp_path / "pending.ndjson"
+    sidecar = q.with_suffix(q.suffix + ".draining")
+    sidecar.write_text('{"event":"lock_timeout","mode":"older"}\n', encoding="utf-8")
+    q.write_text('{"event":"lock_timeout","mode":"newer"}\n', encoding="utf-8")
+
+    out = paper_cycle.stage_host_events(_cycle(), queue_path=str(q),
+                                        root=str(tmp_path), session_id="cyc")
+    assert out["rows"] == 2
+    assert {r["mode"] for r in _events(tmp_path)} == {"older", "newer"}
+    assert not sidecar.exists() and not q.exists()
+
+
+def test_host_events_counts_malformed_lines_instead_of_swallowing_them(tmp_path):
+    q = tmp_path / "pending.ndjson"
+    q.write_text('{"event":"lock_timeout","mode":"collect"}\n'
+                 'not json at all\n', encoding="utf-8")
+    out = paper_cycle.stage_host_events(_cycle(), queue_path=str(q),
+                                        root=str(tmp_path), session_id="cyc")
+    assert out["rows"] == 1 and out["malformed"] == 1
+
+
+def test_host_events_without_a_queue_is_a_skip_not_a_crash(tmp_path):
+    out = paper_cycle.stage_host_events(_cycle(), queue_path=None,
+                                        root=str(tmp_path), session_id="cyc")
+    assert out["rows"] == 0
+    out = paper_cycle.stage_host_events(_cycle(),
+                                        queue_path=str(tmp_path / "absent.ndjson"),
+                                        root=str(tmp_path), session_id="cyc")
+    assert out["rows"] == 0

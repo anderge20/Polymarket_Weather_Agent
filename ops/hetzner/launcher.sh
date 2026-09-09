@@ -51,6 +51,23 @@ exec 9>"$LOCK"
 if ! flock -w "${PMW_LOCK_WAIT:-900}" 9; then
   log "SKIPPED: another cycle still holds $LOCK after ${PMW_LOCK_WAIT:-900}s."
   log "  Not racing it: a concurrent commit can capture a half-written shard."
+  # THE SKIP HAS TO BE ATTRIBUTABLE, NOT MERELY LOGGED. Session B's point, and
+  # it is the one that would have bitten: a skip that exists only in
+  # $ROOT/log/collect.log leaves EXACTLY the trace of a host that never fired —
+  # no shard, a hole in "delivered", nothing to tell the two apart. That is the
+  # distinction §4quater of R24 rests on, and "GitHub stays the record; nothing
+  # lives only on the box" is the decision this would quietly break. Worse: if a
+  # cycle truly hangs, every later slot skips and the schedule stops in silence,
+  # which is the `git reset --hard` failure again through another door.
+  #
+  # It is QUEUED rather than pushed. Pushing from here means committing in
+  # $STATE while the run that holds the lock is writing there — the very race
+  # the lock exists to stop. The next cycle that does get the lock drains it.
+  HOLDER=$(cat "$LOCK" 2>/dev/null || true)
+  printf '{"event":"lock_timeout","recorded_at":"%s","mode":"%s","args":"%s","waited_s":%s,"lock":"%s","holder_age_s":%s,"host":"hetzner"}\n' \
+    "$(date -u +%FT%TZ)" "${1:-}" "$*" "${PMW_LOCK_WAIT:-900}" "$LOCK" \
+    "$(( $(date -u +%s) - $(stat -c %Y "$LOCK" 2>/dev/null || date -u +%s) ))" \
+    >> "$ROOT/pending_host_events.ndjson"
   exit 1
 fi
 # fd 9 is inherited across the exec below, so the lock covers the whole cycle.

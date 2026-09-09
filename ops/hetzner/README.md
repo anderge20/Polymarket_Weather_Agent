@@ -99,6 +99,46 @@ crontab -l
 
 To stop everything: `crontab -r` (or delete the delimited block).
 
+## Reading the coverage series
+
+`venue_coverage` rows carry `is_final`, and it means **the CUTOFF is final, not
+the COUNT**. Session B's point on PR #15, and the difference decides how the
+series is read:
+
+- **`is_final = false`** — the cycle ran before `t_asof`, so the count is a
+  partial one that will grow. Never enters the series.
+- **`is_final = true`** — the cutoff reached the anchor. But several cycles run
+  after `t_asof` for one target, and each writes its own row, so **two final rows
+  for the same target can differ and one is a prefix of the other.**
+
+**The rule: take the LAST final row per `(target_date, lead)` by `recorded_at`.
+Never the mean of the final rows** — that counts one target several times.
+
+`recorded_at` is enough to order them, and provably picks the maximal one: the
+cutoff is identical across those rows and `price_history` is append-only, so a
+row recorded later saw a superset of what an earlier one saw. No extra
+tie-breaker field is needed, and adding one with no consumer would be noise.
+
+*(A second route to differing finals opens when the price-history backfill lands:
+a row with `observation_time <= t_asof` ingested afterwards. Measured on the live
+store it is not open today — every price row is ingested within 27 s of its
+observation instant, p95 = 22 s — because `observation_time` IS the collection
+instant, so a late slot writes a late observation and loses the measurement
+rather than back-filling it. The rule above covers both cases.)*
+
+## Host events
+
+A slot the launcher gives up on — the run lock still held after `PMW_LOCK_WAIT` —
+is appended to `/opt/pmw/pending_host_events.ndjson` and drained into a
+`host_events` shard by the next cycle that gets the lock. It is queued rather
+than pushed on the spot because committing in the state checkout while the
+lock-holder is writing there is the race the lock exists to prevent.
+
+Without this, a skipped slot leaves **exactly the trace of a host that never
+fired**: no shard, a hole in "delivered", nothing to tell the two apart — which
+is the distinction R24 §4quater rests on when it attributes `NO EVALUABLE` to the
+host rather than to the strategy.
+
 ## Layout
 
 ```

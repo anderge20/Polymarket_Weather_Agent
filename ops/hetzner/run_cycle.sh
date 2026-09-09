@@ -63,7 +63,8 @@ if [ "$LEAD" = "24" ]; then TD=$(date -u -d '+1 day' +%F); else TD=$(date -u +%F
 
 ARGS=(--target-date "$TD" --dataset-version "$DSV"
       --store-root "$STATE/paper_state" --lead-hours "$LEAD"
-      --summary-json "$ROOT/last_summary.json")
+      --summary-json "$ROOT/last_summary.json"
+      --host-events "$ROOT/pending_host_events.ndjson")
 
 if [ "$MODE" = "collect" ]; then
   ARGS+=(--collect-only)
