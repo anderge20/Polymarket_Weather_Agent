@@ -3138,14 +3138,7 @@ etapa que decide de qué día se busca la etiqueta realizada. Migración 7 añad
 `paper_trades.target_date`, `record_paper_trade` **lo exige**, ambas etapas lo leen, y un trade sin él
 se cuenta y **se deja abierto** (`trade_without_target_date`).
 
-**LA MIGRACIÓN DESTAPÓ ALGO MÁS GRANDE QUE ELLA.** Al añadirla, `test_checkpoint_resume` se cayó con
-*«Failure while replaying WAL file … GetDefaultDatabase with no default database set»*, una aserción
-interna de DuckDB, en un test que pasaba una migración antes. **Mecanismo: una migración que sólo vive
-en el WAL debe REPRODUCIRSE si el proceso muere antes del punto de control, y reproducir DDL es lo que
-rompe.** El riesgo es de **todas** las migraciones —la mía sólo cruzó el umbral— y el ciclo corre
-donde se matan procesos: **un job de Actions cancelado durante la primera ejecución contra un esquema
-nuevo dejaría una base imposible de reabrir.** `init_db` hace ahora `CHECKPOINT` tras cada migración.
-Los tres tests vuelven a pasar. **524 verdes.**
+**LA MIGRACIÓN DESTAPÓ ALGO, Y MI PRIMER DIAGNÓSTICO ERA FALSO.** Ver **A-69**.
 
 ## A-68 — `stage_paper` no tenía test de etapa, y 526 verdes pasaron sobre un NameError · 2026-09-09 · Claude (sesión A)
 
@@ -3171,3 +3164,85 @@ null**; `settle` rechazando las 27 por `no_observations_in_window`; 12 tablas vo
 **La regla, ya sin excepciones conocidas hoy:** la suite verde no dice nada del camino en vivo. Seis
 de seis defectos del día se encontraron ejecutando, ninguno leyendo, y ninguno lo habría encontrado un
 test más porque el problema **era** el fixture.
+
+## B-16 — NOTA: el fallo del WAL de la sesión A NO se reproduce, y el diagnóstico queda abierto · 2026-09-09 · Claude (sesión B)
+**Contexto:** al añadir su migración 5, A vio `test_checkpoint_resume` caerse con *«Failure while
+replaying WAL file … GetDefaultDatabase with no default database set»* e infirió el mecanismo:
+*una migración que sólo vive en el WAL tiene que reproducirse si el proceso muere antes del punto
+de control, y reproducir DDL es lo que rompe; el riesgo es de TODAS las migraciones*. Añadió
+`CHECKPOINT` tras cada migración y me avisó de que mi migración 6 corría el mismo riesgo. **Puse
+como condición verificarlo yo y no aceptarlo por su palabra. Verificado, y no se reproduce.**
+
+**Seis escenarios, todos con `SCHEMA_VERSION = 6` y SIN el `CHECKPOINT`:**
+```
+1 base nueva → migra a la 6 → os._exit sin cerrar               REABRE, version 6
+2 igual + filas confirmadas                                     REABRE, version 6
+3 igual + tabla discovery_checkpoint                            REABRE, version 6
+4 igual + las dos                                               REABRE, version 6
+5 base preexistente a la 4 con datos, cerrada limpia, reabierta
+  con la 6 corriendo encima, y muerte                           REABRE, version 6   ← producción
+6 base nueva → migra → BEGIN + 50 filas SIN COMMIT → SIGKILL     REABRE, version 6, 0 filas
+```
+El 6 es el escenario `during_event2` del propio test de A —WAL con DDL seguido de transacción sin
+confirmar, muerto con SIGKILL— y **replayó, aplicó la migración y deshizo las filas**. WAL de
+17 KB en los casos frescos. `duckdb 1.5.5`; los tres `test_checkpoint_resume` pasan en mi rama.
+Su migración 5 es un `ALTER … ADD COLUMN IF NOT EXISTS`, de la misma forma que la mía, así que el
+DDL no distingue.
+
+**El fallo de A ocurrió: no se discute.** Lo que **no** queda establecido es el mecanismo, que
+predice que los seis escenarios fallen y ninguno falla.
+
+**Decisión:** el `CHECKPOINT` **se conserva** —es barato, es correcto de todos modos y no depende
+de que el diagnóstico sea exacto— pero el fallo se registra como **NO EXPLICADO**, no como
+resuelto. **Si el disparador real es otro y sigue sin identificar, el arreglo lo tapa sin curarlo
+y volverá por otra puerta.** Es el patrón del día visto desde el lado del arreglo: *una
+explicación plausible que nadie ha visto fallar es una explicación sin verificar.* Pendiente: el
+traceback completo de A y la versión de duckdb de su entorno; si difiere de 1.5.5, ésa es la
+variable.
+
+**Consecuencia para lo que se sube a la usuaria:** «una base irrecuperable si Actions cancela un
+job» debe presentarse como **riesgo observado una vez y no explicado**, no como propiedad
+conocida del sistema. La medida del colector (cero de dos ranuras) sí es limpia y va tal cual.
+**Estado:** ABIERTA.
+
+## A-69 — Mi diagnóstico del WAL era falso; B lo rechazó y el disparador real es otro · 2026-09-09 · B refutó, A aisló
+
+**Lo que afirmé en A-67:** «una migración que sólo vive en el WAL debe reproducirse si el proceso
+muere antes del punto de control, y reproducir DDL es lo que rompe; el riesgo es de **todas** las
+migraciones». **Era una inferencia, no una medida.**
+
+**B se negó a aceptarlo por mi palabra** —era la condición que él mismo había puesto— y **no lo
+reprodujo en seis escenarios** sobre su migración 6, incluida la forma exacta de mi test: WAL con DDL
+seguido de una transacción sin confirmar, muerta con SIGKILL real. Misma versión, duckdb 1.5.5. Su
+argumento es el correcto: *mi mecanismo predice que los seis fallen, y ninguno falla*.
+
+**AISLADO. El fallo sigue a la TABLA, no al número de migración.** Apuntando la migración 7 a
+`markets` en vez de a `paper_trades`, los tres tests de checkpoint/resume vuelven a pasar. Y
+reproduce en veinte líneas **sin código del proyecto**:
+
+    CREATE SEQUENCE s START 1;
+    CREATE TABLE t (id BIGINT PRIMARY KEY DEFAULT nextval('s'), x VARCHAR);
+    ALTER TABLE t ADD COLUMN y DATE;        -- y morir sin punto de control
+
+    seq    WAL 402 B  → FALLA: Failure while replaying WAL file
+    noseq  WAL 247 B  → reabre, columna presente
+
+**Es `ALTER TABLE` sobre una tabla cuyo DEFAULT llama a `nextval`.** En este esquema califica
+**exactamente una**: `paper_trades`, la única con `DEFAULT nextval('seq_paper_trades')` — y es **el
+libro**, alterado por un proceso que corre donde se cancelan jobs. **El radio de impacto es una tabla,
+no todas las migraciones, y la 6 de B nunca estuvo en riesgo.**
+
+**El `CHECKPOINT` se queda**, pero documentado como **guarda sobre un defecto aislado de duckdb**, no
+como cura de un mecanismo adivinado. El test fija el disparador en duckdb mismo, **comprueba el
+control primero** —si el ALTER sin secuencia también rompiera, el diagnóstico volvería a ser falso y
+el test lo diría— y **SALTA con mensaje** si duckdb deja de reproducirlo, en vez de ponerse verde en
+silencio.
+
+**Y tiré una primera versión de ese test**: moría justo después de `init_db` y pasaba con y sin el
+arreglo, así que no probaba nada. Un test que no puede fallar es exactamente lo que llevamos el día
+entero quitando.
+
+**Lo que hay que decirle a la usuaria, corregido:** «una base irrecuperable si Actions cancela un
+job» **no es una propiedad conocida del sistema**; es un fallo observado, ahora aislado a una tabla y
+a una versión de duckdb, con guarda puesta. El colector a cero de dos ranuras **sí** es una medida
+limpia y va tal cual. **527 verdes.**
