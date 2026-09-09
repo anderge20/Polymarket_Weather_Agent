@@ -32,6 +32,7 @@ nothing in this script or in the modules it imports can sign or place an order.
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
 import os
 import sys
@@ -528,14 +529,28 @@ def stage_host_events(cy: Cycle, *, queue_path: str | None, root: str,
         return {"rows": 0}
     q = Path(queue_path)
     sidecar = q.with_suffix(q.suffix + ".draining")
-    if q.exists() and q.stat().st_size:
-        if sidecar.exists():          # a previous drain died before unlinking
-            with open(sidecar, "a", encoding="utf-8") as dst, \
-                 open(q, "r", encoding="utf-8") as src:
-                dst.write(src.read())
-            q.unlink()
-        else:
-            os.replace(q, sidecar)
+    # THE RENAME IS TAKEN UNDER THE SAME LOCK THE APPENDER USES. The appending
+    # launcher does not hold the run lock — it is the one that just failed to get
+    # it — so the two really can meet here: a `write()` that lands in the renamed
+    # or already-unlinked inode loses the event. Microseconds wide and one event
+    # deep, and the event lost is exactly the one that EXPLAINS a gap, which is
+    # the only thing this queue is for. Session B sized it; it is closed rather
+    # than written down.
+    lock_path = Path(str(q) + ".lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(lock_path, "a+") as lock_fh:
+        fcntl.flock(lock_fh, fcntl.LOCK_EX)
+        try:
+            if q.exists() and q.stat().st_size:
+                if sidecar.exists():   # a previous drain died before unlinking
+                    with open(sidecar, "a", encoding="utf-8") as dst, \
+                         open(q, "r", encoding="utf-8") as src:
+                        dst.write(src.read())
+                    q.unlink()
+                else:
+                    os.replace(q, sidecar)
+        finally:
+            fcntl.flock(lock_fh, fcntl.LOCK_UN)
     if not sidecar.exists() or not sidecar.stat().st_size:
         cy.stage("host_events", SKIPPED, reason="queue_empty")
         return {"rows": 0}
@@ -616,6 +631,16 @@ def stage_venue_coverage(cy: Cycle, con, *, dataset_version: str,
         "           AND p.observation_time <= ?) AS n_prices "
         "FROM markets m JOIN outcomes o "
         "  ON o.market_id = m.market_id AND o.dataset_version = m.dataset_version "
+        # `record_version` IS PART OF THE KEY, and `select_universe` twenty lines
+        # up already joins on it. Two queries in the same module disagreeing about
+        # whether a key column matters is the exact shape of the `fit_m2` gap and
+        # of the read that returned another token's price. It cannot fire today —
+        # `discovery.ingest_event` writes `record_version: 1` literally in all
+        # five places and `next_record_version` is defined and called from
+        # nowhere — and `stage_guard_dataset_version` does not watch these two
+        # tables either. Which is precisely why it would fan out silently the day
+        # someone starts using the helper that exists for it. Found by session B.
+        "  AND o.record_version = m.record_version "
         "WHERE m.dataset_version = ? AND o.outcome_label = 'Yes'",
         [dataset_version, prediction_time, dataset_version],
     )

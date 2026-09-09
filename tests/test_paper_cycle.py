@@ -1255,6 +1255,42 @@ def test_venue_coverage_row_says_whether_the_count_is_FINAL(con, tmp_path, monke
         "a count cut at 11:40 is partial no matter what the clock says at 12:05")
 
 
+def test_venue_coverage_join_does_not_fan_out_on_record_version(con, tmp_path):
+    """`record_version` is part of the key, so the join must carry it.
+
+    Found by session B: `select_universe` joins on it and this query did not —
+    two queries in the same module disagreeing about whether a key column
+    matters, which is the shape of the `fit_m2` gap and of the read that
+    returned another token's price. It cannot fire in production today
+    (`discovery.ingest_event` writes record_version 1 literally everywhere and
+    `next_record_version` is called from nowhere) and `stage_guard_dataset_version`
+    does not watch markets/outcomes either — so the day someone starts versioning,
+    `bands` would silently double with no guard in the way.
+    """
+    T = datetime(2026, 9, 9, 12, tzinfo=timezone.utc)
+    _market(con, market_id="m1", event_id="e0", end_date="2026-09-10T12:00:00Z")
+    # a second version of the SAME market and its outcomes, as the helper would
+    con.execute(
+        "INSERT INTO markets (market_id, event_id, station, station_identifier, "
+        "unit, rounding_rule, source_timestamps, ingestion_timestamp, "
+        "dataset_version, record_version) VALUES (?,?,?,?,?,?,?,?,?,?)",
+        ["m1", "e0", None, "EGLC", "C", "whole degree",
+         '{"endDate":"2026-09-10T12:00:00Z"}', T0, "ds1", 2])
+    for i, (tok, label) in enumerate((("m1_yes", "Yes"), ("m1_no", "No"))):
+        con.execute(
+            "INSERT INTO outcomes (market_id, token_id, band_label, outcome_index, "
+            "outcome_label, ingestion_timestamp, dataset_version, record_version) "
+            "VALUES (?,?,?,?,?,?,?,?)",
+            ["m1", tok, "15C or below", i, label, T0, "ds1", 2])
+
+    out = paper_cycle.stage_venue_coverage(
+        _cycle(), con, dataset_version="ds1",
+        universe=[{"event_id": "e0", "market_id": "m1"}], prediction_time=T,
+        t_asof=T, root=str(tmp_path), session_id="cyc",
+        target_date=date(2026, 9, 10))
+    assert out["bands"] == 2, "one band per (market, record_version), not the cross product"
+
+
 def _events(root):
     import gzip as _gz
     shards = store.iter_shards(root, "host_events")
@@ -1300,6 +1336,37 @@ def test_host_events_drain_does_not_lose_a_crashed_previous_drain(tmp_path):
     assert out["rows"] == 2
     assert {r["mode"] for r in _events(tmp_path)} == {"older", "newer"}
     assert not sidecar.exists() and not q.exists()
+
+
+def test_host_events_drain_waits_for_the_queue_lock(tmp_path):
+    """The drain must take the same lock the appender uses, or the rename races.
+
+    The appending launcher does NOT hold the run lock — it is the process that
+    just failed to get it — so appender and drainer genuinely meet here. A
+    `write()` landing in the renamed or already-unlinked inode loses the event,
+    and the event lost is the one that EXPLAINS a gap, which is the only reason
+    the queue exists. Verified on the box that bash's `flock` and Python's
+    `fcntl.flock` exclude each other on the same file; this pins the Python half.
+    """
+    import subprocess, sys as _sys, time as _time
+    q = tmp_path / "pending.ndjson"
+    q.write_text('{"event":"lock_timeout","mode":"collect"}\n', encoding="utf-8")
+    lock = str(q) + ".lock"
+    holder = subprocess.Popen(
+        [_sys.executable, "-c",
+         f"import fcntl,time\nfh=open({lock!r},'a+')\n"
+         f"fcntl.flock(fh,fcntl.LOCK_EX)\nprint('held',flush=True)\ntime.sleep(1.5)"],
+        stdout=subprocess.PIPE, text=True)
+    assert holder.stdout.readline().strip() == "held"
+
+    t0 = _time.monotonic()
+    out = paper_cycle.stage_host_events(_cycle(), queue_path=str(q),
+                                        root=str(tmp_path), session_id="cyc")
+    waited = _time.monotonic() - t0
+    holder.wait()
+
+    assert out["rows"] == 1
+    assert waited >= 1.0, f"the drain did not wait for the lock (took {waited:.2f}s)"
 
 
 def test_host_events_counts_malformed_lines_instead_of_swallowing_them(tmp_path):

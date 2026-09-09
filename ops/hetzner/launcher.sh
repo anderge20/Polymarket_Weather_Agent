@@ -63,11 +63,23 @@ if ! flock -w "${PMW_LOCK_WAIT:-900}" 9; then
   # It is QUEUED rather than pushed. Pushing from here means committing in
   # $STATE while the run that holds the lock is writing there — the very race
   # the lock exists to stop. The next cycle that does get the lock drains it.
-  HOLDER=$(cat "$LOCK" 2>/dev/null || true)
-  printf '{"event":"lock_timeout","recorded_at":"%s","mode":"%s","args":"%s","waited_s":%s,"lock":"%s","holder_age_s":%s,"host":"hetzner"}\n' \
-    "$(date -u +%FT%TZ)" "${1:-}" "$*" "${PMW_LOCK_WAIT:-900}" "$LOCK" \
-    "$(( $(date -u +%s) - $(stat -c %Y "$LOCK" 2>/dev/null || date -u +%s) ))" \
-    >> "$ROOT/pending_host_events.ndjson"
+  # The append itself is safe against other launchers: one `write()` of ~200
+  # bytes under O_APPEND is far below PIPE_BUF, so concurrent appends do not
+  # interleave. The race it is NOT safe against is the drainer renaming the queue
+  # at that instant — the write would land in the renamed (or already unlinked)
+  # inode and the event would vanish. Session B put the size of it correctly:
+  # microseconds, one event. But the event that would vanish is precisely the one
+  # that EXPLAINS a gap, which is the only reason this queue exists, so it gets
+  # the same treatment as everything else today: closed, not documented.
+  # `stage_host_events` takes this same lock around its rename.
+  QUEUE=$ROOT/pending_host_events.ndjson
+  {
+    flock -w 30 8 || log "  WARNING: could not lock the event queue; appending anyway"
+    printf '{"event":"lock_timeout","recorded_at":"%s","mode":"%s","args":"%s","waited_s":%s,"lock":"%s","holder_age_s":%s,"host":"hetzner"}\n' \
+      "$(date -u +%FT%TZ)" "${1:-}" "$*" "${PMW_LOCK_WAIT:-900}" "$LOCK" \
+      "$(( $(date -u +%s) - $(stat -c %Y "$LOCK" 2>/dev/null || date -u +%s) ))" \
+      >> "$QUEUE"
+  } 8>"$QUEUE.lock"
   exit 1
 fi
 # fd 9 is inherited across the exec below, so the lock covers the whole cycle.

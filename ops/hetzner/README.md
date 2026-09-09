@@ -109,22 +109,34 @@ series is read:
   partial one that will grow. Never enters the series.
 - **`is_final = true`** — the cutoff reached the anchor. But several cycles run
   after `t_asof` for one target, and each writes its own row, so **two final rows
-  for the same target can differ and one is a prefix of the other.**
+  for the same target can differ.**
 
 **The rule: take the LAST final row per `(target_date, lead)` by `recorded_at`.
 Never the mean of the final rows** — that counts one target several times.
 
-`recorded_at` is enough to order them, and provably picks the maximal one: the
-cutoff is identical across those rows and `price_history` is append-only, so a
-row recorded later saw a superset of what an earlier one saw. No extra
-tie-breaker field is needed, and adding one with no consumer would be noise.
+`recorded_at` orders them, and what it gives you is **the most recent observation
+of the venue's state — not "the maximum"**. The distinction is session B's and it
+matters, because anyone reasoning from "it is the maximum" will deduce things
+that do not hold:
 
-*(A second route to differing finals opens when the price-history backfill lands:
+- The **numerator** only grows: the cutoff is identical across those rows and
+  `price_history` is append-only, so a later row saw a superset of the prices.
+- The **denominators do not.** `bands` and `events` come from `markets` and
+  `outcomes`, which are **re-discovered from gamma on every run**. A band
+  discovered later raises them with no price having changed, and a revised
+  `endDate` can move a market to another target date entirely. So
+  `complete_rate_over_events` and `priced_rate_over_bands` can go **either way**
+  between two final rows.
+
+No extra tie-breaker field is added: maximality is not the property you want —
+recency is, and `recorded_at` gives it. A field with no consumer is noise.
+
+*(A third route to differing finals opens when the price-history backfill lands:
 a row with `observation_time <= t_asof` ingested afterwards. Measured on the live
 store it is not open today — every price row is ingested within 27 s of its
 observation instant, p95 = 22 s — because `observation_time` IS the collection
 instant, so a late slot writes a late observation and loses the measurement
-rather than back-filling it. The rule above covers both cases.)*
+rather than back-filling it. The rule above covers all three.)*
 
 ## Host events
 
