@@ -156,7 +156,7 @@ La corrida **no empieza** mientras alguna falle. El informe declara la fecha en 
 | # | Precondición | Comprobación mecánica |
 |---|---|---|
 | P1 | **M2 produce cuantiles fiables**; los bloqueantes de A-32 resueltos y re-ejecutados | `weather_forecasts.forecast_p10..p90` no nulos para el universo de §3 **y** una entrada en `DECISIONS.md` que declare cerrados los bloqueantes de A-32, citando el sha del preregistro corregido |
-| **P8** | **El artefacto de cuantiles existe y su vida útil es una MEDIDA** (R30). No basta con que el fichero esté: `max_age_hours` debe salir de la deriva medida de los cuantiles agrupados al añadir historia, y el informe que la mide se cita aquí. Un artefacto con una vida elegida a ojo es exactamente el silencio que el artefacto venía a cerrar | un ciclo manual deja `forecasts` en OK con `quantiles > 0`, `quantile_artifact_id` no nulo y `quantile_artifact_age_h` dentro del límite, **y** `DECISIONS.md` cita la medida de deriva que fija `max_age_hours` |
+| **P8** | **El artefacto de cuantiles existe, y la INESTABILIDAD del estimador está medida y declarada** (R30). *(revisada 2026-09-09, ver §4bis.8: la redacción anterior exigía derivar `max_age_hours` de una tasa de deriva, y esa tasa no existe.)* No basta con que el fichero esté: hay que citar la medida del movimiento de los cuantiles entre reajustes, **para los dos leads**, y decir con qué base se fija `max_age_hours` | un ciclo manual deja `forecasts` en OK con `quantiles > 0`, `quantile_artifact_id` no nulo y `quantile_artifact_age_h` dentro del límite, **y** `DECISIONS.md` cita la medida de movimiento por lead y la base declarada de `max_age_hours` |
 | P2 | **`tau` fijado por calibración fuera de muestra (R21)** | el informe de R21 nombra `tau` y su procedimiento. **Si R21 no existe, la corrida no arranca**: no hay tau por defecto (§4) |
 | P3 | **Etapa `forecasts` implementada.** Hoy `stage_forecasts` **no tiene ninguna rama OK** y no escribe nada; el cableado es pista de B | un ciclo manual deja `forecasts` en OK con `written > 0` |
 | P4 | **Liquidación cableada** con la etiqueta real bajo el SettlementOperator del mercado | `settle` en OK con `positions_settled > 0` |
@@ -204,6 +204,8 @@ precondición y se espera.
 
 | **`quantile_artifact_id`** | **el sha del artefacto vigente**, fijado al arrancar la corrida | R30. Es un sha del contenido canónico: dos ajustes con los mismos números tienen el mismo id, y un cuantil retocado a mano cambia el id y se rechaza |
 | **`max_artifact_age_h`** del ciclo | **igual a la del artefacto**, o menor | R30. La línea de comandos sólo puede ENDURECER; un valor mayor se ignora |
+| **`max_age_hours`** del artefacto | **120 h**, base operativa | §4bis.9. NO acota la estabilidad numérica: §4bis.8 |
+| **cadencia de reajuste** | **48 h**, terminando antes de las 03:00Z | §4bis.7 y §4bis.9 |
 
 **Auditabilidad del congelado.** El workflow lee estos valores de variables de repositorio, que se
 editan sin dejar traza. Por eso cada ciclo **escribe sus parámetros efectivos** en el almacén
@@ -247,9 +249,48 @@ resultado.
    lead 9 h. No es una recomendación: verificado en vivo, la primera ejecución con un artefacto
    ajustado a las 12:39Z fue rechazada por un ciclo cuyo `prediction_time` era 12:00Z.
 
-**Lo que este preregistro NO puede fijar todavía:** el número de horas. Depende de la medida de
-deriva que debe la sesión B (encargo 3). Queda como hueco explícito, del mismo modo que `tau` queda
-como hueco de P2: **si la medida no existe, la corrida no arranca**; no hay cadencia por defecto.
+8. **`max_age_hours` es frescura OPERATIVA y NO acota la estabilidad numérica. Y esto es un
+   resultado medido, no una renuncia.** La versión anterior de §4bis y de P8 daba por hecho que el
+   número saldría de una tasa de deriva. **Esa tasa no existe.** Medido por la sesión B sobre los dos
+   leads, |q(d) − q(d−Δ)| máximo sobre los cinco cuantiles:
+
+       lead  Δ(días)   n    p50     p95     MÁX
+          9        1  134  0,011   0,100   0,236
+          9        4  130  0,050   0,206   0,268
+          9       14  125  0,100   0,400   0,480
+         24        1  134  0,010   0,100   0,393
+         24        4  130  0,050   0,200   0,350
+         24        7  129  0,100   0,250   0,313
+         24       14  125  0,100   0,393   0,561
+
+   Los cuantiles **no derivan: saltan**, en escalones de 0,1 °C, porque el dato subyacente está
+   cuantizado y el percentil empírico cruza puntos discretos. Dividir un escalón por días inventa una
+   tasa que no existe y con la que se puede «derivar» cualquier cifra eligiendo el intervalo.
+   **El MÁXIMO no crece con Δ** (lead 24: 0,393 a un día, 0,313 a siete): firma de escalón, no de
+   deriva. Reajustar más a menudo **no acota el peor caso**.
+   Lo que sí controla la antigüedad es el **grueso** del movimiento —a lead 24 la mediana pasa de
+   0,010 a 0,100 entre Δ=1 y Δ=14, factor 10, y el p95 de 0,100 a 0,393— y ése es todo el beneficio
+   que un reajuste frecuente compra. No es el que se pretendía comprar, y se declara como es.
+   **Elegir ahora el estadístico (máximo, p95 o mediana) que hiciera pasar un umbral sería escoger
+   el criterio después de ver los resultados**, que es justo lo que este documento prohíbe. Por eso
+   no se deriva ningún número de esta tabla: se declara la base y se reporta la medida.
+
+9. **Los valores, fijados sobre base operativa y con la aritmética explícita:** cadencia de reajuste
+   **48 h**, `max_age_hours` **120 h**. La vida útil debe ser **≥ 2 × cadencia** para sobrevivir a
+   un reajuste perdido: con cadencia 48 y vida 84 —la primera propuesta— un reajuste fallido deja el
+   siguiente en t+96 mientras el artefacto expira en t+84, y **doce horas de ciclos se niegan**.
+   120 h da 24 h de margen sobre el mínimo. Es una decisión de operación, no de modelo, y se declara
+   como tal.
+
+10. **La inestabilidad medida NO desaparece por declararla.** Un salto de hasta 0,39 °C entre dos
+    ajustes consecutivos es el **70 % de la rejilla fina** (0,556 °C en los mercados en °F), es
+    decir, la propia estimación de cuantiles se mueve a la escala que decide una banda. Es una
+    segunda fuente de incertidumbre no corregible, junto a la descalibración por estación de B-12, y
+    **`tau_exec` debe cubrir las dos** (entra en el preregistro de R21, P2). Queda además como
+    limitación declarada en §9.
+
+**Lo que este preregistro sigue SIN poder fijar:** `tau` (P2). Sigue siendo hueco explícito: **si la
+calibración de R21 no existe, la corrida no arranca**; no hay `tau` por defecto.
 
 ---
 
@@ -371,6 +412,12 @@ detecta con pocas observaciones. **No se presentará como evidencia de buena cal
 
 ## §9. Limitaciones declaradas ANTES
 
+- **La estimación de cuantiles es inestable a la escala que decide una banda.** Entre dos ajustes
+  consecutivos los cuantiles se mueven hasta **0,39 °C** (lead 24) y **0,24 °C** (lead 9), contra una
+  rejilla de resolución de 1,0 °C en los mercados en °C y **0,556 °C** en los de °F. El máximo **no
+  se reduce reajustando más a menudo** (§4bis.8): no es deriva, son escalones del percentil empírico
+  sobre un dato cuantizado. No es corregible con los datos disponibles; se declara, y `tau_exec`
+  tiene que cubrirla.
 - **Los cuantiles vienen de un ajuste ANTERIOR a la decisión, no del instante de la decisión.** Es
   deliberado y es conservador —un ajuste en `t₀ < t` usa un subconjunto de lo permitido, y usar menos
   información de la permitida no puede crear fuga— pero significa que la distribución aplicada

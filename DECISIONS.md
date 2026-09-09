@@ -2585,3 +2585,57 @@ los dos estratos. Si el de 9 h deriva más rápido, manda él.
 
 **Hasta entonces `max_age_hours` sigue siendo hueco declarado en §4bis**, como `tau`. Antes que
 arrancar con un número que no sé derivar, que no arranque.
+
+## A-59 — `max_age_hours` no se puede derivar: los cuantiles no derivan, saltan · 2026-09-09 · Claude (sesión A) sobre medida de B
+
+B **retiró** su `max_age_hours = 84` al enseñar la aritmética que le pedí, y el hallazgo vale más que
+el número que sustituye. La discrepancia de partida era trivial —él midió intervalos consecutivos
+entre siete instantáneas, uno de ellos de 7 días; yo salté una fila y medí 28— pero al mirarlo se vio
+que **el problema era el método, no la cifra**.
+
+**«°C/día» presupone una tasa, y no hay tasa.** Los cuantiles se mueven en **escalones de 0,1 °C**
+porque el dato subyacente está cuantizado en la rejilla del contrato y el percentil empírico cruza
+puntos discretos. Dividir un escalón por días inventa una tasa con la que se puede «derivar»
+cualquier número eligiendo el intervalo.
+
+**La medida correcta**, |q(d) − q(d−Δ)| máximo sobre los cinco cuantiles, los dos leads:
+
+    lead  Δ(días)   n    p50     p95     MÁX
+       9        1  134  0,011   0,100   0,236
+       9        4  130  0,050   0,206   0,268
+       9       14  125  0,100   0,400   0,480
+      24        1  134  0,010   0,100   0,393
+      24        4  130  0,050   0,200   0,350
+      24        7  129  0,100   0,250   0,313
+      24       14  125  0,100   0,393   0,561
+
+**El MÁXIMO no crece con Δ** (lead 24: 0,393 a un día, 0,313 a siete). Firma de escalón, no de
+deriva: reajustar más a menudo **no acota el peor caso**.
+
+**Mi corrección a su conclusión:** el máximo no se mueve, pero **el grueso sí** — mediana 0,010 →
+0,100 entre Δ=1 y Δ=14 (factor 10), p95 0,100 → 0,393 (factor 4). La antigüedad controla el bulto y
+no la cola. Es menos de lo que se quería comprar, pero no es cero, y decirlo mal llevaría a «da igual
+cuándo reajuste».
+
+**Y no se elige el estadístico ahora.** Relajar el listón al 20 % de la rejilla fina haría pasar Δ=1
+por p95 y daría un número derivable. **Sería escoger el criterio después de ver los resultados.** No
+se deriva nada de esa tabla.
+
+**Segunda corrección, de aritmética:** 48/84 **no** sobrevive a un reajuste perdido, que era su
+propósito. Con cadencia 48 y vida 84, un reajuste fallido pone el siguiente en t+96 y el artefacto
+expira en t+84: **doce horas de ciclos negándose**. La vida útil debe ser **≥ 2 × cadencia**.
+
+**FIJADO como decisión de OPERACIÓN, no de modelo:** cadencia **48 h** (terminando antes de las
+03:00Z, §4bis.7), `max_age_hours` **120 h** (96 mínimo + 24 de margen), base declarada **frescura
+operativa**, y explícitamente **no acota la estabilidad numérica**.
+
+**Lo que sube de categoría:** un salto de hasta **0,39 °C** entre ajustes consecutivos es el **70 %
+de la rejilla fina** (0,556 °C en los mercados en °F). La estimación de cuantiles se mueve a la
+escala que decide una banda, no se corrige reajustando, y es una **segunda fuente de incertidumbre no
+corregible** junto a la descalibración por estación de B-12. Va a §9 como limitación declarada y
+endurece P2: `tau_exec` debe cubrir las dos.
+
+**P8 reescrita.** Exigía derivar `max_age_hours` de una tasa de deriva y esa exigencia es
+**insatisfacible**. Ahora exige que la medida de movimiento esté citada para los DOS leads y que la
+base de `max_age_hours` se declare. Se cambió la precondición porque era falsa, no para poder
+cumplirla. R24 v4, sha `6af0ba40…`.
