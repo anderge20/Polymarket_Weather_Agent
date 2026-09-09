@@ -770,6 +770,16 @@ def to_core_series(series: str | None) -> str | None:
     return SERIES_CORRESPONDENCE.get(series or "")
 
 
+#: How long after the station-local day ends before its high is read. NOT the 24 h
+#: of `error_model.ASSUMED_LABEL_LAG` — that is M2's TRAINING assumption about when
+#: a label could first be known, and using it here would delay every settlement by
+#: a day for no reason. This is the operational margin for the last METAR of the
+#: day to reach IEM, and it is deliberately small: routine METARs are hourly, so
+#: two hours covers the last observation plus a late feed without pushing the
+#: settlement into the next cycle.
+LABEL_PUBLICATION_MARGIN = timedelta(hours=2)
+
+
 def stage_observations(cy: Cycle, con, *, dataset_version: str, now: datetime) -> dict:
     """Ingest the realized daily high for the station-days open positions wait on.
 
@@ -833,8 +843,14 @@ def stage_observations(cy: Cycle, con, *, dataset_version: str, now: datetime) -
             errors["unknown_station_tz"] = errors.get("unknown_station_tz", 0) + 1
             continue
         day_start, day_end = weather.target_day_window(target, tz)
-        if now < day_end:
-            pending += 1                       # the day is still running
+        # A PUBLICATION MARGIN, not just "the day ended". The window closing does
+        # not mean IEM already holds the day's last METAR, and the failure mode is
+        # the worst kind: an incomplete maximum written once and never revisited,
+        # because the next cycle sees a row for that station-day and skips it. A
+        # label that is plausible and wrong is worse than no label — `settle`
+        # refusing costs a cycle, a wrong label costs the ledger.
+        if now < day_end + LABEL_PUBLICATION_MARGIN:
+            pending += 1
             continue
         have = db.query(
             con,

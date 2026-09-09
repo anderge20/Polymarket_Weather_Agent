@@ -836,9 +836,17 @@ def test_the_label_is_fetched_only_once_the_station_local_day_has_ended(con, mon
         now=datetime(2026, 9, 10, 22, 59, tzinfo=timezone.utc))
     assert calls == [] and out["ingested"] == 0 and out["pending"] == 1
 
+    # The day has ENDED here and it is still not read: the window closing does not
+    # mean IEM holds the day's last METAR, and an incomplete maximum written once
+    # is never revisited — the next cycle sees a row and skips it.
     out = paper_cycle.stage_observations(
         _cycle(), con, dataset_version="ds1",
         now=datetime(2026, 9, 10, 23, 0, tzinfo=timezone.utc))
+    assert calls == [] and out["pending"] == 1
+
+    out = paper_cycle.stage_observations(
+        _cycle(), con, dataset_version="ds1",
+        now=datetime(2026, 9, 11, 1, 0, tzinfo=timezone.utc))
     assert calls == [("EGLC", date(2026, 9, 10))] and out["ingested"] == 1
 
 
