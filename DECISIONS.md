@@ -4194,3 +4194,108 @@ conservador.**
 **7. Una idea retirada que no deja rastro vuelve.** Todas las retiradas del día están **dentro** de
 los documentos, no limpiadas de ellos: mis reencuadres muertos, los tres de B (`max_age_hours = 84`,
 σ_inst ≈ 0,39, «NO EVALUABLE por construcción») y mi mecanismo falso del WAL.
+
+## B-20 — Revisión del PR #14: mi `import pandas` y la divergencia silenciosa del respaldo · 2026-09-09 · Claude (sesión B)
+**Contexto:** la usuaria decidió mover la ejecución a Hetzner (Actions entregó 2 de 3 ranuras el
+primer día); GitHub queda como **registro** —código desde `main`, shards a `paper-state` en cada
+ejecución—. Al correr la suite **en el servidor limpio**, A encontró
+`ModuleNotFoundError: No module named 'pandas'` **dentro de mi `upsert_many`**.
+
+**El defecto es mío y su forma estaba documentada en el mismo fichero que lo contiene.**
+`requirements-paper.txt` excluye pandas a propósito, y su cabecera cita el precedente exacto:
+`pytz`, que *«pasó localmente sólo porque pytz estaba instalado»*. Escribí `import pandas` en un
+ayudante de base de datos, poniendo en la ruta una dependencia que el nivel de papel **se niega a
+instalar**. Verde en la máquina de desarrollo, roto en la que va a correr. **Séptima vez del día,
+y la primera en que «el camino en vivo» era otra máquina.**
+
+### Lo que encontré al revisar el arreglo: las dos ramas divergen EN SILENCIO
+El PR declara *«identical semantics … correctness never depends on which branch runs»*. **Falso,
+medido con la misma clave de conflicto dos veces en el lote:**
+```
+con pandas :  ok, n=2, tabla = [("dup", "primera")]     ← INSERT…SELECT: gana la PRIMERA
+sin pandas :  ok, n=2, tabla = [("dup", "SEGUNDA")]     ← executemany:   gana la ÚLTIMA
+```
+**Ninguna lanza excepción y las dos devuelven 2.** El mismo lote produce **datos distintos** según
+si pandas está instalado.
+
+**No es alcanzable hoy** —el único llamante, `prices.ingest_*`, deduplica antes de escribir
+(`by_timestamp`, prices.py:233-247)— **y ahí está el punto: el PR arregla una trampa latente e
+introduce otra de la misma forma, en la misma función, en el mismo cambio.** Es el patrón que el
+propio comentario del `import pandas` describe, aplicado al arreglo.
+
+**Recomendado:** deduplicar dentro de `upsert_many` con regla **declarada** —gana la última
+aparición, que es la semántica fila-a-fila y la intención de `ON CONFLICT DO UPDATE`— **en las dos
+ramas**, con lo que la afirmación pasa a ser cierta. **Y el test de A compara las dos ramas sobre
+cinco claves distintas, así que no puede fallar por la razón que importa**; con una clave duplicada
+dentro, sí.
+
+**Veredicto: APROBADO para fusión.** Hoy el código **revienta** en el host de papel y bloquear
+sería peor; el dedup no bloquea. **El comentario sí debe corregirse**, porque una afirmación falsa
+en un comentario es exactamente lo que un lector futuro usa en vez de medir.
+
+**Aprobado además sin reservas:** desactivar los crones de Actions conservando `workflow_dispatch`
+—dos hosts no corromperían un shard pero harían **ilegible el «programado frente a entregado»**,
+que es la medida de la que depende atribuir un `NO EVALUABLE` al host— y que `install.sh` **se
+niegue** si el host no es `Etc/UTC`, porque un host desplazado movería cada instante de decisión en
+silencio.
+**Estado:** ADOPTADA.
+
+## A-87 — La ejecución se muda a Hetzner por decisión de la usuaria; GitHub sigue siendo el registro · 2026-09-09
+
+**Decisión de la usuaria**, tomada con la medida de A-70 delante: Actions entregó **2 de 3 ranuras** su
+primer día, con retrasos de 86 y 215 minutos y una perdida del todo, y cinco de las siete capturas las
+disparé yo a mano. Sube al segundo host del orden que ella misma fijó en A-29.2.
+
+**Y su segunda instrucción define el diseño: «todo el trabajo actualizado siempre en el repositorio».**
+El runner **tira el código de `main` en cada ejecución** y **empuja los shards a `paper-state` en cada
+ejecución**. Nada vive sólo en la máquina: perder el servidor cuesta las horas de book que no se
+llegaron a recoger y nada más, y **la corrida sigue siendo auditable por alguien sin acceso al
+servidor**, que es la propiedad que importa.
+
+**Verificado de extremo a extremo**, no supuesto: el servidor recolectó 1.078 tokens y empujó
+`b7f084c` a `paper-state`, con su shard de `venue_coverage` dentro. Cron activo: colector cada 3 h a
+:07, decisión a 02:40 y 11:40 UTC. Host `Etc/UTC` **verificado**, e `install.sh` **se niega a
+instalar** si algún día no lo es — un host desplazado movería cada instante de decisión en silencio y
+dejaría mal cada `drift_h`.
+
+**Los crones de Actions quedan desactivados en el mismo cambio.** `workflow_dispatch` se conserva como
+respaldo. **No hay que reactivarlos:** dos hosts no corromperían un shard —las rutas son únicas por
+ejecución— pero **harían ilegible el «programado frente a entregado»**, que es la medida de la que
+depende §4quater para atribuir un `NO EVALUABLE` al host y no a la estrategia.
+
+**Operar sigue apagado y con la misma puerta:** los ciclos de decisión corren `--collect-only` mientras
+no exista `/opt/pmw/PAPER_TAU`. Crearlo es lo que arranca el modo papel, y P12 exige el criterio
+congelado y hasheado **antes**. Dinero real sigue necesitando D0, que sólo levanta la usuaria.
+
+**Acceso:** clave de despliegue con escritura `hetzner-hel1-paper-runner (rw)`, id 162799493. Revocable
+en Settings → Deploy keys.
+
+## A-88 — Tres defectos que sólo el host nuevo podía mostrar, y dos eran míos · 2026-09-09
+
+**1. `upsert_many` exigía pandas, que la capa de papel excluye a propósito.** Ejecuté la suite **en el
+servidor limpio** y salieron 3 fallos y 6 errores con `ModuleNotFoundError: No module named 'pandas'`.
+`requirements-paper.txt` lo excluye deliberadamente **y su propia cabecera documenta el precedente
+exacto** —`pytz`, que «pasó localmente sólo porque pytz estaba instalado»—: el `import pandas` es la
+misma forma **en el mismo fichero que documenta el caso**. No es caída (sólo lo alcanza el backfill,
+donde pandas existe) sino trampa. Pandas pasa a ser opcional, con respaldo `executemany`.
+
+**2. Mi arreglo introdujo la misma clase de defecto que quitaba, y lo cazó B.** Con una clave de
+conflicto repetida en el lote, las dos ramas **discrepan en silencio**: el frame se queda la
+**primera** aparición, `executemany` la **última**. Reproducido: `[("dup","primera")]` contra
+`[("dup","SEGUNDA")]`, las dos devolviendo 2 y ninguna lanzando. **Mi mensaje de commit afirmaba
+«semántica idéntica» y era falso.** Corregido deduplicando por la clave **antes** de la bifurcación,
+**gana la última**, que es lo que hace el upsert fila a fila. **Y mi test no podía cazarlo**: cinco
+claves distintas es un lote sobre el que las dos ramas no pueden diferir — verde justo sobre lo que
+decía comprobar. Ahora lleva una repetida.
+
+**3. El runner podía borrarse a sí mismo a mitad de ejecución.** Cron llamaba directamente a
+`run_cycle.sh`, que empieza con `git reset --hard` **sobre el checkout donde él vive**. Como `ops/`
+sólo existía en la rama, apuntarlo a `main` habría **borrado el script mientras bash lo leía**:
+fichero a medio ejecutar, sin error reconocible, calendario parado en silencio. Ahora cron llama a
+`launcher.sh`, **fuera** del checkout, que actualiza, **comprueba que el runner sigue existiendo** y
+para en alto si no.
+
+**Y un descuido mío al aplicar el arreglo 2**, sin consecuencias porque no llegó a ninguna rama pero de
+la misma familia: un reemplazo de texto plano sobre una línea presente **en `upsert` y en
+`upsert_many`** parcheó las dos funciones y rompió 73 tests. **Una operación que parece local y no lo
+es.** 568 verdes tras corregirlo.
