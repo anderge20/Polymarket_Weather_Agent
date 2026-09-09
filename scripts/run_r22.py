@@ -234,6 +234,15 @@ def evaluate(rows, rng, out_dir) -> int:
         d = delta(rs)
         evaluables[name] = {
             "eventos": ne, "filas": len(rs), "delta": d,
+            # COVERAGE, published beside every cell (session A's reporting rule,
+            # the same shape as the BSS one: it moves no number and changes what a
+            # reader concludes). Without it "sixteen cells with Delta < 0" reads as
+            # sixteen independent witnesses, and it is not: `lead=9` holds 100 % of
+            # the events while `estacion=EGLC` holds 8.8 %, so their block
+            # bootstraps rest on 1 308 and 115 blocks and their SEs are not of the
+            # same order. A few large cells and a tail of small ones, all negative.
+            "pct_eventos": ne / n_events(rows),
+            "pct_filas": len(rs) / len(rows),
             "brier_modelo": brier(rs, lambda r: r["p_model"]),
             "brier_mercado": brier(rs, lambda r: r["p_mid"]),
             "bss_modelo": bss(rs, lambda r: r["p_model"]),
@@ -327,9 +336,11 @@ def evaluate(rows, rng, out_dir) -> int:
     }
 
     print(f"\nT_obs (mejor delta) = {t_obs:+.5f} · p_familia = {p_familia:.4f}", flush=True)
-    print(f"{'celda':34} {'ev':>5} {'delta':>9} {'2*SE':>9} {'BSS mod':>8} {'BSS mkt':>8}")
+    print(f"{'celda':26} {'ev':>5} {'%ev':>6} {'%filas':>7} {'delta':>9} {'2*SE':>9} "
+          f"{'BSS mod':>8} {'BSS mkt':>8}")
     for n, v in sorted(evaluables.items(), key=lambda kv: -kv[1]["delta"]):
-        print(f"{n:34} {v['eventos']:>5} {v['delta']:>+9.5f} {2*v['se']:>9.5f} "
+        print(f"{n:26} {v['eventos']:>5} {v['pct_eventos']:>5.1%} {v['pct_filas']:>6.1%} "
+              f"{v['delta']:>+9.5f} {2*v['se']:>9.5f} "
               f"{v['bss_modelo']:>8.3f} {v['bss_mercado']:>8.3f}", flush=True)
 
     veredicto = ("HAY_CANDIDATO" if ganadoras else
