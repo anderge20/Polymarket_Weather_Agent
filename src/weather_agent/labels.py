@@ -58,26 +58,20 @@ class LabelRow:
     reason: str | None
 
 
-def _day_bounds(target_date: date, station: str):
-    """The station-LOCAL day, in UTC. Falls back to the UTC day only when the
-    station's timezone is unknown — and then the operator refuses anyway."""
+def _day_bounds(target_date: date, station: str | None, tz_name: str | None = None):
+    """The LOCAL day, in UTC. `tz_name` wins when given (a source-daily contract
+    carries its own publication timezone and may have no station at all); the
+    station's timezone is the fallback, and UTC only when neither is known — and
+    then the operator refuses anyway."""
     from datetime import timedelta
     from zoneinfo import ZoneInfo
 
     try:
-        zone = ZoneInfo(stations.timezone_of(station))
-    except Exception:  # noqa: BLE001 - unknown station: the operator will refuse
+        zone = ZoneInfo(tz_name or stations.timezone_of(station))
+    except Exception:  # noqa: BLE001 - unknown: the operator will refuse
         zone = timezone.utc
     start = datetime(target_date.year, target_date.month, target_date.day, tzinfo=zone)
     return start.astimezone(timezone.utc), (start + timedelta(days=1)).astimezone(timezone.utc)
-
-
-def _day_start(target_date: date, station: str) -> datetime:
-    return _day_bounds(target_date, station)[0]
-
-
-def _day_end(target_date: date, station: str) -> datetime:
-    return _day_bounds(target_date, station)[1]
 
 
 def missing_substrate(con) -> list[str]:
@@ -94,7 +88,8 @@ def missing_substrate(con) -> list[str]:
 
 
 def observations_for(
-    con, station: str, target_date: date, dataset_version: str
+    con, station: str | None, target_date: date, dataset_version: str,
+    tz_name: str | None = None,
 ) -> list[st.Observation]:
     """The readings of ONE station-day, on the grid the SOURCE reported them on.
 
@@ -109,16 +104,28 @@ def observations_for(
     Celsius, and settling a Fahrenheit market on a converted value settles it off
     its own grid (A-41).
     """
+    # A SOURCE_DAILY_ROW source pins its row by DATE, not by ICAO — stratum 10
+    # (HKO) has station_identifier NULL by nature, and requiring one meant nobody
+    # ever looked. The previous fix returned [] there, so try_settle answered
+    # `no_observations_in_window`: inside the closed enum, and FALSE. A reason that
+    # is obviously wrong gets investigated; a plausible one sends the reader to
+    # look for data that is not missing. Worse in the direction of confidence,
+    # which is the same failure as missing_substrate() certifying READY.
+    start, end = _day_bounds(target_date, station, tz_name)
+    where = "dataset_version = ? AND observed_unit <> 'UNKNOWN'" \
+            " AND observation_time >= ? AND observation_time < ?"
+    params: list[Any] = [dataset_version, start.isoformat(), end.isoformat()]
+    if station:
+        where += " AND station = ?"
+        params.append(station)
     rows = db.query(
         con,
-        """SELECT observation_time, observed_value, observed_unit, series,
-                  available_at, record_version
-           FROM weather_observations
-           WHERE station = ? AND dataset_version = ? AND observed_unit <> 'UNKNOWN'
-             AND observation_time >= ? AND observation_time < ?
-           ORDER BY observation_time""",
-        [station, dataset_version, _day_start(target_date, station).isoformat(),
-         _day_end(target_date, station).isoformat()],
+        f"""SELECT observation_time, observed_value, observed_unit, series,
+                   available_at, record_version
+            FROM weather_observations
+            WHERE {where}
+            ORDER BY observation_time""",
+        params,
     )
     out = []
     for r in rows:
@@ -199,7 +206,8 @@ def label_market(
     # try_settle at all. The operator decides what its own window_kind requires;
     # this is the same defect A-43 fixed one level down, reintroduced by the caller.
     station = market.get("station_identifier")
-    obs = observations_for(con, station, target_date, dataset_version) if station else []
+    obs = observations_for(con, station, target_date, dataset_version,
+                           tz_name=market.get("source_tz"))
     result, reason = st.try_settle(obs, context_for(market, target_date), asof)
     if result is None:
         return [

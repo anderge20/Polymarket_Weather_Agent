@@ -212,3 +212,57 @@ def test_observations_are_restricted_to_the_requested_day(con):
     d22 = labels.observations_for(con, "KLGA", date(2026, 6, 22), DSV)
     assert [o.value for o in d21] == [69.0], "the 22nd's reading leaked into the 21st"
     assert [o.value for o in d22] == [95.0]
+
+
+def test_lookup_no_longer_requires_a_station(con):
+    """Stratum 10 (HKO) pins its row by DATE, not by ICAO. Requiring a station
+    meant nobody looked, and try_settle then answered `no_observations_in_window`
+    — inside the closed enum, and FALSE. A reason that is obviously wrong gets
+    investigated; a plausible one sends the reader hunting for data that is not
+    missing.
+
+    The row is keyed here by its SOURCE, because of the schema gap below.
+    """
+    db.insert(con, "weather_observations", {
+        "observation_time": datetime(2026, 6, 21, 8, tzinfo=timezone.utc).isoformat(),
+        "station": "HKO", "source": "HKO", "tmax_observed": 28.0,
+        "observed_value": 28.0, "observed_unit": "C", "series": "hko_clmmaxt",
+        "dataset_version": DSV, "record_version": 1,
+    })
+    found = labels.observations_for(con, None, date(2026, 6, 21), DSV,
+                                    tz_name="Asia/Hong_Kong")
+    assert [o.value for o in found] == [28.0], "the daily row was not looked for"
+
+
+def test_the_day_window_still_holds_without_a_station(con):
+    """Dropping the station requirement must not drop the date one, or the
+    day-equivocation defect returns through the other door."""
+    for day, value in ((21, 28.0), (22, 35.0)):
+        db.insert(con, "weather_observations", {
+            "observation_time": datetime(2026, 6, day, 8, tzinfo=timezone.utc).isoformat(),
+            "station": "HKO", "source": "HKO", "tmax_observed": value,
+            "observed_value": value, "observed_unit": "C", "series": "hko_clmmaxt",
+            "dataset_version": DSV, "record_version": 1,
+        })
+    d21 = labels.observations_for(con, None, date(2026, 6, 21), DSV,
+                                  tz_name="Asia/Hong_Kong")
+    assert [o.value for o in d21] == [28.0]
+
+
+def test_declared_gap_the_table_cannot_hold_a_stationless_row(con):
+    """`station` is part of the primary key, so a source-daily row with no ICAO
+    cannot be stored as NULL at all.
+
+    This is a SCHEMA gap, separate from the lookup defect above, and it is
+    declared rather than worked around: keying such a row by its source name is a
+    convention someone has to adopt deliberately, and inventing one here would
+    bury the decision in a test. Stratum 10 also has no HKO ingestion yet, which
+    is a third, distinct hole.
+    """
+    with pytest.raises(Exception):
+        db.insert(con, "weather_observations", {
+            "observation_time": datetime(2026, 6, 21, 8, tzinfo=timezone.utc).isoformat(),
+            "station": None, "source": "HKO", "tmax_observed": 28.0,
+            "observed_value": 28.0, "observed_unit": "C", "series": "hko_clmmaxt",
+            "dataset_version": DSV, "record_version": 1,
+        })
