@@ -1137,7 +1137,7 @@ def test_venue_coverage_is_fail_closed_per_event_and_runs_without_deciding(con, 
                 {"event_id": "e1", "market_id": "m3"}, {"event_id": "e1", "market_id": "m4"}]
     out = paper_cycle.stage_venue_coverage(
         _cycle(), con, dataset_version="ds1", universe=universe, prediction_time=T,
-        root=str(tmp_path), session_id="cyc", target_date=date(2026, 9, 10))
+        t_asof=T, root=str(tmp_path), session_id="cyc", target_date=date(2026, 9, 10))
 
     assert out["events"] == 2
     assert out["events_complete"] == 1          # e1 dies for ONE unpriced band
@@ -1160,7 +1160,7 @@ def test_venue_coverage_respects_the_as_of_instant(con, tmp_path):
     out = paper_cycle.stage_venue_coverage(
         _cycle(), con, dataset_version="ds1",
         universe=[{"event_id": "e0", "market_id": "m1"}], prediction_time=T,
-        root=str(tmp_path), session_id="cyc", target_date=date(2026, 9, 10))
+        t_asof=T, root=str(tmp_path), session_id="cyc", target_date=date(2026, 9, 10))
     assert out["events_complete"] == 0 and out["bands_priced"] == 0
 
 
@@ -1190,7 +1190,7 @@ def test_venue_coverage_is_written_to_the_STORE_not_only_to_the_summary(con, tmp
     paper_cycle.stage_venue_coverage(
         _cycle(), con, dataset_version="ds1",
         universe=[{"event_id": "e0", "market_id": "m1"}], prediction_time=T,
-        root=str(tmp_path), session_id="cyc", target_date=date(2026, 9, 10))
+        t_asof=T, root=str(tmp_path), session_id="cyc", target_date=date(2026, 9, 10))
 
     shards = store.iter_shards(tmp_path, "venue_coverage")
     assert len(shards) == 1
@@ -1199,3 +1199,37 @@ def test_venue_coverage_is_written_to_the_STORE_not_only_to_the_summary(con, tmp
     assert row["events"] == 1 and row["events_complete"] == 1
     assert row["github_event"] == "schedule"
     assert row["target_date"] == "2026-09-10"
+
+
+def test_venue_coverage_row_says_whether_the_count_is_FINAL(con, tmp_path, monkeypatch):
+    """A partial row must not be averaged into the series that fixes the threshold.
+
+    The cutoff is effectively `t_asof` whichever branch of `min(now, t_asof)`
+    applies — before it there is no later price to exclude, after it the min IS
+    `t_asof` — so rows for one target are comparable and A-92's worry about that
+    was wrong. What is NOT the same is whether more prices can still land: while
+    `now < t_asof` the count is partial and will grow. The row therefore carries
+    the fact rather than leaving it to be inferred from `recorded_at` against
+    `prediction_time`, which happens to work today and is one clamp change away
+    from silently not working.
+    """
+    T = datetime(2026, 9, 9, 12, tzinfo=timezone.utc)
+    _market(con, market_id="m1", event_id="e0", end_date="2026-09-10T12:00:00Z")
+
+    def _row(now, t_asof, root):
+        monkeypatch.setattr(paper_cycle, "_utcnow", lambda: now)
+        paper_cycle.stage_venue_coverage(
+            _cycle(), con, dataset_version="ds1",
+            universe=[{"event_id": "e0", "market_id": "m1"}],
+            prediction_time=min(now, t_asof), t_asof=t_asof,
+            root=str(root), session_id="cyc", target_date=date(2026, 9, 10))
+        import gzip as _gz
+        return json.loads(_gz.open(store.iter_shards(root, "venue_coverage")[0],
+                                   "rt").readline())
+
+    before = _row(T - timedelta(hours=3), T, tmp_path / "a")
+    assert before["is_final"] is False
+    assert before["t_asof"].startswith("2026-09-09T12:00:00")
+
+    after = _row(T + timedelta(hours=3), T, tmp_path / "b")
+    assert after["is_final"] is True

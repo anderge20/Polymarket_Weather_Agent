@@ -69,6 +69,14 @@ does not run. Each was checked on the box, not reasoned about:
 - **The host clock.** `Etc/UTC`, and `install.sh` refuses to install otherwise.
 - **The test suite, on this machine.** It found a `pandas` import the paper tier
   does not install — green on the developer's laptop, broken here.
+- **That cron actually FIRES the launcher.** "The entry is in the crontab" is a
+  claim about a file; "cron executes it" is a claim about a daemon, and the gap
+  between them fails invisibly — no error, no log, and a missing shard nobody
+  notices for days, in the system whose headline measurement is *scheduled versus
+  delivered*. Checked with a temporary entry two minutes out, marked `# PRUEBA`,
+  pointing at the real launcher: it fired at 20:23:04Z on 2026-09-09, resolved the
+  ref, updated the checkout and ran the cycle. The entry was then removed and its
+  absence verified — the check must not survive itself.
 
 And one that was NOT verified, with the consequence it had: the first deployment
 pointed the runner at a branch with a `sed` whose pattern did not match the real
@@ -82,6 +90,9 @@ below — and why "I applied an edit" is not the same as "the edit applied".
 ```sh
 ssh -p 443 root@95.217.131.145
 /opt/pmw/repo/ops/hetzner/install.sh      # idempotent; re-run after a pull
+                                          # (it re-execs itself from /opt/pmw/bin
+                                          #  first — it resets the checkout it
+                                          #  lives in, so it must not run there)
 tail -f /opt/pmw/log/collect.log
 crontab -l
 ```

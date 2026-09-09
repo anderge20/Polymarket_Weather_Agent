@@ -503,7 +503,8 @@ def stage_forecasts(cy: Cycle, con, *, dataset_version: str, target_date: date,
 
 def stage_venue_coverage(cy: Cycle, con, *, dataset_version: str,
                          universe: list[dict], prediction_time: datetime,
-                         root: str, session_id: str, target_date: date) -> dict:
+                         t_asof: datetime, root: str, session_id: str,
+                         target_date: date) -> dict:
     """RUNG 1 of the funnel, measured on EVERY cycle including collect-only.
 
     WHY IT LIVES HERE AND NOT IN `stage_signals`. The number the run needs before
@@ -581,6 +582,16 @@ def stage_venue_coverage(cy: Cycle, con, *, dataset_version: str,
         # attention, not the host (A-72).
         "github_event": os.environ.get("GITHUB_EVENT_NAME"),
         "run_id": os.environ.get("GITHUB_RUN_ID"),
+        # IS THIS ROW FINAL? The cutoff is effectively `t_asof` in both branches
+        # of `min(now, t_asof)` — before it, no later price exists to exclude;
+        # after it, the min IS `t_asof`. So rows for the same target ARE
+        # comparable. What differs is whether more prices can still arrive:
+        # while `now < t_asof` the count is PARTIAL and will grow. Averaging a
+        # partial row into the series that fixes the coverage threshold is the
+        # error R24 §6bis exists to prevent, so the row says which it is instead
+        # of leaving it to be inferred from `recorded_at` minus `prediction_time`.
+        "t_asof": _iso(t_asof),
+        "is_final": _utcnow() >= t_asof,
         **out,
     }
     written = store.write_shard([row], table="venue_coverage", run_id=session_id,
@@ -1431,6 +1442,7 @@ def main(argv: list[str] | None = None) -> int:
         # settled, so it counts the prices this cycle just wrote.
         stage_venue_coverage(cy, con, dataset_version=args.dataset_version,
                              universe=universe, prediction_time=prediction_time,
+                             t_asof=plan["t_asof"],
                              root=args.store_root, session_id=session_id,
                              target_date=target_date)
 

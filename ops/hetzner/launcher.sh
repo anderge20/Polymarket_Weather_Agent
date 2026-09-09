@@ -28,6 +28,34 @@ RUNNER=$REPO/ops/hetzner/run_cycle.sh
 
 log() { printf '%s launcher: %s\n' "$(date -u +%FT%TZ)" "$*"; }
 
+# ---- ONE WRITER ON THIS HOST ------------------------------------------------
+# `run_cycle.sh` commits with `git add -A paper_state` from a checkout SHARED by
+# every run on this box. Two overlapping cycles do not collide on shard paths —
+# those carry the session id — but the one that commits first sweeps up whatever
+# the other is halfway through writing, and a truncated .gz on an append-only
+# data branch is not repairable. The runs also both `git reset --hard` the code
+# checkout, so a late finisher can have its code swapped underneath it.
+#
+# It is not hypothetical: on 2026-09-09 a hand-started cycle at 21:03Z overlapped
+# the 21:07Z cron slot. That one was harmless only because the second run had not
+# reached its dump when the first committed — luck of the calendar, verified
+# after the fact (59 shards, `gzip -t` clean), not a property of the design.
+#
+# So the lock WAITS rather than refuses: a book slot that is skipped is gone for
+# good, and a collect takes ~10 min against a 3 h spacing, so the overlap almost
+# always clears. It gives up only if the holder is still there after
+# PMW_LOCK_WAIT seconds, and then it says so in the log instead of racing.
+LOCK=$ROOT/run.lock
+mkdir -p "$ROOT/log"
+exec 9>"$LOCK"
+if ! flock -w "${PMW_LOCK_WAIT:-900}" 9; then
+  log "SKIPPED: another cycle still holds $LOCK after ${PMW_LOCK_WAIT:-900}s."
+  log "  Not racing it: a concurrent commit can capture a half-written shard."
+  exit 1
+fi
+# fd 9 is inherited across the exec below, so the lock covers the whole cycle.
+
+
 git -C "$REPO" fetch -q origin
 if ! git -C "$REPO" rev-parse -q --verify "origin/$REF" >/dev/null; then
   log "FATAL: ref 'origin/$REF' does not exist. Not touching the checkout."
