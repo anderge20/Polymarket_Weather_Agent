@@ -4667,3 +4667,53 @@ allá** del ciclo— es el fallo contrario al que yo temía, y ni se me había o
 lado.
 
 573 verdes. Ventana D16 reiniciada: no se fusiona antes de las 23:35Z.
+
+## A-96
+
+**Fecha:** 2026-09-09 21:52Z
+**Autor:** A, sobre segunda vuelta de B
+**Asunto:** la ruta viva del bloqueante 2 no era ninguna de las dos que discutimos — era el denominador
+
+B aceptó mi corrección de su premisa (`observation_time` es el instante de recogida; una ranura
+tardía pierde la medida en vez de rellenarla) y devolvió **la ruta que ninguno de los dos había
+nombrado**:
+
+> `markets` y `outcomes` se **redescubren de gamma en cada ejecución**.
+
+Luego entre dos ciclos del mismo objetivo **el denominador se mueve**: una banda descubierta más
+tarde sube `bands` y `events` **sin que ningún precio haya cambiado**, y un `endDate` revisado puede
+sacar un mercado a otra fecha objetivo. Dos filas `is_final` del mismo objetivo con recuentos
+distintos por **descubrimiento**, no por precio.
+
+**Y ahí se cae mi argumento, que era de más.** Yo escribí que `recorded_at` «elige demostrablemente la
+máxima» porque el corte es idéntico y el historial es append-only. Eso vale para el **numerador**. Las
+**tasas** —`complete_rate_over_events`, `priced_rate_over_bands`— tienen denominadores redescubiertos
+que **se mueven en los dos sentidos**. La regla no cambia; cambia lo que se puede deducir de ella, que
+es lo que importa: quien razone a partir de «es la máxima» concluirá cosas que no se cumplen. El
+README dice ahora **la observación más reciente del estado del venue, no el máximo**. Y sigo sin
+añadir el desempate, pero por el motivo correcto: **la maximalidad no es la propiedad que quiero**.
+
+**Dos arreglos más, ambos de B, ambos verificados por mí antes de aceptarlos:**
+
+**`record_version` ausente del join de cobertura.** `select_universe`, veinte líneas más arriba **en
+el mismo fichero**, sí une por él. Comprobado: `next_record_version` está definida en
+`database.py:1241` y **no se llama desde ningún punto** de `src/` ni `scripts/`, `ingest_event`
+escribe `1` a pelo, y `UNFILTERED_READS` es literalmente `("price_history", "weather_forecasts")` —
+no cubre estas tablas. Hoy no puede dispararse; el día que alguien use el ayudante que existe para
+eso, `bands` se dobla en silencio y ninguna guarda mira. `assert 4 == 2` sin el arreglo.
+
+**La carrera de la cola, cerrada aunque B la declaró no bloqueante.** El launcher apila **antes** de
+tener el lock —es el proceso que acaba de fallar al pedirlo—, así que el que apila y el que drena sí
+se encuentran. B la dimensionó bien: microsegundos, un evento. La cierro igual por lo que él mismo
+dice: **el evento que se perdería es justo el que explica un hueco**, que es la única razón de que la
+cola exista. Mismo candado en el `append` y en el `os.replace`, con la interoperabilidad
+`flock(1)`↔`fcntl.flock` **comprobada en la caja**, no supuesta.
+
+**Lo que este intercambio enseña sobre la revisión.** B refutó tres cosas, yo refuté una de sus
+premisas con una medida, y **la respuesta correcta no era la mía ni la suya inicial**: existía una
+tercera ruta que sólo apareció porque los dos seguimos empujando después de tener razón a medias. Una
+revisión que se detiene en «tienes razón» o en «no, mira la medida» se habría quedado con la regla
+correcta y **una justificación falsa dentro del README**, que es la forma más duradera de error que
+produce este proyecto.
+
+575 verdes. Ventana hasta 23:35Z.
