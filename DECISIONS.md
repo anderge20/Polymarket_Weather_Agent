@@ -2296,3 +2296,51 @@ acordado con B: cuenta la **tasa de ranuras perdidas del colector**, no la del c
 un hueco de precios se recupera dentro de la ventana de 159 días y **uno de libro no se recupera
 nunca**.
 **Estado:** ADOPTADA.
+
+## A-52 — PR #10 fusionado; el bloqueante 2 de R14 está a medias y **empeora el diagnóstico** · 2026-09-09 · Claude (sesión A)
+
+**PR #10 (`weather_agent.m2`) FUSIONADO.** 453 verdes verificados por mí. `load_pairs` acepta ya
+`dataset_version` explícito, cerrando el acoplamiento oculto de A-51. **P3 desbloqueada.**
+
+**PR #9 (R14) sigue abierto.** Los bloqueantes 1 y 3 de A-50 están corregidos y los reproduje: el
+caso perfecto NOAA/°C da `WINNER`/`LOSER` con `band_key=28`, y `observations_for` recibe
+`target_date` y filtra el día en SQL.
+
+**El 2 está a medias.** B quitó la guarda previa y la sustituyó por una búsqueda **condicionada a la
+estación** (`labels.py:202`):
+
+```python
+obs = observations_for(con, station, target_date, dataset_version) if station else []
+```
+
+Los mercados HKO tienen `station_identifier` NULL **por naturaleza** —el núcleo lo dice así, «no es
+defecto»— luego `obs = []` y `try_settle` rechaza. Reproducido **con la fila diaria del HKO presente
+en la tabla**: `no_observations_in_window`. El estrato 10 —**1.859 mercados, el único H, el único
+DIRECT y el único con holdout evaluable**— sigue sin emitir nada.
+
+### Y lo que importa más que el bug: el arreglo empeoró el diagnóstico
+
+La razón pasó de estar **fuera** del enum cerrado a estar **dentro** — pero ahora es **falsa**.
+`no_observations_in_window` afirma que no hay observación cuando la fila está ahí y lo que ocurrió es
+que **nadie la buscó**. Quien persiga esa razón irá a buscar datos que no faltan.
+
+**Una razón fuera del enum es obviamente incorrecta y alguien la mira. Una razón plausible y falsa no
+la mira nadie.** Es la misma lección que B sacó de `missing_substrate()` devolviendo `[]` —*un fallo
+que miente en la dirección de la confianza es peor que uno que rompe*— repetida un nivel más abajo,
+por la corrección de ese mismo fallo.
+
+**Hueco distinto que conviene no confundir:** aunque se arregle la búsqueda, **no hay ninguna
+observación HKO ingerida** — el sustrato sólo tiene IEM/METAR. El estrato seguirá vacío hasta que
+exista una ingesta de HKO. Son dos problemas y hay que declararlos por separado.
+
+### El hallazgo de B sobre las bandas por evento, confirmado
+
+Su muestreo daba **1,5 bandas por evento** frente a las **10,9** del catálogo real. Strategy A es
+fail-closed por evento y las necesita **todas**, de ahí los 0 elegibles. Su diagnóstico es correcto:
+el muestreo de un mercado por estación-fecha era **correcto para M2** —que necesita días-estación— y
+**equivocado para el backtest**, que necesita eventos completos.
+
+Y su observación final es la buena: **mi 86 % de eventos incompletos en vivo (A-31/§0 de R24) y su
+1,5 son el mismo problema por dos caminos**, con una diferencia que decide — **el suyo tiene arreglo
+y el mío no**, porque el mío es una propiedad del venue.
+**Estado:** ADOPTADA.
