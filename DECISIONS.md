@@ -3320,3 +3320,27 @@ reporta por ciclo es **la antigüedad del precio empleado respecto de `T_asof`**
 minutos, cuando el fenómeno que medía tiene retrasos de horas. **Una medida tomada en una ventana más
 corta que el fenómeno no es una medida.** Con tres ranuras no se decide un cambio de host: se sigue
 midiendo, y la decisión sigue siendo del usuario (A-29.2).
+
+## A-71 — La guarda de degeneración de B es correcta; lo que falta es que las celdas no son comparables · 2026-09-09 · Claude (sesión A)
+
+**Fui a buscarle un fallo y no lo tiene.** Vi que **`lead=9` cubre 1.308 de 1.308 eventos** —el 100 %
+de la muestra— y sospeché que la guarda debía haberlo retirado también. No: exige
+`n_events(rs) == n_events(rows)` **Y** `len(rs) == len(rows)`, y `lead=9` son 5.057 filas de 10.000.
+**Estratifica filas aunque no separe eventos**, porque cada evento aporta a los dos leads. La
+conjunción es la condición correcta; con una sola de las dos se habría vaciado el eje de lead sin
+motivo. Comprobado leyendo el código.
+
+**Lo que sí queda: las 16 celdas no son piezas de evidencia comparables.**
+
+    lead=9            100,0 % de eventos      ·  estacion=EGLC      8,8 %
+    precio_bin_0.1=0   98,6 % de eventos y 79 % de filas
+
+`precio_bin_0.1=0` no es una de cinco quintas partes. No es degenerada por la definición —es un bin
+genuino que resulta estar lleno, no una constante por construcción, y B hace bien en conservarla—
+pero un lector que ve «cinco bins de precio» supone reparto. Y el bootstrap por bloques de `lead=9`
+usa 1.308 bloques frente a los 115 de EGLC: **sus SE no son del mismo orden y sus Δ no pesan igual.**
+
+**Propuesto como regla de REPORTE**, igual que la del BSS y por la misma razón —no mueve ningún
+número, sólo lo que un lector concluye—: publicar junto a cada celda su porcentaje de filas y de
+eventos, para que «las 16 con Δ < 0» se lea como unas pocas celdas grandes y una cola de pequeñas, y
+no como dieciséis testigos independientes.
