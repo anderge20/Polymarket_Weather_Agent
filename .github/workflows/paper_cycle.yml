@@ -1,0 +1,213 @@
+name: Paper mode — daily cycle
+
+# The full cycle: rebuild state, discover, collect, forecast, signal, simulate the
+# fill, settle, persist. The collector workflow is the one that must never miss a
+# beat (order-book history cannot be back-filled); this one is where a decision
+# actually gets made, and it is deliberately separate so a failure here can never
+# take collection down with it.
+#
+# WHEN IT FIRES, AND WHY THOSE TIMES
+# ----------------------------------
+# R8 fixed the temporal anchor: `endDate = target_date 12:00:00Z`, and the decision
+# instant is `T = endDate - lead_hours`. The two operational leads therefore have
+# two distinct decision times, and each gets its own firing:
+#   * lead 24 h -> T = 12:00Z the day BEFORE the target date  -> cron 11:40Z
+#   * lead  9 h -> T = 03:00Z ON the target date              -> cron 02:40Z
+# Both fire ~20 minutes early because Actions cron on the free tier is best-effort
+# and typically drifts LATE. The drift does not corrupt the lead, because
+# `paper_cycle.decision_time` clamps the decision instant:
+#     prediction_time = min(now, T_asof)
+# Fired early, `now` wins and the decision is made on LESS information than the
+# lead allows. Fired late, `T_asof` wins, so data that only became available
+# during the drift cannot enter a decision that still claims to be as-of T_asof —
+# without the clamp the declared lead would be a fiction. Either way the realised
+# lead is measured, not assumed: every cycle logs a `timing` stage with
+# lead_effective_h and drift_h, and R24 reports their distribution.
+#
+# FAIL-CLOSED ON tau. Signals and paper execution only run when `vars.PAPER_TAU` is
+# set as a repository variable. Note there are TWO thresholds, because they gate two
+# different quantities: `--tau-signal` on Strategy A's GROSS edge against the
+# indicative mid, and `--tau-exec` on the NET edge against the achievable VWAP.
+# `vars.PAPER_TAU_EXEC` overrides the second; absent, it takes the same value, and
+# R24 has to state that it did. No tau, no trades — a threshold picked by a default
+# is a parameter nobody preregistered, and R24 exists precisely to fix it in
+# advance. Until then this workflow still collects, discovers and persists.
+
+on:
+  schedule:
+    - cron: '40 11 * * *'   # decision for lead 24 h (target = tomorrow)
+    - cron: '40 2 * * *'    # decision for lead  9 h (target = today)
+  workflow_dispatch:
+    inputs:
+      target_date:
+        description: 'UTC target date (YYYY-MM-DD). Blank = inferred from the hour.'
+        required: false
+        default: ''
+      tau:
+        description: 'Override the signal threshold for this run only.'
+        required: false
+        default: ''
+      collect_only:
+        description: 'Skip signals/paper (books and catalogue only)'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: paper-state-writer          # same group as the collector: one writer at a time
+  cancel-in-progress: false
+
+env:
+  DATA_BRANCH: paper-state
+  DATASET_VERSION: ds_paper_v1
+  PYTHON_VERSION: '3.12'
+  MODEL: icon_seamless               # M1, adopted in D12
+
+jobs:
+  cycle:
+    name: Run one full paper cycle
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Check out the data branch
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch "$DATA_BRANCH" \
+            "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" \
+            state
+          echo "state branch at $(git -C state rev-parse --short HEAD)"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install the paper-mode dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-paper.txt
+
+      - name: Resolve the target date and the lead this firing serves
+        id: plan
+        run: |
+          set -euo pipefail
+          HOUR="$(date -u +%H)"
+          if [ -n "${{ github.event.inputs.target_date }}" ]; then
+            # A manual run states the date; the lead follows from the hour it is
+            # actually run at, and paper_cycle.py clamps the decision instant to
+            # T_asof either way, so a hand-fired run cannot claim a lead it did
+            # not have.
+            TD="${{ github.event.inputs.target_date }}"
+            if [ "$HOUR" -ge 10 ]; then LEAD="24"; else LEAD="9"; fi
+          elif [ "$HOUR" -ge 10 ]; then
+            TD="$(date -u -d '+1 day' +%F)"; LEAD="24"   # 11:40Z firing
+          else
+            TD="$(date -u +%F)"; LEAD="9"                # 02:40Z firing
+          fi
+          echo "target_date=$TD"   >> "$GITHUB_OUTPUT"
+          echo "lead=$LEAD"        >> "$GITHUB_OUTPUT"
+          echo "lead_hours=$LEAD"  >> "$GITHUB_OUTPUT"
+          echo "target_date=$TD  nominal_lead=${LEAD}h  fired_at=$(date -u +%FT%TZ)"
+
+      - name: Decide whether the decision stages may run
+        id: gate
+        run: |
+          set -euo pipefail
+          TAU="${{ github.event.inputs.tau || vars.PAPER_TAU }}"
+          if [ -z "$TAU" ]; then
+            echo "no tau configured (vars.PAPER_TAU unset and no override)"
+            echo "collect_only=true" >> "$GITHUB_OUTPUT"
+            echo "tau=" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.inputs.collect_only }}" = "true" ]; then
+            echo "collect_only requested"
+            echo "collect_only=true" >> "$GITHUB_OUTPUT"
+            echo "tau=" >> "$GITHUB_OUTPUT"
+          else
+            echo "tau=$TAU" >> "$GITHUB_OUTPUT"
+            echo "collect_only=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run the cycle
+        env:
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          ARGS=(
+            --target-date "${{ steps.plan.outputs.target_date }}"
+            --dataset-version "$DATASET_VERSION"
+            --session-id "cyc_${RUN_ID}"
+            --store-root state/paper_state
+            --model "$MODEL"
+            --lead-hours "${{ steps.plan.outputs.lead_hours }}"
+            --summary-json "results/cycle_${RUN_ID}.json"
+          )
+          # Catalogue snapshot ONCE a day, on the 11:40Z firing only. Passing it
+          # on both crons doubled the volume (~21 MB over the run, not ~10) and
+          # contradicted the cadence paper_cycle.py documents for itself.
+          if [ "${{ steps.plan.outputs.lead_hours }}" = "24" ]; then
+            ARGS+=(--dump-catalogue)
+          fi
+          if [ "${{ steps.gate.outputs.collect_only }}" = "true" ]; then
+            ARGS+=(--collect-only)
+          else
+            ARGS+=(
+              --tau-signal "${{ steps.gate.outputs.tau }}"
+              --tau-exec "${{ vars.PAPER_TAU_EXEC || steps.gate.outputs.tau }}"
+              --bankroll "${{ vars.PAPER_BANKROLL || '10000' }}"
+              --fixed-fraction "${{ vars.PAPER_FIXED_FRACTION || '0.02' }}"
+              --size-cap "${{ vars.PAPER_SIZE_CAP || '0.02' }}"
+              --x-exec "${{ vars.PAPER_X_EXEC || '0' }}"
+              --exit-mode "${{ vars.PAPER_EXIT_MODE || 'hold_to_resolution' }}"
+            )
+          fi
+          PYTHONPATH=src python scripts/paper_cycle.py "${ARGS[@]}"
+
+      - name: Commit and push the state
+        run: |
+          set -euo pipefail
+          cd state
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "no new rows this cycle — nothing to commit"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A paper_state
+          git commit -m "paper-state: cycle ${{ steps.plan.outputs.target_date }} lead=${{ steps.plan.outputs.lead }}h (run ${{ github.run_id }})"
+          for attempt in 1 2 3; do
+            if git push origin "$DATA_BRANCH"; then
+              echo "pushed on attempt $attempt"; exit 0
+            fi
+            git pull --rebase origin "$DATA_BRANCH"
+          done
+          echo "could not push after 3 attempts" >&2
+          exit 1
+
+      - name: Publish the cycle summary
+        if: always()
+        run: |
+          {
+            echo "## Paper cycle — ${{ steps.plan.outputs.target_date }} (nominal lead ${{ steps.plan.outputs.lead }} h)"
+            echo "- run: \`${{ github.run_id }}\`  ·  collect_only: \`${{ steps.gate.outputs.collect_only }}\`"
+            echo ""
+            echo '| stage | status | detail |'
+            echo '|---|---|---|'
+            python scripts/summarise_cycle.py results/ || echo '| (summary unavailable) | | |'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper-cycle-${{ github.run_id }}
+          path: results/
+          if-no-files-found: warn

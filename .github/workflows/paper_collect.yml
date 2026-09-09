@@ -1,0 +1,184 @@
+name: Paper mode — book collector
+
+# WHY THIS EXISTS, AND WHY IT RUNS SO OFTEN
+# ----------------------------------------
+# Polymarket publishes no historical order book. `prices-history` returns an
+# INDICATIVE midpoint and nothing else: there is no endpoint, paid or free, that
+# returns the L2 book as it stood yesterday. So a day we do not collect is a day
+# that never existed for us, permanently. Every other stage of this project can be
+# recomputed from stored inputs; this one cannot. That asymmetry is the whole
+# reason the collector runs on its own frequent schedule instead of once inside
+# the daily cycle.
+#
+# HOST: GitHub Actions, per the user's decision (A-29.2), which also fixes the
+# order of fallbacks (Hetzner second, a powered-on Mac last). The design follows
+# from the host: cron-driven, resumable, state versioned in git — not a
+# long-running process that would have to be rewritten to move here later.
+#
+# NO SECRETS. Gamma and the CLOB book are public. The only token used is the
+# automatic GITHUB_TOKEN, and only to commit the shards it just wrote. There is no
+# wallet, no signer, and no order path anywhere in the code this runs.
+
+on:
+  schedule:
+    # Every 3 hours. Actions cron is best-effort on the free tier and can drift by
+    # tens of minutes; nothing here depends on the exact instant, because each row
+    # records its own `collected_at`. Eight slots a day give the book history
+    # enough resolution to price a fill without approaching any rate limit.
+    - cron: '7 */3 * * *'
+  workflow_dispatch:
+    inputs:
+      target_date:
+        description: 'UTC date to collect (YYYY-MM-DD). Blank = today and tomorrow.'
+        required: false
+        default: ''
+      max_pages:
+        description: 'Gamma pages to scan'
+        required: false
+        default: '6'
+
+permissions:
+  contents: write        # only to push shards to the data branch
+
+concurrency:
+  # Serialise every writer of the data branch. Shards never collide by path, but
+  # two jobs pushing at once still race on the ref — and `cancel-in-progress:
+  # false` matters more than it looks: cancelling a half-finished collection
+  # would discard book snapshots that cannot be re-fetched.
+  group: paper-state-writer
+  cancel-in-progress: false
+
+env:
+  DATA_BRANCH: paper-state
+  DATASET_VERSION: ds_paper_v1
+  PYTHON_VERSION: '3.12'
+
+jobs:
+  collect:
+    name: Snapshot open-market books
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Check out the data branch (or start it)
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch "$DATA_BRANCH" \
+            "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" \
+            state 2>/dev/null && echo "data branch checked out" || {
+              echo "data branch '$DATA_BRANCH' does not exist yet — creating it as an orphan"
+              git clone --depth 1 \
+                "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" \
+                state
+              cd state
+              git checkout --orphan "$DATA_BRANCH"
+              git rm -rf . >/dev/null 2>&1 || true
+              mkdir -p paper_state
+              printf '%s\n' \
+                '# paper-state' '' \
+                'Append-only NDJSON shards written by the paper-mode workflows.' \
+                'This branch carries DATA ONLY: no code, and it is never merged into main.' \
+                'Each shard is created once and never rewritten, so history is the audit trail.' \
+                > README.md
+              git add -A
+              git -c user.name=github-actions -c user.email=github-actions@github.com \
+                commit -m "Start the paper-state data branch"
+              git push -u origin "$DATA_BRANCH"
+            }
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install the paper-mode dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-paper.txt
+          python -m pip freeze
+
+      - name: Decide which dates to collect
+        id: dates
+        run: |
+          set -euo pipefail
+          if [ -n "${{ github.event.inputs.target_date }}" ]; then
+            DATES="${{ github.event.inputs.target_date }}"
+          else
+            # Markets resolve at 12:00Z, so near the end of a UTC day the tradable
+            # universe is already tomorrow's. Collect both rather than guess.
+            DATES="$(date -u +%F) $(date -u -d '+1 day' +%F)"
+          fi
+          echo "dates=$DATES" >> "$GITHUB_OUTPUT"
+          echo "collecting: $DATES"
+
+      - name: Collect books
+        env:
+          # Stable across re-runs of the SAME scheduled firing, so a retried or
+          # cancelled run RESUMES that cycle instead of opening a second one.
+          # A new firing gets a new run_id and therefore a new cycle.
+          RUN_ID: ${{ github.run_id }}
+          MAX_PAGES: ${{ github.event.inputs.max_pages || '6' }}
+        run: |
+          set -euo pipefail
+          mkdir -p results
+          for D in ${{ steps.dates.outputs.dates }}; do
+            echo "::group::collect $D"
+            PYTHONPATH=src python scripts/paper_cycle.py \
+              --target-date "$D" \
+              --dataset-version "$DATASET_VERSION" \
+              --session-id "col_${RUN_ID}_${D}" \
+              --store-root state/paper_state \
+              --max-pages "$MAX_PAGES" \
+              --collect-only \
+              --summary-json "results/collect_${D}.json"
+            echo "::endgroup::"
+          done
+
+      - name: Commit and push the shards
+        run: |
+          set -euo pipefail
+          cd state
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "no new shards — nothing to commit (a resumed cycle with nothing left to do)"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A paper_state
+          git commit -m "paper-state: books for ${{ steps.dates.outputs.dates }} (run ${{ github.run_id }})"
+          # Shards never share a path across runs, so a concurrent push can only
+          # be a fast-forward away; rebase and retry once rather than force.
+          for attempt in 1 2 3; do
+            if git push origin "$DATA_BRANCH"; then
+              echo "pushed on attempt $attempt"; exit 0
+            fi
+            echo "push rejected — rebasing on the remote and retrying"
+            git pull --rebase origin "$DATA_BRANCH"
+          done
+          echo "could not push after 3 attempts" >&2
+          exit 1
+
+      - name: Report what the store now holds
+        if: always()
+        run: |
+          {
+            echo "## Book collection — run ${{ github.run_id }}"
+            echo "- dates: \`${{ steps.dates.outputs.dates }}\`"
+            echo ""
+            echo '```'
+            PYTHONPATH=src python -c 'import json; from weather_agent import store; print(json.dumps(store.store_stats("state/paper_state"), indent=2))' \
+              || echo "store not readable"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the cycle summaries
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: collect-summaries-${{ github.run_id }}
+          path: results/
+          if-no-files-found: warn

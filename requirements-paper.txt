@@ -1,0 +1,24 @@
+# ============================================================
+# PAPER MODE requirements  (R22/R23/R24 — GitHub Actions cron)
+# ============================================================
+# Deliberately minimal, and that is the point: this file is installed on EVERY
+# scheduled run, several times a day, on the free Actions tier. Installing the
+# full pipeline tier (pandas + numpy + scipy + scikit-learn) would add minutes of
+# wheel resolution per run to import nothing the cycle uses.
+#
+# Verified by inspection of the import graph reachable from scripts/paper_cycle.py
+# (weather_agent.{collector,store,paper,config,database,features,probability,
+# labeling}, weather_agent.polymarket.*, weather_agent.strategy.*): the only
+# third-party names are `duckdb` and `requests`, both imported lazily inside
+# functions. If that ever stops being true, this file has to grow — and a run
+# will fail loudly at import rather than silently degrade.
+#
+# Install:  pip install -r requirements-paper.txt
+
+duckdb>=1.1            # the derived store; shards are rebuilt into it each run
+requests>=2.32         # public gamma / CLOB / data-api GETs and POSTs
+
+# NOT here, and not by omission:
+#   * no wallet, signer, web3 or py-clob-client — gate D0 is structural, and the
+#     paper engine must remain incapable of placing an order (tests assert it).
+#   * no scipy/sklearn — the calibration work belongs to the backtest tier.
