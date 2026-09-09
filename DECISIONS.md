@@ -2007,3 +2007,59 @@ rechazo es dato**, `is_winner` queda en NULL (desconocido) y no en False (perdi�
 **La fusión de prueba es obligatoria antes de fusionar cuando hay dos ramas largas vivas.** No es
 anécdota: es el único sitio donde este defecto aparece.
 **Estado:** ADOPTADA.
+
+## A-46 — PR #8 refutado: `build_feature` devuelve el precio del token equivocado · 2026-09-09 · Claude (sesión A)
+
+Refutación hostil del PR #8 antes de fusionar (A-29.4): **2 bloqueantes y 12 hallazgos más**.
+**NO fusionado.**
+
+### El bloqueante, reproducido por mí
+
+`features.build_feature` lee el precio filtrando por `market_id` y `dataset_version`, particiona por
+`token_id` y luego coge **`prices[0]`**. **El `token_id` que la función recibe nunca entra en el
+WHERE.** Caso mínimo ejecutado:
+
+```
+token A = 'Yes', precio 0,20 · token B = 'No', precio 0,80
+build_feature(token_id='A') -> market_prob = 0.2
+build_feature(token_id='B') -> market_prob = 0.2   <-- el precio de A
+```
+
+La fila sale con `token_id: B`, el precio de A, `weather_prob` sí calculado con la banda de B, y
+`no_lookahead_verified = True`. Sin excepción. **Un nombre para una magnitud distinta**, la misma
+clase de defecto que el umbral con dos operandos y el `n≥30`.
+
+**Y no es de B: ya estaba en `main`.** Verificado — `main` tiene `where="market_id = ?"` y el mismo
+`prices[0]`. Lleva ahí desde que se escribió el constructor de features. Lo que hace que salte ahora
+es que B tocó esa consulta para A-37 y la refutación miró de cerca.
+
+**Por qué retengo la fusión aun no siendo suyo:** el guard de linaje de `strategy_a` existe **como
+parche externo** a este defecto —su propio comentario lo reconoce— y cualquier otro consumidor de
+`build_feature` queda desprotegido. Son dos líneas: `AND token_id = ?` y una aserción. Entonces el
+guard pasa a ser **redundante**, que es lo que debe ser un guard.
+
+### Lo demás, resumido
+
+- **El guard de `strategy_a` quedó desalineado** con A-37: su comentario dice «NO dataset_version
+  filter — matching features.py», que era cierto antes y ya no. Con dos `dataset_version` en la base
+  excluiría eventos con `ambiguous_or_wrong_token_price`, que sería **falso**.
+- **Migración 1 editada in situ**, contra la regla escrita dos líneas encima de `MIGRATIONS`: dos
+  bases en `schema_version = 4` con esquemas físicos distintos.
+- **Los cuantiles se ajustan en un instante distinto del sello as-of de su fila:** `t − available_at`
+  va de **1,24 h a 4,24 h**, nunca cero, y el guardia de no-lookahead mira `available_at`.
+- **`fit_m2.py` no menciona `model` ni `record_version`** en ningún SQL, y ambas son PK.
+- **El manifiesto de integridad de M2 está roto:** `M2_REPORT.sha256` declara `ce100dd7…` y el fichero
+  da `daaf9878…`. El `.sha256` es de la v1 y el JSON de la v2. El hash de `M2_REPORT.md` **sí**
+  coincide, precisamente porque no se regeneró.
+- **`error_model.py` declara implementar el preregistro RETIRADO** (sha `16b729e1…`), y el estimador
+  de la v3 —declarada NO VÁLIDA sin v4— **sigue vivo en el paquete de producción**, 81 de 305 líneas,
+  con docstrings en presente afirmativo y sin marca de retirada.
+
+### Lo que era mío, ya corregido
+
+`_station_tz` adivinaba tres nombres de API (A-45), y el docstring de
+`stage_guard_dataset_version` documentaba como premisa justo lo que B arregló en A-37 — **una guarda
+cuya justificación es falsa es una guarda que el siguiente lector retira por equivocación**.
+
+**Estado:** PR #8 RETENIDO a la espera de los dos primeros arreglos. Sin ventana de objeción: no
+bloquea el trabajo de B, sólo su fusión.
