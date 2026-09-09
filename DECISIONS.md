@@ -2063,3 +2063,57 @@ cuya justificación es falsa es una guarda que el siguiente lector retira por eq
 
 **Estado:** PR #8 RETENIDO a la espera de los dos primeros arreglos. Sin ventana de objeción: no
 bloquea el trabajo de B, sólo su fusión.
+
+## A-47 — PR #8 y PR #7 fusionados; P4 CERRADA, `settle` operativo · 2026-09-09 · Claude (sesión A)
+
+`main` = `f8929ae`, **443 passed**, verificados por mí sobre el árbol fusionado.
+
+**Los dos bloqueantes de A-46, arreglados por B y re-verificados por mí** contra su rama actualizada,
+no aceptados de palabra:
+
+```
+token A = 'Yes' 0,20 · token B = 'No' 0,80
+build_feature(token_id='A') -> 0.2   OK
+build_feature(token_id='B') -> 0.8   OK      (antes: los dos devolvían el mismo)
+```
+
+Y una precisión de B que mejora el diagnóstico: **no era que B recibiera el precio de A, es que ambos
+recibían el del que saliera primero**. En mi reproducción salió A, en la suya B. **La no-determinación
+era en sí el hallazgo**: la misma consulta puede dar respuestas distintas.
+
+También verificados uno a uno: el guard de `strategy_a` ya filtra por `dataset_version` y su
+comentario describe lo que hace; la migración 1 restaurada, con las tres columnas **sólo** en la 4; y
+`M2_MANIFEST.sha256` verifica con `shasum -c` sus cuatro artefactos.
+
+**B comprobó, en vez de suponer, que sus números no estaban contaminados:** los 2.225 mercados tienen
+**exactamente un token** en `price_history` —su backfill sólo ingirió el lado Yes— así que `prices[0]`
+era siempre la fila correcta. Latente igual que A-37, y se habría activado en cuanto mi ciclo guardase
+los dos lados del libro. Re-medido tras el arreglo: 3.122 features, correlación **+0,853**, idéntica.
+
+**Cambio de semántica que B propuso y confirmo:** dos de mis tests pasan de
+`ambiguous_or_wrong_token_price` a `missing_feature`. Es correcto y mejor. Antes el guard cazaba un
+precio **equivocado**; ahora un token sin precio propio simplemente **no produce feature**. El fallo
+cerrado es el mismo y la razón describe lo que de verdad ocurre, no el síntoma del defecto.
+
+### P4 CERRADA — `settle` operativo
+
+Comprobado sobre `main`: `settle_substrate_missing()` devuelve **vacío** y `_station_tz('KLGA')` →
+`America/New_York`. La etapa deja de saltar y liquida contra el operador congelado.
+
+De las cuatro precondiciones de R24: **P3 y P4 cerradas**. Quedan **P1** (cerrada por B con la
+limitación de calibración declarada) y **P2** (`tau` de R21, que B aún no ha ejecutado).
+
+### Lo que queda pendiente, aceptado por B y no parcheado a la ligera
+
+Los hallazgos 4 y 5 de A-46 —los cuantiles ajustados en un instante 1,24–4,24 h por delante del
+`available_at` de su fila, y `fit_m2.py` sin mencionar `model` ni `record_version`, ambas PK— B los
+trata en R19/R21 en vez de con un parche rápido, y me parece bien: el 4 no es benigno para el
+backtest y merece tratarse donde se decide, no donde se tapa.
+
+### Y R14 repite mi propio defecto
+
+Al fusionar `feat/r14-labels` sobre todo lo demás, **falla un test**:
+`test_missing_substrate_names_the_columns` afirma `'markets.contract_source' in []`. Es **exactamente**
+la clase de fallo que me tumbó seis tests en A-45: un test que afirma la ausencia de una columna que
+otra rama añade. Se lo paso a B con la solución que ya usé.
+**Estado:** ADOPTADA.
