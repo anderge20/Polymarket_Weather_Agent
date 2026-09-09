@@ -152,7 +152,18 @@ def canonical_bytes(payload: Mapping[str, Any]) -> bytes:
     `artifact_id`, keys sorted, no insignificant whitespace.
 
     THE MECHANISM, NOT A PROMISE ABOUT IT. The id changes if ANYTHING in the
-    payload changes, and two of the fields in there are not about the numbers:
+    payload changes. Only ONE of its eight fields is about the numbers, so the
+    useful split is not "about the numbers or not" — it is who puts the field
+    there:
+
+        about the numbers : strata
+        DECLARED          : schema · prereg_sha256 · model · dataset_version ·
+                            max_age_hours
+        AMBIENT           : fit_instant · code_sha256
+
+    Declared fields surprise nobody: an operator wrote them, and if `model`
+    changes the id, that is the point. The two AMBIENT fields let themselves in,
+    and they are the ones that catch people:
 
       * `fit_instant` — so two refits of an unchanged substrate are two
         artifacts. Measured on 2026-09-09 (A-94): a refit returned n, window and
