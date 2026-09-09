@@ -3027,7 +3027,14 @@ T_obs (la MEJOR celda) = −0,00252        p_familia = 1,0000
 VEREDICTO: EL_MODELO_NO_SUPERA_AL_MERCADO_EN_NINGUNO_DE_LOS_ESTRATOS_DECLARADOS
 ```
 **Las diecisiete celdas evaluables tienen Δ < 0**, y en **quince** el `|Δ|` supera `2·SE` de la
-propia celda. **La permutación no tuvo trabajo que hacer**: el máximo sobre todas las celdas ya
+propia celda. **Pero «diecisiete» sobrevende la cobertura** (refutación de A, verificada por mí
+sobre el JSON): `completitud=baja` cubre **1 308/1 308 eventos y 10 000/10 000 filas** —es la
+muestra entera con otro nombre, no un estrato— y `precio_decil` **no son deciles** sino cortes
+de anchura fija, con la celda 0 al **79,2 %**. **Los cortes que de verdad estratifican son DIEZ**
+(lead ×2, unidad ×2, banda ×3, anchura_fc ×3), **los diez con Δ < 0 y los diez con |Δ| > 2·SE**,
+más cinco de precio también negativos. La guarda de degeneración del runner sólo miraba los NULL
+—cazó `antiguedad`, un eje **sin** datos— y no la cobertura —se le escapó `completitud`, un eje
+con **todos** los datos en una celda—. Generalizada: ahora caza las dos. **La permutación no tuvo trabajo que hacer**: el máximo sobre todas las celdas ya
 era negativo, así que `p = 1` es trivial y no ajustado — el control de multiplicidad que costó
 tres recongelados resultó innecesario, que es la forma más limpia de un negativo.
 
@@ -3037,6 +3044,24 @@ Tampoco gana.
 **La regla del BSS de A funcionó:** en `precio_decil=0` el modelo saca **−0,547** contra la tasa
 base de la propia celda —peor que no predecir nada— y el mercado +0,021. «Gana el mercado» ahí
 significa que ninguno sabe nada; sin el BSS al lado habría entrado como una derrota más.
+
+### EL HALLAZGO MÁS FUERTE, y no es ninguna celda: la habilidad es ENTERA entre bins
+Lo encontró A dentro de mis datos y lo verifiqué sobre el JSON:
+```
+BSS del modelo sobre la MUESTRA ENTERA      +0,238     (mercado +0,380)
+BSS del modelo DENTRO de cada bin de precio:
+   bin 0 −0,547 · bin 1 −0,117 · bin 2 −0,023 · bin 3 −0,091 · bin 4 −0,234
+```
+**Sobre el conjunto el modelo tiene habilidad positiva; dentro de cada régimen de precio es peor
+que predecir la tasa base de ese régimen, en los cinco.** Su habilidad global es **enteramente
+un efecto ENTRE bins**: lo único que aporta es «las bandas baratas son improbables», y eso el
+mercado ya lo tiene dentro del precio **porque el precio es el bin**. Es la selección adversa de
+B-14 **medida y descompuesta**, y dice más que «el mercado gana en todas las celdas»:
+**condicionado al precio, el modelo no aporta información, y la que parecía aportar era la que
+el precio ya contenía.** *(Límite que A señala y hay que repetir: el BSS del mercado dentro de su
+propio bin es ≈0 casi por construcción, así que la comparación modelo-mercado DENTRO de un bin
+es débil. Lo que no es débil ni tautológico es el signo negativo del modelo, medido contra la
+tasa base observada del bin.)*
 
 ### Tres ejes no evaluables, y el primero importa
 `spread del libro` **IMPOSIBLE** (`orderbook_snapshots` vacía, todo `MIDPOINT_ESTIMATED`) — es
@@ -3121,3 +3146,28 @@ rompe.** El riesgo es de **todas** las migraciones —la mía sólo cruzó el um
 donde se matan procesos: **un job de Actions cancelado durante la primera ejecución contra un esquema
 nuevo dejaría una base imposible de reabrir.** `init_db` hace ahora `CHECKPOINT` tras cada migración.
 Los tres tests vuelven a pasar. **524 verdes.**
+
+## A-68 — `stage_paper` no tenía test de etapa, y 526 verdes pasaron sobre un NameError · 2026-09-09 · Claude (sesión A)
+
+Hacer `target_date` obligatorio en `record_paper_trade` debía **forzar** a todos los llamantes a
+aportar el valor autoritativo. Lo hizo, salvo que **`stage_paper` referenciaba un nombre que no está
+en su ámbito**, y lo único que lo cazó fue ejecutar el ciclo contra el universo en vivo:
+
+    [OK] signals  events=49 eligible=7 signals=77
+    NameError: name 'target_date' is not defined   (stage_paper, primera señal)
+
+**`stage_paper` no tenía ni un test a nivel de etapa.** La etapa que ABRE posiciones —la que decide
+cuánto bankroll se compromete— sólo se ejercitaba a través de los fixtures de las vecinas. **526 tests
+verdes sobre una etapa que no podía arrancar.** Sexta vez en el día, y ésta mía y recién introducida.
+Corregido, y añadido el test que faltaba: siembra mercado, tarifa, libro y señal, abre una posición y
+comprueba que lleva el `target_date` del caller.
+
+**Verificado en vivo, cadena entera, tras todos los cambios del día:** 49 eventos → 7 elegibles → 77
+señales → **27 posiciones abiertas**, 15 rechazadas por `net_edge_below_tau`; `observations` con 7
+station-days pedidos y 7 `day_not_over` (el objetivo es mañana) y **`trades_without_target_date` a
+null**; `settle` rechazando las 27 por `no_observations_in_window`; 12 tablas volcadas con catálogo.
+**526 verdes.**
+
+**La regla, ya sin excepciones conocidas hoy:** la suite verde no dice nada del camino en vivo. Seis
+de seis defectos del día se encontraron ejecutando, ninguno leyendo, y ninguno lo habría encontrado un
+test más porque el problema **era** el fixture.
