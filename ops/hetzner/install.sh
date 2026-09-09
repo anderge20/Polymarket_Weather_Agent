@@ -17,6 +17,38 @@ set -euo pipefail
 ROOT=/opt/pmw
 REPO=$ROOT/repo
 
+# THE SAME TRAP AS A-89, IN THE SCRIPT THAT EXISTS TO AVOID IT.
+# The `git reset --hard` below rewrites the checkout THIS FILE lives in. If the
+# target ref does not carry ops/, the reset deletes the script bash is still
+# reading — half-executed, no error, and the cron left in whatever state the
+# first half produced. Verified on 2026-09-09: origin/main did not contain ops/
+# until PR #14 landed, so the condition was live, not theoretical.
+#
+# A-89 diagnosed this and the fix went only to the launcher, because that was
+# where it had hurt. Fixing the instance is not fixing the class. So: copy out
+# and re-exec BEFORE touching git. Copied, not symlinked, for the same reason.
+# BOTH SIDES RESOLVED. `pwd -P` resolves symlinks, so comparing it against a
+# `$REPO` that may not be resolved silently never matches — the guard looks
+# installed and does nothing, which is the failure mode it exists to prevent.
+# Caught by the test, not by reading it: on a host where /opt is a link, the
+# unresolved form would have sailed straight through.
+# `$0` ENTIRE, not just its directory. `pwd -P` on `dirname` resolves the
+# DIRECTORY while `basename` keeps the LINK's name, so an operator convenience
+# like /usr/local/bin/pmw-install -> $REPO/ops/hetzner/install.sh produced a
+# SELF that matched nothing while the file bash was reading sat squarely inside
+# the checkout. Found by session B, who tried the four invocation forms; the
+# other three (direct path, `bash install.sh`, relative path) already fired.
+SELF=$(readlink -f "$0")
+REPO_P=$(cd "$REPO" 2>/dev/null && pwd -P || echo "$REPO")
+case "$SELF" in
+  "$REPO_P"/*)
+    mkdir -p "$ROOT/bin"
+    install -m 0755 "$SELF" "$ROOT/bin/install.sh"
+    echo "install.sh: re-exec from $ROOT/bin/install.sh (outside the checkout)"
+    exec "$ROOT/bin/install.sh" "$@"
+    ;;
+esac
+
 command -v git >/dev/null || { echo "git required"; exit 1; }
 [ -d "$REPO/.git" ] || git clone -q git@github.com:anderge20/Polymarket_Weather_Agent.git "$REPO"
 git -C "$REPO" fetch -q origin && git -C "$REPO" reset -q --hard origin/main

@@ -20,6 +20,12 @@
 # make "scheduled versus delivered" unreadable, which is the measurement §4quater
 # of R24 depends on.
 #
+# ONE WRITER ON THIS HOST TOO, and that one is enforced rather than declared.
+# `git add -A paper_state` below runs in a checkout shared by every cycle on this
+# box, so an overlapping run's half-written shard can be swept into this run's
+# commit — a truncated .gz on an append-only branch, unrepairable. `launcher.sh`
+# holds an flock for the whole cycle; nothing here may be run directly by cron.
+#
 # Usage:  run_cycle.sh collect            books only, every 3 h
 #         run_cycle.sh decide 24          decision cycle, lead 24 h (target tomorrow)
 #         run_cycle.sh decide 9           decision cycle, lead  9 h (target today)
@@ -57,7 +63,8 @@ if [ "$LEAD" = "24" ]; then TD=$(date -u -d '+1 day' +%F); else TD=$(date -u +%F
 
 ARGS=(--target-date "$TD" --dataset-version "$DSV"
       --store-root "$STATE/paper_state" --lead-hours "$LEAD"
-      --summary-json "$ROOT/last_summary.json")
+      --summary-json "$ROOT/last_summary.json"
+      --host-events "$ROOT/pending_host_events.ndjson")
 
 if [ "$MODE" = "collect" ]; then
   ARGS+=(--collect-only)

@@ -69,6 +69,14 @@ does not run. Each was checked on the box, not reasoned about:
 - **The host clock.** `Etc/UTC`, and `install.sh` refuses to install otherwise.
 - **The test suite, on this machine.** It found a `pandas` import the paper tier
   does not install — green on the developer's laptop, broken here.
+- **That cron actually FIRES the launcher.** "The entry is in the crontab" is a
+  claim about a file; "cron executes it" is a claim about a daemon, and the gap
+  between them fails invisibly — no error, no log, and a missing shard nobody
+  notices for days, in the system whose headline measurement is *scheduled versus
+  delivered*. Checked with a temporary entry two minutes out, marked `# PRUEBA`,
+  pointing at the real launcher: it fired at 20:23:04Z on 2026-09-09, resolved the
+  ref, updated the checkout and ran the cycle. The entry was then removed and its
+  absence verified — the check must not survive itself.
 
 And one that was NOT verified, with the consequence it had: the first deployment
 pointed the runner at a branch with a `sed` whose pattern did not match the real
@@ -82,11 +90,66 @@ below — and why "I applied an edit" is not the same as "the edit applied".
 ```sh
 ssh -p 443 root@95.217.131.145
 /opt/pmw/repo/ops/hetzner/install.sh      # idempotent; re-run after a pull
+                                          # (it re-execs itself from /opt/pmw/bin
+                                          #  first — it resets the checkout it
+                                          #  lives in, so it must not run there)
 tail -f /opt/pmw/log/collect.log
 crontab -l
 ```
 
 To stop everything: `crontab -r` (or delete the delimited block).
+
+## Reading the coverage series
+
+`venue_coverage` rows carry `is_final`, and it means **the CUTOFF is final, not
+the COUNT**. Session B's point on PR #15, and the difference decides how the
+series is read:
+
+- **`is_final = false`** — the cycle ran before `t_asof`, so the count is a
+  partial one that will grow. Never enters the series.
+- **`is_final = true`** — the cutoff reached the anchor. But several cycles run
+  after `t_asof` for one target, and each writes its own row, so **two final rows
+  for the same target can differ.**
+
+**The rule: take the LAST final row per `(target_date, lead)` by `recorded_at`.
+Never the mean of the final rows** — that counts one target several times.
+
+`recorded_at` orders them, and what it gives you is **the most recent observation
+of the venue's state — not "the maximum"**. The distinction is session B's and it
+matters, because anyone reasoning from "it is the maximum" will deduce things
+that do not hold:
+
+- The **numerator** only grows: the cutoff is identical across those rows and
+  `price_history` is append-only, so a later row saw a superset of the prices.
+- The **denominators do not.** `bands` and `events` come from `markets` and
+  `outcomes`, which are **re-discovered from gamma on every run**. A band
+  discovered later raises them with no price having changed, and a revised
+  `endDate` can move a market to another target date entirely. So
+  `complete_rate_over_events` and `priced_rate_over_bands` can go **either way**
+  between two final rows.
+
+No extra tie-breaker field is added: maximality is not the property you want —
+recency is, and `recorded_at` gives it. A field with no consumer is noise.
+
+*(A third route to differing finals opens when the price-history backfill lands:
+a row with `observation_time <= t_asof` ingested afterwards. Measured on the live
+store it is not open today — every price row is ingested within 27 s of its
+observation instant, p95 = 22 s — because `observation_time` IS the collection
+instant, so a late slot writes a late observation and loses the measurement
+rather than back-filling it. The rule above covers all three.)*
+
+## Host events
+
+A slot the launcher gives up on — the run lock still held after `PMW_LOCK_WAIT` —
+is appended to `/opt/pmw/pending_host_events.ndjson` and drained into a
+`host_events` shard by the next cycle that gets the lock. It is queued rather
+than pushed on the spot because committing in the state checkout while the
+lock-holder is writing there is the race the lock exists to prevent.
+
+Without this, a skipped slot leaves **exactly the trace of a host that never
+fired**: no shard, a hole in "delivered", nothing to tell the two apart — which
+is the distinction R24 §4quater rests on when it attributes `NO EVALUABLE` to the
+host rather than to the strategy.
 
 ## Layout
 

@@ -32,9 +32,11 @@ nothing in this script or in the modules it imports can sign or place an order.
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
 import os
 import sys
+import time
 import traceback
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -501,9 +503,114 @@ def stage_forecasts(cy: Cycle, con, *, dataset_version: str, target_date: date,
             "provenance": prov}
 
 
+def stage_host_events(cy: Cycle, *, queue_path: str | None, root: str,
+                      session_id: str) -> dict:
+    """Drain the host's queued events into a shard so they reach the series.
+
+    WHY A QUEUE AND NOT A DIRECT WRITE. `launcher.sh` records an event when it
+    gives up waiting for the run lock. It cannot push that itself: committing in
+    the state checkout while the run holding the lock is writing there is the
+    exact race the lock exists to prevent. So the launcher appends a line and the
+    next cycle that DOES get the lock carries it to GitHub.
+
+    WHY IT MATTERS AT ALL. A skip that lives only in `/opt/pmw/log/collect.log`
+    leaves precisely the trace of a host that never fired: no shard, a hole in
+    "delivered", and nothing to tell the two apart — which is the distinction
+    §4quater of R24 rests on when it attributes `NO EVALUABLE` to the host. It
+    also breaks "GitHub stays the record; nothing lives only on the box".
+
+    THE RENAME IS THE POINT. The queue is drained by `os.replace` onto a
+    sidecar, which is atomic: a launcher appending at that instant creates a
+    fresh queue and loses nothing, where read-then-truncate would drop whatever
+    landed in between. The sidecar is removed only after the shard is written, so
+    a crash mid-drain re-drains rather than swallowing the events.
+    """
+    if not queue_path:
+        cy.stage("host_events", SKIPPED, reason="no_queue_configured")
+        return {"rows": 0}
+    q = Path(queue_path)
+    sidecar = q.with_suffix(q.suffix + ".draining")
+    # THE RENAME IS TAKEN UNDER THE SAME LOCK THE APPENDER USES. The appending
+    # launcher does not hold the run lock — it is the one that just failed to get
+    # it — so the two really can meet here: a `write()` that lands in the renamed
+    # or already-unlinked inode loses the event. Microseconds wide and one event
+    # deep, and the event lost is exactly the one that EXPLAINS a gap, which is
+    # the only thing this queue is for. Session B sized it; it is closed rather
+    # than written down.
+    # BOUNDED, AND NEVER BLOCKING. The appender waits `-w 30`; this side used a
+    # plain LOCK_EX with no limit — and it runs INSIDE the cycle, holding the run
+    # lock the whole time. So any pathological hold on the queue lock became a
+    # hung cycle, then every later slot skipping, then a schedule stopped in
+    # silence: the exact failure this PR exists to remove, re-entering through
+    # the door the PR itself added. Session B's asymmetry, and it is my own rule
+    # applied where I had not applied it.
+    #
+    # On exhaustion the drain is SKIPPED, not failed: the queue is durable and
+    # the next cycle drains it, so nothing is lost and the cycle cannot hang.
+    lock_path = Path(str(q) + ".lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    budget = float(os.environ.get("PMW_QUEUE_LOCK_WAIT", "30"))
+    with open(lock_path, "a+") as lock_fh:
+        deadline, held = time.monotonic() + budget, False
+        while True:
+            try:
+                fcntl.flock(lock_fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                held = True
+                break
+            except OSError:
+                if time.monotonic() >= deadline:
+                    break
+                time.sleep(0.05)
+        if not held:
+            cy.stage("host_events", SKIPPED, reason="queue_locked_elsewhere",
+                     waited_s=budget)
+            return {"rows": 0, "skipped": "queue_locked_elsewhere"}
+        try:
+            if q.exists() and q.stat().st_size:
+                if sidecar.exists():   # a previous drain died before unlinking
+                    with open(sidecar, "a", encoding="utf-8") as dst, \
+                         open(q, "r", encoding="utf-8") as src:
+                        dst.write(src.read())
+                    q.unlink()
+                else:
+                    os.replace(q, sidecar)
+        finally:
+            fcntl.flock(lock_fh, fcntl.LOCK_UN)
+    if not sidecar.exists() or not sidecar.stat().st_size:
+        cy.stage("host_events", SKIPPED, reason="queue_empty")
+        return {"rows": 0}
+
+    rows, malformed = [], 0
+    for line in sidecar.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            malformed += 1           # counted, never silently dropped
+            continue
+        row.setdefault("drained_by_session", session_id)
+        rows.append(row)
+    if not rows:
+        sidecar.unlink()
+        cy.stage("host_events", SKIPPED, reason="queue_had_no_valid_rows",
+                 malformed=malformed)
+        return {"rows": 0, "malformed": malformed}
+
+    written = store.write_shard(rows, table="host_events", run_id=session_id,
+                                root=root)
+    sidecar.unlink()                 # only after the shard exists
+    cy.stage("host_events", OK, rows=len(rows), malformed=malformed,
+             path=written["path"],
+             events=",".join(sorted({str(r.get("event")) for r in rows})))
+    return {"rows": len(rows), "malformed": malformed}
+
+
 def stage_venue_coverage(cy: Cycle, con, *, dataset_version: str,
                          universe: list[dict], prediction_time: datetime,
-                         root: str, session_id: str, target_date: date) -> dict:
+                         t_asof: datetime, root: str, session_id: str,
+                         target_date: date) -> dict:
     """RUNG 1 of the funnel, measured on EVERY cycle including collect-only.
 
     WHY IT LIVES HERE AND NOT IN `stage_signals`. The number the run needs before
@@ -549,6 +656,16 @@ def stage_venue_coverage(cy: Cycle, con, *, dataset_version: str,
         "           AND p.observation_time <= ?) AS n_prices "
         "FROM markets m JOIN outcomes o "
         "  ON o.market_id = m.market_id AND o.dataset_version = m.dataset_version "
+        # `record_version` IS PART OF THE KEY, and `select_universe` twenty lines
+        # up already joins on it. Two queries in the same module disagreeing about
+        # whether a key column matters is the exact shape of the `fit_m2` gap and
+        # of the read that returned another token's price. It cannot fire today —
+        # `discovery.ingest_event` writes `record_version: 1` literally in all
+        # five places and `next_record_version` is defined and called from
+        # nowhere — and `stage_guard_dataset_version` does not watch these two
+        # tables either. Which is precisely why it would fan out silently the day
+        # someone starts using the helper that exists for it. Found by session B.
+        "  AND o.record_version = m.record_version "
         "WHERE m.dataset_version = ? AND o.outcome_label = 'Yes'",
         [dataset_version, prediction_time, dataset_version],
     )
@@ -581,6 +698,29 @@ def stage_venue_coverage(cy: Cycle, con, *, dataset_version: str,
         # attention, not the host (A-72).
         "github_event": os.environ.get("GITHUB_EVENT_NAME"),
         "run_id": os.environ.get("GITHUB_RUN_ID"),
+        # IS THIS ROW'S CUTOFF FINAL? Derived from `prediction_time`, which is
+        # the SAME clock read that produced the count — not a second call to
+        # `_utcnow()` here. Session B found the bug that made this necessary:
+        # the cycle fires ~20 min early ON PURPOSE, so a lead-9 cycle can start
+        # at 02:40 (cutoff 02:40, partial), take 25 minutes, and write its row
+        # at 03:05, by which time a fresh clock read is past `t_asof` and would
+        # stamp a PARTIAL count as final. `prediction_time = min(now, t_asof)`
+        # makes `prediction_time >= t_asof` exactly equivalent to `now >= t_asof`
+        # at the instant that mattered.
+        #
+        # AND IT MEANS THE CUTOFF IS FINAL, NOT THE COUNT. A row whose cutoff is
+        # final can still be a PREFIX of a later one for the same target: today
+        # because several cycles run after `t_asof` and each writes its own row,
+        # and — once the price-history backfill lands — because a row with
+        # `observation_time <= t_asof` can be INGESTED afterwards. Measured on
+        # the live store, that second route is not open yet: every price row is
+        # ingested within 27 s of its observation instant (`clob_book_midpoint`,
+        # p95 = 22 s), so a late slot writes a late observation and loses the
+        # measurement rather than back-filling it. Either way the consumer rule
+        # is the same and is written down in the README: take the LAST final row
+        # per (target_date, lead), never the mean of the final rows.
+        "t_asof": _iso(t_asof),
+        "is_final": prediction_time >= t_asof,
         **out,
     }
     written = store.write_shard([row], table="venue_coverage", run_id=session_id,
@@ -1320,6 +1460,12 @@ def build_parser() -> argparse.ArgumentParser:
                         "snapshot up to 15 h older (see CATALOGUE_TABLES).")
     p.add_argument("--summary-json", default=None,
                    help="Write the cycle summary to this path.")
+    p.add_argument("--host-events", default=None,
+                   help="NDJSON queue the host appends to when a slot is lost "
+                        "(a lock timeout, say). Drained into a `host_events` "
+                        "shard so a SKIPPED slot is distinguishable from a host "
+                        "that never fired — the distinction R24 §4quater rests "
+                        "on. Without it a skip lives only in the box's log.")
     return p
 
 
@@ -1429,8 +1575,14 @@ def main(argv: list[str] | None = None) -> int:
         # is the only place the live measurement can accumulate before
         # `PAPER_TAU` exists. After collection and after `prediction_time` is
         # settled, so it counts the prices this cycle just wrote.
+        # Before anything else that writes: the host's own events are part of
+        # "scheduled versus delivered" and must not wait on the cycle succeeding.
+        stage_host_events(cy, queue_path=args.host_events, root=args.store_root,
+                          session_id=session_id)
+
         stage_venue_coverage(cy, con, dataset_version=args.dataset_version,
                              universe=universe, prediction_time=prediction_time,
+                             t_asof=plan["t_asof"],
                              root=args.store_root, session_id=session_id,
                              target_date=target_date)
 

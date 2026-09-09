@@ -1137,7 +1137,7 @@ def test_venue_coverage_is_fail_closed_per_event_and_runs_without_deciding(con, 
                 {"event_id": "e1", "market_id": "m3"}, {"event_id": "e1", "market_id": "m4"}]
     out = paper_cycle.stage_venue_coverage(
         _cycle(), con, dataset_version="ds1", universe=universe, prediction_time=T,
-        root=str(tmp_path), session_id="cyc", target_date=date(2026, 9, 10))
+        t_asof=T, root=str(tmp_path), session_id="cyc", target_date=date(2026, 9, 10))
 
     assert out["events"] == 2
     assert out["events_complete"] == 1          # e1 dies for ONE unpriced band
@@ -1160,7 +1160,7 @@ def test_venue_coverage_respects_the_as_of_instant(con, tmp_path):
     out = paper_cycle.stage_venue_coverage(
         _cycle(), con, dataset_version="ds1",
         universe=[{"event_id": "e0", "market_id": "m1"}], prediction_time=T,
-        root=str(tmp_path), session_id="cyc", target_date=date(2026, 9, 10))
+        t_asof=T, root=str(tmp_path), session_id="cyc", target_date=date(2026, 9, 10))
     assert out["events_complete"] == 0 and out["bands_priced"] == 0
 
 
@@ -1190,7 +1190,7 @@ def test_venue_coverage_is_written_to_the_STORE_not_only_to_the_summary(con, tmp
     paper_cycle.stage_venue_coverage(
         _cycle(), con, dataset_version="ds1",
         universe=[{"event_id": "e0", "market_id": "m1"}], prediction_time=T,
-        root=str(tmp_path), session_id="cyc", target_date=date(2026, 9, 10))
+        t_asof=T, root=str(tmp_path), session_id="cyc", target_date=date(2026, 9, 10))
 
     shards = store.iter_shards(tmp_path, "venue_coverage")
     assert len(shards) == 1
@@ -1199,3 +1199,227 @@ def test_venue_coverage_is_written_to_the_STORE_not_only_to_the_summary(con, tmp
     assert row["events"] == 1 and row["events_complete"] == 1
     assert row["github_event"] == "schedule"
     assert row["target_date"] == "2026-09-10"
+
+
+def test_venue_coverage_row_says_whether_the_count_is_FINAL(con, tmp_path, monkeypatch):
+    """A partial row must not be averaged into the series that fixes the threshold.
+
+    The cutoff is effectively `t_asof` whichever branch of `min(now, t_asof)`
+    applies — before it there is no later price to exclude, after it the min IS
+    `t_asof` — so rows for one target are comparable and A-92's worry about that
+    was wrong. What is NOT the same is whether more prices can still land: while
+    `now < t_asof` the count is partial and will grow. The row therefore carries
+    the fact rather than leaving it to be inferred from `recorded_at` against
+    `prediction_time`, which happens to work today and is one clamp change away
+    from silently not working.
+    """
+    T = datetime(2026, 9, 9, 12, tzinfo=timezone.utc)
+    _market(con, market_id="m1", event_id="e0", end_date="2026-09-10T12:00:00Z")
+
+    def _row(now, t_asof, root):
+        monkeypatch.setattr(paper_cycle, "_utcnow", lambda: now)
+        paper_cycle.stage_venue_coverage(
+            _cycle(), con, dataset_version="ds1",
+            universe=[{"event_id": "e0", "market_id": "m1"}],
+            prediction_time=min(now, t_asof), t_asof=t_asof,
+            root=str(root), session_id="cyc", target_date=date(2026, 9, 10))
+        import gzip as _gz
+        return json.loads(_gz.open(store.iter_shards(root, "venue_coverage")[0],
+                                   "rt").readline())
+
+    before = _row(T - timedelta(hours=3), T, tmp_path / "a")
+    assert before["is_final"] is False
+    assert before["t_asof"].startswith("2026-09-09T12:00:00")
+
+    after = _row(T + timedelta(hours=3), T, tmp_path / "b")
+    assert after["is_final"] is True
+
+    # THE CASE SESSION B FOUND, and the reason `is_final` may not take a second
+    # clock read. The cron fires ~20 min EARLY on purpose, so the cutoff is set
+    # before `t_asof` and the row is written after it — here a 25-minute cycle
+    # that starts at 11:40 and writes at 12:05. A fresh `_utcnow()` at write
+    # time is past the anchor and stamps a PARTIAL count as final; the cutoff
+    # that produced the count never reached it.
+    monkeypatch.setattr(paper_cycle, "_utcnow", lambda: T + timedelta(minutes=5))
+    root = tmp_path / "early_fire"
+    paper_cycle.stage_venue_coverage(
+        _cycle(), con, dataset_version="ds1",
+        universe=[{"event_id": "e0", "market_id": "m1"}],
+        prediction_time=T - timedelta(minutes=20),   # fired early: cutoff 11:40
+        t_asof=T,                                    # anchor 12:00
+        root=str(root), session_id="cyc", target_date=date(2026, 9, 10))
+    import gzip as _gz
+    row = json.loads(_gz.open(store.iter_shards(root, "venue_coverage")[0],
+                              "rt").readline())
+    assert row["is_final"] is False, (
+        "a count cut at 11:40 is partial no matter what the clock says at 12:05")
+
+
+def test_venue_coverage_join_does_not_fan_out_on_record_version(con, tmp_path):
+    """`record_version` is part of the key, so the join must carry it.
+
+    Found by session B: `select_universe` joins on it and this query did not —
+    two queries in the same module disagreeing about whether a key column
+    matters, which is the shape of the `fit_m2` gap and of the read that
+    returned another token's price. It cannot fire in production today
+    (`discovery.ingest_event` writes record_version 1 literally everywhere and
+    `next_record_version` is called from nowhere) and `stage_guard_dataset_version`
+    does not watch markets/outcomes either — so the day someone starts versioning,
+    `bands` would silently double with no guard in the way.
+    """
+    T = datetime(2026, 9, 9, 12, tzinfo=timezone.utc)
+    _market(con, market_id="m1", event_id="e0", end_date="2026-09-10T12:00:00Z")
+    # a second version of the SAME market and its outcomes, as the helper would
+    con.execute(
+        "INSERT INTO markets (market_id, event_id, station, station_identifier, "
+        "unit, rounding_rule, source_timestamps, ingestion_timestamp, "
+        "dataset_version, record_version) VALUES (?,?,?,?,?,?,?,?,?,?)",
+        ["m1", "e0", None, "EGLC", "C", "whole degree",
+         '{"endDate":"2026-09-10T12:00:00Z"}', T0, "ds1", 2])
+    for i, (tok, label) in enumerate((("m1_yes", "Yes"), ("m1_no", "No"))):
+        con.execute(
+            "INSERT INTO outcomes (market_id, token_id, band_label, outcome_index, "
+            "outcome_label, ingestion_timestamp, dataset_version, record_version) "
+            "VALUES (?,?,?,?,?,?,?,?)",
+            ["m1", tok, "15C or below", i, label, T0, "ds1", 2])
+
+    out = paper_cycle.stage_venue_coverage(
+        _cycle(), con, dataset_version="ds1",
+        universe=[{"event_id": "e0", "market_id": "m1"}], prediction_time=T,
+        t_asof=T, root=str(tmp_path), session_id="cyc",
+        target_date=date(2026, 9, 10))
+    assert out["bands"] == 2, "one band per (market, record_version), not the cross product"
+
+
+def _events(root):
+    import gzip as _gz
+    shards = store.iter_shards(root, "host_events")
+    return [json.loads(l) for p in shards
+            for l in _gz.open(p, "rt").read().splitlines()]
+
+
+def test_host_events_queue_reaches_the_store(tmp_path):
+    """A slot lost to the lock must not be indistinguishable from a dead host.
+
+    Session B's finding on PR #15: a skip that lives only in the box's
+    collect.log leaves exactly the trace of a host that never fired — no shard,
+    a hole in "delivered", nothing to tell them apart. That is the distinction
+    §4quater rests on when it attributes NO EVALUABLE to the host, and it also
+    breaks "GitHub stays the record; nothing lives only on the box".
+    """
+    q = tmp_path / "pending.ndjson"
+    q.write_text('{"event":"lock_timeout","mode":"collect","waited_s":900}\n'
+                 '{"event":"lock_timeout","mode":"decide","waited_s":900}\n',
+                 encoding="utf-8")
+    out = paper_cycle.stage_host_events(_cycle(), queue_path=str(q),
+                                        root=str(tmp_path), session_id="cyc")
+    assert out["rows"] == 2
+    rows = _events(tmp_path)
+    assert [r["mode"] for r in rows] == ["collect", "decide"]
+    assert all(r["drained_by_session"] == "cyc" for r in rows)
+    assert not q.exists(), "the queue is consumed, not replayed every cycle"
+
+
+def test_host_events_drain_does_not_lose_a_crashed_previous_drain(tmp_path):
+    """The sidecar is removed only after the shard exists, so a crash re-drains.
+
+    Read-then-truncate would drop whatever the launcher appended between the
+    read and the truncate. The rename is atomic and the leftover is merged.
+    """
+    q = tmp_path / "pending.ndjson"
+    sidecar = q.with_suffix(q.suffix + ".draining")
+    sidecar.write_text('{"event":"lock_timeout","mode":"older"}\n', encoding="utf-8")
+    q.write_text('{"event":"lock_timeout","mode":"newer"}\n', encoding="utf-8")
+
+    out = paper_cycle.stage_host_events(_cycle(), queue_path=str(q),
+                                        root=str(tmp_path), session_id="cyc")
+    assert out["rows"] == 2
+    assert {r["mode"] for r in _events(tmp_path)} == {"older", "newer"}
+    assert not sidecar.exists() and not q.exists()
+
+
+def test_host_events_drain_waits_for_the_queue_lock(tmp_path):
+    """The drain must take the same lock the appender uses, or the rename races.
+
+    The appending launcher does NOT hold the run lock — it is the process that
+    just failed to get it — so appender and drainer genuinely meet here. A
+    `write()` landing in the renamed or already-unlinked inode loses the event,
+    and the event lost is the one that EXPLAINS a gap, which is the only reason
+    the queue exists. Verified on the box that bash's `flock` and Python's
+    `fcntl.flock` exclude each other on the same file; this pins the Python half.
+    """
+    import subprocess, sys as _sys, time as _time
+    q = tmp_path / "pending.ndjson"
+    q.write_text('{"event":"lock_timeout","mode":"collect"}\n', encoding="utf-8")
+    lock = str(q) + ".lock"
+    holder = subprocess.Popen(
+        [_sys.executable, "-c",
+         f"import fcntl,time\nfh=open({lock!r},'a+')\n"
+         f"fcntl.flock(fh,fcntl.LOCK_EX)\nprint('held',flush=True)\ntime.sleep(1.5)"],
+        stdout=subprocess.PIPE, text=True)
+    assert holder.stdout.readline().strip() == "held"
+
+    t0 = _time.monotonic()
+    out = paper_cycle.stage_host_events(_cycle(), queue_path=str(q),
+                                        root=str(tmp_path), session_id="cyc")
+    waited = _time.monotonic() - t0
+    holder.wait()
+
+    assert out["rows"] == 1
+    assert waited >= 1.0, f"the drain did not wait for the lock (took {waited:.2f}s)"
+
+
+def test_host_events_gives_up_on_the_queue_lock_rather_than_hanging_the_cycle(
+        tmp_path, monkeypatch):
+    """A held queue lock must SKIP the drain, never block the cycle.
+
+    Session B's asymmetry on PR #15: the appender waits `-w 30` while this side
+    used a plain LOCK_EX with no limit — and it runs INSIDE the cycle, holding
+    the run lock throughout. A pathological hold would become a hung cycle, then
+    every later slot skipping, then a schedule stopped in silence: the very
+    failure this PR removes, re-entering through the door the PR added.
+
+    Nothing is lost by giving up: the queue is durable and the next cycle drains
+    it. That is what makes skipping strictly better than blocking here.
+    """
+    import subprocess, sys as _sys, time as _time
+    q = tmp_path / "pending.ndjson"
+    q.write_text('{"event":"lock_timeout","mode":"collect"}\n', encoding="utf-8")
+    lock = str(q) + ".lock"
+    monkeypatch.setenv("PMW_QUEUE_LOCK_WAIT", "0.3")
+    holder = subprocess.Popen(
+        [_sys.executable, "-c",
+         f"import fcntl,time\nfh=open({lock!r},'a+')\n"
+         f"fcntl.flock(fh,fcntl.LOCK_EX)\nprint('held',flush=True)\ntime.sleep(2.0)"],
+        stdout=subprocess.PIPE, text=True)
+    assert holder.stdout.readline().strip() == "held"
+
+    t0 = _time.monotonic()
+    out = paper_cycle.stage_host_events(_cycle(), queue_path=str(q),
+                                        root=str(tmp_path), session_id="cyc")
+    waited = _time.monotonic() - t0
+    holder.wait()
+
+    assert out["skipped"] == "queue_locked_elsewhere"
+    assert waited < 1.5, f"the drain blocked the cycle for {waited:.2f}s"
+    assert q.exists() and q.read_text(encoding="utf-8").strip(), (
+        "the queue must survive so the next cycle drains it")
+
+
+def test_host_events_counts_malformed_lines_instead_of_swallowing_them(tmp_path):
+    q = tmp_path / "pending.ndjson"
+    q.write_text('{"event":"lock_timeout","mode":"collect"}\n'
+                 'not json at all\n', encoding="utf-8")
+    out = paper_cycle.stage_host_events(_cycle(), queue_path=str(q),
+                                        root=str(tmp_path), session_id="cyc")
+    assert out["rows"] == 1 and out["malformed"] == 1
+
+
+def test_host_events_without_a_queue_is_a_skip_not_a_crash(tmp_path):
+    out = paper_cycle.stage_host_events(_cycle(), queue_path=None,
+                                        root=str(tmp_path), session_id="cyc")
+    assert out["rows"] == 0
+    out = paper_cycle.stage_host_events(_cycle(),
+                                        queue_path=str(tmp_path / "absent.ndjson"),
+                                        root=str(tmp_path), session_id="cyc")
+    assert out["rows"] == 0
