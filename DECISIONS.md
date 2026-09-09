@@ -1884,3 +1884,68 @@ Es una limitación real del producto y conviene no maquillarla: significa que la
 mercado individual es menos fiable que la cifra agregada sugiere, y que el umbral tiene que pagar por
 esa incertidumbre.
 **Estado:** ADOPTADA.
+
+## B-13 — R21 preregistrado: dos umbrales, margen por descalibración, desenlace negativo declarado · 2026-09-09 · Claude (sesión B)
+**Congelado antes de calcular ningún PnL:** `PREREG_R21_BACKTEST_TAU.md`, sha en su `.sha256`.
+**Adoptadas las dos exigencias de la sesión A, ambas correctas:**
+1. **El margen de `tau_exec` NO sale de la calibración agregada** sino de la dispersión entre
+   estaciones medida en B-11 (τ_est = 0,545 °C). Sacarlo de la agregada sería volver a comprar el
+   problema de B-12: la agregada se ve bien **porque** los sesgos opuestos se cancelan.
+   Y el margen se calcula **por mercado**, no como constante en puntos de probabilidad: desplazar
+   la distribución τ_est mueve mucho una banda estrecha cerca del centro y poco una ancha en la
+   cola. Una constante sería otro umbral con dos operandos.
+2. **Desenlace negativo declarado por adelantado:** si `tau_exec` con margen deja < 100 operaciones
+   accionables, o PnL mediano ≤ 0, el resultado es **LA ESTRATEGIA NO ES OPERABLE CON ESTE
+   SUSTRATO** y se publica tal cual. No se prueban umbrales alternativos ni se relaja el margen.
+**Dos umbrales, no uno** (separación de A): `tau_signal` sobre el edge bruto contra el mid;
+`tau_exec` sobre el neto contra el VWAP alcanzable. Sólo `tau_signal` se calibra fuera de muestra;
+`tau_exec` se **deriva** de costes + margen — calibrarlo sería elegirlo a partir del resultado.
+**Cláusula de no vacuidad** en §4.1: n ≥ 100 o `NO EVALUABLE`, nunca `APTA`. Es el defecto que A
+encontró en su propia R24 v1 y no se repite aquí.
+**Reconocimiento mutuo registrado:** A acertó el cálculo del encogimiento y erró el diagnóstico —
+su corrección arreglaba el estimador cuando el problema era que no hay señal estable que estimar.
+Lo dijo él mismo. Y su SettlementOperator, ya fusionado en `main`, se autorrefutó con un defecto de
+la misma clase que los míos: emitía un label del día equivocado por derivar el día civil en UTC
+cuando el HKO publica en HKT, y no fallaba cerrado sino que **emitía mal**.
+**Estado:** ADOPTADA. Siguiente: R14 y R17 (mecánicos), luego R19/R20 y ejecución de R21.
+
+## A-44 — `settle` cableado al SettlementOperator (P4); y el cron de Actions no dispara · 2026-09-09 · Claude (sesión A)
+
+**P4 cerrada por mi lado. PR #7.** `stage_settle` construye un `MarketContext` por posición abierta,
+llama al operador congelado y liquida contra la banda realizada. **La etiqueta nunca se adivina:** un
+rechazo deja la posición **abierta** con su razón contada, y hay un test que comprueba que la fila
+queda intacta. Elegir ganador por el último precio negociado es lo que convierte un libro de papel en
+ficción.
+
+La detección de sustrato **nombra lo que falta** en vez de decir «aún no cableado»:
+`weather_observations.observed_value/observed_unit/series` y `markets.contract_source` llegan con la
+migración 4 de B, y el huso con su módulo `stations`. Mientras tanto SKIP con la lista exacta.
+
+**El camino completo se prueba ya, no después de la fusión:** el fixture simula la migración de B, así
+que se ejercita la rama que importa — token Yes en la banda ganadora liquida a 1, en una perdedora a
+0, un token **No** paga exactamente cuando su banda **no** ocurrió (fácil de invertir), una banda
+abierta resuelve bien, y un estrato sin operador deja la posición abierta con su razón. Sin ese
+fixture el único camino probado sería el SKIP, que es el patrón que ya ha producido defectos tres
+veces hoy. 370 passed / 4 skipped.
+
+`asof=None` a propósito: `available_at` en el histórico de observaciones es el instante de descarga y
+no una disponibilidad real (A-30), así que un gate as-of aquí afirmaría algo que no podemos sostener.
+El resultado lleva `Y_FINAL_UNKNOWN_ASOF` y lo dice.
+
+### Aviso operativo: el cron de GitHub Actions NO está disparando
+
+**OBSERVADO 12:28Z:** el colector tiene cron `7 */3 * * *` y **la ranura de las 12:07 no disparó**.
+El ciclo diario tiene `40 11 * * *` y **la de las 11:40 tampoco**. Las tres únicas ejecuciones del
+colector son `workflow_dispatch` míos. Los dos workflows figuran **`active`** en la API, así que no es
+configuración.
+
+Lo más probable es el comportamiento documentado de GitHub: en el nivel gratuito las ejecuciones
+programadas **se retrasan o se descartan** en periodos de carga alta. Recuperé la ranura a mano
+(ejecución `34351295134`, verde) y **vigilo la de las 15:07**.
+
+**Por qué importa y no es una molestia menor:** el libro no se puede reconstruir a posteriori
+(B-1/R22). Si las ranuras programadas se pierden de forma sistemática, el modo papel sobre Actions no
+cumple lo que A-29.2 pedía, y habría que subir a la opción siguiente del usuario —Hetzner— o cambiar
+el disparo. **No decido nada todavía: dos ranuras perdidas no son una serie.** Si fallan también las
+de 15:07 y 18:07, es un patrón y hay que actuar.
+**Estado:** ADOPTADA; ranura de 15:07 EN OBSERVACIÓN.
