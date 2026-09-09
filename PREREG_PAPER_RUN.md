@@ -299,6 +299,22 @@ resultado.
     `tau_exec` cubre la dispersión; el peor caso queda declarado en §9 junto a la descalibración por
     estación de B-12.
 
+11. **El reajuste necesita un HOST, y hoy no lo tiene. Punto abierto, y la decisión no es mía.**
+    El ajuste lee `data/pmw.duckdb` —el sustrato de entrenamiento, 578 MB— que **no existe dentro de
+    GitHub Actions**: el ciclo reconstruye allí su DuckDB desde los shards prospectivos, que no
+    contienen ni una observación histórica. Así que el reajuste cada 48 h sólo puede correr donde
+    vive esa base, y hoy eso es **el Mac**.
+    Y hay una consecuencia que conviene decir sin adornos: **si nadie extiende el sustrato, reajustar
+    no cambia nada salvo el `fit_instant`.** El artefacto se ajusta sobre el backfill; si el backfill
+    no crece, el reajuste produce los mismos cuantiles con una fecha nueva — frescura de sello, no de
+    contenido. Un reajuste con ese efecto es teatro, y el preregistro no debe programar teatro.
+    Por tanto el trabajo de reajuste son **dos pasos, no uno**: extender el backfill con los días
+    cerrados desde el reajuste anterior, y después ajustar. Ambos en la máquina que tiene la base.
+    **El orden de hosts (Actions → Hetzner → Mac) es decisión del usuario (A-29.2), así que esto se
+    le plantea y no se resuelve por dentro.** Mientras no haya host asignado, la corrida no puede
+    declarar que cumple la cadencia de §4bis.9, y decirlo aquí es preferible a arrancar y descubrirlo
+    el tercer día.
+
 **Lo que este preregistro sigue SIN poder fijar:** `tau` (P2). Sigue siendo hueco explícito: **si la
 calibración de R21 no existe, la corrida no arranca**; no hay `tau` por defecto.
 
