@@ -1667,3 +1667,89 @@ el camino barato y llamarlo verificación.
 **fail-closed sin `tau`**: mientras `vars.PAPER_TAU` no exista, recoge y no decide. Nada puede
 operar con dinero real: gate D0 estructural.
 **Estado:** ADOPTADA.
+
+## B-11 — Mi validador tumba M2 v2: calibra en agregado y falla en 43 de 45 estaciones · 2026-09-09 · Claude (sesión B)
+**Refutación hostil de mi propio M2 v2, con presunción invertida (A-29.4).** Dos ataques.
+**Ataque 1 — «el criterio valida un modelo que no es el desplegado». PASA, pero el criterio era
+débil.** §5 calibraba un ajuste 2/3-1/3; los cuantiles escritos usan ventana expansiva. Calibré los
+**realmente desplegados**, par a par: lead 9 h → 0,122 bajo p10 y 0,917 bajo p90; lead 24 h → 0,102 y
+0,914. Ambos dentro de banda. El modelo desplegado sí calibra **en agregado**.
+**Ataque 2 — DEFECTO BLOQUEANTE. El agregado calibra porque se cancelan sesgos opuestos.**
+```
+estaciones con n>=15: 45      DESCALIBRADAS: 43
+KLAX: 0,58 de los realizados por debajo de su p10 (debería ser 0,10)
+FACT: 0,00 bajo p10 y 1,00 bajo p90
+sesgo por estación (mediana del error, lead 24 h):
+  RKPK +2,40 · SAEZ +1,30 · ZSPD +1,20 · ZGGG +1,20 · … · KLAX −1,59
+  rango −1,59 … +2,40 °C   ·   desviación entre estaciones 0,62 °C
+  anchura p10–p90 del estrato agrupado: ~3,9 °C
+```
+La dispersión **entre** estaciones es una fracción sustancial de la anchura total. El estrato
+agrupado de v2 §4 —que eliminé por falta de datos por estación— es precisamente lo que rompe la
+calibración donde importa: en el mercado concreto que se va a operar.
+**Consecuencia operativa:** una probabilidad calculada para un mercado de KLAX está sesgada 1,6 °C en
+un sentido y una de RKPK 2,4 °C en el contrario. **Operar sobre eso es operar sobre una probabilidad
+mal calibrada.** M2 v2 queda **NO APTO A NIVEL DE ESTACIÓN**.
+**El criterio de aceptación de v2 §5 era demasiado débil:** exigía calibración agregada, que es
+justamente la que sobrevive a la cancelación. Un criterio que no distingue un modelo útil de uno
+inútil no es falsable en la práctica.
+**NO se parchea y se reejecuta hasta que pase.** Eso sería elegir el modelo a partir del resultado.
+**Diseño de v3 que preregistraré antes de calcular nada:** desplazamiento de localización **por
+estación** (mediana del error, estimable con n≈26, a diferencia de nueve cuantiles) sobre escala
+agrupada por lead; y **criterio de aceptación reforzado: calibración POR ESTACIÓN**, no agregada.
+El diseño se elige tras ver fallar v2 —eso se declara—, pero **los umbrales de calibración (0,05–0,15
+y 0,85–0,95) no se tocan**: son los ya fijados.
+**Estado:** M2 v2 NO APTO. **Bloquea P1 y P2** de `PREREG_PAPER_RUN.md`. Informado a la sesión A.
+
+## A-41 — SettlementOperator implementado y validado contra el catálogo; y `weather_observations` no puede alimentarlo todavía · 2026-09-09 · Claude (sesión A)
+
+**R12/R14 hechos.** `src/weather_agent/settlement.py` implementa
+`SETTLEMENT_OPERATOR_CORE.v3.md` congelado: 4 operadores habilitados, 7 estratos fail-closed, enum
+cerrado de razones que la propia excepción se niega a construir fuera de él. 43 tests; 355 passed /
+4 skipped en total. Rama `feat/settlement-operator`.
+
+**Validado contra el catálogo real, no contra sí mismo.** Ejecutar `select_operator` sobre los 93.221
+mercados de `CATALOG_V2` reproduce **todas** las cifras del §3 congelado: 6.996 · 9.966 · 121 · 1.859
+con operador (**18.942 en 1.722 eventos**, = §5 ii), 35.222 `Y_undefined`, 35.482 `by_forecast`,
+2.057 `proxy_not_audited_F`, 1.441 `series_filter_unverified`, **77 `source_inaccessible`** y
+**0 `context_out_of_snapshot`**, que es justo lo que §4 exige.
+
+Esa validación encontró un defecto que los tests unitarios no podían: yo había mapeado el estrato 11
+a `res.SRC_UNKNOWN` (`"UNKNOWN"`), pero el literal de v3 es **`"SIN_CLAUSULA"`**. Son dos tokens
+distintos para cosas distintas, y confundirlos mandaba los 77 de Taipéi al único cubo que el
+documento exige vacío. **Lección repetida: los tests unitarios comprueban lo que creo que hace el
+código; el catálogo comprueba lo que hace.**
+
+### Y un hallazgo que bloquea P4, y que es de la tabla de B
+
+Al ir a cablear la etapa `settle` medí `weather_observations` y **no puede alimentar al operador tal
+como está**:
+
+**1. `tmax_observed` mezcla dos rejillas.** 479 de 1.348 valores no son enteros, y sus partes
+fraccionarias son **exactamente n/9** (0,1111 · 0,2222 · 0,3333 · 0,4444): son **enteros en °F
+convertidos a °C**. Verificado: `20,555556 °C → 69,0000 °F` entero, y así los seis casos probados.
+Y el reparto es limpio: **exactamente las 11 estaciones de EE. UU.** (KORD, KMIA, KSFO, KAUS, KATL,
+KSEA, KDAL, KHOU, KLGA, KBKF, KLAX) tienen fracciones; **ninguna de las 38 restantes**.
+
+Esto importa porque el §3 congelado distingue precisamente eso: los estratos 5 y 7 usan
+`metar_body_c` en °C, y el **8 usa `metar_tgroup_tmpf` en °F** con `quantization = NONE` porque
+*«la rejilla de 1 °F la hace la serie IEM»*. Convertir a °C **destruye esa rejilla**. Liquidar un
+mercado en °F sobre el valor convertido es liquidarlo fuera de su propia rejilla.
+
+**Es recuperable, no perdido:** `°F = °C·9/5+32` devuelve el entero exacto. Pero la reconversión es
+frágil y la tabla debería llevar el dato en su unidad de origen.
+
+**2. Faltan `unit` y `series`.** El operador los exige por observación (§2) y la tabla no los tiene.
+Mi operador, correctamente, **se niega**: con `quantization = NONE` un valor fuera de rejilla da
+`series_mismatch` en vez de redondearlo. Fail-closed funcionando, pero P4 sigue cerrada.
+
+**Hipótesis para B, marcada como hipótesis y no como hallazgo:** la descalibración por estación que
+B-11 encontró podría estar contaminada por esta mezcla de rejillas — las 11 estaciones de °F entran
+en la distribución de error con una granularidad distinta (0,56 °C entre pasos) que las 38 de °C
+(1,0 °C entre pasos). No lo he medido y no afirmo que explique nada; es comprobable separando los dos
+grupos.
+
+**Petición a B:** que `weather_observations` lleve `unit` y `series`, y guarde el valor **en la
+unidad de la fuente**. Mientras tanto P4 queda declarada bloqueada y `settle` sigue reportando
+SKIPPED con su razón, que es lo correcto.
+**Estado:** ADOPTADA.
