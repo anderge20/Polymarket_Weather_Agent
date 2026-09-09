@@ -247,3 +247,49 @@ def test_the_cycle_source_uses_the_join_and_not_the_broken_predicate():
     src = (Path(__file__).resolve().parents[1] / "scripts" / "paper_cycle.py").read_text()
     assert "FROM market_fee_schedule WHERE market_id" not in src
     assert "JOIN market_fee_schedule f" in src
+
+
+# --------------------------------------------------------------------------- guard
+def _price(con, *, token="t1", dsv="ds1", rv=1, when=T0):
+    con.execute(
+        "INSERT INTO price_history (observation_time, market_id, token_id, "
+        "indicative_price, ingestion_timestamp, dataset_version, record_version) "
+        "VALUES (?,?,?,?,?,?,?)", [when, "m1", token, 0.5, T0, dsv, rv])
+
+
+def test_the_guard_passes_on_a_single_version_database(con):
+    _price(con)
+    out = paper_cycle.stage_guard_dataset_version(_cycle(), con, dataset_version="ds1")
+    assert out["ok"] is True
+
+
+def test_the_guard_stops_the_cycle_when_two_versions_coexist(con):
+    """build_feature takes dataset_version and never uses it. With one version
+    that is harmless; with two it silently mixes a backfilled price with a
+    prospectively-collected one. Paper mode is what introduces the second."""
+    _price(con, token="t1", dsv="backfill_2b_v1")
+    _price(con, token="t2", dsv="ds_paper_v1")
+    with pytest.raises(SystemExit, match="ambiguous"):
+        paper_cycle.stage_guard_dataset_version(_cycle(), con,
+                                                dataset_version="ds_paper_v1")
+
+
+def test_the_guard_stops_when_the_database_is_a_different_version(con):
+    _price(con, dsv="someone_elses_backfill")
+    with pytest.raises(SystemExit):
+        paper_cycle.stage_guard_dataset_version(_cycle(), con,
+                                                dataset_version="ds_paper_v1")
+
+
+def test_the_guard_stops_on_a_superseded_record_version(con):
+    """latest_asof partitions by token only, so a record_version 2 row that
+    supersedes a 1 could be missed or mixed."""
+    _price(con, token="t1", dsv="ds1", rv=1)
+    _price(con, token="t1", dsv="ds1", rv=2, when=T0 + timedelta(minutes=1))
+    with pytest.raises(SystemExit, match="record_version"):
+        paper_cycle.stage_guard_dataset_version(_cycle(), con, dataset_version="ds1")
+
+
+def test_an_empty_database_does_not_trip_the_guard(con):
+    out = paper_cycle.stage_guard_dataset_version(_cycle(), con, dataset_version="ds1")
+    assert out["ok"] is True

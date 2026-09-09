@@ -167,6 +167,70 @@ def stage_load_state(cy: Cycle, con, *, root: str) -> None:
              total_bytes=stats.get("total_bytes", 0), rows_loaded=total)
 
 
+#: Tables `features.build_feature` and `strategy_a` read WITHOUT filtering by
+#: dataset_version — see `stage_guard_dataset_version`.
+UNFILTERED_READS = ("price_history", "weather_forecasts")
+
+
+def stage_guard_dataset_version(cy: Cycle, con, *, dataset_version: str) -> dict:
+    """Fail loudly if more than one dataset_version is present in the tables the
+    feature builder reads WITHOUT filtering.
+
+    THE DEFECT THIS GUARDS AGAINST IS NOT MINE TO FIX, BUT THE RISK IS MINE TO
+    CREATE. `features.build_feature` takes `dataset_version` as a parameter and
+    then never uses it: its `price_history` and `weather_forecasts` queries filter
+    on market/station only (features.py, the two `latest_asof` calls), and
+    `strategy_a`'s price-lineage guard repeats the omission. With ONE
+    dataset_version in the database that is harmless, which is why session B's
+    end-to-end run is not affected — measured 2026-09-09: every table carries only
+    `backfill_2b_v1`.
+
+    Paper mode is what makes it dangerous: it introduces a SECOND dataset_version
+    (`ds_paper_v1`). The day a database holds both, `build_feature` would silently
+    mix a backfilled price with a prospectively-collected one and no error would
+    be raised. The same applies to `record_version` > 1, where `latest_asof` could
+    return a superseded row.
+
+    So rather than edit a file another session has open, this asserts the
+    precondition under which the omission is harmless, and stops the cycle when it
+    stops holding. Fixing `features.py` is delivered to B as a patch (A-37)."""
+    problems = []
+    for table in UNFILTERED_READS:
+        rows = db.query(
+            con,
+            f"SELECT dataset_version, count(*) AS n FROM {db._q(table)} "
+            "GROUP BY 1 ORDER BY 2 DESC",
+        )
+        versions = [r["dataset_version"] for r in rows]
+        if len(versions) > 1:
+            problems.append(
+                f"{table}: {len(versions)} dataset_versions present "
+                f"({', '.join(str(v) for v in versions[:4])}) — build_feature does "
+                f"not filter by it and would mix them silently"
+            )
+        elif versions and versions[0] != dataset_version:
+            problems.append(
+                f"{table}: holds {versions[0]!r}, cycle runs as {dataset_version!r}"
+            )
+        rv = db.query(
+            con, f"SELECT DISTINCT record_version FROM {db._q(table)}"
+        )
+        if len([r["record_version"] for r in rv if r["record_version"] is not None]) > 1:
+            problems.append(
+                f"{table}: more than one record_version — latest_asof may return a "
+                f"superseded row"
+            )
+    if problems:
+        cy.stage("guard:dataset_version", STOPPED, problems=json.dumps(problems))
+        raise SystemExit(
+            "paper_cycle: refusing to decide on a database whose unfiltered reads "
+            "are ambiguous:\n  - " + "\n  - ".join(problems)
+        )
+    cy.stage("guard:dataset_version", OK, tables=len(UNFILTERED_READS),
+             dataset_version=dataset_version)
+    return {"ok": True}
+
+
 def stage_discover(cy: Cycle, con, *, dataset_version: str, target_date: date,
                    horizon_days: int, session, max_pages: int) -> dict:
     """Discover OPEN markets (R26) whose endDate is in the future.
@@ -624,6 +688,13 @@ def main(argv: list[str] | None = None) -> int:
         stage_collect(cy, con, dataset_version=args.dataset_version,
                       session_id=session_id, universe=universe, session=http,
                       chunk_size=args.chunk_size)
+
+        # Guard BEFORE any decision, and after the tables are populated: a cycle
+        # that only collects is harmless, one that decides on an ambiguous
+        # database is not.
+        if not args.collect_only:
+            stage_guard_dataset_version(cy, con,
+                                        dataset_version=args.dataset_version)
 
         if args.collect_only:
             cy.stage("forecasts", SKIPPED, reason="collect_only")
