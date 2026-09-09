@@ -1108,7 +1108,7 @@ def test_the_signals_stage_records_both_rungs_with_their_denominators(con, monke
     assert out["tau_signal"] == 0.03
 
 
-def test_venue_coverage_is_fail_closed_per_event_and_runs_without_deciding(con):
+def test_venue_coverage_is_fail_closed_per_event_and_runs_without_deciding(con, tmp_path):
     """Rung 1 measured where it can actually be measured.
 
     `stage_signals` never runs in Actions — every scheduled cycle is
@@ -1136,7 +1136,8 @@ def test_venue_coverage_is_fail_closed_per_event_and_runs_without_deciding(con):
     universe = [{"event_id": "e0", "market_id": "m1"}, {"event_id": "e0", "market_id": "m2"},
                 {"event_id": "e1", "market_id": "m3"}, {"event_id": "e1", "market_id": "m4"}]
     out = paper_cycle.stage_venue_coverage(
-        _cycle(), con, dataset_version="ds1", universe=universe, prediction_time=T)
+        _cycle(), con, dataset_version="ds1", universe=universe, prediction_time=T,
+        root=str(tmp_path), session_id="cyc", target_date=date(2026, 9, 10))
 
     assert out["events"] == 2
     assert out["events_complete"] == 1          # e1 dies for ONE unpriced band
@@ -1145,7 +1146,7 @@ def test_venue_coverage_is_fail_closed_per_event_and_runs_without_deciding(con):
     assert out["priced_rate_over_bands"] == 0.75
 
 
-def test_venue_coverage_respects_the_as_of_instant(con):
+def test_venue_coverage_respects_the_as_of_instant(con, tmp_path):
     """A price stamped after the decision instant does not make a band priced:
     the ceiling has to be the one that existed at `prediction_time`."""
     T = datetime(2026, 9, 9, 12, tzinfo=timezone.utc)
@@ -1158,5 +1159,43 @@ def test_venue_coverage_respects_the_as_of_instant(con):
          "MIDPOINT_ESTIMATED", "test", T0, "ds1", 1])
     out = paper_cycle.stage_venue_coverage(
         _cycle(), con, dataset_version="ds1",
-        universe=[{"event_id": "e0", "market_id": "m1"}], prediction_time=T)
+        universe=[{"event_id": "e0", "market_id": "m1"}], prediction_time=T,
+        root=str(tmp_path), session_id="cyc", target_date=date(2026, 9, 10))
     assert out["events_complete"] == 0 and out["bands_priced"] == 0
+
+
+def test_venue_coverage_is_written_to_the_STORE_not_only_to_the_summary(con, tmp_path,
+                                                                        monkeypatch):
+    """The series has to survive the run, and the summary does not.
+
+    The first version reported the coverage in `cy.stage` and stopped there. That
+    lands in the cycle summary, which the workflow uploads as a per-run ARTIFACT
+    kept for 90 days; only `paper_state/` is committed to the data branch. So the
+    numbers would have existed in 42 separate artifacts and in no series at all —
+    "accumulates for free" was false as built.
+
+    The `github_event` goes with it: a series that cannot tell a scheduled cycle
+    from a hand-dispatched one measures the operator's attention, not the host.
+    """
+    T = datetime(2026, 9, 9, 12, tzinfo=timezone.utc)
+    _market(con, market_id="m1", event_id="e0", end_date="2026-09-10T12:00:00Z")
+    con.execute(
+        "INSERT INTO price_history (market_id, token_id, observation_time, "
+        "indicative_price, price_semantics, source, ingestion_timestamp, "
+        "dataset_version, record_version) VALUES (?,?,?,?,?,?,?,?,?)",
+        ["m1", "m1_yes", T - timedelta(minutes=5), 0.5,
+         "MIDPOINT_ESTIMATED", "test", T0, "ds1", 1])
+    monkeypatch.setenv("GITHUB_EVENT_NAME", "schedule")
+
+    paper_cycle.stage_venue_coverage(
+        _cycle(), con, dataset_version="ds1",
+        universe=[{"event_id": "e0", "market_id": "m1"}], prediction_time=T,
+        root=str(tmp_path), session_id="cyc", target_date=date(2026, 9, 10))
+
+    shards = store.iter_shards(tmp_path, "venue_coverage")
+    assert len(shards) == 1
+    import gzip as _gz
+    row = json.loads(_gz.open(shards[0], "rt").readline())
+    assert row["events"] == 1 and row["events_complete"] == 1
+    assert row["github_event"] == "schedule"
+    assert row["target_date"] == "2026-09-10"

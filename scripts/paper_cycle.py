@@ -502,7 +502,8 @@ def stage_forecasts(cy: Cycle, con, *, dataset_version: str, target_date: date,
 
 
 def stage_venue_coverage(cy: Cycle, con, *, dataset_version: str,
-                         universe: list[dict], prediction_time: datetime) -> dict:
+                         universe: list[dict], prediction_time: datetime,
+                         root: str, session_id: str, target_date: date) -> dict:
     """RUNG 1 of the funnel, measured on EVERY cycle including collect-only.
 
     WHY IT LIVES HERE AND NOT IN `stage_signals`. The number the run needs before
@@ -518,8 +519,17 @@ def stage_venue_coverage(cy: Cycle, con, *, dataset_version: str,
     recorded NOTHING. Measured on the real store: `signals` 0 shards.
 
     Rung 1 does not need tau, a forecast, a model or a decision — only prices. So
-    it is computed here, on every cycle, and the multi-day series accumulates for
-    free: no quota, no trades, nothing written to the run's ledger.
+    it is computed here, on every cycle, at no cost in quota and without writing a
+    single trade to the run's ledger.
+
+    AND IT IS WRITTEN TO THE SHARD STORE, not only to the summary. The first
+    version reported it in `cy.stage` and stopped there — which lands in the
+    cycle summary, which the workflow uploads as a per-run ARTIFACT that GitHub
+    keeps for 90 days and that nobody aggregates. Only `paper_state/` is committed
+    to the data branch. So "the multi-day series accumulates for free" was FALSE
+    AS BUILT: the numbers would have existed in 42 separate artifacts and in no
+    series at all. It goes to a shard, like `cycle_params`, and the workflow's
+    `git add -A paper_state` carries it.
 
     COMPLETE means every band of the event has a price for its Yes token at or
     before `prediction_time`. Strategy A is fail-closed per event: one unpriced
@@ -560,7 +570,22 @@ def stage_venue_coverage(cy: Cycle, con, *, dataset_version: str,
         "complete_rate_over_events": round(complete / len(per_event), 4) if per_event else None,
         "priced_rate_over_bands": round(priced / bands, 4) if bands else None,
     }
-    cy.stage("venue_coverage", OK, **out)
+    row = {
+        "session_id": session_id,
+        "dataset_version": dataset_version,
+        "target_date": str(target_date),
+        "prediction_time": _iso(prediction_time),
+        "recorded_at": _iso(_utcnow()),
+        # The event of the run that produced it: a series that cannot tell a
+        # scheduled cycle from a hand-dispatched one measures the operator's
+        # attention, not the host (A-72).
+        "github_event": os.environ.get("GITHUB_EVENT_NAME"),
+        "run_id": os.environ.get("GITHUB_RUN_ID"),
+        **out,
+    }
+    written = store.write_shard([row], table="venue_coverage", run_id=session_id,
+                                root=root)
+    cy.stage("venue_coverage", OK, path=written["path"], **out)
     return out
 
 
@@ -1405,7 +1430,9 @@ def main(argv: list[str] | None = None) -> int:
         # `PAPER_TAU` exists. After collection and after `prediction_time` is
         # settled, so it counts the prices this cycle just wrote.
         stage_venue_coverage(cy, con, dataset_version=args.dataset_version,
-                             universe=universe, prediction_time=prediction_time)
+                             universe=universe, prediction_time=prediction_time,
+                             root=args.store_root, session_id=session_id,
+                             target_date=target_date)
 
         if args.collect_only:
             cy.stage("forecasts", SKIPPED, reason="collect_only")
