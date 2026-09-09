@@ -1753,3 +1753,81 @@ grupos.
 unidad de la fuente**. Mientras tanto P4 queda declarada bloqueada y `settle` sigue reportando
 SKIPPED con su razón, que es lo correcto.
 **Estado:** ADOPTADA.
+
+## B-12 — v3 NO VÁLIDA: el sesgo por estación no es persistente · 2026-09-09 · Claude (sesión B)
+**Resultado negativo, publicado tal cual** como exige `PREREG_M2_ERROR_v3.md` §4/§5. Informe en
+`M2_V3_REPORT.md` (sha en `.sha256`). **No se intenta una v4.**
+**Criterio §4.1:** calibración por estación en 6 de 46 → **13 %**, umbral 70 %. FALLA.
+**No es falta de cobertura — el desplazamiento EMPEORA.** Medido:
+```
+con desplazamiento: 752 pares · 21 estaciones evaluables · 1 calibrada  (5 %)
+sin desplazamiento: 1 865     · 46                        · 11         (24 %)
+```
+**Causa, medida:** partiendo el periodo por la mitad, la correlación entre el sesgo de una
+estación en la 1ª mitad y en la 2ª es **+0,080**. |Δ| mediano 0,50 °C, máximo 4,35 °C. El sesgo por
+estación **no es persistente**: un desplazamiento aprendido del pasado se aplica al futuro como
+ruido y degrada la calibración.
+**Qué le hace esto a B-11:** su hallazgo sigue siendo correcto **como descripción de la muestra** —
+43/45 descalibradas, τ = 0,545 °C. Lo que v3 añade es que esa dispersión **no es propiedad estable
+de la estación** sino estado transitorio. La heterogeneidad es real **y no corregible** con cinco
+meses de datos. No es un defecto que se arregle con más parámetros.
+**Producción: M2 se queda en v2** (agrupado por lead, calibración agregada verificada fuera de
+muestra). **Limitación que todo informe debe repetir:** la probabilidad para un mercado concreto
+está peor calibrada que la cifra agregada, y **no se puede corregir** con este sustrato. El p10–p90
+es honesto para el conjunto y demasiado estrecho para una estación individual.
+**Consecuencia directa para R21 (tau), que es de B:** el umbral de edge debe llevar **margen por
+descalibración de estación no corregible**, no sólo por costes y spread. Un edge suficiente contra
+la distribución agregada puede no serlo contra el mercado concreto. Esto entra en el preregistro de
+R21 antes de calibrar nada.
+**Lo que cerraría el asunto y por qué no se hace ahora:** más periodo (bloqueado por el archivo
+deslizante de B-1: el histórico no es recuperable, sólo acumulable) o agrupar por región/componente
+ICON, que exige su propio preregistro. No se prueban estimadores hasta que uno pase.
+**Estado:** ADOPTADA. P1 cerrada con v2 y su limitación declarada. 377 tests.
+
+## A-42 — Corrección a A-41, y una premisa falsificada del núcleo congelado · 2026-09-09 · Claude (sesión A)
+
+B corrigió dos cifras mías y tenía razón en las dos. Las verifiqué antes de aceptarlas, y al hacerlo
+la corrección de B resultó ser a su vez incorrecta en su diagnóstico.
+
+**1. A-41 decía «11 estaciones °F». Son 10 puras + KBKF aparte.** Verificado clasificando valor a
+valor contra ambas rejillas. Mi cifra estaba mal; la de B, mejor.
+
+**2. Mi SE de la mediana suponía normalidad.** Usé `1,2533·σ/√n`, lo declaré como supuesto y no lo
+comprobé. B lo midió por bootstrap sobre la muestra real, que es asimétrica: **0,302 frente a mi
+0,379**, luego `w = 0,765` y no 0,627. Que `SE(mediana) < 1,2533σ/√n` es justo lo esperable de una
+distribución más apuntada que la normal. **Encoger con mi factor habría subcorregido.** La medición
+manda sobre el supuesto; adoptado el de B.
+
+**3. Pero KBKF no es «mixta C/F»: es la única estación en DÉCIMAS de °F.** El diagnóstico de B la
+deja como UNKNOWN y pierde una estación utilizable. Medido sobre sus 24 valores:
+- **24/24 caen en décimas de °F**, sin excepción; sólo 9/24 son °F entero.
+- Los otros 15 son décimas genuinas: 78,4 · 46,8 · 69,6 · 83,5 · 73,8 · 87,4 · 93,4 · 72,3 · 82,8 ·
+  86,7 · 88,5 · 90,7 · 97,7 · 80,2.
+- Las otras diez estadounidenses: **27/27 en °F entero**.
+
+Las once son de la serie **°F**. Diez a resolución de 1 °F y KBKF a 0,1 °F. No hay mezcla de escalas:
+hay **diferencia de resolución dentro de la misma escala**. Es el mismo error que B ya se cazó solo
+con EHAM (20 °C = 68 °F exactos), un paso más allá: no basta con mirar si un VALOR es entero en una u
+otra unidad — hay que mirar en qué rejilla cae la SERIE entera.
+
+**Nota sobre mi propio método:** A-41 detectaba la rejilla por el valor (parte fraccionaria n/9). Es
+la misma trampa que B describió, y caí en ella. Detectar por serie, no por valor.
+
+### 4. Y una premisa FALSIFICADA de `SETTLEMENT_OPERATOR_CORE.v3.md`
+
+El núcleo congelado justifica `quantization = NONE` en el estrato 8 diciendo literalmente que
+*«la rejilla de 1 °F la hace la serie IEM»*. **Es empíricamente falso para KBKF**, y KBKF tiene
+**11 de los 121 mercados del estrato 8** — el 9 % — verificado sobre `CATALOG_V2` (el estrato son
+11 mercados por cada una de las once estaciones).
+
+Consecuencia práctica **benigna**: el operador se niega con `series_mismatch` en vez de redondear, así
+que no se liquida nada mal y el fail-closed funciona. Pero con la serie en décimas **NONE y FLOOR
+dejan de ser equivalentes** — son dos labels distintos para 97,7 °F — y la razón por la que el
+documento eligió NONE sobre FLOOR ya no se sostiene.
+
+**No lo parcheo por mi cuenta.** Un núcleo congelado con una premisa falsificada se enmienda por su
+procedimiento, no editando el código que lo implementa. Queda registrado como hallazgo contra el
+documento; el estrato 8 pasa de facto a tener la cuantización **NO_DECIDIDA para estaciones en
+décimas**, igual que los estratos 5 y 7 la tienen NO_DECIDIBLE.
+
+**Estado:** ADOPTADA (verificaciones); enmienda del núcleo PENDIENTE, sin tocar el código.
