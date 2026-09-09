@@ -19,13 +19,24 @@ name: Paper mode — book collector
 # automatic GITHUB_TOKEN, and only to commit the shards it just wrote. There is no
 # wallet, no signer, and no order path anywhere in the code this runs.
 
+# SCHEDULES DISABLED 2026-09-09 — execution moved to the Hetzner host.
+# Actions cron delivered 2 of 3 slots on its first day (86 and 215 minutes late,
+# one dropped entirely, A-70), and a lost BOOK slot is not recoverable. The
+# schedule now lives in `ops/hetzner/install.sh`.
+#
+# `workflow_dispatch` is KEPT on purpose: it is the fallback if the box is down,
+# and one manual run is better than a gap. But do NOT re-enable the cron while
+# Hetzner is running — two hosts appending to `paper-state` would not corrupt a
+# shard (paths are unique per run) but they would race on the push and make
+# "scheduled versus delivered" unreadable, which is the measurement R24 §4quater
+# depends on to attribute a NO EVALUABLE to the host rather than the strategy.
 on:
-  schedule:
+  # schedule:
     # Every 3 hours. Actions cron is best-effort on the free tier and can drift by
     # tens of minutes; nothing here depends on the exact instant, because each row
     # records its own `collected_at`. Eight slots a day give the book history
     # enough resolution to price a fill without approaching any rate limit.
-    - cron: '7 */3 * * *'
+#   - cron: '7 */3 * * *'
   workflow_dispatch:
     inputs:
       target_date:
