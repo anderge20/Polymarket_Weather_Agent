@@ -4549,3 +4549,58 @@ que sí. Las tres pasaron la lectura. Ninguna pasó la ejecución.
 
 **Estado:** PR #15 abierto, 569 verdes verificados por mí, ventana D16 hasta ≥23:26Z. La caja corre
 mientras tanto el launcher **sin** lock; no hay riesgo mientras no lance nada a mano, y no lo haré.
+
+## A-94
+
+**Fecha:** 2026-09-09 21:32Z
+**Autor:** A (desarrollador y validador)
+**Asunto:** la corrida paper tiene una fecha de parada dura — 2026-09-14 — y el punto abierto de §4bis.11 no era el que creíamos
+
+Cuatro hechos medidos hoy, ninguno estimado.
+
+**1. El artefacto caduca el 2026-09-14T15:27:34Z.** Se ajustó hoy a las 15:27:34Z con
+`max_age_hours = 120`. Una corrida de 21 días que arrancara mañana **dejaría de decidir el día 5**:
+todo ciclo posterior se niega con `R_STALE`, que es el fallo correcto y también el fin de la corrida.
+Con `n` por debajo del mínimo el resultado es `NO EVALUABLE`, que §6bis 4quater atribuye al host —
+es decir, a nosotros.
+
+**2. §4bis.11 daba el host del reajuste por problema abierto. Ya no lo es.** Medido, no supuesto:
+
+    sustrato data/pmw.duckdb        2,2 GB      (§4bis.11 dice 578 MB: la cifra está MAL)
+    disco libre en la caja          31 GB de 38
+    coste de un ajuste completo     100 MB de RSS máximo, 3,4 s de reloj
+    RAM de la caja                  3,7 GB, 2,8 disponibles
+
+El reajuste cabe en Hetzner con tres órdenes de magnitud de margen. La premisa de §4bis.11 —«sólo
+puede correr donde vive esa base, y hoy eso es el Mac»— dejó de ser cierta cuando el usuario decidió
+llevarlo todo a Hetzner; lo único que faltaba era comprobar que cabía, y cabe.
+
+**3. Pero el bloqueo real no era el host, y §4bis.11 ya lo decía: reajustar hoy es TEATRO.** Ahora
+está medido. Un `--dry-run` contra el mismo sustrato devuelve:
+
+    lead  9:  n = 1347   ventana 2026-04-09 → 2026-09-05T16:00Z   spread 3,3667
+    lead 24:  n = 1348   ventana 2026-04-09 → 2026-09-05T16:00Z   spread 3,7
+
+**Idénticos** a los del artefacto en disco, dígito a dígito. La ventana sigue cerrando el **5 de
+septiembre**, cuatro días atrás, porque desde entonces no ha entrado ni un día cerrado al sustrato.
+Así que la cadencia de 48 h de §4bis.9 no compra frescura de contenido: compra un sello nuevo. **El
+trabajo que desbloquea §4bis no es mover una base de datos, es extender el backfill**, y eso vive en
+el carril de ingesta, cuyo último commit se titula literalmente «Blocker: the price read returned
+another token's price».
+
+**4. Y una afirmación falsa encontrada al comprobar el punto 3.** El docstring de `canonical_bytes`
+dice:
+
+> *"Two fits that produced the same numbers get the same id on any machine."*
+
+**No es cierto**, y lo acabo de medir: los números son idénticos y los `artifact_id` difieren
+(`61f20fd1a83e…` contra `1520268baff2…`), porque `fit_instant` forma parte del payload que se hashea.
+La función identifica un **AJUSTE**, no un conjunto de números. Operativamente eso es lo que §4bis.4
+quiere —particionar por evento de reajuste—, así que **no cambia ninguna decisión**; lo que hay que
+corregir es la frase, que promete un determinismo que sólo se cumple fijando `--fit-instant`. Va como
+cambio aparte: el #15 está en revisión y añadirle commits ahora invalida la revisión que he pedido.
+
+**Consecuencia para el calendario, que es lo que importa de esta entrada:** la corrida no puede
+arrancar declarando que cumple §4bis.9 mientras el sustrato no crezca, y si arranca igualmente tiene
+un tope conocido en el **14 de septiembre**. Decirlo hoy es preferible a descubrirlo el quinto día,
+que es exactamente lo que §4bis.11 pedía que no pasara.
