@@ -117,6 +117,32 @@ def test_observation_window_matches_the_forecast_window():
     assert start == _utc(20, 21) and end == _utc(21, 21)
 
 
+def test_kbkf_is_tenths_of_fahrenheit_not_a_mixed_scale():
+    """Measured: 24/24 of KBKF's values are tenths of a degree Fahrenheit, only 9
+    whole. Calling it "mixed C/F" was wrong — same scale, finer grid. Leaving it
+    UNKNOWN threw away a usable station."""
+    unit, value, series = obs.detect_grid("KBKF", 25.777778, 78.4)
+    assert (unit, round(value, 1)) == ("F", 78.4)
+    assert series == obs.SERIES_TENTH_F
+
+
+def test_tenth_grid_tolerance_survives_the_celsius_round_trip():
+    """Dividing by a 0.1 resolution multiplies floating-point error tenfold, which
+    made an exact tenth miss an epsilon sized for whole degrees. The tolerance
+    belongs on the value scale."""
+    for c in (25.777778, 8.0, 20.0, 31.5555556):
+        unit, _, _ = obs.detect_grid("KBKF", c, c * 9 / 5 + 32)
+        assert unit == "F", f"{c} should sit on the 0.1 F grid"
+
+
+def test_series_carries_resolution_not_only_scale():
+    """Settlement needs the resolution: with a tenths series, quantisation NONE and
+    FLOOR stop being the same label for 97.7 F."""
+    assert obs.station_series("KATL")[2] == 1.0
+    assert obs.station_series("KBKF")[2] == 0.1
+    assert obs.station_series("EHAM") == (obs.SERIES_1C, "C", 1.0)
+
+
 def test_grid_is_a_property_of_the_station_not_the_value():
     """A per-value test labels a Celsius station as Fahrenheit one day in five.
 
@@ -124,17 +150,15 @@ def test_grid_is_a_property_of_the_station_not_the_value():
     asking "is the Fahrenheit value an integer?" mislabels EHAM whenever the high
     lands on 20 C. The grid belongs to the station's series (A-41).
     """
-    assert obs.detect_grid("EHAM", 20.0, 68.0) == ("C", 20.0)
-    assert obs.detect_grid("KATL", 20.5555556, 69.0) == ("F", 69.0)
+    assert obs.detect_grid("EHAM", 20.0, 68.0)[:2] == ("C", 20.0)
+    assert obs.detect_grid("KATL", 20.5555556, 69.0)[:2] == ("F", 69.0)
 
 
-def test_mixed_grid_station_refuses_rather_than_picking_one():
-    """KBKF reports on both grids; a settlement computed off its own grid is worse
-    than one that refuses."""
-    unit, _ = obs.detect_grid("KBKF", 20.0, 68.0)
-    assert unit == "UNKNOWN"
+def test_off_grid_value_refuses_rather_than_rounding():
+    """A settlement computed off its own grid is worse than one that refuses."""
+    assert obs.detect_grid("KBKF", 25.71, 78.278)[0] == "UNKNOWN"
 
 
 def test_unknown_station_grid_falls_back_to_celsius_only_when_whole():
-    assert obs.detect_grid("ZZZZ", 21.0, 69.8) == ("C", 21.0)
+    assert obs.detect_grid("ZZZZ", 21.0, 69.8)[:2] == ("C", 21.0)
     assert obs.detect_grid("ZZZZ", 21.3, 70.34)[0] == "UNKNOWN"

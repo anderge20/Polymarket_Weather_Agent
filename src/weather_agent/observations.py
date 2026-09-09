@@ -77,38 +77,63 @@ class NoObservation(LookupError):
 SERIES = "IEM_ASOS_TMPF"
 _EPS = 1e-6
 
+#: Tolerance for "sits on the grid", in the unit of the reading. Loose enough to
+#: survive a Fahrenheit round-trip through Celsius, tight enough that a genuine
+#: off-grid value is still refused: the finest grid in use is 0.1 F.
+_GRID_TOL = 1e-4
+
 
 def _is_int(x: float) -> bool:
     return abs(x - round(x)) < _EPS
 
 
-#: Stations whose METAR series is on a whole-FAHRENHEIT grid, measured over the
-#: 2026-04..09 sample: their Celsius values carry fractional parts of exactly n/9.
-#: Every other station reports whole Celsius. KBKF mixes both and is left UNKNOWN
-#: rather than forced — it is also the station D6 could not verify against HOMR.
+#: The station's SERIES: its scale and its resolution. Measured over 2026-04..09.
 #:
-#: A per-VALUE test cannot decide this: every multiple of 5 C is a whole number of
-#: Fahrenheit too (20 C = 68 F), so it would label a Celsius-grid station like EHAM
-#: as Fahrenheit one day in five. The grid is a property of the STATION's series.
-FAHRENHEIT_GRID_STATIONS = frozenset(
-    {"KATL", "KAUS", "KDAL", "KHOU", "KLAX", "KLGA", "KMIA", "KORD", "KSEA", "KSFO"}
-)
-MIXED_GRID_STATIONS = frozenset({"KBKF"})
+#: Ten US stations report whole degrees Fahrenheit (267/267 values). KBKF reports
+#: the SAME scale at a finer resolution — 24/24 of its values are tenths of a
+#: degree Fahrenheit, only 9 of them whole (46.4, 69.6, 78.4, 83.5, 97.7...).
+#: Calling it "mixed C/F" was wrong: there is no mixture of scales, only a finer
+#: grid within one. Every other station reports whole Celsius (0 non-integer
+#: Celsius values outside the US group).
+#:
+#: Resolution matters downstream in two different ways. For M2 it only changes the
+#: granularity of the error and does not invalidate anything. For settlement it is
+#: decisive: with a tenths series, quantisation NONE and FLOOR stop being the same
+#: label for 97.7 F.
+SERIES_1F = "IEM_ASOS_TMPF_1F"
+SERIES_TENTH_F = "IEM_ASOS_TMPF_0.1F"
+SERIES_1C = "IEM_ASOS_METAR_1C"
+
+STATION_SERIES = {
+    **{s: (SERIES_1F, "F", 1.0) for s in
+       ("KATL", "KAUS", "KDAL", "KHOU", "KLAX", "KLGA", "KMIA", "KORD", "KSEA", "KSFO")},
+    "KBKF": (SERIES_TENTH_F, "F", 0.1),
+}
+DEFAULT_SERIES = (SERIES_1C, "C", 1.0)
 
 
-def detect_grid(station: str, tmax_c: float, tmax_f: float) -> tuple[str, float]:
-    """(unit, value) on the STATION's native grid.
+def station_series(station: str) -> tuple[str, str, float]:
+    """(series, unit, resolution) for a station. Celsius at 1 degree by default."""
+    return STATION_SERIES.get((station or "").upper(), DEFAULT_SERIES)
 
-    Returns UNKNOWN rather than guessing when the station's grid is not known or
-    the value does not sit on it: a settlement computed off its own grid is worse
-    than one that refuses to compute.
+
+def detect_grid(station: str, tmax_c: float, tmax_f: float) -> tuple[str, float, str]:
+    """(unit, value on the native grid, series).
+
+    Returns UNKNOWN rather than guessing when the value does not sit on the
+    station's declared grid: a settlement computed off its own grid is worse than
+    one that refuses to compute.
     """
-    st = (station or "").upper()
-    if st in FAHRENHEIT_GRID_STATIONS:
-        return ("F", float(round(tmax_f))) if _is_int(tmax_f) else ("UNKNOWN", tmax_c)
-    if st in MIXED_GRID_STATIONS:
-        return "UNKNOWN", tmax_c
-    return ("C", float(round(tmax_c))) if _is_int(tmax_c) else ("UNKNOWN", tmax_c)
+    series, unit, res = station_series(station)
+    raw = tmax_f if unit == "F" else tmax_c
+    snapped = round(raw / res) * res
+    # Compare on the VALUE scale, not the step scale. Dividing by a 0.1 resolution
+    # multiplies the floating-point error tenfold, which made KBKF's 78.4 F — an
+    # exact tenth — miss an epsilon set for whole degrees. The tolerance belongs
+    # where the quantity lives.
+    if abs(raw - snapped) < _GRID_TOL:
+        return unit, round(snapped, 6), series
+    return "UNKNOWN", tmax_c, series
 
 
 @dataclass(frozen=True)
@@ -241,7 +266,7 @@ def daily_high(icao: str, target_date: date, tz: str, fetcher=fetch_metar) -> Da
     )
 
 
-def _grid(dh: DailyHigh) -> tuple[str, float]:
+def _grid(dh: DailyHigh) -> tuple[str, float, str]:
     f = dh.tmax_f if dh.tmax_f is not None else dh.tmax_c * 9.0 / 5.0 + 32.0
     return detect_grid(dh.station, dh.tmax_c, f)
 
@@ -256,7 +281,7 @@ def to_row(dh: DailyHigh, dataset_version: str, fetched_at: datetime | None = No
         "tmax_observed": dh.tmax_c,   # always Celsius, derived
         "observed_unit": _grid(dh)[0],
         "observed_value": _grid(dh)[1],
-        "series": SERIES,
+        "series": _grid(dh)[2],
         "daily_high_time": dh.when_utc.isoformat(),
         # true by construction, and fail-closed: see the module docstring
         "available_at": now.isoformat(),
