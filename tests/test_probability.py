@@ -275,3 +275,22 @@ def test_weather_band_probability_from_forecast_quantiles():
         0.50,
         abs_tol=1e-9,
     )
+
+
+def test_band_covering_the_whole_support_is_exactly_one():
+    """Found by the R21 backtest on real data, not by this suite: KSEA, a
+    '62 F or above' band whose distribution lived entirely in [68, 75]. The sum of
+    every mass is 1 plus the rounding of the normalising division, and
+    `build_feature`'s `0 <= p <= 1` guard rejected it — correctly, for a value
+    that was wrong by 2e-16."""
+    from weather_agent.probability import band_probability, quantiles_to_distribution
+    dist = quantiles_to_distribution(p10=68.81, p25=69.845, p50=71.05,
+                                     p75=72.32, p90=74.72)
+    assert band_probability(dist, lo=62.0, hi=None) == 1.0
+    assert band_probability(dist, lo=None, hi=200.0) == 1.0
+
+
+def test_a_genuinely_broken_probability_is_still_returned_unclamped():
+    """The clamp must not become a silencer: only rounding is absorbed."""
+    from weather_agent.probability import band_probability
+    assert band_probability({20: 0.8, 21: 0.8}, lo=None, hi=None) == pytest.approx(1.6)

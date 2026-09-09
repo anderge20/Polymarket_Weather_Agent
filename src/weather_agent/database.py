@@ -47,7 +47,7 @@ from typing import Any, Iterable, Mapping, Sequence
 
 from .config import DB_PATH
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 6
 
 # Standard provenance columns present on every fact/derived table.
 PROVENANCE_COLUMNS = (
@@ -551,6 +551,31 @@ _DDL_V4 = [
     "ALTER TABLE weather_observations ADD COLUMN IF NOT EXISTS series VARCHAR",
 ]
 
+# R19/R21: what the backtest needs to settle a trade and to price its cost, none
+# of which the substrate held. `end_date` is the contract's declared end (R8:
+# target_date 12:00Z) and drives the UNIVERSE FILTER — never a target_date
+# derivation (2D §C forbids that; target_date comes from the caller).
+# `uma_resolution_status` separates a genuine 'No' from a market that simply never
+# resolved: without it every unresolved market reads as a loss, silently, and a
+# backtest would settle against a world that has not happened yet.
+# The fee fields are D19's "read feesEnabled/feeSchedule PER MARKET; never infer
+# from the date" — the activation was by batch, not by creation order, so a date
+# rule gets it wrong for the 30-mar cohort.
+# NUMBERED 6, NOT 5: session A landed `measurement_rule_code` as migration 5 in
+# parallel. Two different statement sets under one version number is worse than a
+# collision in a document — a base that already recorded version 5 would never run
+# the other one, so whichever merged second would exist in CI (fresh bases) and be
+# absent in `data/pmw.duckdb` (already stamped). Silent, and only visible when
+# something settles in one place and refuses in the other.
+_DDL_V6 = [
+    "ALTER TABLE markets ADD COLUMN IF NOT EXISTS end_date TIMESTAMPTZ;",
+    "ALTER TABLE markets ADD COLUMN IF NOT EXISTS uma_resolution_status VARCHAR;",
+    "ALTER TABLE markets ADD COLUMN IF NOT EXISTS fees_enabled BOOLEAN;",
+    "ALTER TABLE markets ADD COLUMN IF NOT EXISTS fee_rate DOUBLE;",
+    "ALTER TABLE markets ADD COLUMN IF NOT EXISTS fee_exponent DOUBLE;",
+    "ALTER TABLE markets ADD COLUMN IF NOT EXISTS fee_taker_only BOOLEAN;",
+]
+
 
 # Ordered, idempotent migrations. Add a new dict (version+1) for future changes;
 # never edit a shipped migration in place.
@@ -582,6 +607,11 @@ MIGRATIONS: list[dict] = [
         # reconstruct them. Additive: existing rows gain NULLs, which read as
         # "unknown", never as a default.
         "statements": _DDL_V4,
+    },
+    {
+        "version": 6,
+        "name": "r19_settlement_and_fee_substrate",
+        "statements": _DDL_V6,
     },
 ]
 
@@ -664,8 +694,10 @@ def init_db(con=None, db_path: str | None = None):
                 [mig["version"], mig["name"], _utcnow_iso()],
             )
             con.execute("COMMIT;")
+            invalidate_column_cache(con)
         except Exception:
             con.execute("ROLLBACK;")
+            invalidate_column_cache(con)
             raise
     # Phase 2C (Alt C): operational discovery checkpoint table, created idempotently
     # OUTSIDE the numbered MIGRATIONS. It does NOT bump SCHEMA_VERSION (currently 3,
@@ -684,12 +716,38 @@ def table_names(con) -> list[str]:
     return [r[0] for r in rows]
 
 
+#: Column lists are SCHEMA, and the schema changes only when a migration runs.
+#: `latest_asof` was asking `information_schema` once PER CALL, so the R19 backtest
+#: spent 28 % of its time re-reading metadata it had already read 2 000 times that
+#: second. Keyed by connection identity, because two connections in one process
+#: can legitimately sit at different schema versions — `validate_2b.py` relies on
+#: exactly that when it checks a column is absent at v1 and present at v2.
+_COLUMN_CACHE: dict[tuple[int, str], list[str]] = {}
+
+
+def invalidate_column_cache(con=None) -> None:
+    """Drop cached column lists. Called after every migration; a cache that
+    outlived an ALTER would report the old schema, and the caller would conclude
+    a column does not exist because we did not look."""
+    if con is None:
+        _COLUMN_CACHE.clear()
+        return
+    for key in [k for k in _COLUMN_CACHE if k[0] == id(con)]:
+        del _COLUMN_CACHE[key]
+
+
 def column_names(con, table: str) -> list[str]:
+    key = (id(con), table)
+    hit = _COLUMN_CACHE.get(key)
+    if hit is not None:
+        return hit
     rows = con.execute(
         "SELECT column_name FROM information_schema.columns WHERE table_name = ?",
         [table],
     ).fetchall()
-    return [r[0] for r in rows]
+    cols = [r[0] for r in rows]
+    _COLUMN_CACHE[key] = cols
+    return cols
 
 
 # =============================================================================
