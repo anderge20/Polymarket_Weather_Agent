@@ -108,3 +108,20 @@ def test_load_pairs_reads_only_the_requested_version():
     pairs, _, _ = m2.load_pairs(con, dataset_version="ds_paper_v1")
     assert pairs == []
     con.close()
+
+
+def test_load_pairs_filters_by_model():
+    """`model` is part of weather_forecasts' primary key and the query named no
+    predicate for it. A substrate with two models would have produced a MIXTURE,
+    and nothing in a Pair records which model it came from — so the quantiles
+    would have described no model in particular, silently."""
+    import inspect
+    from weather_agent import database as db, weather
+
+    sig = inspect.signature(m2.load_pairs)
+    assert sig.parameters["model"].default == weather.M1_MODEL
+
+    con = db.init_db(db.connect(":memory:"))
+    pairs, _, _ = m2.load_pairs(con, model="some_other_model")
+    assert pairs == []
+    con.close()
