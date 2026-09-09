@@ -140,7 +140,23 @@ def generate_event_signals(
     markets = _latest_by(
         db.query(
             con,
-            "SELECT market_id, event_id, station, unit, record_version "
+            # `station_identifier` (the ICAO), NOT `station` (the prose name).
+            # `weather_forecasts.station` is keyed by ICAO, so passing the name
+            # made every forecast lookup in `build_feature` return nothing and
+            # every band come back None — an event excluded as `missing_feature`
+            # with `n_bands_ok: 0`, which reads like a venue property and is not.
+            #
+            # Measured on the live universe: `markets.station` is NULL in 1 100 of
+            # 1 100 rows (the NOAA template does not carry the "recorded at the X
+            # Station" prose at all) while `station_identifier` is populated in
+            # 1 078. So this was not a partial loss, it was TOTAL: zero signals,
+            # deterministically, for as long as the run lasted.
+            #
+            # Third occurrence of the same confusion today — `select_universe`
+            # returned the name (A-53), `stage_forecasts` passed it on, and this
+            # is the copy nobody had executed. The two columns are one letter
+            # apart in a SELECT list and mean different things.
+            "SELECT market_id, event_id, station_identifier, unit, record_version "
             "FROM markets WHERE event_id = ? AND dataset_version = ?",
             [event_id, dataset_version],
         ),
@@ -182,7 +198,7 @@ def generate_event_signals(
                 prediction_time=prediction_time,
                 market_id=market_id,
                 token_id=token_id,
-                station=m.get("station"),
+                station=m.get("station_identifier"),
                 model=model,
                 target_date=target_date,
                 dataset_version=dataset_version,
