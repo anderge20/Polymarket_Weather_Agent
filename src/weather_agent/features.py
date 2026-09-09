@@ -102,8 +102,14 @@ def build_feature(
         # A-37: dataset_version was accepted and never used. Latent while only one
         # version existed; the moment paper mode adds `ds_paper_v1` the as-of read
         # would mix a backfilled price with a prospective one and raise nothing.
-        where="market_id = ? AND dataset_version = ?",
-        params=[market_id, dataset_version],
+        # token_id was accepted, used to label the row, and never used to SELECT
+        # the price: the read filtered by market only and took prices[0]. With two
+        # tokens per market that returns the OTHER side's price under this token's
+        # name, with no exception and no_lookahead_verified still true. The
+        # lineage guard in strategy_a exists only to patch this from outside;
+        # with the filter here it becomes redundant, which is what a guard should be.
+        where="market_id = ? AND token_id = ? AND dataset_version = ?",
+        params=[market_id, token_id, dataset_version],
     )
 
     if not prices:
@@ -114,6 +120,12 @@ def build_feature(
     # Defensive invariant: never allow an executable price semantics.
     if price.get("price_semantics") == "EXECUTABLE":
         raise ValueError("EXECUTABLE price cannot enter features")
+
+    # And never let a price from another token wear this token's name.
+    if str(price.get("token_id")) != str(token_id):
+        raise AssertionError(
+            f"price row is token {price.get('token_id')!r}, feature is for {token_id!r}"
+        )
 
     # ------------------------------------------------------------------
     # 2. WEATHER FORECAST — SOURCE AVAILABILITY as-of

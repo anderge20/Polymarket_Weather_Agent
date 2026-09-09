@@ -3,10 +3,13 @@ error_model.py — M2: the forecast error distribution
 =====================================================
 
 Turns a deterministic forecast into a distribution, which is what makes a
-probability possible at all. Implements `PREREG_M2_ERROR.md` (sha
-`16b729e1d28f3cbab8a102ab7ebd67a451471a961a299726714e987d8223e55d`), frozen
-before any quantile was computed. Every rule below is quoted from it; none of
-them may be changed after seeing results.
+probability possible at all.
+
+IN PRODUCTION: `PREREG_M2_ERROR_v2.md`, sha
+`b2b168d4cddb65c469cbd00bd20cce30c54e5afd194526527714e23cf0d5b34c`.
+v1 (`16b729e1…`) is WITHDRAWN — its sample depended on the DuckDB session
+timezone and its walk-forward cut leaked in 8 of 8 stations. Every rule below is
+quoted from v2; none may be changed after seeing results.
 
   * error is `e = y - f` in Celsius, positive meaning reality beat the forecast;
   * quantiles are the empirical percentiles of `e`, added to `f`;
@@ -224,6 +227,19 @@ def to_market_unit(quantiles_c: dict[int, float], unit: str) -> dict[int, float]
 
 # ---------------------------------------------------------------------------
 # v3: per-station location shift with empirical-Bayes shrinkage
+#
+# *** WITHDRAWN — NOT IN PRODUCTION (B-12). ***
+#
+# v3 failed its own preregistered criterion: 6 of 46 stations calibrated against a
+# 70 % threshold. Pairs that received a shift calibrated WORSE (5 %) than pairs
+# that did not (24 %), because the per-station bias is not persistent —
+# correlation between period halves is +0.080. A shift learned from the past is
+# applied to the future as noise.
+#
+# Kept, not deleted, so the negative result stays reproducible: `M2_V3_REPORT.md`
+# cites this code. NOTHING here is called by the production path — `fit_m2.py`
+# uses the v2 functions above. Do not wire it in without a new preregistration,
+# and PREREG v3 §5 forbids a v4 until this failure is published, which it is.
 # ---------------------------------------------------------------------------
 
 #: v3 §3 — a station needs this many admissible pairs before it gets its own shift.

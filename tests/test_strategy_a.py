@@ -352,6 +352,12 @@ def test_reversed_index_both_priced_never_uses_no(con):
 
 
 def test_yes_price_missing_fail_closed(con):
+    # Reason changed when build_feature stopped returning another token's price.
+    # It used to hand back prices[0] regardless of token_id, so the lineage
+    # guard caught a WRONG price (ambiguous_or_wrong_token_price). Now the
+    # as-of read filters by token_id, so a token with no price of its own
+    # yields no feature at all: missing_feature. Same fail-closed outcome,
+    # more accurate reason — the event is rejected for what is actually wrong.
     # No YES price anywhere (only NO priced) -> build_feature returns the NO price ->
     # guard finds no YES price -> fail-closed for the whole event.
     _seed_forecast(con)
@@ -359,12 +365,18 @@ def test_yes_price_missing_fail_closed(con):
         _seed_band(con, mid, label, lo, hi, y, n, None, no_price=0.3)
     s = _run(con)
     assert s["eligible"] is False
-    assert s["reason"] == "ambiguous_or_wrong_token_price"
+    assert s["reason"] == "missing_feature"
     assert _preds(con) == [] and _sigs(con) == []
     assert len(_excl(con)) == 4
 
 
 def test_single_price_belongs_to_no_fail_closed(con):
+    # Reason changed when build_feature stopped returning another token's price.
+    # It used to hand back prices[0] regardless of token_id, so the lineage
+    # guard caught a WRONG price (ambiguous_or_wrong_token_price). Now the
+    # as-of read filters by token_id, so a token with no price of its own
+    # yields no feature at all: missing_feature. Same fail-closed outcome,
+    # more accurate reason — the event is rejected for what is actually wrong.
     # One band-market's ONLY price belongs to the NO token -> event excluded (whole-event).
     _seed_forecast(con)
     for i, (mid, label, lo, hi, y, n) in enumerate(BANDS):
@@ -374,5 +386,5 @@ def test_single_price_belongs_to_no_fail_closed(con):
             _seed_band(con, mid, label, lo, hi, y, n, PW[mid])
     s = _run(con)
     assert s["eligible"] is False
-    assert s["reason"] == "ambiguous_or_wrong_token_price"
+    assert s["reason"] == "missing_feature"
     assert _preds(con) == [] and _sigs(con) == []

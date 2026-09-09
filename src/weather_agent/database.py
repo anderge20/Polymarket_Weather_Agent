@@ -317,10 +317,7 @@ _DDL: list[str] = [
         city                VARCHAR,
         station             VARCHAR,
         source              VARCHAR,              -- obs provider == provenance source
-        tmax_observed       DOUBLE,               -- ALWAYS Celsius (derived; see unit/series)
-        observed_unit       VARCHAR,              -- 'C' | 'F': the unit the SOURCE reported in
-        observed_value      DOUBLE,               -- the value AS REPORTED, in observed_unit
-        series              VARCHAR,              -- e.g. METAR_TGROUP_TMPF | METAR_BODY_C
+        tmax_observed       DOUBLE,               -- ALWAYS Celsius; migration 4 adds the source grid
         daily_high_time     TIMESTAMPTZ,          -- when the daily high occurred
         available_at        TIMESTAMPTZ,          -- when the obs became AVAILABLE at the source (as-of engine filters on THIS, not ingestion_timestamp)
         fetched_at          TIMESTAMPTZ,
