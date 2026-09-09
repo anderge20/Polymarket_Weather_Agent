@@ -41,7 +41,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from weather_agent import collector, config, database as db, paper, store  # noqa: E402
+from weather_agent import (collector, config, database as db, paper,  # noqa: E402
+                           settlement, store)
 from weather_agent.polymarket import discovery  # noqa: E402
 
 #: Tables the cycle rebuilds from shards on entry and dumps back on exit — the
@@ -529,22 +530,144 @@ def stage_paper(cy: Cycle, con, *, dataset_version: str, session_id: str,
     return {"opened": opened, "rejected": rejected, "reasons": reasons}
 
 
-def stage_settle(cy: Cycle, con, *, dataset_version: str) -> dict:
-    """Settle open positions whose market has resolved.
+#: Columns `stage_settle` needs that only exist once session B's migration 4 has
+#: merged. Named individually so a SKIP says WHICH one is missing rather than
+#: leaving the next reader to guess.
+_SETTLE_REQUIRED = {
+    "weather_observations": ("observed_value", "observed_unit", "series"),
+    "markets": ("contract_source",),
+}
 
-    Deliberately unimplemented rather than approximated: settlement needs the
-    realized label under the market's own SettlementOperator, and guessing a
-    winner from the last traded price is exactly the shortcut that turns a paper
-    ledger into fiction. Reports how many positions are waiting."""
+
+def settle_substrate_missing(con) -> list[str]:
+    """What `stage_settle` still lacks. Empty list == ready to settle."""
+    missing = []
+    for table, cols in _SETTLE_REQUIRED.items():
+        have = set(db.column_names(con, table))
+        missing += [f"{table}.{c}" for c in cols if c not in have]
+    try:
+        from weather_agent import stations  # noqa: F401
+    except ImportError:
+        missing.append("weather_agent.stations (station timezone registry)")
+    return missing
+
+
+def _station_tz(icao: str | None) -> str | None:
+    if not icao:
+        return None
+    try:
+        from weather_agent import stations
+    except ImportError:
+        return None
+    for attr in ("timezone_for", "tz_for", "get_timezone"):
+        fn = getattr(stations, attr, None)
+        if callable(fn):
+            try:
+                return fn(icao)
+            except Exception:
+                return None
+    return None
+
+
+def stage_settle(cy: Cycle, con, *, dataset_version: str) -> dict:
+    """Settle open positions against the realized label, via the SettlementOperator.
+
+    The label is NEVER guessed. `weather_agent.settlement` implements the frozen
+    core and refuses far more often than it emits — 78 % of the catalogue has no
+    operator at all — and a refusal here means the position stays open with its
+    reason recorded, not that we pick a winner from the last traded price. That
+    shortcut is what turns a paper ledger into fiction.
+
+    Skips loudly while the substrate is incomplete, naming the missing columns."""
+    # Every open position of this dataset_version, regardless of which cycle
+    # opened it: a position opened days ago settles when its day resolves, not
+    # when the cycle that opened it happens to run again.
     open_rows = db.query(
         con,
-        "SELECT count(*) AS n FROM paper_trades "
-        "WHERE dataset_version = ? AND exit_time IS NULL",
+        "SELECT paper_trade_id, market_id, token_id, entry_time "
+        "FROM paper_trades WHERE dataset_version = ? AND exit_time IS NULL "
+        "ORDER BY paper_trade_id",
         [dataset_version],
     )
-    n_open = int(open_rows[0]["n"]) if open_rows else 0
-    cy.stage("settle", SKIPPED, reason="labels_not_wired_yet", positions_open=n_open)
-    return {"positions_open": n_open}
+    n_open = len(open_rows)
+    if not n_open:
+        cy.stage("settle", OK, positions_open=0, settled=0)
+        return {"positions_open": 0, "settled": 0}
+
+    missing = settle_substrate_missing(con)
+    if missing:
+        cy.stage("settle", SKIPPED, reason="substrate_incomplete",
+                 missing=",".join(missing), positions_open=n_open)
+        return {"positions_open": n_open, "settled": 0, "missing": missing}
+
+    settled = 0
+    refusals: dict[str, int] = {}
+    for pos in open_rows:
+        rows = db.query(
+            con,
+            "SELECT m.market_id, m.event_id, m.contract_source, m.measurement_rule, "
+            "       m.unit, m.rounding_rule, m.station_identifier, "
+            "       o.band_label, o.outcome_label, "
+            "       json_extract_string(m.source_timestamps, '$.endDate') AS end_raw "
+            "FROM markets m JOIN outcomes o "
+            "  ON o.market_id = m.market_id AND o.dataset_version = m.dataset_version "
+            "WHERE m.market_id = ? AND o.token_id = ? AND m.dataset_version = ? LIMIT 1",
+            [pos["market_id"], pos["token_id"], dataset_version],
+        )
+        if not rows:
+            refusals["no_market_row"] = refusals.get("no_market_row", 0) + 1
+            continue
+        m = rows[0]
+        try:
+            target = datetime.fromisoformat(
+                str(m["end_raw"]).replace("Z", "+00:00")).astimezone(timezone.utc).date()
+        except (TypeError, ValueError):
+            refusals["unparseable_end_date"] = refusals.get("unparseable_end_date", 0) + 1
+            continue
+
+        icao = m.get("station_identifier")
+        ctx = settlement.MarketContext(
+            market_id=m["market_id"], event_id=m["event_id"],
+            contract_source=m["contract_source"],
+            measurement_rule_code=m["measurement_rule"], unit=m["unit"],
+            rounding_rule=m.get("rounding_rule"), target_date=target,
+            station_icao=icao, station_tz=_station_tz(icao),
+        )
+        obs = [
+            settlement.Observation(
+                ts_utc=r["observation_time"], value=r["observed_value"],
+                unit=r["observed_unit"], series=r["series"],
+                available_at=r.get("available_at"),
+                record_version=r.get("record_version") or 1,
+            )
+            for r in db.query(
+                con,
+                "SELECT observation_time, observed_value, observed_unit, series, "
+                "       available_at, record_version FROM weather_observations "
+                "WHERE station = ? AND dataset_version = ?",
+                [icao, dataset_version],
+            )
+        ]
+        # asof=None: `available_at` on the observation history is the download
+        # instant, not a real availability (A-30), so an as-of gate here would be
+        # a claim we cannot support. The result carries Y_FINAL_UNKNOWN_ASOF and
+        # says so.
+        result, reason = settlement.try_settle(obs, ctx, asof=None)
+        if result is None:
+            refusals[reason] = refusals.get(reason, 0) + 1
+            continue
+        won = settlement.band_key_wins(m["band_label"], result.band_key, m["unit"])
+        # The position is on a specific token. A 'Yes' token pays when the band
+        # contains the settled key; a 'No' token pays when it does not.
+        pays = won if m.get("outcome_label") == "Yes" else (not won)
+        paper.settle_paper_trade(con, int(pos["paper_trade_id"]),
+                                 settlement=1 if pays else 0,
+                                 exit_time=_iso(_utcnow()))
+        settled += 1
+
+    cy.stage("settle", OK, positions_open=n_open, settled=settled,
+             refused=n_open - settled, reasons=json.dumps(refusals))
+    return {"positions_open": n_open, "settled": settled, "refusals": refusals}
 
 
 def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
