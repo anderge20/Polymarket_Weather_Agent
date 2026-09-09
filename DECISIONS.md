@@ -4604,3 +4604,66 @@ cambio aparte: el #15 está en revisión y añadirle commits ahora invalida la r
 arrancar declarando que cumple §4bis.9 mientras el sustrato no crezca, y si arranca igualmente tiene
 un tope conocido en el **14 de septiembre**. Decirlo hoy es preferible a descubrirlo el quinto día,
 que es exactamente lo que §4bis.11 pedía que no pasara.
+
+## A-95
+
+**Fecha:** 2026-09-09 21:40Z
+**Autor:** A (desarrollador), sobre refutación de B
+**Asunto:** B rompe el PR #15 por tres sitios — y el que yo no habría visto es el del salto invisible
+
+B refutó el #15 con reproducciones. Los tres, comprobados por mí antes de aceptarlos:
+
+**1. `is_final` usaba una SEGUNDA lectura del reloj.** El recuento se corta en `prediction_time`, y
+`is_final` llamaba a `_utcnow()` otra vez al construir la fila. Entre las dos pasa el ciclo entero —
+**y mi propio diseño hace esa ventana grande a propósito**, porque el cron dispara ~20 min antes. Un
+ciclo de lead 9 que corta a las 02:40, tarda 25 minutos y escribe a las 03:05 **sellaba como final un
+recuento parcial**. El arreglo es de una línea, `is_final = prediction_time >= t_asof`, y es *el mismo
+predicado* que yo pretendía: como `pt = min(now, t_asof)`, `pt >= t_asof ⟺ now >= t_asof`. Mi test no
+lo cazaba porque pasaba `prediction_time=min(now, t_asof)` y parcheaba el reloj **coherentemente**;
+el fallo sólo aparece cuando las dos lecturas discrepan, que es justo lo que pasa en producción.
+
+**2. Su bloqueante 2 tiene la conclusión buena y el mecanismo equivocado, y eso lo comprobé.** B
+decía que un precio con `observation_time <= t_asof` puede escribirse después, «que es exactamente lo
+que hace una ranura entregada tarde». Medido sobre las 8.982 filas del almacén: el retardo
+`ingestion − observation` es **máx. 27 s, p95 22 s**, y toda la tabla es `clob_book_midpoint`. Es
+decir, `observation_time` **es** el instante de recogida, así que una ranura tardía escribe una
+observación tardía: **pierde** la medida, no la rellena. La ruta de B se abre el día que entre el
+backfill de `prices-history` — que es la tarea #30 — y por eso queda escrita como pendiente.
+
+Pero su conclusión llega igual **por una ruta que sí está viva**: varios ciclos corren tras `t_asof`
+para el mismo objetivo y cada uno escribe su fila; hoy tengo cinco. Así que `is_final` significa **que
+el CORTE es final, no el RECUENTO**, y la regla de consumo es *la última final por (objetivo, lead)*,
+nunca la media. No añado el desempate por `max(ingestion_timestamp)` que sugería: `recorded_at` ya
+ordena y además **elige demostrablemente la máxima** —corte idéntico entre esas filas e historial
+append-only, luego la posterior vio un superconjunto—, y un campo sin consumidor es ruido.
+
+**3. El hueco del symlink.** `pwd -P` resuelve el **directorio** y `basename "$0"` conserva el nombre
+del **enlace**. Un `/usr/local/bin/pmw-install → $REPO/ops/hetzner/install.sh` —la comodidad que
+cualquier operador añade— daba un `SELF` que no casaba mientras el fichero que bash leía **sí** estaba
+dentro del checkout. `readlink -f "$0"`. Los cuatro modos de invocación disparan ahora, probados uno
+a uno. **Es la tercera iteración de la misma guarda**: A-91 la escribió, A-93 descubrió que no se
+disparaba por los enlaces del directorio, y B ha encontrado que tampoco por los del propio fichero.
+
+**4. Y el que no habría visto yo.** Rendirse por el lock **sólo dejaba rastro en el log de la
+máquina**, lo que contradice de frente la decisión que el usuario acababa de tomar —«GitHub sigue
+siendo el registro; nada vive sólo en la máquina»— y, peor, **deja exactamente la misma huella que un
+host que no disparó**: sin shard, hueco en «entregado», nada que los distinga. Es *la* distinción de
+la que depende §4quater para atribuir `NO EVALUABLE` al host y no a la estrategia. Y si un ciclo se
+cuelga de verdad, todas las ranuras siguientes saltan y **el calendario se para en silencio**: el
+mismo fallo que el launcher existe para evitar, entrando por otra puerta.
+
+Ahora el launcher **encola** el evento y el siguiente ciclo que consigue el lock lo drena a un shard
+`host_events`. Encolar y no empujar es deliberado: commitear en el checkout de estado mientras el que
+tiene el lock escribe allí es la carrera que el lock evita. El drenaje renombra a un sidecar —atómico,
+así que un launcher que apile a mitad no pierde nada, cosa que leer-y-truncar sí— y borra el sidecar
+**sólo después** de que el shard exista.
+
+**Lo que me llevo.** Los tres hallazgos son de la misma familia que los míos de hoy: algo que parece
+puesto y no lo está. Pero el cuarto es de otra clase — **no es un fallo de implementación, es una
+consecuencia sistémica que sólo se ve mirando el PR contra una decisión tomada en otra conversación.**
+Yo revisé el lock preguntándome si funcionaba; B preguntó qué mide el sistema cuando funciona. Y su
+respuesta (a) —comprobar que no hay hijo en segundo plano que herede el fd 9 y sostenga el lock **más
+allá** del ciclo— es el fallo contrario al que yo temía, y ni se me había ocurrido buscarlo por ese
+lado.
+
+573 verdes. Ventana D16 reiniciada: no se fusiona antes de las 23:35Z.
