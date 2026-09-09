@@ -235,6 +235,7 @@ La corrida **no empieza** mientras alguna falle. El informe declara la fecha en 
 | P3 | **Etapa `forecasts` implementada.** Hoy `stage_forecasts` **no tiene ninguna rama OK** y no escribe nada; el cableado es pista de B | un ciclo manual deja `forecasts` en OK con `written > 0` |
 | P4 | **Liquidación cableada** con la etiqueta real bajo el SettlementOperator del mercado. *(revisada 2026-09-09, A-60: se había dado por cerrada contra un FIXTURE. El único sitio donde `metar_body_c` —la serie que el núcleo congelado exige— había aparecido fuera del núcleo era un test de este repo, así que la liquidación no había tocado nunca una fila producida por ningún ingestor.)* | `settle` en OK con `settled > 0` **sobre una observación ingerida por `stage_observations` en el propio ciclo**, no sembrada por un test. Se cita el `paper_trade_id`, la estación, el día y el valor observado |
 | **P9** | **La etiqueta la ingiere el ciclo** (`stage_observations`). Sin esto `settle` no lee nada: `weather_observations` la puebla el backfill bajo OTRO `dataset_version` y las fechas objetivo están en el futuro cuando se abre la posición, así que **toda posición quedaría abierta los 21 días y el libro reportaría PnL cero por no haber resuelto nada, no por no haber ganado nada** | un ciclo manual deja `observations` en OK con `ingested > 0`, y la fila lleva `available_at` = instante de descarga (D17) |
+| **P11** | **La ruta de decisión completa ha corrido AL MENOS UNA VEZ EN EL HOST**, no sólo en una máquina de desarrollo. Medido en el almacén real el 2026-09-09: `weather_forecasts` **0 shards**, `signals` **0**, `paper_trades` **0** — todos los ciclos programados corrieron `--collect-only` porque `vars.PAPER_TAU` no está puesta, que es el fallo cerrado correcto **y significa que forecasts → signals → paper → observations → settle nunca se ha ejecutado en Actions.** Está verificado de extremo a extremo, pero en el Mac, y el día entero ha consistido en descubrir que verificar donde no corre no es verificar | un ciclo de decisión en Actions deja `forecasts`, `signals` y `paper_trades` con shards, y su `replay` da REPRODUCIBLE. **No se hace escribiendo en `ds_paper_v1`**: el `dataset_version` está fijado en el workflow y un ciclo de prueba contaminaría el libro de la corrida preregistrada. Requiere un `dataset_version` de ensayo, y por tanto un cambio de workflow ANTES de arrancar |
 | **P10** | **La correspondencia de series está declarada para la población que va a operar.** *(CERRADA 2026-09-09 por evidencia del audit, A-61.)* `IEM_ASOS_METAR_1C → metar_body_c` y `IEM_ASOS_TMPF_1F → metar_tgroup_tmpf`; sobre las 14 filas en °F del audit sólo `H_LOCAL_tmpf` cae dentro de la banda ganadora, **14/14 y en grados enteros**, frente a 0/14 de las otras tres columnas. `IEM_ASOS_TMPF_0.1F` queda sin declarar y **no cuesta ningún mercado**: su única estación es KBKF, cuyo estrato (9, `P_NOAA_HourlyData`) el núcleo ya cierra por `series_filter_unverified` | el test fija las dos correspondencias contra `observations`, no contra literales |
 | P5 | **Colector con ≥ 7 días continuos previos**, definido como: para cada uno de los 7 días naturales anteriores existe ≥ 1 shard de `orderbook_snapshots` con ≥ 1 fila | `store.iter_shards` por fecha |
 | **P6** | **`price_history` poblada por el propio ciclo** (el hueco que hacía la corrida estructuralmente estéril) | un ciclo manual deja `collect:books` con `prices > 0`, y `price_history` está en `LEDGER_TABLES` |
@@ -441,6 +442,12 @@ calibración de R21 no existe, la corrida no arranca**; no hay `tau` por defecto
   antigüedad del precio empleado respecto de `T_asof`**, no si el ciclo llegó tarde.
   El criterio de A-29.2 sigue siendo la tasa del colector, y **la decisión de cambiar de host es del
   usuario**. Con una muestra de tres ranuras no se decide nada: se sigue midiendo.
+- **Y lo que los puentes manuales están tapando, medido.** Las capturas reales del primer día fueron
+  10:31 · 12:29 · 13:10 · 14:39 · 15:15 · 16:14 · 16:33Z, con un hueco máximo de **118 min**, por
+  debajo de la cadencia de diseño de 180. **Pero cinco de esas siete las disparé a mano.** Dejado
+  solo, el almacén tendría un hueco de **284 minutos** (10:31 → 15:15), 1,6 veces la cadencia. Lo que
+  la corrida vería sin vigilancia **no es lo que hay hoy en el almacén**, y la diferencia se reporta
+  aparte: cada shard lleva su `event`, que distingue `schedule` de `workflow_dispatch`.
 
 ---
 
@@ -529,7 +536,13 @@ detecta con pocas observaciones. **No se presentará como evidencia de buena cal
    dejaba al de las 02:40Z reproduciéndose contra un catálogo hasta **15 h más antiguo** que el
    universo sobre el que decidió, y **C3 daba NOT REPRODUCIBLE para media corrida por una razón que
    no es reproducibilidad** (verificado: 21 operaciones persistidas, 0 recomputadas, 21
-   `only_persisted` espurias). Coste **medido** del volcado: **206 KiB** comprimidos por instantánea
+   `only_persisted` espurias).
+   **Volumen del almacén, ahora MEDIDO y no estimado** (2026-09-09, 7 recolecciones + 1 ciclo):
+   **2,0 MiB en total**, ≈ **0,25 MiB por recolección**, con 7.854 capturas de libro sobre 2.244
+   tokens. Proyectado a 8 recolecciones/día × 21 días ≈ **42 MiB**, más 42 ciclos con catálogo
+   ≈ **8,7 MiB**, más pronósticos y señales: del orden de **55 MiB**, no los ~134 MB que estimé por
+   fila. La anterior era una cuenta; ésta es una medida, y sobra margen contra el umbral de 200 MB.
+   Coste **medido** del volcado: **206 KiB** comprimidos por instantánea
    (markets 83 + outcomes 123 + fees 0,3, sobre 1.100 / 2.200 / 1 filas) → **8,5 MiB en los 42
    ciclos**. Los ocho ciclos diarios de sólo-recolección lo siguen omitiendo: no deciden nada y no
    dejan nada que reproducir. El presupuesto de volumen sube de ~125 MB a ~134 MB, holgadamente

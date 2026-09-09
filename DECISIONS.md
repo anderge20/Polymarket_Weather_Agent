@@ -3045,6 +3045,20 @@ Tampoco gana.
 base de la propia celda —peor que no predecir nada— y el mercado +0,021. «Gana el mercado» ahí
 significa que ninguno sabe nada; sin el BSS al lado habría entrado como una derrota más.
 
+### Segunda corrección de A: contar celdas sobrevende la cobertura
+Las 16 celdas **no son testigos independientes** y el informe las presentaba como si lo fueran.
+`lead=9` contiene el **100 %** de los eventos y `estacion=EGLC` el **8,8 %**, así que sus
+bootstraps descansan sobre 1 308 y 115 bloques y sus SE no son del mismo orden;
+`precio_bin_0.1=0` **no es una de cinco quintas partes**: es el 98,6 % de los eventos y el 79 %
+de las filas. **Adoptada su regla de REPORTE** —el % de eventos y de filas junto a cada celda, en
+la salida y en el JSON—, que como la del BSS **no mueve ninguna cifra y cambia lo que un lector
+concluye**. Lo que hay es *unas pocas celdas grandes y una cola de pequeñas, todas negativas*.
+
+*(Y A comprobó una sospecha suya que resultó infundada: `lead=9` cubre el 100 % de los eventos y
+sin embargo la guarda no lo retira, porque exige `eventos == total` **Y** `filas == total`, y son
+5 057 filas de 10 000. La conjunción es lo correcto: con una sola de las dos condiciones el eje
+de lead se habría vaciado sin motivo.)*
+
 ### EL HALLAZGO MÁS FUERTE, y no es ninguna celda: la habilidad es ENTERA entre bins
 Lo encontró A dentro de mis datos y lo verifiqué sobre el JSON:
 ```
@@ -3344,3 +3358,39 @@ usa 1.308 bloques frente a los 115 de EGLC: **sus SE no son del mismo orden y su
 número, sólo lo que un lector concluye—: publicar junto a cada celda su porcentaje de filas y de
 eventos, para que «las 16 con Δ < 0» se lea como unas pocas celdas grandes y una cola de pequeñas, y
 no como dieciséis testigos independientes.
+
+## A-72 — Medido el almacén real: la ruta de decisión NUNCA ha corrido en el host · 2026-09-09 · Claude (sesión A)
+
+Cloné la rama `paper-state` y medí lo que hay de verdad, en vez de suponerlo desde los resúmenes de
+los ciclos:
+
+    capturas de libro   7.854 filas · 2.244 tokens distintos
+    price_history       5.284 filas · 7 shards
+    markets             1.100 filas · 1 shard
+    cycle_params           12 filas · 12 shards
+    weather_forecasts       0 shards      ← ninguno
+    signals                 0 shards      ← ninguno
+    paper_trades            0 shards      ← ninguno
+    almacén total         2,0 MiB
+
+**Los tres ceros son el hallazgo.** Todos los ciclos programados corrieron `--collect-only` porque
+`vars.PAPER_TAU` no está puesta — que es **el fallo cerrado correcto** y a la vez significa que
+**`forecasts → signals → paper → observations → settle` no se ha ejecutado nunca en Actions.** Está
+verificado de extremo a extremo hasta PnL realizado, pero **en el Mac**, y el día entero ha consistido
+en descubrir que verificar donde no corre no es verificar. **P11 añadida.**
+
+Y P11 lleva su propia trampa, que se declara: **no se satisface disparando un ciclo con `tau` sobre
+`ds_paper_v1`**, porque el `dataset_version` está fijado en el workflow y un ciclo de ensayo dejaría
+operaciones en el libro de la corrida preregistrada. Hace falta un `dataset_version` de ensayo, y por
+tanto un cambio de workflow **antes** de arrancar.
+
+**Segundo, lo que mis puentes manuales estaban tapando.** Capturas reales del día: 10:31 · 12:29 ·
+13:10 · 14:39 · 15:15 · 16:14 · 16:33Z — hueco máximo **118 min**, por debajo de la cadencia de 180.
+**Pero cinco de las siete las disparé yo.** Dejado solo, el hueco sería de **284 minutos**
+(10:31 → 15:15), 1,6 veces la cadencia. **Lo que la corrida vería sin vigilancia no es lo que hay hoy
+en el almacén**, y confundir las dos cosas sería otra medida tomada con el instrumento equivocado.
+Se reporta aparte usando el `event` de cada shard (`schedule` vs `workflow_dispatch`).
+
+**Tercero, una estimación sustituida por una medida.** El volumen proyectado era ~134 MB por una
+cuenta de bytes/fila; medido son **0,25 MiB por recolección** → **≈ 55 MiB** en los 21 días, contra un
+umbral de parada de 200 MB. Sobra margen, y ahora es una medida.
