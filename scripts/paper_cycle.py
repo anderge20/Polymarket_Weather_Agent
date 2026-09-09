@@ -706,6 +706,100 @@ def _station_tz(icao: str | None) -> str | None:
         return None      # unknown station: refuse later, never invent a zone
 
 
+def stage_observations(cy: Cycle, con, *, dataset_version: str, now: datetime) -> dict:
+    """Ingest the realized daily high for the station-days open positions wait on.
+
+    WITHOUT THIS THE LEDGER NEVER CLOSES. `stage_settle` reads
+    `weather_observations`, and in paper mode NOTHING wrote it: the table is
+    populated by the historical backfill under a different `dataset_version`, and
+    the run's own target dates are in the future when the position is opened. So
+    every position would sit open for the whole run, refused for
+    `context_out_of_snapshot`, and the ledger would report a PnL of zero not
+    because the strategy earned nothing but because nothing ever resolved.
+
+    Same shape as `stage_forecasts` before it was wired: the module existed
+    (`observations.ingest_daily_high`), the cycle never called it.
+
+    WHAT IS FETCHED, and no more. One request per (station, local day) that:
+      * some OPEN position depends on,
+      * whose station-local calendar day has ALREADY ENDED at `now` — the METAR
+        high of a day still in progress is not that day's high, and ingesting it
+        would write a label that is wrong and then never revisit it, and
+      * is not already in the table for this dataset_version.
+    Everything else is counted as `pending` and reported, not fetched.
+
+    A 429 stops the stage and is never retried through (D0/D21).
+
+    The row carries `available_at` = the download instant (D17): the run
+    accumulates a genuine as-of history of when each label could first be known,
+    which is exactly what the retrospective backfill cannot prove."""
+    from weather_agent import observations as obs, weather
+
+    waiting = db.query(
+        con,
+        "SELECT DISTINCT m.station_identifier AS icao, "
+        "       json_extract_string(m.source_timestamps, '$.endDate') AS end_raw "
+        "FROM paper_trades t JOIN markets m "
+        "  ON m.market_id = t.market_id AND m.dataset_version = t.dataset_version "
+        "WHERE t.dataset_version = ? AND t.exit_time IS NULL "
+        "  AND m.station_identifier IS NOT NULL",
+        [dataset_version],
+    )
+    if not waiting:
+        cy.stage("observations", OK, wanted=0, ingested=0,
+                 reason="no_open_position_waiting_on_a_label")
+        return {"wanted": 0, "ingested": 0}
+
+    wanted: set[tuple[str, date]] = set()
+    unparseable = 0
+    for r in waiting:
+        try:
+            target = datetime.fromisoformat(
+                str(r["end_raw"]).replace("Z", "+00:00")).astimezone(timezone.utc).date()
+        except (TypeError, ValueError):
+            unparseable += 1
+            continue
+        wanted.add((str(r["icao"]).upper(), target))
+
+    ingested = pending = already = 0
+    errors: dict[str, int] = {}
+    for icao, target in sorted(wanted):
+        tz = _station_tz(icao)
+        if tz is None:
+            errors["unknown_station_tz"] = errors.get("unknown_station_tz", 0) + 1
+            continue
+        day_start, day_end = weather.target_day_window(target, tz)
+        if now < day_end:
+            pending += 1                       # the day is still running
+            continue
+        have = db.query(
+            con,
+            "SELECT 1 FROM weather_observations WHERE station = ? "
+            "AND observation_time >= ? AND observation_time < ? "
+            "AND dataset_version = ? LIMIT 1",
+            [icao, day_start, day_end, dataset_version],
+        )
+        if have:
+            already += 1
+            continue
+        try:
+            obs.ingest_daily_high(con, icao, target, tz, dataset_version)
+            ingested += 1
+        except Exception as exc:
+            key = "rate_limited" if "429" in str(exc) else type(exc).__name__
+            errors[key] = errors.get(key, 0) + 1
+            if key == "rate_limited":
+                cy.stage("observations", STOPPED, reason="http_429_rate_limited",
+                         ingested=ingested, wanted=len(wanted))
+                return {"wanted": len(wanted), "ingested": ingested, "stopped": True}
+
+    cy.stage("observations", OK, wanted=len(wanted), ingested=ingested,
+             already_had=already, day_not_over=pending,
+             unparseable_end_date=unparseable or None,
+             errors=json.dumps(errors) if errors else None)
+    return {"wanted": len(wanted), "ingested": ingested, "pending": pending}
+
+
 def stage_settle(cy: Cycle, con, *, dataset_version: str) -> dict:
     """Settle open positions against the realized label, via the SettlementOperator.
 
@@ -1060,6 +1154,7 @@ def main(argv: list[str] | None = None) -> int:
             cy.stage("forecasts", SKIPPED, reason="collect_only")
             cy.stage("signals", SKIPPED, reason="collect_only")
             cy.stage("paper", SKIPPED, reason="collect_only")
+            cy.stage("observations", SKIPPED, reason="collect_only")
         elif args.tau_signal is None or args.tau_exec is None:
             missing = "tau_signal" if args.tau_signal is None else "tau_exec"
             cy.stage("signals", SKIPPED, reason=f"{missing}_not_provided_fail_closed")
@@ -1090,6 +1185,12 @@ def main(argv: list[str] | None = None) -> int:
             stage_paper(cy, con, dataset_version=args.dataset_version,
                         session_id=session_id, params=params,
                         prediction_time=prediction_time)
+            # The label BEFORE the settlement that consumes it, and after the
+            # positions that name which labels are needed. Same ordering lesson as
+            # `prediction_time` settled after collection: a stage that reads what
+            # another writes has to run after it, not before.
+            stage_observations(cy, con, dataset_version=args.dataset_version,
+                               now=_utcnow())
             stage_settle(cy, con, dataset_version=args.dataset_version)
 
         stage_params(cy, root=args.store_root, session_id=session_id, args=args,

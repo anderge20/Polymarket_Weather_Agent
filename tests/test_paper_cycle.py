@@ -36,11 +36,16 @@ def con():
 
 
 def _market(con, *, market_id, event_id, end_date, dsv="ds1", station="EGLC"):
+    # ICAO in `station_identifier`, `station` NULL — what live discovery produces
+    # (A-56: `markets.station` is NULL in 1 100 of 1 100 rows). A fixture that
+    # puts the ICAO in `station` makes the two columns indistinguishable, which is
+    # how Strategy A shipped a total, deterministic failure with a green suite.
     con.execute(
-        "INSERT INTO markets (market_id, event_id, station, unit, rounding_rule, "
+        "INSERT INTO markets (market_id, event_id, station, station_identifier, "
+        "unit, rounding_rule, "
         "source_timestamps, ingestion_timestamp, dataset_version, record_version) "
-        "VALUES (?,?,?,?,?,?,?,?,?)",
-        [market_id, event_id, station, "C", "whole degree",
+        "VALUES (?,?,?,?,?,?,?,?,?,?)",
+        [market_id, event_id, None, station, "C", "whole degree",
          f'{{"endDate":"{end_date}"}}', T0, dsv, 1])
     for i, (tok, label) in enumerate(((f"{market_id}_yes", "Yes"),
                                       (f"{market_id}_no", "No"))):
@@ -783,3 +788,101 @@ def test_a_collect_only_cycle_skips_the_catalogue_and_says_why(con, tmp_path):
     assert not (tmp_path / "markets").exists()
     stages = {s["stage"]: s for s in cy.summary()["stages"]}
     assert stages["dump:catalogue"]["reason"] == "collect_only_nothing_to_replay"
+
+
+# --------------------------------------------------------------------------- observations
+def _open_position(con, *, market_id="m1", end_date="2026-09-10T12:00:00Z",
+                   station="EGLC", dsv="ds1"):
+    _market(con, market_id=market_id, event_id="e1", end_date=end_date,
+            dsv=dsv, station=station)
+    con.execute(
+        "INSERT INTO paper_trades (backtest_id, market_id, token_id, entry_time, "
+        "entry_price, fees, size, price_layer, ingestion_timestamp, "
+        "dataset_version, record_version) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+        ["cyc", market_id, f"{market_id}_yes", T0, 0.5, 0.1, 10.0,
+         "SIMULATED_EXECUTABLE", T0, dsv, 1])
+
+
+def test_the_label_is_fetched_only_once_the_station_local_day_has_ended(con, monkeypatch):
+    """The METAR high of a day still running is not that day's high. Ingesting it
+    would write a wrong label and never revisit it — the settlement would then be
+    confident and wrong, which is worse than open."""
+    from weather_agent import observations as obs
+    calls = []
+    monkeypatch.setattr(obs, "ingest_daily_high",
+                        lambda con, i, d, tz, dsv: calls.append((i, d)))
+    monkeypatch.setattr("weather_agent.stations.timezone_of", lambda i: "Europe/London")
+    _open_position(con, end_date="2026-09-10T12:00:00Z")
+
+    # London is UTC+1 in September, so the local day of the 10th runs
+    # 2026-09-09T23:00Z .. 2026-09-10T23:00Z. The boundary is where an off-by-one
+    # would hide, so both sides of it are pinned rather than a comfortable margin.
+    out = paper_cycle.stage_observations(
+        _cycle(), con, dataset_version="ds1",
+        now=datetime(2026, 9, 10, 22, 59, tzinfo=timezone.utc))
+    assert calls == [] and out["ingested"] == 0 and out["pending"] == 1
+
+    out = paper_cycle.stage_observations(
+        _cycle(), con, dataset_version="ds1",
+        now=datetime(2026, 9, 10, 23, 0, tzinfo=timezone.utc))
+    assert calls == [("EGLC", date(2026, 9, 10))] and out["ingested"] == 1
+
+
+def test_a_label_already_in_the_table_is_not_fetched_again(con, monkeypatch):
+    from weather_agent import observations as obs
+    calls = []
+    monkeypatch.setattr(obs, "ingest_daily_high",
+                        lambda con, i, d, tz, dsv: calls.append(i))
+    monkeypatch.setattr("weather_agent.stations.timezone_of", lambda i: "Europe/London")
+    _open_position(con)
+    con.execute(
+        "INSERT INTO weather_observations (station, source, observation_time, "
+        "tmax_observed, ingestion_timestamp, dataset_version, record_version) "
+        "VALUES (?,?,?,?,?,?,?)",
+        ["EGLC", "METAR", datetime(2026, 9, 10, 14, tzinfo=timezone.utc), 21.0,
+         T0, "ds1", 1])
+    out = paper_cycle.stage_observations(
+        _cycle(), con, dataset_version="ds1",
+        now=datetime(2026, 9, 12, tzinfo=timezone.utc))
+    assert calls == [] and out["ingested"] == 0
+
+
+def test_observations_stop_on_a_rate_limit_and_never_retry_through(con, monkeypatch):
+    from weather_agent import observations as obs
+
+    def boom(*a, **k):
+        raise RuntimeError("HTTP 429 Too Many Requests")
+    monkeypatch.setattr(obs, "ingest_daily_high", boom)
+    monkeypatch.setattr("weather_agent.stations.timezone_of", lambda i: "Europe/London")
+    _open_position(con)
+    out = paper_cycle.stage_observations(
+        _cycle(), con, dataset_version="ds1",
+        now=datetime(2026, 9, 12, tzinfo=timezone.utc))
+    assert out.get("stopped") is True and out["ingested"] == 0
+
+
+def test_nothing_is_fetched_when_no_position_is_waiting_on_a_label(con, monkeypatch):
+    from weather_agent import observations as obs
+    calls = []
+    monkeypatch.setattr(obs, "ingest_daily_high",
+                        lambda *a, **k: calls.append(a))
+    out = paper_cycle.stage_observations(
+        _cycle(), con, dataset_version="ds1",
+        now=datetime(2026, 9, 12, tzinfo=timezone.utc))
+    assert out == {"wanted": 0, "ingested": 0} and calls == []
+
+
+def test_a_settled_position_stops_pulling_its_label(con, monkeypatch):
+    """`exit_time IS NULL` is the whole scope. A run that kept re-fetching the
+    labels of closed positions would spend quota on rows nothing reads."""
+    from weather_agent import observations as obs
+    calls = []
+    monkeypatch.setattr(obs, "ingest_daily_high",
+                        lambda con, i, d, tz, dsv: calls.append(i))
+    monkeypatch.setattr("weather_agent.stations.timezone_of", lambda i: "Europe/London")
+    _open_position(con)
+    con.execute("UPDATE paper_trades SET exit_time = ?", [T0])
+    out = paper_cycle.stage_observations(
+        _cycle(), con, dataset_version="ds1",
+        now=datetime(2026, 9, 12, tzinfo=timezone.utc))
+    assert out["wanted"] == 0 and calls == []
