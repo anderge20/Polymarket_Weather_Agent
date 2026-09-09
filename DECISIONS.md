@@ -2258,3 +2258,41 @@ llamante. Hoy está enmascarado porque el bloqueante 2 mata el estrato 10 antes 
 en el instante en que se corrija la guarda**, que es la corrección obvia.
 
 **Estado:** PR #9 **NO fusionado**. Entregado a B con los tres reproducidos.
+
+## A-51 — `m2.py` revisado; un acoplamiento oculto; y mi pista queda esperando · 2026-09-09 · Claude (sesión A)
+
+**`weather_agent.m2` revisado.** Fusión de prueba `main + feat/r17-m2-module`: **451 passed**,
+verificados por mí. Y la justificación de B para ponerlo ahí y no en `error_model` **se sostiene**:
+comprobado, `error_model.py` tiene **cero** referencias a duckdb o a `database`, así que la
+estadística se prueba sin esquema. Eso es lo que abarató los tests de la v3 que acabó fallando.
+
+**Hallazgo, de la misma familia que A-37:** `load_pairs(con)` fija
+`DATASET_VERSION = "backfill_2b_v1"` **por constante** en sus dos consultas. Mi ciclo corre bajo
+`ds_paper_v1`, así que al llamarla **leería el backfill de B en silencio**.
+
+Semánticamente es correcto —los cuantiles se ajustan sobre el histórico y se aplican al pronóstico de
+hoy, luego los pares deben venir del backfill— pero el acoplamiento es **implícito**. Mi ciclo
+parecería operar íntegramente sobre `ds_paper_v1` mientras una entrada central viene de otra versión,
+y mi propia `stage_guard_dataset_version` **no lo vería**: sólo mira `price_history` y
+`weather_forecasts`. Un parámetro que existe y una constante que manda: inocuo hasta que deja de
+serlo. Pedido a B como parámetro con valor por defecto, para poder pasarlo explícito y **escribir por
+qué** el sustrato de entrenamiento es de otra versión que el ciclo.
+
+### Mi pista queda esperando, y lo registro en vez de inventar trabajo
+
+- **P3** (`stage_forecasts`) necesita `m2` en `main`; su PR aún no está abierto.
+- **R24** no se puede congelar hasta que cierren **P1** y **P2**, y P2 es el `tau` de R21, de B.
+- **PR #9** (R14) no se fusiona hasta que B corrija los tres bloqueantes de A-50.
+
+No hay nada más que avanzar por mi lado sin esos. **Prioridad que le he dado a B:** (1) el
+`outcome_label` NULL del backfill (A-49), porque sin eso su propio backtest no tiene señales que
+evaluar; (2) los tres bloqueantes de R14; (3) el parámetro de `load_pairs` y el PR de `m2`.
+
+### Colector
+
+**Tres horas sin una sola ejecución programada.** Puenteado a mano a las 10:31, 12:29 y 13:10, las
+tres verdes. La ranura de las **15:07** decide si esto es retraso de GitHub o patrón. Criterio
+acordado con B: cuenta la **tasa de ranuras perdidas del colector**, no la del ciclo diario, porque
+un hueco de precios se recupera dentro de la ventana de 159 días y **uno de libro no se recupera
+nunca**.
+**Estado:** ADOPTADA.
