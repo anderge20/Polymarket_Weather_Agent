@@ -74,6 +74,13 @@ exist inside Actions. So the sha is kept for the audit trail: if the fitter
 changed in a way the preregistration did not authorise, the calibration
 criterion is what must catch it, not a hash of a comment.
 
+THE REFIT WINDOW ENDS AT T_asof, NOT AT "now". Because the cycle settles
+`prediction_time = min(now, T_asof)`, an artifact fitted after T_asof is refused
+as leakage even though it was fitted "before the cycle". Verified live: a fit at
+12:39Z was refused by a cycle whose prediction_time was 12:00Z. In practice the
+refit must finish before 12:00Z for the 24 h lead and before 03:00Z for the 9 h
+lead (R24 §4bis.7).
+
 THE CYCLE MAY ONLY TIGHTEN. `--max-artifact-age-h` on `paper_cycle.py` lowers
 the artifact's declared age, never raises it. An operator does not extend the
 life of an artifact from the command line.
