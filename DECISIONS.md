@@ -4861,3 +4861,53 @@ edición futura plausible; él revisó los cinco consumidores y encontró **dos 
 hoy** — `fit_quantile_artifact` escribe `previous`, que bajo hash-de-contenido sería igual al propio
 id y **el reajuste desaparecería de su registro de linaje**; y `replay_cycle` fija el artefacto por id
 porque «el artefacto que usó ESE ciclo» es identidad de ajuste. Ambos nombrados ya en el test.
+
+## B-21 — Dos reglas de verificación que salen de los PR #14–#16, y la forma de error más duradera del proyecto · 2026-09-10 · Claude (sesión B)
+Los tres últimos PR se revisaron en cruce y ninguno tenía un defecto de conducta. De ellos salen
+dos reglas que no son de este proyecto y conviene que sobrevivan a él.
+
+### 1. Una comprobación tiene que poder FALLAR — y también poder ACERTAR POR EL MOTIVO CORRECTO
+La primera mitad ya estaba (A-93, y el test de la guarda del WAL que A tiró por pasar con y sin el
+arreglo). **La segunda la añade A tras tres comprobaciones vacías en un día**, las tres acertando
+por el motivo equivocado: un `sed` cuyo patrón no casaba, una sonda que preguntaba al propio
+proceso por su propio descriptor, y un `fetch` sin `reset` que probó el fichero viejo.
+
+**La tercera es una fábula del asunto entero:** fue a comprobar que la guarda de `install.sh`
+disparaba, ejecutó sin actualizar y probó **la versión antigua** — que es precisamente la que hace
+`reset --hard` sobre su propio checkout. **Se actualizó a sí misma a mitad de ejecución y sólo
+sobrevivió porque `main` ya traía `ops/`: le salvó el PR que estaba instalando.** Una hora antes,
+la comprobación se habría destruido a sí misma demostrando el fallo que venía a comprobar.
+
+### 2. Un docstring es la forma de error más duradera que produce este proyecto
+**El PR #16 no tenía defecto de código: tenía una FRASE FALSA.** `canonical_bytes` prometía que
+«dos ajustes con los mismos números obtienen el mismo id en cualquier máquina», y es falso porque
+`fit_instant` va dentro del payload hasheado. Necesitó **tres versiones y dos refutaciones
+cruzadas**:
+1. la promesa original — falsa;
+2. la primera corrección de A — *«sólo si se fija el instante»*: **nombraba una condición habiendo
+   varias**, y omitía que `code_sha256` es el sha256 de los **bytes** de `error_model.py`, así que
+   dos checkouts que difieran en saltos de línea dan ids distintos con números idénticos;
+3. la versión que aguanta — **describe el MECANISMO en vez de prometer un RESULTADO**.
+
+**La lección: la frase vieja no falló por incorrecta, falló por ser una promesa sobre resultados.**
+Una promesa caduca en cuanto entra un campo nuevo al payload; una descripción del mecanismo no.
+Y una frase en un docstring **sobrevive a todos los tests y el siguiente actúa sobre ella**.
+
+**Corolario de mi última corrección:** el texto decía «dos de los campos no hablan de los números».
+Enumerados son **ocho claves y sólo `strata` habla de ellos** — siete, no dos. El instinto era
+correcto y le faltaba el nombre: lo que distingue a `fit_instant` y `code_sha256` es que son
+**AMBIENTALES** —los pone el entorno— frente a los **DECLARADOS** por el operador (`model`,
+`max_age_hours`, `prereg_sha256`, `dataset_version`, `schema`), que tampoco hablan de los números
+**y no sorprenden a nadie**. La categoría explica *por qué* en vez de afirmar *que*.
+
+### Aportado a los tres PR desde esta sesión
+`upsert_many` con `import pandas` que el nivel de papel no instala (#14, defecto **mío**) y la
+divergencia silenciosa de su respaldo · `is_final` marcando FINAL sobre recuentos parciales por
+usar una segunda lectura del reloj, y el hueco por symlink de la guarda del instalador (#15) · la
+enumeración y la categoría ambiental/declarado (#16). **Y una ruta viva que no había nombrado
+ninguno de los dos: los denominadores de la cobertura se mueven porque `markets`/`outcomes` se
+redescubren en cada ejecución.**
+
+**Pendiente de A, con predicción falsable declarada (A-92):** la recogida de las 04:07Z debe dar
+`bands_priced > 0`. **Si da 0, su diagnóstico es falso y la etapa está rota.** Avisará antes de
+tocar nada si lo que salga toca R21 o R22.
