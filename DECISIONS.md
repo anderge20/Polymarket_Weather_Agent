@@ -4503,3 +4503,49 @@ las 04:07Z. **Si sale 0, la etapa sí está rota** y el diagnóstico de esta ent
 comparando `recorded_at` con `prediction_time`, que es frágil. Se añade `t_asof` y `is_final`
 explícitos en el **PR #15**, sin cambiar el cálculo — promediar filas parciales dentro de la serie
 que fija el umbral sería exactamente el error que §6bis existe para impedir.
+
+## A-93
+
+**Fecha:** 2026-09-09 21:25Z
+**Autor:** A (desarrollador y validador)
+**Asunto:** dos escritores en la misma máquina, y una guarda que parecía puesta y no lo estaba (PR #15)
+
+**Lo que pasó.** A las 21:03Z lancé a mano un ciclo para comprobar que el camino contra `main`
+funcionaba **antes** de la ranura de cron, con el razonamiento de que una ranura de colector perdida
+no se recupera y una corrida extra sí. El razonamiento era bueno; la aritmética, no: **las ranuras son
+a `:07` cada tres horas**, así que la siguiente no era a las 22:07 sino a las **21:07**, cuatro
+minutos después. Dos ciclos concurrentes en la misma caja — el segundo escritor que A-87 prohíbe,
+esta vez provocado por mí y no heredado.
+
+**Salió limpio, y por suerte, no por diseño.** Comprobado, no supuesto: el commit `fc8dfcb` contiene
+sólo los 4 shards de la sesión `col_20260909T210326Z`, y los **59 shards de la rama pasan `gzip -t`**.
+La razón es de calendario: la segunda corrida aún no había llegado a su `dump` cuando la primera hizo
+`git add -A paper_state`. Cuatro minutos de diferencia en otro sentido y habría commiteado un `.gz`
+a medio escribir en una rama append-only, que no se repara después.
+
+**El defecto real, que ya estaba en `main`.** `run_cycle.sh` declaraba ONE WRITER en su cabecera y se
+refería a Actions. El caso de la propia máquina no estaba impedido por nada. Ahora `launcher.sh`
+sostiene un `flock` durante todo el ciclo, y **espera en vez de rendirse** — una ranura de libro
+perdida es definitiva, un solape de diez minutos contra tres horas de separación casi siempre se
+despeja — rindiéndose sólo tras `PMW_LOCK_WAIT` y **dejándolo escrito en el log**, que es lo que lo
+hace medible en el numerador de §4quater.
+
+**Y el hallazgo que más me interesa de este ciclo.** La guarda de auto-borrado de `install.sh`
+(A-91), escrita, revisada y con su comentario explicando por qué era necesaria, **no se disparaba**.
+`pwd -P` resuelve enlaces simbólicos y `$REPO` no, así que el patrón del `case` nunca casaba y el
+script seguía adelante desde dentro del checkout, tan campante. Es decir: **una guarda contra el modo
+de fallo «parece hecho y no lo está», que fallaba exactamente así**. No lo vio la lectura del código
+—lo escribí yo y me pareció correcto—, lo vio **ejecutarlo**. Y sólo porque monté un banco de pruebas
+en `/tmp`, que en macOS es un enlace a `/private/tmp`: si lo hubiera probado en un directorio sin
+enlaces habría pasado, y habría llegado a la caja rota y silenciosa.
+
+Lo mismo con mi primera sonda del `flock`: comprobaba desde el propio proceso ya `exec`ado si podía
+retomar el lock, y **claro que podía** — es el mismo descriptor. La sonda no distinguía nada y decía
+«FALLO». Hubo que hacerla desde un tercer proceso para que midiera algo.
+
+**La regla que sale de las tres, y que no es nueva sino la tercera repetición:** una comprobación
+tiene que poder **fallar**. Un `sed` que no casa, un `case` que no casa, una sonda que siempre dice
+que sí. Las tres pasaron la lectura. Ninguna pasó la ejecución.
+
+**Estado:** PR #15 abierto, 569 verdes verificados por mí, ventana D16 hasta ≥23:26Z. La caja corre
+mientras tanto el launcher **sin** lock; no hay riesgo mientras no lance nada a mano, y no lo haré.
