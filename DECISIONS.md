@@ -1618,3 +1618,52 @@ código** que mis propios smoke tests no podían ver, porque todos corrían `--c
 rama que se salta la decisión. Tres de los cinco eran el **mismo fallo —cero señales— por tres
 mecanismos distintos**. El proceso funciona; lo que no funciona es probar sólo el camino barato.
 **Estado:** ADOPTADA.
+
+## A-40 — El modo papel CORRE en Actions. Tres fallos que sólo una ejecución real podía encontrar · 2026-09-09 · Claude (sesión A)
+
+**Estado: VERDE.** Ejecución `34340664711`, `completed/success`, 10:32:25Z. 1.122 books recogidos en
+23 peticiones, sin 429, y **shards commiteados a la rama `paper-state`** — que el propio workflow
+creó como rama huérfana en su primer intento. El colector está vivo y en cron.
+
+Tras fusionar PR #3 no di por buenos los workflows: los disparé. Fallaron **dos veces**, y cada
+fallo era invisible desde local.
+
+**1. `actions/setup-python` con `cache: pip` falla el paso si no encuentra `requirements.txt` ni
+`pyproject.toml`.** Los nuestros se llaman `requirements-paper.txt` y `requirements-pipeline.txt`.
+El YAML es válido, el job está bien formado, y el fallo vive **dentro del glob por defecto de una
+acción**. Ninguna comprobación local podía verlo. (PR #4)
+
+**2. DuckDB necesita `pytz` en tiempo de ejecución para materializar `TIMESTAMPTZ`.** La recogida
+funcionó **entera** —1.122 books, precios, parámetros— y murió en el primer `dump_table`:
+`Required module 'pytz' failed to import`. `pytz` **no aparece en ningún `import`** de este árbol:
+lo carga la extensión nativa de DuckDB. (PR #5)
+
+Y aquí el error es mío y merece nombrarse: `requirements-paper.txt` justificaba omitirlo diciendo
+*«Verified by inspection of the import graph reachable from scripts/paper_cycle.py»*. **Ese método es
+sencillamente el equivocado para la dependencia de ejecución de una extensión nativa.** Peor:
+`requirements-pipeline.txt` **ya lo listaba**, con el comentario *«timezone database (needed at
+runtime by DuckDB timestamp handling)»* — lo leí y lo descarté al escribir el fichero mínimo. Tenía
+la respuesta delante y preferí mi propia inspección. El comentario dice ahora por qué el método
+falla, en vez de repetir la afirmación.
+
+**3. El clamp se comportó bien a la primera, y se ve en el log.** Disparo manual con
+`target_date = hoy` y lead 24 h → `T_asof = ayer 12:00Z`, ya pasado: `late_firing=True`,
+`own_prices_usable=False`, y la etapa `timing:fallback` lo declara en vez de absorberlo. Exactamente
+lo que A-38 especificó.
+
+**Regla que adopto, y es general:** **un workflow no funciona hasta que se ha ejecutado.** YAML
+válido, tests verdes y una lectura atenta no cubren el glob por defecto de una acción ni la
+dependencia nativa de una librería. Disparar una vez cuesta dos minutos; descubrirlo por un cron
+silencioso cuesta días de historia de libro que no se recuperan.
+
+**Balance del día, sin adornos:** entre la refutación hostil y las ejecuciones reales han salido
+**ocho defectos en mi propio código** —seis de lógica y dos de entorno—. Los seis de lógica eran
+invisibles a mis smoke tests porque todos corrían `--collect-only`, la rama que se salta la decisión;
+**tres de ellos eran el mismo fallo, cero señales, por tres mecanismos distintos.** Los dos de
+entorno eran invisibles a todo lo local. El proceso encuentra cosas; lo que no vale es probar sólo
+el camino barato y llamarlo verificación.
+
+**Estado del modo papel:** colector **operativo en cron** (cada 3 h). Ciclo diario activo pero
+**fail-closed sin `tau`**: mientras `vars.PAPER_TAU` no exista, recoge y no decide. Nada puede
+operar con dinero real: gate D0 estructural.
+**Estado:** ADOPTADA.
