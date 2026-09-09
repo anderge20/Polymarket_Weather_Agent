@@ -527,6 +527,11 @@ _DDL_V2 = [
     "ALTER TABLE markets ADD COLUMN IF NOT EXISTS available_at_confidence VARCHAR;",
     # verbatim capture of ALL raw gamma timestamps for the market (reproducibility)
     "ALTER TABLE markets ADD COLUMN IF NOT EXISTS source_timestamps JSON;",
+    # R29 classifies the settlement source and `discovery.ingest_event` writes it
+    # "ONLY if the schema has that column", with a comment saying R27/v4 adds it.
+    # It did not: no migration ever created it, so the column the classifier
+    # produces was never persisted and `settlement` could never build a context.
+    "ALTER TABLE markets ADD COLUMN IF NOT EXISTS contract_source VARCHAR;",
     # verbatim capture of raw gamma fee fields (makerBaseFee/takerBaseFee/feeType/
     # feeSchedule/feesEnabled) so the interpretation can be confirmed later.
     "ALTER TABLE market_fee_schedule ADD COLUMN IF NOT EXISTS raw_fee_fields JSON;",

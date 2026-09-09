@@ -187,13 +187,15 @@ def _resolution_quality(con, market_id: str) -> dict:
 
 
 def test_ingest_persists_contract_source_in_evidence_json(con):
-    # markets has NO contract_source column (R27/v4 will add it): the value lives in
-    # data_quality.resolution_quality.resolution_contract, and the row is unchanged.
-    assert "contract_source" not in db.column_names(con, "markets")
+    # The evidence JSON carries the full resolution contract regardless of the
+    # schema. It used to also assert that markets had NO contract_source column,
+    # which encoded "R27/v4 will add it" — and v4 never did, so the classifier's
+    # output was persisted nowhere. The migration now creates it, so the column and
+    # the evidence must AGREE rather than the column being absent.
     ev = _noaa_event()
     discovery.ingest_event(con, ev, "ds_r29")
     m = db.query(con, "SELECT * FROM markets WHERE market_id = ?", [ev["markets"][0]["id"]])[0]
-    assert "contract_source" not in m
+    assert m["contract_source"] == res.SRC_NOAA
     assert "Daily Observations" not in m["measurement_rule"]
     rc = _resolution_quality(con, ev["markets"][0]["id"])["resolution_contract"]
     assert rc["contract_source"] == res.SRC_NOAA
@@ -203,9 +205,10 @@ def test_ingest_persists_contract_source_in_evidence_json(con):
 
 
 def test_ingest_writes_contract_source_column_when_present(con):
-    # forward-compatible: if a later migration (R27/v4) adds markets.contract_source,
-    # ingest_event fills it from the same classifier without further changes.
-    con.execute("ALTER TABLE markets ADD COLUMN contract_source VARCHAR;")
+    # No longer forward-compatible-in-principle: the migration creates the column,
+    # so this is the actual path. The ALTER that used to live here is gone — it now
+    # collides with the migration, which is how the missing migration was found.
+    assert "contract_source" in db.column_names(con, "markets")
     discovery.ingest_event(con, ANKARA_EVENT, "ds_r29_col")
     rows = db.query(con, "SELECT contract_source, measurement_rule FROM markets")
     assert rows and all(r["contract_source"] == res.SRC_WU for r in rows)

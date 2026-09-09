@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from weather_agent import database, store
+from weather_agent import database, database as db_mod, store
 
 _SPEC = importlib.util.spec_from_file_location(
     "paper_cycle", Path(__file__).resolve().parents[1] / "scripts" / "paper_cycle.py")
@@ -370,13 +370,44 @@ def test_own_prices_are_usable_exactly_when_the_clamp_did_not_bind():
     assert late["prediction_time"] == late["t_asof"]     # clamped -> own prices too new
 
 
+def _with_b_substrate(con):
+    """Ensure the settle substrate exists, whether or not the schema already has it.
+
+    IDEMPOTENT on purpose. The first version issued a bare ALTER TABLE ADD COLUMN,
+    which is correct while session B's migration is unmerged and a hard error the
+    moment it lands. Each branch was green alone and six tests failed on the
+    merge — the class of defect that only a trial merge finds."""
+    have_obs = set(db_mod.column_names(con, "weather_observations"))
+    for col, typ in (("observed_value", "DOUBLE"), ("observed_unit", "VARCHAR"),
+                     ("series", "VARCHAR")):
+        if col not in have_obs:
+            con.execute(f"ALTER TABLE weather_observations ADD COLUMN {col} {typ}")
+    if "contract_source" not in set(db_mod.column_names(con, "markets")):
+        con.execute("ALTER TABLE markets ADD COLUMN contract_source VARCHAR")
+
+
+
 # --------------------------------------------------------------------------- settle
 def test_settle_names_the_substrate_it_is_missing(con):
     """A SKIP that says 'not wired yet' leaves the next reader to guess. This one
-    names the columns."""
+    names the columns.
+
+    Written against a column DROPPED on purpose rather than against whatever the
+    schema happens to lack today: the original version asserted that
+    `observed_value` was absent, which was true on one branch and false once
+    session B's migration merged. Two green branches broke on merge, and this test
+    was the reason."""
+    _with_b_substrate(con)          # works whether or not B's migration is merged
+    con.execute("ALTER TABLE weather_observations DROP COLUMN observed_value")
     missing = paper_cycle.settle_substrate_missing(con)
-    assert any("observed_value" in m for m in missing)
-    assert any("contract_source" in m for m in missing)
+    assert any("weather_observations.observed_value" in m for m in missing)
+
+
+def test_settle_reports_ready_on_a_complete_substrate(con, monkeypatch):
+    """The other half, and the one that actually matters going forward."""
+    _with_b_substrate(con)
+    _fake_stations(monkeypatch)
+    assert paper_cycle.settle_substrate_missing(con) == []
 
 
 def test_settle_is_a_noop_with_no_open_positions(con):
@@ -387,6 +418,8 @@ def test_settle_is_a_noop_with_no_open_positions(con):
 def test_settle_skips_loudly_rather_than_guessing_a_winner(con):
     """The shortcut this refuses to take — picking a winner from the last traded
     price — is what turns a paper ledger into fiction."""
+    _with_b_substrate(con)
+    con.execute("ALTER TABLE weather_observations DROP COLUMN series")
     from weather_agent import paper as _paper
     fill = _paper.Fill(shares=100.0, notional=50.0, vwap=0.5, fee=0.6,
                        outlay=50.6, executable=True)
@@ -398,15 +431,6 @@ def test_settle_skips_loudly_rather_than_guessing_a_winner(con):
     assert out["missing"], "it must say what it lacks"
     row = con.execute("SELECT exit_time, settlement FROM paper_trades").fetchone()
     assert row[0] is None and row[1] is None      # untouched, not guessed
-
-
-def _with_b_substrate(con):
-    """Simulate session B's migration 4 so the FULL settle path can be exercised
-    before that branch merges. Without this the only tested path is the SKIP."""
-    con.execute("ALTER TABLE weather_observations ADD COLUMN observed_value DOUBLE")
-    con.execute("ALTER TABLE weather_observations ADD COLUMN observed_unit VARCHAR")
-    con.execute("ALTER TABLE weather_observations ADD COLUMN series VARCHAR")
-    con.execute("ALTER TABLE markets ADD COLUMN contract_source VARCHAR")
 
 
 def _settleable_market(con, *, band="17°C", outcome="Yes", token="t1"):
