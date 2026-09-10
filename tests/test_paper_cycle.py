@@ -1402,6 +1402,61 @@ def test_a_price_inside_the_window_makes_the_early_row_genuinely_partial(con, tm
         "what the equality assertion is there to catch")
 
 
+def test_coverage_also_is_validated_in_argparse_before_any_request(tmp_path):
+    """A malformed `--coverage-also` must die at parse time, not mid-cycle.
+
+    Session B's blocking finding, and the severity is structural: the coverage
+    stage sits between `stage_collect` — the order-book capture, the one thing
+    here that cannot be re-fetched — and `stage_dump`, the only place that
+    capture is persisted. `stage_dump` is inside the `try`; the `finally` only
+    closes the connection. So a bare `float()` inside the stage put a
+    destroy-the-capture path one mistyped character away in a cron line:
+    `9:2026-13-45` would collect 1 078 tokens and then throw, and the dump would
+    never run.
+    """
+    parser = paper_cycle.build_parser()
+    base = ["--target-date", "2026-09-10", "--dataset-version", "ds1"]
+    for bad in ("9:2026-13-45", "nine:2026-09-10", "9", "0:2026-09-10",
+                "-9:2026-09-10", ":2026-09-10"):
+        with pytest.raises(SystemExit):
+            parser.parse_args(base + ["--coverage-also", bad])
+    ok = parser.parse_args(base + ["--coverage-also", "9:2026-09-10"])
+    assert ok.coverage_also == [(9.0, date(2026, 9, 10))]
+
+
+def test_a_failing_measurement_stage_does_not_destroy_the_capture(con, tmp_path,
+                                                                  monkeypatch):
+    """Nothing between `stage_collect` and `stage_dump` may kill the cycle.
+
+    Measurement is worth a great deal and worth strictly less than the capture,
+    and they were coupled the other way round: a failure to MEASURE destroyed the
+    thing being measured. Here the coverage stage raises and the cycle must still
+    reach the dump, with the failure recorded as a SKIPPED stage rather than
+    swallowed.
+    """
+    monkeypatch.setattr(paper_cycle, "stage_discover",
+                        lambda cy, *a, **k: cy.stage("discover", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_collect",
+                        lambda cy, *a, **k: cy.stage("collect:books", paper_cycle.OK))
+    def _boom(*a, **k):
+        raise RuntimeError("measurement exploded")
+    monkeypatch.setattr(paper_cycle, "stage_venue_coverage", _boom)
+
+    store_root = tmp_path / "store"
+    rc = paper_cycle.main([
+        "--target-date", "2026-09-10", "--dataset-version", "ds1",
+        "--store-root", str(store_root), "--db", str(tmp_path / "t.duckdb"),
+        "--collect-only", "--summary-json", str(tmp_path / "s.json")])
+
+    import json as _json
+    stages = {s["stage"]: s for s in
+              _json.loads((tmp_path / "s.json").read_text())["stages"]}
+    assert stages["venue_coverage"]["status"] == "SKIPPED"
+    assert "measurement exploded" in stages["venue_coverage"]["error"]
+    assert "dump" in stages, "the capture must still be persisted"
+    assert rc == 0
+
+
 def _events(root):
     import gzip as _gz
     shards = store.iter_shards(root, "host_events")

@@ -89,6 +89,44 @@ def _iso(dt: datetime) -> str:
     return dt.isoformat()
 
 
+def _coverage_also(spec: str) -> tuple[float, date]:
+    """Parse `LEAD:YYYY-MM-DD` IN ARGPARSE, before the cycle makes one request.
+
+    WHERE THIS RUNS IS THE WHOLE POINT, and session B found it. The coverage
+    stage sits between `stage_collect` — the order-book capture, the one thing
+    in this project that cannot be recovered afterwards — and `stage_dump`, the
+    only place that capture is persisted. `stage_dump` is inside the `try`; the
+    `finally` only closes the connection. So an exception anywhere in that span
+    means the dump never runs and the collection is LOST.
+
+    A bare `float()` and `date.fromisoformat()` inside the stage put a
+    destroy-the-capture path one mistyped character away in a cron line:
+    `9:2026-13-45` would collect 1 078 tokens and then throw. Validated here it
+    costs nothing and fails before the first request.
+
+    THE GENERAL RULE, worth more than this function: between `stage_collect` and
+    `stage_dump`, NOTHING MAY THROW. That span is the only one where an
+    exception destroys data that cannot be re-fetched.
+    """
+    lead_s, sep, td_s = spec.partition(":")
+    if not sep:
+        raise argparse.ArgumentTypeError(
+            f"expected LEAD:YYYY-MM-DD, got {spec!r}")
+    try:
+        lead = float(lead_s)
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"lead must be a number, got {lead_s!r} in {spec!r}") from None
+    if not lead > 0:
+        raise argparse.ArgumentTypeError(f"lead must be positive, got {lead}")
+    try:
+        td = date.fromisoformat(td_s)
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"target must be YYYY-MM-DD, got {td_s!r} in {spec!r}") from None
+    return lead, td
+
+
 def t_end(target_date: date) -> datetime:
     """`T_end` = target_date 12:00:00Z — the end of the resolution window (R8,
     verified on 8 557/8 557 events). It only serves to derive the lead; it is
@@ -1474,7 +1512,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--summary-json", default=None,
                    help="Write the cycle summary to this path.")
     p.add_argument("--coverage-also", default=None, action="append",
-                   metavar="LEAD:YYYY-MM-DD",
+                   type=_coverage_also, metavar="LEAD:YYYY-MM-DD",
                    help="Also measure venue coverage for this (lead, target), "
                         "which this cycle is NOT deciding. Coverage is a "
                         "property of the venue, not of the lead the cycle "
@@ -1600,17 +1638,39 @@ def main(argv: list[str] | None = None) -> int:
         # is the only place the live measurement can accumulate before
         # `PAPER_TAU` exists. After collection and after `prediction_time` is
         # settled, so it counts the prices this cycle just wrote.
+        # NOTHING BETWEEN `stage_collect` AND `stage_dump` MAY THROW. Session B's
+        # rule, and the reason is structural: the order-book capture above is the
+        # one thing in this project that cannot be re-fetched, and `stage_dump`
+        # below is the only place it is persisted — inside the `try`, with a
+        # `finally` that closes the connection and nothing more. An exception in
+        # this span means the dump never runs and the capture is lost.
+        #
+        # Both stages here are MEASUREMENT. Measurement is worth a great deal and
+        # is worth strictly less than the capture, and until now they were
+        # coupled the other way round: a failure to measure destroyed the thing
+        # being measured. Each is wrapped so any failure lands as a SKIPPED stage
+        # with its reason and the cycle still reaches the dump.
+        def _non_fatal(name, fn):
+            try:
+                return fn()
+            except Exception as exc:      # noqa: BLE001 — deliberate: see above
+                cy.stage(name, SKIPPED,
+                         reason="stage_failed_non_fatally",
+                         error=f"{type(exc).__name__}: {exc}"[:300])
+                return None
+
         # Before anything else that writes: the host's own events are part of
         # "scheduled versus delivered" and must not wait on the cycle succeeding.
-        stage_host_events(cy, queue_path=args.host_events, root=args.store_root,
-                          session_id=session_id)
+        _non_fatal("host_events", lambda: stage_host_events(
+            cy, queue_path=args.host_events, root=args.store_root,
+            session_id=session_id))
 
-        stage_venue_coverage(cy, con, dataset_version=args.dataset_version,
-                             universe=universe, prediction_time=prediction_time,
-                             t_asof=plan["t_asof"],
-                             root=args.store_root, session_id=session_id,
-                             target_date=target_date,
-                             lead_h=float(args.lead_hours), row_kind="own")
+        _non_fatal("venue_coverage", lambda: stage_venue_coverage(
+            cy, con, dataset_version=args.dataset_version,
+            universe=universe, prediction_time=prediction_time,
+            t_asof=plan["t_asof"], root=args.store_root, session_id=session_id,
+            target_date=target_date,
+            lead_h=float(args.lead_hours), row_kind="own"))
 
         # THE COMPLEMENTARY LEAD. Not a convenience: without it the series can
         # never hold a FINAL row for lead 9, because the only cycle carrying a
@@ -1623,19 +1683,17 @@ def main(argv: list[str] | None = None) -> int:
         # only be known AFTER the anchor. The early row is BETTING that none did;
         # a row cut at the anchor is the only thing that can settle it. Without
         # this, the series holds rows whose completeness nobody ever checked.
-        for spec in (args.coverage_also or []):
-            lead_s, _, td_s = spec.partition(":")
-            other_lead, other_td = float(lead_s), date.fromisoformat(td_s)
-            other_plan = decision_time(other_td, other_lead, now)
-            stage_venue_coverage(
-                cy, con, dataset_version=args.dataset_version,
-                universe=select_universe(con,
-                                         dataset_version=args.dataset_version,
-                                         target_date=other_td),
-                prediction_time=other_plan["prediction_time"],
-                t_asof=other_plan["t_asof"], root=args.store_root,
-                session_id=session_id, target_date=other_td,
-                lead_h=other_lead, row_kind="other_lead")
+        for other_lead, other_td in (args.coverage_also or []):
+            _non_fatal("venue_coverage:other_lead", lambda l=other_lead, d=other_td: (
+                stage_venue_coverage(
+                    cy, con, dataset_version=args.dataset_version,
+                    universe=select_universe(
+                        con, dataset_version=args.dataset_version,
+                        target_date=d),
+                    prediction_time=decision_time(d, l, now)["prediction_time"],
+                    t_asof=decision_time(d, l, now)["t_asof"],
+                    root=args.store_root, session_id=session_id,
+                    target_date=d, lead_h=l, row_kind="other_lead")))
 
         if args.collect_only:
             cy.stage("forecasts", SKIPPED, reason="collect_only")
