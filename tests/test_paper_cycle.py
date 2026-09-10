@@ -1137,7 +1137,7 @@ def test_venue_coverage_is_fail_closed_per_event_and_runs_without_deciding(con, 
                 {"event_id": "e1", "market_id": "m3"}, {"event_id": "e1", "market_id": "m4"}]
     out = paper_cycle.stage_venue_coverage(
         _cycle(), con, dataset_version="ds1", universe=universe, prediction_time=T,
-        t_asof=T, root=str(tmp_path), session_id="cyc", target_date=date(2026, 9, 10))
+        t_asof=T, root=str(tmp_path), session_id="cyc", target_date=date(2026, 9, 10), lead_h=24.0)
 
     assert out["events"] == 2
     assert out["events_complete"] == 1          # e1 dies for ONE unpriced band
@@ -1160,7 +1160,7 @@ def test_venue_coverage_respects_the_as_of_instant(con, tmp_path):
     out = paper_cycle.stage_venue_coverage(
         _cycle(), con, dataset_version="ds1",
         universe=[{"event_id": "e0", "market_id": "m1"}], prediction_time=T,
-        t_asof=T, root=str(tmp_path), session_id="cyc", target_date=date(2026, 9, 10))
+        t_asof=T, root=str(tmp_path), session_id="cyc", target_date=date(2026, 9, 10), lead_h=24.0)
     assert out["events_complete"] == 0 and out["bands_priced"] == 0
 
 
@@ -1190,7 +1190,7 @@ def test_venue_coverage_is_written_to_the_STORE_not_only_to_the_summary(con, tmp
     paper_cycle.stage_venue_coverage(
         _cycle(), con, dataset_version="ds1",
         universe=[{"event_id": "e0", "market_id": "m1"}], prediction_time=T,
-        t_asof=T, root=str(tmp_path), session_id="cyc", target_date=date(2026, 9, 10))
+        t_asof=T, root=str(tmp_path), session_id="cyc", target_date=date(2026, 9, 10), lead_h=24.0)
 
     shards = store.iter_shards(tmp_path, "venue_coverage")
     assert len(shards) == 1
@@ -1222,7 +1222,7 @@ def test_venue_coverage_row_says_whether_the_count_is_FINAL(con, tmp_path, monke
             _cycle(), con, dataset_version="ds1",
             universe=[{"event_id": "e0", "market_id": "m1"}],
             prediction_time=min(now, t_asof), t_asof=t_asof,
-            root=str(root), session_id="cyc", target_date=date(2026, 9, 10))
+            root=str(root), session_id="cyc", target_date=date(2026, 9, 10), lead_h=24.0)
         import gzip as _gz
         return json.loads(_gz.open(store.iter_shards(root, "venue_coverage")[0],
                                    "rt").readline())
@@ -1247,7 +1247,7 @@ def test_venue_coverage_row_says_whether_the_count_is_FINAL(con, tmp_path, monke
         universe=[{"event_id": "e0", "market_id": "m1"}],
         prediction_time=T - timedelta(minutes=20),   # fired early: cutoff 11:40
         t_asof=T,                                    # anchor 12:00
-        root=str(root), session_id="cyc", target_date=date(2026, 9, 10))
+        root=str(root), session_id="cyc", target_date=date(2026, 9, 10), lead_h=24.0)
     import gzip as _gz
     row = json.loads(_gz.open(store.iter_shards(root, "venue_coverage")[0],
                               "rt").readline())
@@ -1287,8 +1287,119 @@ def test_venue_coverage_join_does_not_fan_out_on_record_version(con, tmp_path):
         _cycle(), con, dataset_version="ds1",
         universe=[{"event_id": "e0", "market_id": "m1"}], prediction_time=T,
         t_asof=T, root=str(tmp_path), session_id="cyc",
-        target_date=date(2026, 9, 10))
+        target_date=date(2026, 9, 10), lead_h=24.0)
     assert out["bands"] == 2, "one band per (market, record_version), not the cross product"
+
+
+def test_coverage_row_carries_the_lead_and_says_what_kind_of_row_it_is(con, tmp_path):
+    """`lead_h` and `row_kind`, both stated rather than inferable.
+
+    The consumer rule is "the last final row per (target_date, lead)" and the
+    lead was NOT in the row — derivable from `target_date` and `t_asof`, which is
+    the derivable-but-fragile shape removed everywhere else. And `row_kind`
+    exists so nobody counts coverage rows as decision cycles: a cycle emits one
+    for the lead it carries and one for the lead it does not, and only the first
+    corresponds to a decision it could have made.
+    """
+    T = datetime(2026, 9, 9, 12, tzinfo=timezone.utc)
+    _market(con, market_id="m1", event_id="e0", end_date="2026-09-10T12:00:00Z")
+    paper_cycle.stage_venue_coverage(
+        _cycle(), con, dataset_version="ds1",
+        universe=[{"event_id": "e0", "market_id": "m1"}], prediction_time=T,
+        t_asof=T, root=str(tmp_path), session_id="cyc",
+        target_date=date(2026, 9, 10), lead_h=9.0, row_kind="other_lead")
+    import gzip as _gz
+    row = json.loads(_gz.open(store.iter_shards(tmp_path, "venue_coverage")[0],
+                              "rt").readline())
+    assert row["lead_h"] == 9.0
+    assert row["row_kind"] == "other_lead"
+
+
+def test_a_late_row_is_what_ESTABLISHES_the_early_row_was_complete(con, tmp_path):
+    """The complementary-lead row is not a re-stamped flag: it is the measurement.
+
+    Session B's escalation, and it changes what this feature is for. The lead-9
+    cycle fires at 02:40 against a 03:00 anchor, so its cutoff is its own `now` —
+    after its own collection, before the anchor. Whether any price arrives in
+    (cutoff, anchor] can only be known AFTER the anchor. The early row is
+    BETTING that none did; a row cut AT the anchor is the only thing that can
+    settle it.
+
+    Measured on the live store for 2026-09-10: 1 492 observations at or before
+    the 02:49:13 cutoff and 1 492 at or before the 03:00 anchor — the bet paid
+    that day, and only the late row could show it. Note the mechanism is NOT
+    "no collection slot in the window": the decide cycle collects its own prices
+    at 02:48, 646 of them, inside the window B first proposed. They fall before
+    its cutoff, which is why they are already counted.
+
+    The assertion is on `bands_priced` alone. `bands` and `events` legitimately
+    grow between the two rows because `markets`/`outcomes` are re-discovered
+    every cycle, so demanding equality of everything would fail on discovery and
+    send someone chasing a ghost.
+    """
+    T_ANCHOR = datetime(2026, 9, 10, 3, tzinfo=timezone.utc)
+    early_cut = T_ANCHOR - timedelta(minutes=11)      # the 02:49 row
+    _market(con, market_id="m1", event_id="e0", end_date="2026-09-10T12:00:00Z")
+    con.execute(
+        "INSERT INTO price_history (market_id, token_id, observation_time, "
+        "indicative_price, price_semantics, source, ingestion_timestamp, "
+        "dataset_version, record_version) VALUES (?,?,?,?,?,?,?,?,?)",
+        ["m1", "m1_yes", T_ANCHOR - timedelta(minutes=12), 0.5,
+         "MIDPOINT_ESTIMATED", "test", T0, "ds1", 1])
+
+    def _row(pt, root, kind):
+        paper_cycle.stage_venue_coverage(
+            _cycle(), con, dataset_version="ds1",
+            universe=[{"event_id": "e0", "market_id": "m1"}],
+            prediction_time=pt, t_asof=T_ANCHOR, root=str(root),
+            session_id="cyc", target_date=date(2026, 9, 10), lead_h=9.0,
+            row_kind=kind)
+        import gzip as _gz
+        return json.loads(_gz.open(store.iter_shards(root, "venue_coverage")[0],
+                                   "rt").readline())
+
+    early = _row(early_cut, tmp_path / "early", "own")
+    late = _row(T_ANCHOR, tmp_path / "late", "other_lead")
+
+    assert early["is_final"] is False, "cut before the anchor: a bet, not a fact"
+    assert late["is_final"] is True, "cut AT the anchor: this is what settles it"
+    assert late["bands_priced"] == early["bands_priced"], (
+        "nothing arrived in (cutoff, anchor]; if these ever differ, the series "
+        "has been holding rows whose completeness nobody checked")
+
+
+def test_a_price_inside_the_window_makes_the_early_row_genuinely_partial(con, tmp_path):
+    """And the assertion has to be able to FAIL, or it measures nothing.
+
+    Same setup with one price landing between the early cutoff and the anchor —
+    which is what a collector slot moving into that window would do. The counts
+    then differ, and that difference is the warning.
+    """
+    T_ANCHOR = datetime(2026, 9, 10, 3, tzinfo=timezone.utc)
+    early_cut = T_ANCHOR - timedelta(minutes=11)
+    _market(con, market_id="m1", event_id="e0", end_date="2026-09-10T12:00:00Z")
+    con.execute(
+        "INSERT INTO price_history (market_id, token_id, observation_time, "
+        "indicative_price, price_semantics, source, ingestion_timestamp, "
+        "dataset_version, record_version) VALUES (?,?,?,?,?,?,?,?,?)",
+        ["m1", "m1_yes", T_ANCHOR - timedelta(minutes=5), 0.5,
+         "MIDPOINT_ESTIMATED", "test", T0, "ds1", 1])
+
+    def _row(pt, root):
+        paper_cycle.stage_venue_coverage(
+            _cycle(), con, dataset_version="ds1",
+            universe=[{"event_id": "e0", "market_id": "m1"}],
+            prediction_time=pt, t_asof=T_ANCHOR, root=str(root),
+            session_id="cyc", target_date=date(2026, 9, 10), lead_h=9.0)
+        import gzip as _gz
+        return json.loads(_gz.open(store.iter_shards(root, "venue_coverage")[0],
+                                   "rt").readline())
+
+    early = _row(early_cut, tmp_path / "early")
+    late = _row(T_ANCHOR, tmp_path / "late")
+    assert early["bands_priced"] == 0 and late["bands_priced"] == 1, (
+        "the early row missed a price that landed before the anchor — exactly "
+        "what the equality assertion is there to catch")
 
 
 def _events(root):

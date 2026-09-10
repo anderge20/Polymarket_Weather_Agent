@@ -610,7 +610,8 @@ def stage_host_events(cy: Cycle, *, queue_path: str | None, root: str,
 def stage_venue_coverage(cy: Cycle, con, *, dataset_version: str,
                          universe: list[dict], prediction_time: datetime,
                          t_asof: datetime, root: str, session_id: str,
-                         target_date: date) -> dict:
+                         target_date: date, lead_h: float,
+                         row_kind: str = "own") -> dict:
     """RUNG 1 of the funnel, measured on EVERY cycle including collect-only.
 
     WHY IT LIVES HERE AND NOT IN `stage_signals`. The number the run needs before
@@ -721,6 +722,18 @@ def stage_venue_coverage(cy: Cycle, con, *, dataset_version: str,
         # per (target_date, lead), never the mean of the final rows.
         "t_asof": _iso(t_asof),
         "is_final": prediction_time >= t_asof,
+        # THE LEAD, STATED. The consumer rule is "the last final row per
+        # (target_date, lead)" and the lead was not in the row: it was derivable
+        # from `target_date` and `t_asof`, which is the derivable-but-fragile
+        # shape this project spent a night removing everywhere else.
+        "lead_h": float(lead_h),
+        # WHAT KIND OF ROW THIS IS. "own" = the (lead, target) this cycle is
+        # deciding or collecting for; "other_lead" = the complementary one,
+        # measured because coverage is a property of the venue and does not
+        # depend on which lead the cycle happens to carry. Explicit so nobody
+        # counts coverage rows as decision cycles — that would be one more wrong
+        # denominator, and this project has had four.
+        "row_kind": row_kind,
         **out,
     }
     written = store.write_shard([row], table="venue_coverage", run_id=session_id,
@@ -1460,6 +1473,18 @@ def build_parser() -> argparse.ArgumentParser:
                         "snapshot up to 15 h older (see CATALOGUE_TABLES).")
     p.add_argument("--summary-json", default=None,
                    help="Write the cycle summary to this path.")
+    p.add_argument("--coverage-also", default=None, action="append",
+                   metavar="LEAD:YYYY-MM-DD",
+                   help="Also measure venue coverage for this (lead, target), "
+                        "which this cycle is NOT deciding. Coverage is a "
+                        "property of the venue, not of the lead the cycle "
+                        "happens to carry, and without this the series can "
+                        "never hold a FINAL row for lead 9: the only cycle that "
+                        "carries a lead-9 target fires 20 min before its anchor "
+                        "by design, so `is_final` is False by construction. "
+                        "The target is passed, never derived here: 2D §C makes "
+                        "it the caller's parameter and a second derivation is "
+                        "how two of them end up disagreeing.")
     p.add_argument("--host-events", default=None,
                    help="NDJSON queue the host appends to when a slot is lost "
                         "(a lock timeout, say). Drained into a `host_events` "
@@ -1584,7 +1609,33 @@ def main(argv: list[str] | None = None) -> int:
                              universe=universe, prediction_time=prediction_time,
                              t_asof=plan["t_asof"],
                              root=args.store_root, session_id=session_id,
-                             target_date=target_date)
+                             target_date=target_date,
+                             lead_h=float(args.lead_hours), row_kind="own")
+
+        # THE COMPLEMENTARY LEAD. Not a convenience: without it the series can
+        # never hold a FINAL row for lead 9, because the only cycle carrying a
+        # lead-9 target fires at 02:40 against a 03:00 anchor — 20 minutes early
+        # BY DESIGN — so `now < t_asof` always and `is_final` is False by
+        # construction. Nothing else revisits that target.
+        #
+        # AND THE LATE ROW IS NOT A RE-STAMPED FLAG: IT IS THE MEASUREMENT.
+        # Session B's point. Whether any price arrived in (cutoff, anchor] can
+        # only be known AFTER the anchor. The early row is BETTING that none did;
+        # a row cut at the anchor is the only thing that can settle it. Without
+        # this, the series holds rows whose completeness nobody ever checked.
+        for spec in (args.coverage_also or []):
+            lead_s, _, td_s = spec.partition(":")
+            other_lead, other_td = float(lead_s), date.fromisoformat(td_s)
+            other_plan = decision_time(other_td, other_lead, now)
+            stage_venue_coverage(
+                cy, con, dataset_version=args.dataset_version,
+                universe=select_universe(con,
+                                         dataset_version=args.dataset_version,
+                                         target_date=other_td),
+                prediction_time=other_plan["prediction_time"],
+                t_asof=other_plan["t_asof"], root=args.store_root,
+                session_id=session_id, target_date=other_td,
+                lead_h=other_lead, row_kind="other_lead")
 
         if args.collect_only:
             cy.stage("forecasts", SKIPPED, reason="collect_only")
