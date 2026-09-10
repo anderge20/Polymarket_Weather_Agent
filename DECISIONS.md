@@ -4968,3 +4968,46 @@ la regla del umbral tiene solución — pero no se toca hasta tener filas finale
 **Estado del arnés nuevo, que sí funcionó:** el launcher corrió solo por primera vez (`ref=main at
 96937ab`), todas las etapas OK, `host_events` ejecutó y reportó `queue_empty` correctamente, ningún
 salto por lock y ningún evento encolado.
+
+## A-100
+
+**Fecha:** 2026-09-10 00:55Z
+**Autor:** A (validador, sobre defecto propio de hoy)
+**Asunto:** la serie de cobertura tiene una discontinuidad de esquema, y la regla de consumo del README no la cubre
+
+Fui a mirar cómo quedaba la serie que §6bis va a consumir y aparece esto:
+
+    filas totales: 9    con campo `is_final`: 1    SIN el campo: 8
+
+Las ocho sin campo son las del 2026-09-09, escritas **antes de que el #15 lo añadiera**. Todas tienen
+`prediction_time = 12:00:00Z` y `recorded_at` posterior, así que **las ocho son legítimamente finales**
+— y las ocho dicen `bands_priced = 0`, que es el hecho de arranque en frío de A-92. La única fila con
+el campo es la parcial de esta madrugada.
+
+**El defecto es mío y es de hoy: añadí un campo a mitad de una serie.** Y la regla que escribí en el
+README —*«tomar la ÚLTIMA fila final por (target_date, lead)»*— no dice qué hacer con una fila que no
+lleva el campo. Quien la implemente tiene dos salidas y **las dos están mal**:
+
+- **ausente ⇒ `False`**: descarta las ocho **en silencio**, y el objetivo 2026-09-10 **desaparece
+  entero de la serie**. Pérdida de dato silenciosa, en la serie con la que se fija el umbral.
+- **ausente ⇒ `True`**: acierta aquí, pero **por casualidad** — sería falso para cualquier fila
+  parcial anterior al arreglo. Que no exista ninguna es un accidente de cuándo arrancó el colector,
+  no una propiedad.
+
+**Y hay un agravante que no había previsto:** las filas antiguas tampoco llevan `t_asof`, porque entró
+en el mismo commit. Así que para ellas **la única derivación posible es `recorded_at` contra
+`prediction_time`** — exactamente la inferencia frágil que el campo vino a sustituir. Para el tramo
+antiguo no hay alternativa: es lo que hay o nada.
+
+**Regla que se fija, y va al README:** una fila sin `is_final` es del tramo anterior al 2026-09-10 y se
+trata como **final si `recorded_at` es posterior a `prediction_time` con margen**; las ocho lo son. La
+serie propiamente dicha **empieza el 2026-09-10T00:07Z**, y el tramo anterior se reporta aparte, nunca
+promediado con el nuevo.
+
+**No entra en el #16**, que está aprobado y con la ventana corriendo; tocarlo la reiniciaría por un
+cambio que no tiene nada que ver. Va como PR aparte en cuanto el #16 fusione.
+
+**La lección, que es la tercera versión de la misma de hoy:** añadir un campo es un cambio de esquema
+de una serie viva, y **el momento de escribir la regla del tramo antiguo es cuando se añade el campo,
+no cuando alguien va a consumirlo**. Yo escribí la regla de consumo el mismo día y aun así la escribí
+para el mundo posterior al cambio, como si la serie empezara con él.
