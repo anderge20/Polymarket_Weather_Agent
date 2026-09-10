@@ -374,6 +374,30 @@ def test_a_refused_guard_still_reaches_the_dump_and_decides_nothing(con, tmp_pat
     assert rc == 0
 
 
+def test_a_guard_that_cannot_look_REFUSES_rather_than_skipping(con, monkeypatch):
+    """"I could not check" is not "it is fine", and the difference is the guard.
+
+    Session B's residual on PR #21. Removing the deliberate `raise` left the
+    incidental one: the two `db.query` probes were unwrapped, still sitting
+    between the capture and the dump. The tempting remedy is `_non_fatal` — and
+    it is the wrong one, because it records SKIPPED and CONTINUES, which for a
+    guard means deciding on a substrate nobody managed to inspect.
+
+    So an exception is a REFUSAL: same STOPPED status, the error carried in
+    `problems`, the cycle degraded to collect-only and still reaching the dump.
+    Fails closed in both directions — when it finds ambiguity, and when it cannot
+    look.
+    """
+    def _boom(*a, **k):
+        raise RuntimeError("database is locked")
+    monkeypatch.setattr(paper_cycle.db, "query", _boom)
+
+    cy = _cycle()
+    out = paper_cycle.stage_guard_dataset_version(cy, con, dataset_version="ds1")
+    assert out["ok"] is False, "a guard that cannot look must not report ok"
+    assert any("database is locked" in p for p in out["problems"])
+
+
 def test_an_empty_database_does_not_trip_the_guard(con):
     out = paper_cycle.stage_guard_dataset_version(_cycle(), con, dataset_version="ds1")
     assert out["ok"] is True

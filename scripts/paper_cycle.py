@@ -250,32 +250,50 @@ def stage_guard_dataset_version(cy: Cycle, con, *, dataset_version: str) -> dict
     So rather than edit a file another session has open, this asserts the
     precondition under which the omission is harmless, and stops the cycle when it
     stops holding. Fixing `features.py` is delivered to B as a patch (A-37)."""
+    # A GUARD THAT CANNOT LOOK MUST REFUSE, NOT SKIP. Session B's residual on
+    # PR #21, and the distinction is the whole point: `_non_fatal` records
+    # SKIPPED and CONTINUES, and for a guard continuing is exactly what must not
+    # happen — "I could not check whether the substrate is ambiguous" is not
+    # "the substrate is fine". A missing table, a locked database, any DuckDB
+    # error: the verdict is a REFUSAL with the error inside it, so the cycle
+    # degrades to collect-only and still reaches the dump.
+    #
+    # It now fails closed in BOTH directions: when it finds ambiguity, and when
+    # it cannot look.
     problems = []
-    for table in UNFILTERED_READS:
-        rows = db.query(
-            con,
-            f"SELECT dataset_version, count(*) AS n FROM {db._q(table)} "
-            "GROUP BY 1 ORDER BY 2 DESC",
-        )
-        versions = [r["dataset_version"] for r in rows]
-        if len(versions) > 1:
-            problems.append(
-                f"{table}: {len(versions)} dataset_versions present "
-                f"({', '.join(str(v) for v in versions[:4])}) — build_feature does "
-                f"not filter by it and would mix them silently"
+    try:
+        for table in UNFILTERED_READS:
+            rows = db.query(
+                con,
+                f"SELECT dataset_version, count(*) AS n FROM {db._q(table)} "
+                "GROUP BY 1 ORDER BY 2 DESC",
             )
-        elif versions and versions[0] != dataset_version:
-            problems.append(
-                f"{table}: holds {versions[0]!r}, cycle runs as {dataset_version!r}"
+            versions = [r["dataset_version"] for r in rows]
+            if len(versions) > 1:
+                problems.append(
+                    f"{table}: {len(versions)} dataset_versions present "
+                    f"({', '.join(str(v) for v in versions[:4])}) — build_feature does "
+                    f"not filter by it and would mix them silently"
+                )
+            elif versions and versions[0] != dataset_version:
+                problems.append(
+                    f"{table}: holds {versions[0]!r}, cycle runs as {dataset_version!r}"
+                )
+            rv = db.query(
+                con, f"SELECT DISTINCT record_version FROM {db._q(table)}"
             )
-        rv = db.query(
-            con, f"SELECT DISTINCT record_version FROM {db._q(table)}"
-        )
-        if len([r["record_version"] for r in rv if r["record_version"] is not None]) > 1:
-            problems.append(
-                f"{table}: more than one record_version — latest_asof may return a "
-                f"superseded row"
-            )
+            if len([r["record_version"] for r in rv if r["record_version"] is not None]) > 1:
+                problems.append(
+                    f"{table}: more than one record_version — latest_asof may return a "
+                    f"superseded row"
+                )
+    except Exception as exc:                 # noqa: BLE001 — deliberate, above
+        detail = f"guard could not run: {type(exc).__name__}: {exc}"[:300]
+        cy.stage("guard:dataset_version", STOPPED,
+                 problems=json.dumps([detail]),
+                 effect="degraded_to_collect_only")
+        return {"ok": False, "problems": [detail]}
+
     if problems:
         # IT REFUSES THE DECISION, NOT THE CYCLE — which is what it always said
         # it did. Its own message reads "refusing to DECIDE" and the call site
