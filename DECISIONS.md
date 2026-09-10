@@ -6130,3 +6130,47 @@ eso las que más costaron eran las que iban a un sitio permanente.
 Lo que sí se puede hacer es lo que hicimos: **que la afirmación pase por alguien que no la escribió
 antes de llegar al sitio donde se hereda.** No es un método para tener razón; es un método para que el
 error no se fosilice.
+
+## A-119
+
+**Fecha:** 2026-09-10 08:52Z
+**Autor:** A
+**Asunto:** el commit de fusión es un árbol que ninguna rama probó — el hueco que quedaba en D16
+
+Los cuatro PR de la mañana dentro, los cuatro verificados **contra la punta declarada del PR** por el
+procedimiento de A-112:
+
+    #20  4e837b1 → 577   fusión 200913b  07:31:32Z
+    #21  c6258de → 584   fusión 204163b  07:55:19Z
+    #22  675af6b → 583   fusión 763c4bd  08:31:09Z
+
+**Y al mirar esos dos últimos números vi el hueco.** El #21 y el #22 salían **los dos de `035f8d3`**, así
+que el árbol que entra en `main` con el segundo **no es el que probó ninguna de las dos ramas**.
+Verificado en vez de supuesto:
+
+    #21 (base 035f8d3): 584
+    #22 (base 035f8d3): 583
+    fusión 763c4bd    : 585   ← verde, y no es ninguno de los dos
+
+El 585 es la suma de dos conjuntos de tests **que nunca habían coexistido**. Salió bien; podría no
+haber salido, y nada en el procedimiento lo habría detectado.
+
+**Lo que esto dice de D16.** El criterio es *«pytest verde verificado por quien fusiona»*, y hasta ahora
+lo he cumplido verificando **la punta del PR**. Eso es correcto y **no es suficiente cuando dos ramas
+parten de la misma base**: «verde en la punta del PR» no es «verde en lo que entra a `main`». Git
+fusiona sin conflicto y produce un árbol que **nadie ha ejecutado**, y el conflicto textual —que es lo
+único que se comprueba— **no dice nada sobre la interacción semántica** de dos cambios que tocan el
+mismo módulo.
+
+**Y es la misma forma de todo lo de esta noche, en el sitio donde más duele:** una comprobación que se
+ejecuta, sale verde, y **mide un objeto que no es el que va a producción**. El objeto comprobado era la
+rama; el objeto que entra es la fusión.
+
+**Regla que añado al procedimiento:** cuando se fusionen dos PR consecutivos **con base común**, el
+segundo se verifica **también sobre su commit de fusión**, después de fusionar y antes de declararlo
+bueno — o se rebasa sobre el `main` ya fusionado, que hace que la punta y el resultado coincidan. Lo
+segundo es preferible porque **devuelve la comprobación a un solo objeto** en vez de exigir dos.
+
+Hoy lo hice **después** de fusionar, que es lo que se puede hacer una vez ocurrido; en adelante el
+rebase va antes. La tarea del #22 ya comprobaba `mergeable` y se rebasaba si hacía falta — **pero
+`mergeable` sólo mira el conflicto textual**, y ésa es exactamente la señal que no sirve para esto.
