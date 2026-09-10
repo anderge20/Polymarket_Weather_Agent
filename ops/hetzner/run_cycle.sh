@@ -61,10 +61,25 @@ git -C "$STATE" reset -q --hard "origin/$BRANCH"
 # any market field, and the caller is this script.
 if [ "$LEAD" = "24" ]; then TD=$(date -u -d '+1 day' +%F); else TD=$(date -u +%F); fi
 
+# THE COMPLEMENTARY LEAD, derived HERE and only here. Coverage is a property of
+# the venue, not of the lead a cycle happens to carry, and without measuring the
+# other one the series can never hold a FINAL row for lead 9: the only cycle
+# carrying a lead-9 target fires at 02:40 against a 03:00 anchor — 20 minutes
+# early by design — so `is_final` is False by construction and nothing revisits
+# it. The target is DERIVED IN THE CALLER because 2D §C makes it the caller's
+# parameter; deriving it again inside the cycle is how two derivations end up
+# disagreeing.
+if [ "$LEAD" = "24" ]; then
+  ALSO="9:$(date -u +%F)"
+else
+  ALSO="24:$(date -u -d '+1 day' +%F)"
+fi
+
 ARGS=(--target-date "$TD" --dataset-version "$DSV"
       --store-root "$STATE/paper_state" --lead-hours "$LEAD"
       --summary-json "$ROOT/last_summary.json"
-      --host-events "$ROOT/pending_host_events.ndjson")
+      --host-events "$ROOT/pending_host_events.ndjson"
+      --coverage-also "$ALSO")
 
 if [ "$MODE" = "collect" ]; then
   ARGS+=(--collect-only)

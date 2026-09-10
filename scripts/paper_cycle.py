@@ -89,6 +89,44 @@ def _iso(dt: datetime) -> str:
     return dt.isoformat()
 
 
+def _coverage_also(spec: str) -> tuple[float, date]:
+    """Parse `LEAD:YYYY-MM-DD` IN ARGPARSE, before the cycle makes one request.
+
+    WHERE THIS RUNS IS THE WHOLE POINT, and session B found it. The coverage
+    stage sits between `stage_collect` — the order-book capture, the one thing
+    in this project that cannot be recovered afterwards — and `stage_dump`, the
+    only place that capture is persisted. `stage_dump` is inside the `try`; the
+    `finally` only closes the connection. So an exception anywhere in that span
+    means the dump never runs and the collection is LOST.
+
+    A bare `float()` and `date.fromisoformat()` inside the stage put a
+    destroy-the-capture path one mistyped character away in a cron line:
+    `9:2026-13-45` would collect 1 078 tokens and then throw. Validated here it
+    costs nothing and fails before the first request.
+
+    THE GENERAL RULE, worth more than this function: between `stage_collect` and
+    `stage_dump`, NOTHING MAY THROW. That span is the only one where an
+    exception destroys data that cannot be re-fetched.
+    """
+    lead_s, sep, td_s = spec.partition(":")
+    if not sep:
+        raise argparse.ArgumentTypeError(
+            f"expected LEAD:YYYY-MM-DD, got {spec!r}")
+    try:
+        lead = float(lead_s)
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"lead must be a number, got {lead_s!r} in {spec!r}") from None
+    if not lead > 0:
+        raise argparse.ArgumentTypeError(f"lead must be positive, got {lead}")
+    try:
+        td = date.fromisoformat(td_s)
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"target must be YYYY-MM-DD, got {td_s!r} in {spec!r}") from None
+    return lead, td
+
+
 def t_end(target_date: date) -> datetime:
     """`T_end` = target_date 12:00:00Z — the end of the resolution window (R8,
     verified on 8 557/8 557 events). It only serves to derive the lead; it is
@@ -610,7 +648,8 @@ def stage_host_events(cy: Cycle, *, queue_path: str | None, root: str,
 def stage_venue_coverage(cy: Cycle, con, *, dataset_version: str,
                          universe: list[dict], prediction_time: datetime,
                          t_asof: datetime, root: str, session_id: str,
-                         target_date: date) -> dict:
+                         target_date: date, lead_h: float,
+                         row_kind: str = "own") -> dict:
     """RUNG 1 of the funnel, measured on EVERY cycle including collect-only.
 
     WHY IT LIVES HERE AND NOT IN `stage_signals`. The number the run needs before
@@ -721,6 +760,18 @@ def stage_venue_coverage(cy: Cycle, con, *, dataset_version: str,
         # per (target_date, lead), never the mean of the final rows.
         "t_asof": _iso(t_asof),
         "is_final": prediction_time >= t_asof,
+        # THE LEAD, STATED. The consumer rule is "the last final row per
+        # (target_date, lead)" and the lead was not in the row: it was derivable
+        # from `target_date` and `t_asof`, which is the derivable-but-fragile
+        # shape this project spent a night removing everywhere else.
+        "lead_h": float(lead_h),
+        # WHAT KIND OF ROW THIS IS. "own" = the (lead, target) this cycle is
+        # deciding or collecting for; "other_lead" = the complementary one,
+        # measured because coverage is a property of the venue and does not
+        # depend on which lead the cycle happens to carry. Explicit so nobody
+        # counts coverage rows as decision cycles — that would be one more wrong
+        # denominator, and this project has had four.
+        "row_kind": row_kind,
         **out,
     }
     written = store.write_shard([row], table="venue_coverage", run_id=session_id,
@@ -1460,6 +1511,18 @@ def build_parser() -> argparse.ArgumentParser:
                         "snapshot up to 15 h older (see CATALOGUE_TABLES).")
     p.add_argument("--summary-json", default=None,
                    help="Write the cycle summary to this path.")
+    p.add_argument("--coverage-also", default=None, action="append",
+                   type=_coverage_also, metavar="LEAD:YYYY-MM-DD",
+                   help="Also measure venue coverage for this (lead, target), "
+                        "which this cycle is NOT deciding. Coverage is a "
+                        "property of the venue, not of the lead the cycle "
+                        "happens to carry, and without this the series can "
+                        "never hold a FINAL row for lead 9: the only cycle that "
+                        "carries a lead-9 target fires 20 min before its anchor "
+                        "by design, so `is_final` is False by construction. "
+                        "The target is passed, never derived here: 2D §C makes "
+                        "it the caller's parameter and a second derivation is "
+                        "how two of them end up disagreeing.")
     p.add_argument("--host-events", default=None,
                    help="NDJSON queue the host appends to when a slot is lost "
                         "(a lock timeout, say). Drained into a `host_events` "
@@ -1575,16 +1638,62 @@ def main(argv: list[str] | None = None) -> int:
         # is the only place the live measurement can accumulate before
         # `PAPER_TAU` exists. After collection and after `prediction_time` is
         # settled, so it counts the prices this cycle just wrote.
+        # NOTHING BETWEEN `stage_collect` AND `stage_dump` MAY THROW. Session B's
+        # rule, and the reason is structural: the order-book capture above is the
+        # one thing in this project that cannot be re-fetched, and `stage_dump`
+        # below is the only place it is persisted — inside the `try`, with a
+        # `finally` that closes the connection and nothing more. An exception in
+        # this span means the dump never runs and the capture is lost.
+        #
+        # Both stages here are MEASUREMENT. Measurement is worth a great deal and
+        # is worth strictly less than the capture, and until now they were
+        # coupled the other way round: a failure to measure destroyed the thing
+        # being measured. Each is wrapped so any failure lands as a SKIPPED stage
+        # with its reason and the cycle still reaches the dump.
+        def _non_fatal(name, fn):
+            try:
+                return fn()
+            except Exception as exc:      # noqa: BLE001 — deliberate: see above
+                cy.stage(name, SKIPPED,
+                         reason="stage_failed_non_fatally",
+                         error=f"{type(exc).__name__}: {exc}"[:300])
+                return None
+
         # Before anything else that writes: the host's own events are part of
         # "scheduled versus delivered" and must not wait on the cycle succeeding.
-        stage_host_events(cy, queue_path=args.host_events, root=args.store_root,
-                          session_id=session_id)
+        _non_fatal("host_events", lambda: stage_host_events(
+            cy, queue_path=args.host_events, root=args.store_root,
+            session_id=session_id))
 
-        stage_venue_coverage(cy, con, dataset_version=args.dataset_version,
-                             universe=universe, prediction_time=prediction_time,
-                             t_asof=plan["t_asof"],
-                             root=args.store_root, session_id=session_id,
-                             target_date=target_date)
+        _non_fatal("venue_coverage", lambda: stage_venue_coverage(
+            cy, con, dataset_version=args.dataset_version,
+            universe=universe, prediction_time=prediction_time,
+            t_asof=plan["t_asof"], root=args.store_root, session_id=session_id,
+            target_date=target_date,
+            lead_h=float(args.lead_hours), row_kind="own"))
+
+        # THE COMPLEMENTARY LEAD. Not a convenience: without it the series can
+        # never hold a FINAL row for lead 9, because the only cycle carrying a
+        # lead-9 target fires at 02:40 against a 03:00 anchor — 20 minutes early
+        # BY DESIGN — so `now < t_asof` always and `is_final` is False by
+        # construction. Nothing else revisits that target.
+        #
+        # AND THE LATE ROW IS NOT A RE-STAMPED FLAG: IT IS THE MEASUREMENT.
+        # Session B's point. Whether any price arrived in (cutoff, anchor] can
+        # only be known AFTER the anchor. The early row is BETTING that none did;
+        # a row cut at the anchor is the only thing that can settle it. Without
+        # this, the series holds rows whose completeness nobody ever checked.
+        for other_lead, other_td in (args.coverage_also or []):
+            _non_fatal("venue_coverage:other_lead", lambda l=other_lead, d=other_td: (
+                stage_venue_coverage(
+                    cy, con, dataset_version=args.dataset_version,
+                    universe=select_universe(
+                        con, dataset_version=args.dataset_version,
+                        target_date=d),
+                    prediction_time=decision_time(d, l, now)["prediction_time"],
+                    t_asof=decision_time(d, l, now)["t_asof"],
+                    root=args.store_root, session_id=session_id,
+                    target_date=d, lead_h=l, row_kind="other_lead")))
 
         if args.collect_only:
             cy.stage("forecasts", SKIPPED, reason="collect_only")
