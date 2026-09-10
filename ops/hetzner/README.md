@@ -131,38 +131,77 @@ that do not hold:
 No extra tie-breaker field is added: maximality is not the property you want —
 recency is, and `recorded_at` gives it. A field with no consumer is noise.
 
-### Rows written before the field existed
+### Two admissibility rules, decided before the series is long enough to use
 
-**`is_final` and `t_asof` arrived with PR #15 on 2026-09-09. Eight rows predate
-them**, all for `target_date = 2026-09-10`, and a consumer that applies the rule
-above naively gets one of two wrong answers:
+Both come from session B's review of PR #17, and both exclude rows for the same
+underlying reason: **a band counts as priced iff OUR collector photographed it
+before the cutoff.** That is not a venue property — it is measured, not assumed:
+in `ds_paper_v1` the lag `ingestion_timestamp − observation_time` is 27 s at
+worst, so `observation_time` IS the collection instant.
 
-- **missing ⇒ `false`** drops all eight SILENTLY, and target 2026-09-10 vanishes
-  from the series entirely — silent data loss in the series that fixes the
-  threshold;
-- **missing ⇒ `true`** is right here and right by accident. It would be wrong for
-  any pre-#15 partial row, and the only reason none exists is when the collector
-  happened to start.
+**1. WARM-UP. A row whose cutoff falls before the collector reached steady state
+on that target does not measure the venue; it measures when we switched the
+machine on.** One pass does not price everything — the 00:07Z pass priced 423 of
+539 bands, the rest being one-sided books with no midpoint — so coverage
+accumulates across passes and `events_complete`, which needs EVERY band of an
+event, is far more sensitive to this than `bands_priced`.
 
-**The rule for that segment: a row without `is_final` is treated as final iff
-`recorded_at` is later than `prediction_time` by more than a few seconds.** All
-eight are — `prediction_time` is 12:00:00Z and they were recorded between 18:58Z
-and 21:16Z — and all eight report `bands_priced = 0`, which is the cold-start
-fact: for a lead-24 target, no price of that universe existed before its anchor
-because the collector was born that morning.
+> **Excluded: any row whose cutoff precedes the first `observation_time` of that
+> target's tokens plus one collection interval (3 h).** The dataset-wide floor is
+> declared too, measured from the data: `min(observation_time)` for `ds_paper_v1`
+> is **2026-09-09T10:32:15Z**, so nothing cut before **2026-09-09T13:32:15Z** is
+> admissible under any reading.
 
-That derivation is exactly the fragile inference `is_final` was added to replace,
-and for the legacy rows there is nothing else: they carry no `t_asof` either,
-since it landed in the same commit. So:
+This is why the `events_complete = 4 of 49` (8.2 %) from the first partial row is
+**not** evidence that coverage is low: it is a one-pass number. Reading it as a
+low steady-state value, and concluding the threshold rule may have no solution,
+would be the fourth wrong denominator in this project.
 
-**The series proper begins 2026-09-10T00:07Z. The earlier segment is reported
-separately and never averaged into it.**
+**2. ROWS OLDER THAN THE FIELD ARE ADJUDICATED, NOT RULED ON.** `is_final` and
+`t_asof` arrived with PR #15. Eight rows predate them, all for
+`target_date = 2026-09-10`:
 
-*(The lesson, recorded because it cost a defect: adding a field is a schema
-change to a LIVE series, and the moment to write the rule for the old segment is
-when the field is added — not when someone comes to consume it. The consumer rule
-above was written the same day and still assumed the series began with the
-change.)*
+```
+session_id                       recorded_at (Z)       origin             bands  priced
+col_20260909T185316Z_77df77      2026-09-09T18:58:50   hetzner              561       0
+col_20260909T192211Z_4a1aa2      2026-09-09T19:28:06   hetzner              561       0
+col_34395159658_2026-09-10       2026-09-09T19:32:25   workflow_dispatch    561       0
+col_20260909T195134Z_138c4d      2026-09-09T19:58:04   hetzner              561       0
+col_20260909T202305Z_63236f      2026-09-09T20:30:14   hetzner              561       0
+col_34403706557_2026-09-10       2026-09-09T21:00:39   schedule             561       0
+col_20260909T210326Z_e36a8f      2026-09-09T21:12:54   hetzner              561       0
+col_20260909T210705Z_a101fc      2026-09-09T21:16:48   hetzner              561       0
+```
+
+Two of the eight came from Actions — one scheduled, one hand-dispatched — which
+is the last trace of the migration and the reason `github_event` exists. All
+eight share `prediction_time = 2026-09-09T12:00:00Z` and `bands = 561`.
+
+They are **the cold-start fact, not the low end of a coverage distribution**:
+each says `bands_priced = 0` because for a lead-24 target no price of that
+universe existed before its anchor — the collector was born that morning. They
+are reported as that fact and **never enter the coverage series**, which also
+means there is no series with two reading rules: there is a series, and a fact.
+
+**A consumer must treat a missing `is_final` as UNKNOWN and refuse, not infer
+it.** The tempting inference — final iff `recorded_at` beats `prediction_time` by
+more than a few seconds — is correct for these eight and **wrong as a rule**, and
+this is session B's catch: with early firing `prediction_time = now`, so the gap
+is just stage time. Measured on the live rows, the eight sit at 25 130–33 409 s
+while the partial one sits at **0.018 s** — an enormous margin today, and an
+accident of it: those 18 ms are the distance between the `timing` stage and this
+one. Insert a stage between them and a PARTIAL row starts being classified as
+final. **That is the #15 defect reappearing inside the rule meant to replace it.**
+The eight work only because their `prediction_time` is 12:00:00Z, which IS
+`t_asof` at lead 24 — a property of those rows, not of the condition.
+
+A closed set adjudicated once by id is auditable. A fragile rule running forward
+over rows nobody will look at is not.
+
+*(No consumer exists yet — `venue_coverage` has a writer and no reader in
+`src/` or `scripts/`. So "refuse" is stated here as required behaviour for
+whoever writes that reader, and nothing in the code enforces it today. Saying
+otherwise would be claiming a guard that is not there.)*
 
 *(A third route to differing finals opens when the price-history backfill lands:
 a row with `observation_time <= t_asof` ingested afterwards. Measured on the live
