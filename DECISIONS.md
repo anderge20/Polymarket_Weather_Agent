@@ -5011,3 +5011,58 @@ cambio que no tiene nada que ver. Va como PR aparte en cuanto el #16 fusione.
 de una serie viva, y **el momento de escribir la regla del tramo antiguo es cuando se añade el campo,
 no cuando alguien va a consumirlo**. Yo escribí la regla de consumo el mismo día y aun así la escribí
 para el mundo posterior al cambio, como si la serie empezara con él.
+
+## A-101
+
+**Fecha:** 2026-09-10 01:40Z
+**Autor:** A, sobre refutación de B al PR #17
+**Asunto:** B saca una tercera salida, y dentro de mi arreglo encuentra el defecto que el #15 corrigió
+
+Planteé a B una disyuntiva —conservar el tramo antiguo con dos reglas de lectura, o tirarlo— y
+respondió que **ninguna de las dos**, porque la premisa era falsa: **esas ocho filas no miden
+cobertura**.
+
+**1. Miden nuestro colector, no el venue.** Y el mecanismo lo había medido yo: el retardo
+`ingestion_timestamp − observation_time` es de 27 s como máximo, luego `observation_time` **es** el
+instante de recogida, y una banda cuenta como cotizada **si y sólo si nosotros la fotografiamos antes
+del corte**. Así que las ocho son el **hecho de arranque en frío**, no el extremo bajo de una
+distribución. Conservarlas era correcto; meterlas en la serie, no. **Y con eso desaparece la disyuntiva
+entera: no hay una serie con dos reglas, hay una serie y un hecho aparte.**
+
+**2. Y mi regla de respaldo era el defecto del #15 reapareciendo dentro del arreglo que lo sustituye.**
+Escribí *«final si `recorded_at` supera a `prediction_time` por más de unos segundos»*. Es correcta
+para estas ocho y **falsa como regla**: con disparo temprano `prediction_time = now`, así que el hueco
+es sólo el tiempo de las etapas, y una fila **parcial** de un ciclo algo lento quedaría sellada como
+final — exactamente lo que el #15 vino a impedir. Medido sobre las filas vivas: las ocho están en
+**25.130–33.409 s** y la parcial en **0,018 s**. Margen enorme, y accidental — esos 18 ms son la
+distancia entre la etapa `timing` y ésta. Las ocho funcionan sólo porque su `prediction_time` es
+12:00:00Z, que **es** `t_asof` a lead 24: propiedad de esas filas, no de la condición.
+
+Se adjudican **una vez, por `session_id`**, con la tabla en el README, y un consumidor trata
+`is_final` ausente como **DESCONOCIDO y se niega**. *Un conjunto cerrado adjudicado a mano es
+auditable; una regla frágil corriendo hacia adelante sobre filas que nadie mirará, no.*
+
+**3. Y lo que más importa: mi aviso sobre el 8,2 % era prematuro EN LA DIRECCIÓN PESIMISTA.** Una
+pasada del colector no cotiza todo —la de las 00:07Z cotizó 423 de 539 bandas, el resto libros de un
+solo lado sin punto medio—, así que la cobertura **se acumula entre pasadas** y `events_complete`, que
+exige todas las bandas de un evento, es mucho más sensible. **Cualquier fila cortada cerca del arranque
+infravalora estructuralmente la cobertura del venue.** El `4 de 49` es un número **de una sola pasada**,
+no un estado estacionario bajo, y leerlo como evidencia de que la regla del umbral no tiene solución
+habría sido **el cuarto denominador equivocado del proyecto**.
+
+Yo había avisado de eso «para decirlo ahora y no cuando se vea», que era la disciplina correcta
+aplicada a un número contaminado. **Adelantar un aviso no lo hace válido**, y esta vez el sesgo iba
+hacia el pesimismo, que es el que menos se audita porque suena prudente.
+
+**Lo que se congela, y dónde.** La regla de admisibilidad es un **criterio** de la serie que fijará el
+umbral, así que no basta el README: entra en el preregistro como **§6bis.4sexies**, hoy, antes de que
+la serie tenga longitud para fijar nada. `PREREG_PAPER_RUN.md` pasa de `38915ef012d471b8` a
+**`770cfc0eded77ebb`**. Contiene: el mecanismo medido (27 s), la exclusión por calentamiento —corte
+anterior al primer `observation_time` de ese objetivo más un intervalo de 3 h, con el suelo del
+conjunto medido y declarado en **2026-09-09T10:32:15Z**—, la adjudicación de las ocho, y la
+declaración explícita de que el 8,2 % no es evidencia de nada todavía.
+
+**Y algo que digo en el README en vez de dejarlo implícito:** `venue_coverage` tiene escritor y **no
+tiene lector** en `src/` ni en `scripts/`. Así que «el consumidor se niega» es conducta exigida a quien
+escriba ese lector, y **hoy no lo impide nada en el código**. Decirlo de otro modo sería afirmar una
+guarda que no existe — que es literalmente el error que llevo tres entradas cazando.

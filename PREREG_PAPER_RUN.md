@@ -616,6 +616,41 @@ alguien lo leerá como «no se encontró beneficio». Por tanto:
 > programadas frente a entregadas**, separando `schedule` de `workflow_dispatch`. `NO EVALUABLE` no
 > es un resultado sobre la estrategia y no se reporta como tal.
 
+**4sexies. ADMISIBILIDAD DE LAS FILAS DE COBERTURA — congelado el 2026-09-10, ANTES de que la serie
+sea lo bastante larga para fijar nada.** §6bis.2 dejó dicho que la regla se formularía sobre la puerta
+de ejecución y que el umbral se fijaría con elegibilidad medida **en vivo**. Falta decir **qué filas
+son admisibles**, y eso es un criterio: si se decide después de ver la serie, se elige el criterio que
+da el número que gusta. Aportación de la sesión B al revisar el PR #17.
+
+**El mecanismo, medido y no supuesto:** en `ds_paper_v1` el retardo
+`ingestion_timestamp − observation_time` es de **27 s como máximo** sobre 8.982 filas, luego
+`observation_time` **es** el instante de recogida. Por tanto una banda cuenta como cotizada **si y sólo
+si nuestro colector la fotografió antes del corte** — no es una propiedad del venue.
+
+1. **CALENTAMIENTO.** Una pasada del colector **no cotiza todo**: la de las 00:07Z cotizó 423 de 539
+   bandas, y el resto eran libros de un solo lado sin punto medio. La cobertura **se acumula entre
+   pasadas**, y `events_complete` —que exige TODAS las bandas de un evento— es mucho más sensible a
+   ello que `bands_priced`.
+   > **Se excluye toda fila cuyo corte sea anterior al primer `observation_time` de los tokens de ese
+   > objetivo más un intervalo de recogida (3 h).** Suelo del conjunto, medido del propio dato:
+   > `min(observation_time)` de `ds_paper_v1` es **2026-09-09T10:32:15Z**, así que **nada cortado
+   > antes de 2026-09-09T13:32:15Z es admisible** bajo ninguna lectura.
+
+2. **FILAS SIN `is_final` (anteriores al PR #15): ADJUDICADAS, no regladas.** Son **ocho**, todas de
+   `target_date = 2026-09-10`, enumeradas por `session_id` en `ops/hetzner/README.md`. **No entran en
+   la serie**: son el **hecho de arranque en frío** —un objetivo de lead 24 h no es decidible si el
+   colector no llevaba vivo desde antes del ancla— y se reportan como tal, nunca como el extremo bajo
+   de una distribución de cobertura. Un consumidor trata `is_final` ausente como **DESCONOCIDO y se
+   niega**; la inferencia por `recorded_at − prediction_time` **queda prohibida como regla** porque con
+   disparo temprano ese hueco es sólo el tiempo de las etapas y clasificaría filas parciales como
+   finales — el defecto que el #15 corrigió, reapareciendo dentro de la regla que lo sustituiría.
+
+3. **CONSECUENCIA QUE SE DECLARA AHORA para que no se lea mal después:** el `events_complete = 4 de 49`
+   (8,2 %) de la primera fila parcial es **un número de una sola pasada**, no un estado estacionario
+   bajo. **No es evidencia de que la regla del umbral carezca de solución**, y leerlo así sería el
+   cuarto denominador equivocado de este proyecto. La cobertura real no se conoce hasta pasado el
+   calentamiento.
+
 **4quinquies. LA DURACIÓN SE DECIDE AHORA, no cuando se vea que no llega.** Una corrida de duración
 fija con un mínimo que puede no alcanzarse es un diseño que se resuelve solo en la dirección
 equivocada. Se declara:
