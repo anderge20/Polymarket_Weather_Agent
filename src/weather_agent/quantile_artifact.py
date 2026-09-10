@@ -149,8 +149,50 @@ class ArtifactUnusable(Exception):
 
 def canonical_bytes(payload: Mapping[str, Any]) -> bytes:
     """The bytes an artifact_id is taken over: the JSON of everything EXCEPT
-    `artifact_id`, keys sorted, no insignificant whitespace. Two fits that
-    produced the same numbers get the same id on any machine."""
+    `artifact_id`, keys sorted, no insignificant whitespace.
+
+    THE MECHANISM, NOT A PROMISE ABOUT IT. The id changes if ANYTHING in the
+    payload changes. Only ONE of its eight fields is about the numbers, so the
+    useful split is not "about the numbers or not" — it is who puts the field
+    there:
+
+        about the numbers : strata
+        DECLARED          : schema · prereg_sha256 · model · dataset_version ·
+                            max_age_hours
+        AMBIENT           : fit_instant · code_sha256
+
+    Declared fields surprise nobody: an operator wrote them, and if `model`
+    changes the id, that is the point. The two AMBIENT fields let themselves in,
+    and they are the ones that catch people:
+
+      * `fit_instant` — so two refits of an unchanged substrate are two
+        artifacts. Measured on 2026-09-09 (A-94): a refit returned n, window and
+        quantiles identical digit for digit and a different id.
+      * `code_sha256` — the sha256 of the BYTES of `error_model.py`, not of its
+        logic. Two checkouts that differ only by line endings, a trailing
+        newline or a BOM produce different ids for identical numbers, even with
+        the instant pinned. Note the trap: the module docstring says this field
+        is "written and reported, never used to refuse", which is true of
+        REFUSAL and false of the id.
+
+    So the id identifies a FIT, not a set of numbers — and two consumers depend
+    on exactly that, which is why this is a property and not an accident:
+
+      * `fit_quantile_artifact.py` records `{"artifact_id": …, "previous": …}`.
+        Under a content hash, a refit against an unchanged substrate would write
+        `previous == artifact_id` and vanish from its own lineage.
+      * `replay_cycle.py` pins the artifact BY ID, because "the artifact that
+        cycle used" is an identity of fit; a replay against a newer one with the
+        same numbers would be computing something else and calling it a
+        reproduction.
+
+    The sentence that used to be here — "two fits that produced the same numbers
+    get the same id on any machine" — failed not by being incorrect but by being
+    a PROMISE ABOUT OUTCOMES. Promises about outcomes go stale as fields are
+    added to the payload; a description of the mechanism does not. Session B's
+    point, after catching the first replacement making the same shape of claim
+    with a shorter list.
+    """
     body = {k: v for k, v in payload.items() if k != "artifact_id"}
     return json.dumps(body, sort_keys=True, separators=(",", ":"),
                       ensure_ascii=False).encode("utf-8")

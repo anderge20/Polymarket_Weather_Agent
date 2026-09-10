@@ -64,6 +64,39 @@ def test_the_id_is_over_content_not_over_formatting(tmp_path):
     assert qa.artifact_id_of(a) == qa.artifact_id_of(b) == a["artifact_id"]
 
 
+def test_the_id_identifies_a_FIT_not_a_set_of_numbers(tmp_path):
+    """Identical quantiles fitted at a different instant are a DIFFERENT artifact.
+
+    The docstring of `canonical_bytes` used to promise the opposite — "two fits
+    that produced the same numbers get the same id on any machine" — and A-94
+    measured it false: a refit against an unchanged substrate returned n, window
+    and quantiles identical digit for digit, and a different id, because
+    `fit_instant` is hashed with the rest.
+
+    This is NOT a test against an imagined future — session B checked the five
+    consumers and two need this property today:
+
+      * `fit_quantile_artifact.py` writes `{"artifact_id": …, "previous": …}`.
+        Under a content hash, a refit against an unchanged substrate writes
+        `previous == artifact_id` and DISAPPEARS FROM ITS OWN LINEAGE RECORD.
+      * `replay_cycle.py` pins the artifact by id, because "the artifact that
+        cycle used" is an identity of fit, not of numbers.
+
+    The plausible wrong fix the old docstring invited — drop `fit_instant` from
+    the hash so the id becomes a content hash — breaks both. This test fails on
+    exactly that edit.
+    """
+    same_numbers = _payload(fit_instant=FIT + timedelta(hours=48))
+    baseline = _payload()
+    assert same_numbers["strata"] == baseline["strata"]
+    assert same_numbers["artifact_id"] != baseline["artifact_id"], (
+        "two refits of the same data are two artifacts; the id is not a content "
+        "hash of the quantiles")
+
+    # and pinning the instant is what makes it reproducible across machines
+    assert _payload(fit_instant=FIT)["artifact_id"] == baseline["artifact_id"]
+
+
 def test_changing_any_field_changes_the_id(tmp_path):
     base = _payload()["artifact_id"]
     assert _payload(fit_instant=FIT + timedelta(seconds=1))["artifact_id"] != base
