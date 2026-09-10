@@ -565,9 +565,11 @@ def test_upsert_many_works_without_pandas_and_agrees_with_it(tmp_path, monkeypat
     for.
 
     So: `importorskip` makes the absence VISIBLE as a skip instead of a false
-    pass, and a spy on `con.register` — called only by the fast path, once in the
-    whole module — makes the test assert that the two branches actually diverged
-    rather than assuming it.
+    pass, and a spy on the frame constructor — building a frame is what the fast
+    path does and the fallback never does — makes the test assert that the two
+    branches actually diverged rather than assuming it. See the comment at the
+    spy for why it is not on `con.register`, which would have been the more
+    direct signal.
     """
     import builtins
 
