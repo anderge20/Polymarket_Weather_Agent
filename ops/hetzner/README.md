@@ -152,6 +152,19 @@ event, is far more sensitive to this than `bands_priced`.
 > is **2026-09-09T10:32:15Z**, so nothing cut before **2026-09-09T13:32:15Z** is
 > admissible under any reading.
 
+**The exclusion has a declared CEILING, written by the person who proposed the
+rule.** It is GLOBAL, about the system's start, and applies ONCE. It does **not**
+extend to "also exclude bands discovered less than X ago" — that case is not
+warm-up, it is **real, permanent coverage**. Markets appear continuously and
+`select_universe` puts them in the denominator as soon as they exist: verified,
+its only predicate is gamma's `endDate` against the target date, with no filter
+on discovery age at all. So "unpriced because newly discovered" is a
+STEADY-STATE component of what we are trying to measure. Extending the exclusion
+there would inflate coverage and fix the threshold on a venue that does not
+exist. **An exclusion rule without a declared ceiling grows until the number
+comes out pretty**, so any widening has to argue itself as a change of criterion
+(R24 §8.3) rather than pass as the rule's natural continuation.
+
 This is why the `events_complete = 4 of 49` (8.2 %) from the first partial row is
 **not** evidence that coverage is low: it is a one-pass number. Reading it as a
 low steady-state value, and concluding the threshold rule may have no solution,
