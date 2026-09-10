@@ -5910,3 +5910,45 @@ tarea de fusión anclada a un directorio: **ni uno lo encontró quien lo escribi
 un defecto de rigor personal — mi comprobación no nombraba su objeto, su cero se calculó sobre 112 y
 se reportó sobre 248, **la misma forma: la comprobación se ejecutó y midió otra cosa**. Lo que la caza
 no es mirar mejor: es que mire otro.
+
+## A-114
+
+**Fecha:** 2026-09-10 05:55Z
+**Autor:** A
+**Asunto:** la guarda degrada en vez de abortar — y mi test del arreglo era vacuo, otra vez
+
+**#19 fusionado (`035f8d3`, 05:38:16Z), y su comprobación nombró su objeto.** Resolvió
+`gh pr view 19 --json headRefOid` = `d834542`, hizo `reset --hard` a ese sha y corrió 582 sobre él. Es
+el arreglo de A-112 en su primer uso: la afirmación del commit de fusión ya no es *«estaba verde»*
+sino *«estaba verde sobre este sha»*, que es lo único verificable después.
+
+**La guarda (PR #21).** `stage_guard_dataset_version` lanzaba `SystemExit` en el tramo entre la
+captura del libro y su volcado. Y lo más claro es que **el código ya decía qué hacer y hacía otra
+cosa**: su propio mensaje reza *«refusing to DECIDE»* y el comentario del sitio de llamada dice que
+*«una que sólo recoge es inofensiva»*. La intención escrita era degradar; la implementación abortaba,
+y de paso tiraba la recogida. **La asimetría corre al revés: el ciclo de mañana puede decidir otra vez,
+el libro de mañana no vuelve.**
+
+Ahora devuelve `{"ok": False, "problems": [...]}` y el llamante lleva `deciding`. Tres detalles que no
+son cosméticos: **`STOPPED` se mantiene** —el rechazo es real y tiene que verse—; las etapas saltadas
+dicen **`guard_refused_dataset_version` y no `collect_only`**, porque son hechos distintos y una serie
+que los confunda **contaría un rechazo como una recogida rutinaria**; y `dump_catalogue` sigue a
+`deciding`, porque un ciclo que no decidió no tiene decisión que reproducir.
+
+**Y el hallazgo del ciclo es mío y es el defecto de la noche cometido otra vez.** Mi primer test del
+arreglo **monkeypatcheaba la guarda entera** para que devolviera `{"ok": False}`. Pasaba. Fui a
+comprobar que pudiera fallar devolviendo el `raise SystemExit`, y **siguió pasando**: sólo ejercitaba
+la rama del llamante y **no podía fallar por lo que decía comprobar**.
+
+Es exactamente la forma del test del WAL que descarté ayer por pasar con y sin el arreglo. Escrito por
+mí **en el mismo commit en que arreglaba un defecto de esa familia**, y cazado sólo por poner el
+`raise` de vuelta a ver. El test ahora **siembra una base genuinamente ambigua y deja decidir a la
+guarda real**; con el `raise` restaurado falla con `SystemExit: ambiguous`.
+
+**Lo que añade a la frase de B** —*el autor no puede ver el objeto que él mismo dio por supuesto*—: no
+es sólo que el autor no lo vea, es que **puede no verlo en el mismo commit en que arregla ese error en
+otro sitio**. Y de ahí la consecuencia práctica: *la comprobación de «¿puede fallar?» no es ceremonia,
+es lo único que separó las dos versiones de este test.* Ocho de los defectos de estas veinticuatro
+horas se cazaron con esa misma pregunta.
+
+583 verdes. Ventana del #21 hasta 07:52Z; el #20 fusiona antes, a las 07:32Z.
