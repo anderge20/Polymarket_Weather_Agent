@@ -1,0 +1,17 @@
+  IEM EFHK: 2446 obs
+  IEM EGLC: 2542 obs
+  IEM FACT: 2832 obs
+  IEM LIMC: 2538 obs
+  IEM LLBG: 7383 obs
+  IEM LTFM: 3786 obs
+  IEM OPKC: 4542 obs
+  IEM RKSI: 3650 obs
+  IEM UUWW: 3634 obs
+  IEM VILK: 1154 obs
+  IEM ZGSZ: 1632 obs
+  IEM ZSQD: 1896 obs
+Traceback (most recent call last):
+  File [35m"/Users/mariaaleu/pmw-e2/bench.py"[0m, line [35m64[0m, in [35m<module>[0m
+    run=runs[tag].strftime("%Y-%m-%dT%H:%MZ"),f=[31mfc[0m[1;31m[tag][0m,y=y))
+                                                [31m~~[0m[1;31m^^^^^[0m
+[1;35mKeyError[0m: [35m'A'[0m

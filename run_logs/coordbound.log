@@ -1,0 +1,14 @@
+  EGLC  London           base=icon_d2      flips=ninguno hasta ±0.4°
+  LTAC  Ankara           base=icon_eu      flips=ninguno hasta ±0.4°
+  EDDM  Munich           base=icon_d2      flips=ninguno hasta ±0.4°
+  LLBG  Tel Aviv         base=icon_eu      flips=ninguno hasta ±0.4°
+  EPWA  Warsaw           base=icon_eu      flips=ninguno hasta ±0.4°
+  LIMC  Milan            base=icon_d2      flips=ninguno hasta ±0.4°
+  LEMD  Madrid           base=icon_eu      flips=ninguno hasta ±0.4°
+  LTFM  Istanbul         base=icon_eu      flips=ninguno hasta ±0.4°
+  UUWW  Moscow           base=icon_eu      flips=ninguno hasta ±0.4°
+  EHAM  Amsterdam        base=icon_d2      flips=ninguno hasta ±0.4°
+  EFHK  Helsinki         base=icon_eu      flips=ninguno hasta ±0.4°
+  LFPB  Paris            base=icon_d2      flips=ninguno hasta ±0.4°
+  LFPG  Paris            base=icon_d2      flips=ninguno hasta ±0.4°
+LISTO n= 13
