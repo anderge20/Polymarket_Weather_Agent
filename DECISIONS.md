@@ -5726,3 +5726,55 @@ mide como *programado contra entregado*, así que va por PR y con la refutación
 toca de lleno: es su serie del umbral. Y hay una alternativa que no he descartado —que la etapa calcule
 la fila de **ambos** leads en cada ciclo, en vez de sólo la del objetivo propio— que no cuesta
 peticiones pero cambia el contrato de la etapa. La decisión entre las dos es suya tanto como mía.
+
+## A-111
+
+**Fecha:** 2026-09-10 03:48Z
+**Autor:** A, sobre bloqueante de B al PR #19
+**Asunto:** añadí una forma de destruir una ranura de libro por errata — y luego arreglé la instancia, no la clase
+
+**El bloqueante, verificado antes de aceptarlo.** Mi parseo nuevo de `--coverage-also` caía aquí:
+
+    1592  stage_collect          la captura del libro — IRRECUPERABLE
+    1608  stage_venue_coverage   `float()` y `date.fromisoformat()` sin validar
+    1745  stage_dump             ÚNICO sitio donde la captura se persiste
+    1748  finally: con.close()   y nada más
+
+`stage_dump` está **dentro del `try`**. Luego una excepción en ese tramo significa que el volcado no
+ocurre y **la recogida se pierde entera**. Un `--coverage-also 9:2026-13-45` en una línea de cron
+recogía 1.078 tokens y los tiraba.
+
+**La gravedad no es la aritmética, es la asimetría que este proyecto lleva dos días repitiendo:** una
+ranura de precio se recupera y **una de libro no**. Es la razón de haber cambiado de host. Y yo acababa
+de añadir **una vía para destruir eso por un carácter mal tecleado**, dentro del PR que arreglaba la
+medición.
+
+Arreglado en dos capas: validación en `argparse` **antes de la primera petición**, y las dos etapas de
+medición **no fatales** —cualquier fallo aterriza como `SKIPPED` con la excepción dentro y el ciclo
+llega al volcado—. La regla de B, que vale más que los dos arreglos, queda escrita donde la leerá quien
+añada una etapa ahí: **entre `stage_collect` y `stage_dump`, nada puede lanzar.**
+
+**Y entonces B señaló lo que de verdad importa: arreglé las dos etapas que toqué, cuando su regla era
+sobre el TRAMO.** Queda dentro `stage_guard_dataset_version` (línea 1633), que lanza `SystemExit` en la
+281 sin envolver. Comprobado: **su propio mensaje dice «refusing to DECIDE»** y el comentario del sitio
+de llamada dice que *«una que sólo recoge es inofensiva»*. **La intención escrita es degradar a
+collect-only; la implementación es abortar** — y de paso tirar la recogida, que es lo único que no se
+repite mañana, mientras que la decisión sí.
+
+Hoy no dispara y va tras `if not args.collect_only`, así que sólo tocaría a los dos ciclos que deciden.
+Pero **si disparara, lo haría en todos ellos hasta arreglarlo**: dos recogidas perdidas al día, y la
+causa sería una guarda que existe para proteger. Tarea #35, después del #19.
+
+**Es literalmente A-91 devuelto contra mí** —*arreglar la instancia que te mordió no es arreglar la
+clase*— y esta vez la escribí yo hace doce horas.
+
+**Tercera respuesta de B, adoptada y con el argumento que la hace obvia.** Pregunté si automatizar el
+aserto de igualdad como guarda que rechaza. Su respuesta: automatizarlo **sí**, rechazar **no**, porque
+*una guarda que rechaza sería una forma deliberada de destruir una ranura de libro por un desacuerdo de
+medición* — el mismo defecto del bloqueante, esta vez a propósito. Y como él mismo sostuvo que **la
+fila tardía es la medición**, una discrepancia **no es un error: es el resultado**, y va registrada.
+
+**Y una nota sobre la secuencia, porque B la mejoró.** Dejé la comparación-en-el-dato para el PR
+siguiente diciendo que meter superficie en el tramo cuyo endurecimiento se está revisando es la
+secuencia equivocada. B lo afinó: **un PR que endurece un tramo y otro que le añade superficie no deben
+ser el mismo, porque si algo sale mal no se sabe cuál fue.** Eso no es prudencia, es poder atribuir.
