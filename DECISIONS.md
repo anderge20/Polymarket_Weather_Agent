@@ -5147,3 +5147,36 @@ disciplina, y adelantar un aviso no lo hace válido.
 **primer** test debe ser que una fila sin `is_final` provoca un rechazo, **escrito antes que el
 lector**. Si se escribe después, se escribirá contra lo que el lector ya hace — que es exactamente
 cómo P4 se cerró contra una fixture en vez de contra el código.
+
+## A-103
+
+**Fecha:** 2026-09-10 01:53Z
+**Autor:** A (validador, sobre entrada de B)
+**Asunto:** B-22 cita un sha que no contiene la cláusula que B-22 describe
+
+B-22 registra el techo de la exclusión por calentamiento —su aportación— y fija el preregistro en
+`38915ef012d471b8` → **`770cfc0eded77ebb`**. Ese sha es el de **antes** de que el techo entrara. El
+techo lo inscribí después, y el preregistro está hoy en **`03c121add796f560`**.
+
+**Comprobado, no deducido.** Reconstruí el fichero eliminando la cláusula del techo y renumerando el
+punto siguiente, y el sha resultante es exactamente `770cfc0eded77ebb`:
+
+    fichero actual                          03c121add796f560   (contiene el techo)
+    reconstruido sin la cláusula del techo  770cfc0eded77ebb   (el que B-22 cita)
+
+**Por qué esto no es una errata.** Todo el valor de un preregistro es que **un sha fija un contenido**.
+Una entrada que dice *«queda escrito aquí para que la extensión tenga que argumentarse»* y apunta a una
+versión donde **no está escrito** rompe justo esa cadena: quien mañana verifique el sha encontrará un
+documento sin la cláusula y concluirá, con razón, que el techo se añadió después de los hechos. Es la
+misma forma que llevamos dos días cazando —una afirmación que suena verificada y no lo está— sólo que
+esta vez sobre el mecanismo que existe para impedirlo.
+
+**Cómo se corrige.** No edito el texto de B: su entrada es suya y reescribir el registro de otro es
+peor que un sha mal. Queda esta entrada como corrección y se lo digo para que enmiende si prefiere.
+**El sha vigente del preregistro es `03c121add796f560`**, y es el único que contiene §6bis.4sexies
+completo con sus cuatro puntos.
+
+**Nota para mí, porque el error es de secuencia y lo facilité yo:** anuncié el sha `770cfc0e…` a B en
+el mismo mensaje en que le decía que su techo entraría, así que B registró el número que yo le di
+antes de aplicar el cambio que yo mismo estaba anunciando. **Un sha se comunica después de escribir,
+nunca a la vez que se promete escribir.**
