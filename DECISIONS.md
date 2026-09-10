@@ -5671,3 +5671,58 @@ esta noche. **El #18 es el único cuyos hallazgos fueron todos de EXCESO y ningu
 única diferencia de método es que verifiqué las ocho afirmaciones **antes** de publicar en vez de
 después. Ocho comprobaciones a mano cuestan menos que una refutación, y esta noche tenemos las dos
 muestras para compararlo en vez de suponerlo.
+
+## A-110
+
+**Fecha:** 2026-09-10 03:25Z
+**Autor:** A (validador, sobre instrumentación propia)
+**Asunto:** la serie de cobertura es estructuralmente ciega al lead 9 — nunca tendrá una fila final
+
+Comprobando que la cobertura se acumula entre pasadas —lo que §6bis.4septies acaba de congelar—
+apareció otra cosa. Las tres filas de hoy:
+
+    target 2026-09-11  t_asof 12:00  pred 00:15:58  final=False  bands 539  priced 423  4/49
+    target 2026-09-10  t_asof 03:00  pred 02:49:13  final=False  bands 561  priced 456  10/51
+    target 2026-09-11  t_asof 12:00  pred 03:16:28  final=False  bands 539  priced 437  7/49
+
+**La acumulación se confirma** en el par comparable (mismo objetivo, dos pasadas): 423 → 437 bandas y
+**4/49 → 7/49 eventos completos**. La premisa de calentamiento se sostiene con dato.
+
+**Pero la fila del medio es de lead 9 y revela un defecto estructural.** Comprobado en `run_cycle.sh`
+y en el crontab, no razonado:
+
+    run_cycle.sh:62   LEAD=24 → TD = mañana ;  si no → TD = hoy
+    cron              7 */3 * * *  collect          (LEAD por defecto = 24 → objetivo de MAÑANA)
+                      40 2 * * *   decide 9         (LEAD=9  → objetivo de HOY, t_asof 03:00)
+                      40 11 * * *  decide 24
+
+**El único ciclo que lleva un objetivo de lead 9 es el `decide 9` de las 02:40, y su ancla es las
+03:00 del mismo día.** Dispara veinte minutos antes **por diseño** —§4bis.7 y el propio comentario del
+workflow lo explican: se adelanta porque el cron deriva tarde— así que `now < t_asof` **siempre**,
+luego `prediction_time = now` y `is_final = False` **por construcción**. Y ningún otro ciclo vuelve a
+ese objetivo: los `collect` llevan el de mañana.
+
+> **Conclusión: para el lead 9 no existirá jamás una fila `is_final: True`.** No «casi nunca»: nunca.
+
+**Por qué importa, y no es cosmético.** La regla de consumo que acabo de escribir dice *«la última fila
+final por (target_date, lead)»*. Para el lead 9 **no hay ninguna**, así que la serie con la que se
+fijará el umbral de cobertura **mide la mitad de la corrida y parece completa**. Y las dos mitades no
+son intercambiables: ambos leads deciden **los mismos eventos** en instantes distintos, así que la
+cobertura a las 03:00 del día objetivo y la de las 12:00 del día anterior son medidas distintas de lo
+mismo. Fijar el umbral sólo con lead 24 es fijarlo sobre una de las dos.
+
+**Y es peor que un cero mal calculado** —el caso de A-92— porque **nada parece roto**: la etapa corre,
+escribe su fila, y la fila es correcta. Sólo falta un tipo de fila que nadie echará de menos hasta
+intentar agrupar por lead.
+
+**Arreglo candidato, con su coste, sin ejecutarlo todavía.** `run_cycle.sh` ya acepta el lead como
+segundo argumento y `collect` fuerza `--collect-only`, así que **una entrada de cron `collect 9`
+posterior a las 03:00 produciría la fila final diaria sin tocar una línea de código** — por ejemplo a
+las 03:37Z, después del ancla y antes de que el universo cambie. Coste: una pasada extra de ~22
+peticiones al día, dentro de cuota.
+
+**No lo aplico en este ciclo.** Cambia el calendario del colector, que es exactamente lo que §4quater
+mide como *programado contra entregado*, así que va por PR y con la refutación de B, a quien esto le
+toca de lleno: es su serie del umbral. Y hay una alternativa que no he descartado —que la etapa calcule
+la fila de **ambos** leads en cada ciclo, en vez de sólo la del objetivo propio— que no cuesta
+peticiones pero cambia el contrato de la etapa. La decisión entre las dos es suya tanto como mía.
