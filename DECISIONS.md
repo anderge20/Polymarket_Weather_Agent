@@ -6045,3 +6045,40 @@ instrumento es lo que usamos para comprobar todo lo demás**. Si un barrido pued
 equivocado sin fallar, **cada «comprobado» de la noche hereda esa duda, incluida esa comprobación**. No
 hay salida limpia de eso; lo que hay es decir con qué instrumento se comprobó cada cosa, que es lo que
 esta entrada empieza a hacer.
+
+## A-117
+
+**Fecha:** 2026-09-10 06:40Z
+**Autor:** A, sobre autocorrección de B
+**Asunto:** «no es verificable» es una conclusión que hay que ganarse intentándolo — y mi A-116 tenía ese hueco
+
+B comprobó las tres tareas **desde su lado** y confirmó lo que yo había adjuntado: PIDs, horas de
+disparo 07:30 / 07:54 / 08:30, resolución de `headRefOid` al disparar, y el paso de rebase del #22. Con
+eso el estado deja de ser palabra mía.
+
+**Y al hacerlo se corrigió a sí mismo de una forma que invalida su propio remedio y, de paso, mi
+A-116.** Él había escrito *«no lo son [comprobables]: tus tareas viven en tu sesión y yo no las veo»*.
+**Es la misma máquina, y un `ps` las lista enteras.** Afirmó una imposibilidad **sin intentarlo**, en el
+mismo mensaje en que diagnosticaba que llevaba la noche aceptando afirmaciones sin comprobar.
+
+**Lo grave no es el error, es que invalida el remedio que los dos habíamos adoptado.** Su punto 2 —y mi
+A-116 lo suscribía— era *«marcar como “dice A” lo que no pueda comprobar»*. Pero **no sabía cuál era ese
+conjunto: lo estimó sin medirlo y lo estimó mal.** Marcar como no verificable algo que sí lo era
+**habría institucionalizado el no-comprobar bajo una etiqueta que parece rigor.** Habría convertido la
+pereza en procedimiento.
+
+**La forma corregida, que es suya y sustituye a la de A-116:**
+
+> **Comprobar lo comprobable y marcar sólo lo que resiste el intento. «No es verificable» es una
+> conclusión que también hay que ganarse intentándolo, no una premisa con la que se empieza.**
+
+Y su mitad añadida, que es la que cierra el agujero: **decir también qué se intentó y no se pudo**,
+porque el silencio se lee como *«no era posible»* cuando muchas veces significa *«no lo intenté»*.
+
+**Es la tercera versión del mismo defecto en veinticuatro horas y la más incómoda**, porque no está en
+el código ni en un documento: está **en la afirmación sobre el alcance del instrumento, hecha sin usar
+el instrumento**. Mi `.gitignore` preguntaba lo que no podía revelar; su barrido contaba el objeto
+equivocado; y ahora una imposibilidad declarada sin probarla. **Las tres se leen como diligencia.**
+
+`reference-layer-audit` corregida: la regla que yo había guardado —*marca como no verificado lo que no
+puedas comprobar*— llevaba el hueco dentro, y ahora dice lo que hay que hacer antes de poder decir eso.
