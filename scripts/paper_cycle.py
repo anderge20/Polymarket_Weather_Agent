@@ -715,9 +715,18 @@ def stage_venue_coverage(cy: Cycle, con, *, dataset_version: str,
     band excludes the whole event, so the count IS the ceiling on what could ever
     be decided.
     """
+    # THE STAGE NAME CARRIES THE ROW KIND. Both rows were recorded under
+    # `venue_coverage`, so a cycle emitting one per lead produced two identical
+    # stage names and the summary could not tell them apart. The live 06:07Z run
+    # only showed `venue_coverage:other_lead` because `_non_fatal` caught an
+    # error and used its own label; had it succeeded it would have been a second
+    # anonymous OK. Anything counting stages from the summary — which is what
+    # §4quater does — would have counted a measurement twice.
+    stage_name = ("venue_coverage" if row_kind == "own"
+                  else f"venue_coverage:{row_kind}")
     events = sorted({r["event_id"] for r in universe if r.get("event_id")})
     if not events:
-        cy.stage("venue_coverage", SKIPPED, reason="empty_universe")
+        cy.stage(stage_name, SKIPPED, reason="empty_universe")
         return {"events": 0}
 
     rows = db.query(
@@ -809,7 +818,7 @@ def stage_venue_coverage(cy: Cycle, con, *, dataset_version: str,
     }
     written = store.write_shard([row], table="venue_coverage", run_id=session_id,
                                 root=root)
-    cy.stage("venue_coverage", OK, path=written["path"], **out)
+    cy.stage(stage_name, OK, path=written["path"], **out)
     return out
 
 
@@ -1638,7 +1647,12 @@ def main(argv: list[str] | None = None) -> int:
             Path(__file__).resolve().parents[1] / quantile_artifact.DEFAULT_PATH)
         quantile_provenance: dict = {}
 
-        timing = decision_time(target_date, args.lead_hours, _utcnow())
+        # ONE CLOCK READ FOR THE WHOLE CYCLE'S ANCHORS. Both this stage and the
+        # complementary-lead coverage below derive their anchor from it, so two
+        # rows written by one cycle can never straddle an anchor between two
+        # readings — the `is_final` defect, which was exactly this shape.
+        cycle_now = _utcnow()
+        timing = decision_time(target_date, args.lead_hours, cycle_now)
         prediction_time = timing["prediction_time"]
         # Usable exactly when the clamp did NOT bind: if `now` is still before
         # T_asof then `prediction_time` IS `now`, which is after the collection
@@ -1726,14 +1740,16 @@ def main(argv: list[str] | None = None) -> int:
         # a row cut at the anchor is the only thing that can settle it. Without
         # this, the series holds rows whose completeness nobody ever checked.
         for other_lead, other_td in (args.coverage_also or []):
-            _non_fatal("venue_coverage:other_lead", lambda l=other_lead, d=other_td: (
+            _op = decision_time(other_td, other_lead, cycle_now)
+            _non_fatal("venue_coverage:other_lead",
+                       lambda l=other_lead, d=other_td,
+                              _other=(_op["prediction_time"], _op["t_asof"]): (
                 stage_venue_coverage(
                     cy, con, dataset_version=args.dataset_version,
                     universe=select_universe(
                         con, dataset_version=args.dataset_version,
                         target_date=d),
-                    prediction_time=decision_time(d, l, now)["prediction_time"],
-                    t_asof=decision_time(d, l, now)["t_asof"],
+                    prediction_time=_other[0], t_asof=_other[1],
                     root=args.store_root, session_id=session_id,
                     target_date=d, lead_h=l, row_kind="other_lead")))
 

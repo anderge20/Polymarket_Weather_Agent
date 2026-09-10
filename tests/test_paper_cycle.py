@@ -436,10 +436,17 @@ def test_a_late_cycle_still_never_decides_after_t_asof():
 
 
 def test_main_settles_prediction_time_after_collection_not_before():
-    """Source-level: the ordering is the whole fix, so pin it."""
+    """Source-level: the ordering is the whole fix, so pin it.
+
+    It pins the ORDER, not the line. The earlier version matched the whole
+    statement including `_utcnow()`, and broke when the clock read was hoisted
+    into `cycle_now` so both this stage and the complementary-lead coverage
+    derive their anchors from ONE reading. A rename that does not touch the
+    ordering must not fail a test about the ordering.
+    """
     src = (Path(__file__).resolve().parents[1] / "scripts" / "paper_cycle.py").read_text()
     i_collect = src.index("stage_collect(cy, con")
-    i_settle = src.index("timing = decision_time(target_date, args.lead_hours, _utcnow())")
+    i_settle = src.index("timing = decision_time(target_date, args.lead_hours,")
     assert i_settle > i_collect, "prediction_time must be settled after collection"
 
 
@@ -1531,6 +1538,73 @@ def test_a_failing_measurement_stage_does_not_destroy_the_capture(con, tmp_path,
     assert "measurement exploded" in stages["venue_coverage"]["error"]
     assert "dump" in stages, "the capture must still be persisted"
     assert rc == 0
+
+
+def test_coverage_also_actually_writes_a_row_through_main(con, tmp_path, monkeypatch):
+    """The WIRING, not the stage. This is the test that was missing.
+
+    Every other coverage test calls `stage_venue_coverage` directly, so the
+    `--coverage-also` path through `main` had no test at all — and it shipped
+    with `NameError: name 'now' is not defined`, found by the first live run at
+    06:07Z on 2026-09-10. Same class as the `stage_paper` NameError that 526
+    tests passed over: the stage was covered, the call site was not.
+
+    It cost nothing only because session B's `_non_fatal` wrapper was already in
+    place from PR #19 — the stage landed as SKIPPED carrying the error and the
+    cycle still reached the dump. Without it, this NameError sat between the
+    order-book capture and the only place that capture is persisted.
+    """
+    monkeypatch.setattr(paper_cycle, "stage_discover",
+                        lambda cy, *a, **k: cy.stage("discover", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_collect",
+                        lambda cy, *a, **k: cy.stage("collect:books", paper_cycle.OK))
+
+    # A market for EACH target, or both stages report `empty_universe` and the
+    # test passes without either row being written — the vacuous shape again.
+    from weather_agent import database as _db
+    dbpath = tmp_path / "t.duckdb"
+    seed = _db.init_db(_db.connect(str(dbpath)))
+    _market(seed, market_id="m11", event_id="e11",
+            end_date="2026-09-11T12:00:00Z", dsv="ds1")
+    _market(seed, market_id="m10", event_id="e10",
+            end_date="2026-09-10T12:00:00Z", dsv="ds1")
+    seed.close()
+
+    store_root = tmp_path / "store"
+    rc = paper_cycle.main([
+        "--target-date", "2026-09-11", "--dataset-version", "ds1",
+        "--store-root", str(store_root), "--db", str(dbpath),
+        "--collect-only", "--coverage-also", "9:2026-09-10",
+        "--summary-json", str(tmp_path / "s.json")])
+    assert rc == 0
+
+    import json as _json
+    stages = [s for s in _json.loads((tmp_path / "s.json").read_text())["stages"]]
+    other = [s for s in stages if s["stage"] == "venue_coverage:other_lead"]
+    assert other, "the complementary-lead stage did not run at all"
+    assert other[0]["status"] == "OK", (
+        f"the complementary-lead stage failed: {other[0].get('error')}")
+
+    import gzip as _gz
+    rows = [_json.loads(l)
+            for p in store.iter_shards(store_root, "venue_coverage")
+            for l in _gz.open(p, "rt").read().splitlines()]
+    kinds = {r["row_kind"]: r for r in rows}
+    assert set(kinds) == {"own", "other_lead"}, (
+        "one cycle must write exactly one row per lead")
+    assert kinds["own"]["target_date"] == "2026-09-11"
+    assert kinds["other_lead"]["target_date"] == "2026-09-10"
+    assert kinds["other_lead"]["lead_h"] == 9.0
+    # BOTH ANCHORS FROM ONE CLOCK READ: the two rows of a cycle must not straddle
+    # an anchor between two readings, which is the `is_final` defect's shape.
+    assert kinds["own"]["session_id"] == kinds["other_lead"]["session_id"]
+
+    # AND THE TWO STAGES MUST BE DISTINGUISHABLE IN THE SUMMARY. Both were
+    # recorded as `venue_coverage`, so a cycle writing one row per lead produced
+    # two identical names and anything counting stages — which is what §4quater
+    # does — would count one measurement twice.
+    names = [s["stage"] for s in stages if s["stage"].startswith("venue_coverage")]
+    assert names == ["venue_coverage", "venue_coverage:other_lead"], names
 
 
 def _events(root):
