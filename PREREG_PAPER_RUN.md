@@ -645,7 +645,23 @@ si nuestro colector la fotografió antes del corte** — no es una propiedad del
    disparo temprano ese hueco es sólo el tiempo de las etapas y clasificaría filas parciales como
    finales — el defecto que el #15 corrigió, reapareciendo dentro de la regla que lo sustituiría.
 
-3. **CONSECUENCIA QUE SE DECLARA AHORA para que no se lea mal después:** el `events_complete = 4 de 49`
+3. **TECHO DE LA EXCLUSIÓN, declarado por quien propuso la regla.** La exclusión es **GLOBAL, del
+   arranque del sistema, y se aplica UNA SOLA VEZ**. No se extiende, y en particular **NO se extiende
+   a «excluir también las bandas descubiertas hace menos de X»**.
+
+   La razón es que ese caso **no es calentamiento: es cobertura real y permanente**. Los mercados
+   aparecen de forma continua y `select_universe` los mete en el denominador **en cuanto existen** —
+   verificado: su único predicado es el `endDate` de gamma contra la fecha objetivo, sin ningún filtro
+   por antigüedad de descubrimiento. Así que hay un componente **de estado estacionario** de «sin
+   cotizar por recién descubierta» que **es parte de lo que se quiere medir**.
+
+   Extender la exclusión ahí **inflaría la cobertura** y el umbral se fijaría sobre un venue que no
+   existe. **Una regla de exclusión sin techo declarado crece hasta que la medida sale bonita**, así
+   que el techo se escribe junto a la regla y cualquier ampliación **tiene que argumentarse como
+   cambio de criterio**, con §8.3 aplicándose, en vez de parecer su continuación natural. Aportación
+   de la sesión B, que puso el límite a su propia regla antes de que creciera sola.
+
+4. **CONSECUENCIA QUE SE DECLARA AHORA para que no se lea mal después:** el `events_complete = 4 de 49`
    (8,2 %) de la primera fila parcial es **un número de una sola pasada**, no un estado estacionario
    bajo. **No es evidencia de que la regla del umbral carezca de solución**, y leerlo así sería el
    cuarto denominador equivocado de este proyecto. La cobertura real no se conoce hasta pasado el
