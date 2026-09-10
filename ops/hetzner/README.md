@@ -131,6 +131,39 @@ that do not hold:
 No extra tie-breaker field is added: maximality is not the property you want —
 recency is, and `recorded_at` gives it. A field with no consumer is noise.
 
+### Rows written before the field existed
+
+**`is_final` and `t_asof` arrived with PR #15 on 2026-09-09. Eight rows predate
+them**, all for `target_date = 2026-09-10`, and a consumer that applies the rule
+above naively gets one of two wrong answers:
+
+- **missing ⇒ `false`** drops all eight SILENTLY, and target 2026-09-10 vanishes
+  from the series entirely — silent data loss in the series that fixes the
+  threshold;
+- **missing ⇒ `true`** is right here and right by accident. It would be wrong for
+  any pre-#15 partial row, and the only reason none exists is when the collector
+  happened to start.
+
+**The rule for that segment: a row without `is_final` is treated as final iff
+`recorded_at` is later than `prediction_time` by more than a few seconds.** All
+eight are — `prediction_time` is 12:00:00Z and they were recorded between 18:58Z
+and 21:16Z — and all eight report `bands_priced = 0`, which is the cold-start
+fact: for a lead-24 target, no price of that universe existed before its anchor
+because the collector was born that morning.
+
+That derivation is exactly the fragile inference `is_final` was added to replace,
+and for the legacy rows there is nothing else: they carry no `t_asof` either,
+since it landed in the same commit. So:
+
+**The series proper begins 2026-09-10T00:07Z. The earlier segment is reported
+separately and never averaged into it.**
+
+*(The lesson, recorded because it cost a defect: adding a field is a schema
+change to a LIVE series, and the moment to write the rule for the old segment is
+when the field is added — not when someone comes to consume it. The consumer rule
+above was written the same day and still assumed the series began with the
+change.)*
+
 *(A third route to differing finals opens when the price-history backfill lands:
 a row with `observation_time <= t_asof` ingested afterwards. Measured on the live
 store it is not open today — every price row is ingested within 27 s of its
