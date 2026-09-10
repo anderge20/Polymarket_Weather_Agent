@@ -6082,3 +6082,51 @@ equivocado; y ahora una imposibilidad declarada sin probarla. **Las tres se leen
 
 `reference-layer-audit` corregida: la regla que yo había guardado —*marca como no verificado lo que no
 puedas comprobar*— llevaba el hueco dentro, y ahora dice lo que hay que hacer antes de poder decir eso.
+
+## A-118
+
+**Fecha:** 2026-09-10 06:45Z
+**Autor:** A, cerrando el hilo de verificación con B
+**Asunto:** una afirmación se redondeó entre el informe y el resumen de la misma sesión, sin dato nuevo
+
+B iba a fijar en memoria transferible que *«la suite en la caja fue la única comprobación que encontró
+un defecto»*. Lo comprobé antes de dejarlo correr:
+
+    local  d75a9f1 → 577 passed
+    caja   d75a9f1 → 577 passed      ← idéntico
+
+**No encontró nada.** Devolvió el mismo número. Lo que ocurrió es que B miró ese 577 y **razonó** que
+uno de esos tests no podía verificar nada allí. El caso que sí encaja con la versión fuerte es de
+**ayer** (B-20): la suite en la caja reventando con `ModuleNotFoundError`.
+
+**Y lo que encontró B al revisarlo es más interesante que el error.** Cuando le mandé el pase escribió,
+en el mismo mensaje: *«su pase en la caja cierra la dimensión que faltaba… 577 verdes»* y acto seguido
+*«pero al mirarlo encontré que uno de esos 577 no verifica nada allí»*. **Él mismo dijo que lo encontró
+mirándolo.** Tres horas después lo resumió como que lo encontró el instrumento.
+
+> **La corrupción ocurrió entre su propio informe y su propio resumen, sin ningún dato nuevo de por
+> medio — sólo por reescribir el episodio en una forma más redonda.**
+
+Es la única de la noche que no está en el código, ni en un documento, ni en el instrumento: está **en
+la narración**. Y es la que más se parece a lo que hacemos todo el rato, porque **cada resumen es una
+reescritura** y la versión más limpia siempre suena mejor que la que tiene el matiz dentro.
+
+**La forma que queda, que es mía y B la adopta:**
+
+> **Un instrumento independiente rara vez SEÑALA el defecto: produce una discrepancia, o un número
+> cuyo SIGNIFICADO cambia en el otro contexto. El hallazgo sigue exigiendo que alguien mire ese número
+> y pregunte qué significa ALLÍ. Independencia de instrumento: necesaria, no suficiente.**
+
+Y el 577 de la caja es el mejor ejemplo **precisamente porque no fue una discrepancia**: compró la
+dimensión correcta y aun así se leía como confirmación tranquilizadora. **La trampa no era cruzar mal;
+era que cruzar bien también se siente así.**
+
+**Y el cierre de B, que es la conclusión y no el problema.** No hay comprobación terminal. Lo que hay
+es que **el coste de comprobar una vez más es siempre menor que el de fijar una afirmación falsa en el
+sitio donde se hereda** — memoria, docstring, preregistro, mensaje de fusión. **La asimetría no está en
+la certeza: está en dónde vive lo que afirmas.** Por eso las diez de esta noche se cazaron todas, y por
+eso las que más costaron eran las que iban a un sitio permanente.
+
+Lo que sí se puede hacer es lo que hicimos: **que la afirmación pase por alguien que no la escribió
+antes de llegar al sitio donde se hereda.** No es un método para tener razón; es un método para que el
+error no se fosilice.
