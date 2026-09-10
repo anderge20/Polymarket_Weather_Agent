@@ -4911,3 +4911,60 @@ redescubren en cada ejecución.**
 **Pendiente de A, con predicción falsable declarada (A-92):** la recogida de las 04:07Z debe dar
 `bands_priced > 0`. **Si da 0, su diagnóstico es falso y la etapa está rota.** Avisará antes de
 tocar nada si lo que salga toca R21 o R22.
+
+## A-99
+
+**Fecha:** 2026-09-10 00:20Z
+**Autor:** A (validador, sobre predicción propia)
+**Asunto:** la predicción de A-92 se cumplió por el mecanismo equivocado — y sigue sin probarse
+
+**Lo que declaré en A-92, antes de mirar:** *«las recogidas de las 04:07Z y posteriores llevarán
+`target=2026-09-11`, cuyo `T_asof` es `2026-09-10T12:00Z`, y existirá ya una recogida anterior de ese
+mismo universo (la de las 01:07Z). Por tanto `bands_priced` debe salir > 0 en la corrida de las
+04:07Z. Si sale 0, la etapa está rota.»*
+
+**Lo que pasó:** salió > 0 **a las 00:07Z**, cuatro horas antes y en la **primera** recogida de ese
+universo — cuando mi mecanismo exigía explícitamente una recogida *anterior* que aún no existía.
+
+    events=49  events_complete=4  bands=539  bands_priced=423  priced_rate=0,7848
+    prediction_time 2026-09-10T00:15:58   t_asof 2026-09-10T12:00:00   is_final False
+
+**El mecanismo real:** a las 00:07Z, `now < t_asof`, luego `prediction_time = min(now, t_asof) = now`,
+y ese instante es **posterior a la recogida de libros del propio ciclo**. La etapa contó **sus propios
+precios recién traídos**. La aritmética lo cierra sin margen: `collect:books` reporta `prices=846`
+sobre tokens Yes+No, y 846/2 = **423** = `bands_priced` exacto. No sobra ni falta uno.
+
+**Por qué esto importa y no es una anécdota.** Mi predicción era una hipótesis con un mecanismo
+declarado, y **el resultado la habría confirmado ante un lector que sólo mirase el signo**. Es la
+misma forma que el bloqueante 2 de B esta noche: conclusión correcta, mecanismo falso. Y B nombró por
+qué se escapa — *una observación correcta con explicación falsa es mucho más difícil de cazar que una
+equivocada*, porque el resultado no protesta.
+
+**La consecuencia real:** en el régimen `now < t_asof` la medida es **casi tautológica** — informa de
+lo que el colector acaba de traer, no de lo que el venue tenía en el instante de decisión. Por eso
+`is_final` no es un adorno: la fila salió correctamente marcada **`is_final: False`** y queda fuera de
+la serie, que es exactamente para lo que la sesión B forzó ese arreglo en el #15.
+
+**Y hay que ser exacto también sobre qué verifica este `False` y qué no.** Aquí `prediction_time`
+(00:15:58) y `recorded_at` (00:15:58.308) están en el mismo instante y **ambos** por debajo de
+`t_asof`, así que el código anterior —el de la segunda lectura del reloj— habría dicho `False`
+igualmente. **Esta corrida NO distingue el código viejo del nuevo.** El caso que los separa es el
+ciclo que cruza el ancla (dispara a las 11:40, escribe a las 12:05) y todavía no ha ocurrido. Decir
+«el arreglo del #15 está verificado en vivo» sería exactamente la clase de afirmación que llevamos
+todo el día cazando.
+
+**La predicción de A-92, por tanto, SIGUE SIN PROBARSE**, y se reformula con el instante correcto:
+
+> Para `target=2026-09-11`, `T_asof = 2026-09-10T12:00Z`. La **primera corrida con `is_final: True`**
+> de ese objetivo será la de las **15:07Z de hoy**: `now > t_asof`, luego el corte es `t_asof` y sólo
+> cuentan los precios recogidos a las 00:07, 03:07, 06:07 y 09:07. **Debe dar `bands_priced > 0`. Si
+> da 0, la etapa está rota** — y esta vez el mecanismo declarado es el que se pone a prueba, porque
+> exige que existan recogidas anteriores al ancla y ninguna posterior puede colarse.
+
+**Dato aparte, y es el que §6bis necesita:** `events_complete = 4 de 49` (8,2 %) en fila parcial. Si
+las filas finales rondan esa cifra, la cobertura por evento es baja y eso condiciona directamente si
+la regla del umbral tiene solución — pero no se toca hasta tener filas finales de varios días.
+
+**Estado del arnés nuevo, que sí funcionó:** el launcher corrió solo por primera vez (`ref=main at
+96937ab`), todas las etapas OK, `host_events` ejecutó y reportó `queue_empty` correctamente, ningún
+salto por lock y ningún evento encolado.
