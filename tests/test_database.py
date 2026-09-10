@@ -550,8 +550,33 @@ def test_upsert_many_works_without_pandas_and_agrees_with_it(tmp_path, monkeypat
     while green on the development machine where pandas happens to exist.
 
     The two branches must agree on rows, not merely both succeed.
+
+    AND THE TEST HAS TO KNOW WHICH BRANCH IT RAN. Found by session B while
+    looking at the box's 577: this test was MEANINGFUL on the laptop, where
+    pandas exists, and VACUOUS on the box — the very machine the fallback was
+    written for. `upsert_many` catches the ImportError and falls back, and the
+    `with_pandas=True` call patches nothing, so where pandas is absent BOTH
+    calls take the fallback. The test then compares the fallback against itself,
+    all three assertions hold trivially, and it is green.
+
+    Green where it does not check, checking where it is not needed — the same
+    inversion as every other empty verification this project has found, and this
+    time inside the guard written to protect the fix, on the host the fix exists
+    for.
+
+    So: `importorskip` makes the absence VISIBLE as a skip instead of a false
+    pass, and a spy on the frame constructor — building a frame is what the fast
+    path does and the fallback never does — makes the test assert that the two
+    branches actually diverged rather than assuming it. See the comment at the
+    spy for why it is not on `con.register`, which would have been the more
+    direct signal.
     """
     import builtins
+
+    pytest.importorskip(
+        "pandas",
+        reason="the fast path needs pandas; without it both branches would take "
+               "the fallback and this test would compare it against itself")
 
     from datetime import datetime, timezone
     now = datetime(2026, 9, 9, 12, tzinfo=timezone.utc)
@@ -567,6 +592,23 @@ def test_upsert_many_works_without_pandas_and_agrees_with_it(tmp_path, monkeypat
 
     def run(with_pandas: bool):
         con = db.init_db(db.connect(":memory:"))
+        # THE SPY GOES ON `pandas.DataFrame`, not on `con.register`: DuckDB's
+        # connection is a C extension and refuses attribute assignment. Building
+        # a frame is what the fast path does and the fallback never does, so it
+        # separates the branches just as cleanly.
+        import pandas as _pd
+        built = []
+        real_frame = _pd.DataFrame
+
+        class _SpyFrame(real_frame):
+            # A SUBCLASS, not a lambda: DuckDB does `isinstance(x, pd.DataFrame)`
+            # and a lambda is not a type. Subclassing keeps every consumer happy
+            # while recording that the fast path built one.
+            def __init__(self, *a, **k):
+                built.append(1)
+                super().__init__(*a, **k)
+
+        monkeypatch.setattr(_pd, "DataFrame", _SpyFrame)
         try:
             if not with_pandas:
                 real_import = builtins.__import__
@@ -581,13 +623,18 @@ def test_upsert_many_works_without_pandas_and_agrees_with_it(tmp_path, monkeypat
             got = con.execute(
                 "SELECT version, description FROM dataset_versions "
                 "ORDER BY version").fetchall()
-            return n, got
+            return n, got, bool(built)
         finally:
             con.close()
             monkeypatch.undo()
 
-    n_with, rows_with = run(True)
-    n_without, rows_without = run(False)
+    n_with, rows_with, used_frame = run(True)
+    n_without, rows_without, used_frame_without = run(False)
+
+    # THE BRANCHES MUST HAVE ACTUALLY DIVERGED. Without this the test passes on
+    # any machine lacking pandas by comparing the fallback with itself.
+    assert used_frame, "the with_pandas call did not build a frame: it took the fallback"
+    assert not used_frame_without, "the no-pandas call reached the fast path"
 
     # 6 rows in, 5 keys out: the duplicate collapsed before either path saw it.
     assert n_with == n_without == 5
