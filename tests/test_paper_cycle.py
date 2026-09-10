@@ -1607,6 +1607,45 @@ def test_coverage_also_actually_writes_a_row_through_main(con, tmp_path, monkeyp
     assert names == ["venue_coverage", "venue_coverage:other_lead"], names
 
 
+def test_the_collect_stage_reports_how_long_the_pass_took(con, tmp_path, monkeypatch):
+    """The lag from cycle start to the books landing, recorded per cycle.
+
+    Session B measured it across 2026-09-10 and it was NOT constant:
+    8.45 → 8.97 → 10.07 → 11.60 minutes over the day's four collect slots,
+    monotone, while token counts stayed flat at 846/854/880/868 — so it is not
+    "more work". Four points are not a trend; they are a reason to instrument.
+
+    It matters because R24 §6bis.4septies's warm-up premise depends on no pass
+    landing between a cycle's cutoff and its anchor, and this lag MOVES that
+    window: a growing lag shifts it earlier, which LOWERS the delay a late slot
+    would need to break the premise.
+
+    AND THIS TEST EXISTS BECAUSE THE FIRST VERSION OF THE CHANGE WAS VACUOUS.
+    The stage-side code went in, the collector-side edit silently did not apply —
+    the pattern it matched occurs in four summary dicts — and the suite passed
+    with 585 green because the field was simply absent and the reporting block
+    skipped itself. A feature that does nothing passes every test that does not
+    demand it does something.
+    """
+    fetched = datetime(2026, 9, 10, 9, 18, 41, tzinfo=timezone.utc)
+    monkeypatch.setattr(paper_cycle.collector, "collect_books",
+                        lambda *a, **k: {"tokens_requested": 3, "tokens_pending": 3,
+                                         "rows_written": 3, "prices_written": 2,
+                                         "prices_skipped_one_sided": 1,
+                                         "requests": 1, "stopped": False,
+                                         "error": None, "collected_at": fetched})
+    cy = _cycle()
+    cy.started_at = fetched - timedelta(minutes=11, seconds=36)
+    paper_cycle.stage_collect(
+        cy, con, dataset_version="ds1", session_id="cyc",
+        universe=[{"token_id": "t1", "market_id": "m1"}],
+        session=None, chunk_size=10)
+
+    st = [x for x in cy.stages if x["stage"] == "collect:books"][0]
+    assert st["collected_at"].startswith("2026-09-10T09:18:41")
+    assert st["lag_from_cycle_start_min"] == 11.6
+
+
 def _events(root):
     import gzip as _gz
     shards = store.iter_shards(root, "host_events")

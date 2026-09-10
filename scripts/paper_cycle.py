@@ -406,11 +406,29 @@ def stage_collect(cy: Cycle, con, *, dataset_version: str, session_id: str,
         collector_session_id=session_id, session=session, chunk_size=chunk_size,
         market_id_by_token=market_by_token,
     )
+    # HOW LONG THE PASS TOOK TO REACH THE VENUE, measured and not assumed.
+    # Measured on 2026-09-10 it was NOT constant: 8.45 → 8.97 → 10.07 → 11.60
+    # minutes across the day's four collect slots, monotone, while token counts
+    # stayed flat at 846/854/880/868 — so it is not "more work". Four points are
+    # not a trend; they are a reason to instrument rather than to conclude.
+    #
+    # It matters because R24 §6bis.4septies's warm-up premise depends on no pass
+    # landing between a cycle's cutoff and its anchor, and this lag MOVES that
+    # window: a growing lag shifts it earlier, which LOWERS the delay a late slot
+    # would need to break the premise. Session B's point; the value costs nothing
+    # because the collector already knows the instant it fetched.
+    extra = {}
+    if out.get("collected_at") is not None:
+        extra = {
+            "collected_at": _iso(out["collected_at"]),
+            "lag_from_cycle_start_min": round(
+                (out["collected_at"] - cy.started_at).total_seconds() / 60, 2),
+        }
     cy.stage("collect:books", STOPPED if out["stopped"] else OK,
              tokens=out["tokens_requested"], pending=out["tokens_pending"],
              rows=out["rows_written"], prices=out["prices_written"],
              one_sided=out["prices_skipped_one_sided"],
-             requests=out["requests"], error=out["error"])
+             requests=out["requests"], error=out["error"], **extra)
     return out
 
 
