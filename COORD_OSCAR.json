@@ -1,0 +1,303 @@
+{
+ "CYYZ": {
+  "lat": 43.67666667,
+  "lon": -79.63055556,
+  "name": "TORONTO LESTER B. PEARSON INT'L A, ONT",
+  "status": "Operational",
+  "wmo": "71624"
+ },
+ "DNMM": {
+  "lat": 6.59,
+  "lon": 3.2,
+  "name": "LAGOS/IKEJA",
+  "status": "Operational",
+  "wmo": "65201"
+ },
+ "EDDM": null,
+ "EFHK": {
+  "lat": 60.3267,
+  "lon": 24.95675,
+  "name": "VANTAA HELSINKI-VANTAA AIRPORT",
+  "status": "Operational",
+  "wmo": "02974"
+ },
+ "EGLC": null,
+ "EHAM": {
+  "lat": 52.3172222222,
+  "lon": 4.7897222222,
+  "name": "Schiphol Airport",
+  "status": "Operational",
+  "wmo": "06240"
+ },
+ "EPWA": {
+  "lat": 52.1627777778,
+  "lon": 20.9611111111,
+  "name": "WARSZAWA-OKECIE",
+  "status": "Operational",
+  "wmo": "12375"
+ },
+ "FACT": {
+  "lat": -33.9631,
+  "lon": 18.6023,
+  "name": "CAPE TOWN INTNL. AIRPORT",
+  "status": "Operational",
+  "wmo": "68816"
+ },
+ "KATL": {
+  "lat": 33.65,
+  "lon": -84.4166666667,
+  "name": "ATLANTA/MUN., GA.",
+  "status": "Operational",
+  "wmo": "72219"
+ },
+ "KAUS": {
+  "lat": 30.3,
+  "lon": -97.7,
+  "name": "AUSTIN/CTY, TX.",
+  "status": "Operational",
+  "wmo": "72254"
+ },
+ "KBKF": null,
+ "KDAL": {
+  "lat": 32.8469444444,
+  "lon": -96.8511111111,
+  "name": "DALLAS, TX, DALLAS LOVE FIELD ARPT",
+  "status": "Operational",
+  "wmo": "72258"
+ },
+ "KHOU": {
+  "lat": 29.645,
+  "lon": -95.2788888889,
+  "name": "HOUSTON, TX WILLIAM P HOBBY ARPT",
+  "status": "Operational",
+  "wmo": "72244"
+ },
+ "KLAX": {
+  "lat": 33.9333333333,
+  "lon": -118.4,
+  "name": "LOS ANGELES /INT.,  CA.",
+  "status": "Operational",
+  "wmo": "72295"
+ },
+ "KLGA": {
+  "lat": 40.7666666667,
+  "lon": -73.9,
+  "name": "NEW YORK/LA GUARDIA, NY.",
+  "status": "Operational",
+  "wmo": "72503"
+ },
+ "KMIA": {
+  "lat": 25.75,
+  "lon": -80.3833333333,
+  "name": "MIAMI, FL (72202-0)",
+  "status": "Operational",
+  "wmo": "72202"
+ },
+ "KORD": {
+  "lat": 41.9833333333,
+  "lon": -87.9,
+  "name": "CHICAGO/O'HARE, IL.",
+  "status": "Operational",
+  "wmo": "72530"
+ },
+ "KSEA": {
+  "lat": 47.45,
+  "lon": -122.3,
+  "name": "SEATTLE/S.-TACOMA, WA.",
+  "status": "Operational",
+  "wmo": "72793"
+ },
+ "KSFO": {
+  "lat": 37.6166666667,
+  "lon": -122.3833333333,
+  "name": "SAN FRANCISCO/INT.,  CA.",
+  "status": "Operational",
+  "wmo": "72494"
+ },
+ "LEMD": {
+  "lat": 40.4666666667,
+  "lon": -3.5555555556,
+  "name": "MADRID/BARAJAS",
+  "status": "Operational",
+  "wmo": "08221"
+ },
+ "LFPB": {
+  "lat": 48.9675,
+  "lon": 2.4275,
+  "name": "LE BOURGET",
+  "status": "Operational",
+  "wmo": "07150"
+ },
+ "LFPG": {
+  "lat": 49.0152777778,
+  "lon": 2.5344444444,
+  "name": "ROISSY",
+  "status": "Operational",
+  "wmo": "07157"
+ },
+ "LIMC": {
+  "lat": 45.63,
+  "lon": 8.7230555556,
+  "name": "MILANO MALPENSA",
+  "status": "Operational",
+  "wmo": "16066"
+ },
+ "LLBG": {
+  "lat": 32,
+  "lon": 34.9,
+  "name": "BEN-GURION INT. AIRPORT",
+  "status": "Closed",
+  "wmo": "40180"
+ },
+ "LTAC": {
+  "lat": 40.115921,
+  "lon": 32.986827,
+  "name": "ANKARA ESENBOGA HAVALIMANI",
+  "status": "Operational",
+  "wmo": "17128"
+ },
+ "LTFM": null,
+ "MMMX": null,
+ "MPMG": null,
+ "NZWN": {
+  "lat": -41.3312,
+  "lon": 174.8056,
+  "name": "WELLINGTON AIRPORT",
+  "status": "Closed",
+  "wmo": "93436"
+ },
+ "OEJN": {
+  "lat": 21.657559,
+  "lon": 39.185749,
+  "name": "King AbdulAziz AirPort",
+  "status": "Operational",
+  "wmo": "41024"
+ },
+ "OPKC": {
+  "lat": 24.9,
+  "lon": 67.1333333333,
+  "name": "KARACHI AIRPORT",
+  "status": "Operational",
+  "wmo": "41780"
+ },
+ "RCSS": null,
+ "RCTP": null,
+ "RJTT": {
+  "lat": 35.5533333333,
+  "lon": 139.7811111111,
+  "name": "TOKYO INTERNATIONAL AIRPORT",
+  "status": "Operational",
+  "wmo": "47671"
+ },
+ "RKPK": {
+  "lat": 35.1666666667,
+  "lon": 128.9333333333,
+  "name": "GIMHAE AB",
+  "status": "Closed",
+  "wmo": "47153"
+ },
+ "RKSI": null,
+ "RPLL": {
+  "lat": 14.5047,
+  "lon": 121.004751,
+  "name": "NINOY AQUINO INTERNATIONAL AIRPORT",
+  "status": "Operational",
+  "wmo": "98429"
+ },
+ "SAEZ": {
+  "lat": -34.81856,
+  "lon": -58.54229,
+  "name": "EZEIZA AERO",
+  "status": "Operational",
+  "wmo": "87576"
+ },
+ "SBGR": {
+  "lat": -23.4333333333,
+  "lon": -46.4666666667,
+  "name": "GUARULHOS",
+  "status": "Closed",
+  "wmo": "83075"
+ },
+ "UUWW": null,
+ "VHHH": {
+  "lat": 22.3094,
+  "lon": 113.9219,
+  "name": "HONG KONG INTERNATIONAL AIRPORT",
+  "status": "Operational",
+  "wmo": "45007"
+ },
+ "VILK": {
+  "lat": 26.75,
+  "lon": 80.8833,
+  "name": "LUCKNOW/AMAUSI",
+  "status": "Operational",
+  "wmo": "42369"
+ },
+ "WIHH": null,
+ "WMKK": {
+  "lat": 2.730833,
+  "lon": 101.7031,
+  "name": "KUALA LUMPUR INTERNATIONAL AIRPORT (KLIA)",
+  "status": "Operational",
+  "wmo": "48650"
+ },
+ "WSSS": {
+  "lat": 1.3679,
+  "lon": 103.9824,
+  "name": "SINGAPORE/CHANGI AIRPORT",
+  "status": "Operational",
+  "wmo": "48698"
+ },
+ "ZBAA": {
+  "lat": 39.9333333333,
+  "lon": 116.2833333333,
+  "name": "BEIJING",
+  "status": "Operational",
+  "wmo": "54511"
+ },
+ "ZGGG": {
+  "lat": 23.2166666667,
+  "lon": 113.4833333333,
+  "name": "GUANGZHOU",
+  "status": "Operational",
+  "wmo": "59287"
+ },
+ "ZGSZ": {
+  "lat": 22.55,
+  "lon": 114.1,
+  "name": "SHENZHEN",
+  "status": "Operational",
+  "wmo": "59493"
+ },
+ "ZHCC": {
+  "lat": 34.7166666667,
+  "lon": 113.65,
+  "name": "ZHENGZHOU",
+  "status": "Operational",
+  "wmo": "57083"
+ },
+ "ZHHH": {
+  "lat": 30.6,
+  "lon": 114.05,
+  "name": "WUHAN",
+  "status": "Operational",
+  "wmo": "57494"
+ },
+ "ZSJN": null,
+ "ZSPD": null,
+ "ZSQD": {
+  "lat": 36.0666666667,
+  "lon": 120.3333333333,
+  "name": "QINGDAO",
+  "status": "Operational",
+  "wmo": "54857"
+ },
+ "ZUCK": {
+  "lat": 29.5833333333,
+  "lon": 106.4666666667,
+  "name": "CHONGQING (57516-0)",
+  "status": "Operational",
+  "wmo": "57516"
+ },
+ "ZUUU": null
+}

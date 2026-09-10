@@ -1,0 +1,448 @@
+{
+ "prereg_sha256": "0508ced1213c39e17766bbc6ccf249a1071849b1fe4d2d852dc104cb00b15796",
+ "min_eventos": 100,
+ "n_filas": 10000,
+ "n_eventos": 1308,
+ "t_obs": -0.002522200920887955,
+ "p_familia": 1.0,
+ "n_permutaciones": 2000,
+ "celdas_evaluables": {
+  "anchura_fc=alta": {
+   "eventos": 526,
+   "filas": 3164,
+   "delta": -0.007313053672636419,
+   "pct_eventos": 0.40214067278287463,
+   "pct_filas": 0.3164,
+   "brier_modelo": 0.04708678494634059,
+   "brier_mercado": 0.03977373127370417,
+   "bss_modelo": 0.3333829610193103,
+   "bss_mercado": 0.4369153255822176,
+   "tasa_base": 0.07648546144121365,
+   "se": 0.001607257449525901
+  },
+  "anchura_fc=baja": {
+   "eventos": 823,
+   "filas": 3597,
+   "delta": -0.01084768836321829,
+   "pct_eventos": 0.6292048929663608,
+   "pct_filas": 0.3597,
+   "brier_modelo": 0.05503114179663503,
+   "brier_mercado": 0.04418345343341674,
+   "bss_modelo": 0.18797751441895016,
+   "bss_mercado": 0.3480426444513377,
+   "tasa_base": 0.07311648596052266,
+   "se": 0.0017323370920001922
+  },
+  "anchura_fc=media": {
+   "eventos": 871,
+   "filas": 3239,
+   "delta": -0.010747763494326094,
+   "pct_eventos": 0.6659021406727829,
+   "pct_filas": 0.3239,
+   "brier_modelo": 0.0529678519475524,
+   "brier_mercado": 0.04222008845322631,
+   "bss_modelo": 0.19381951879200632,
+   "bss_mercado": 0.3574024625433416,
+   "tasa_base": 0.07070083359061438,
+   "se": 0.0015316594634125593
+  },
+  "banda=centro": {
+   "eventos": 343,
+   "filas": 1057,
+   "delta": -0.037569278448617016,
+   "pct_eventos": 0.2622324159021407,
+   "pct_filas": 0.1057,
+   "brier_modelo": 0.2056383486945962,
+   "brier_mercado": 0.1680690702459792,
+   "bss_modelo": 0.013409772575969092,
+   "bss_mercado": 0.19365573936218172,
+   "tasa_base": 0.2961210974456008,
+   "se": 0.0049548420946781
+  },
+  "banda=cola_cercana": {
+   "eventos": 374,
+   "filas": 1175,
+   "delta": -0.032056560635909934,
+   "pct_eventos": 0.28593272171253825,
+   "pct_filas": 0.1175,
+   "brier_modelo": 0.13097309999761206,
+   "brier_mercado": 0.09891653936170212,
+   "bss_modelo": 0.09412798609214212,
+   "bss_mercado": 0.3158463476697527,
+   "tasa_base": 0.1753191489361702,
+   "se": 0.004318877764529301
+  },
+  "banda=cola_lejana": {
+   "eventos": 1296,
+   "filas": 7768,
+   "delta": -0.002522200920887955,
+   "pct_eventos": 0.9908256880733946,
+   "pct_filas": 0.7768,
+   "brier_modelo": 0.018954602214657265,
+   "brier_mercado": 0.01643240129376931,
+   "bss_modelo": 0.2956716592964084,
+   "bss_mercado": 0.3893933617838592,
+   "tasa_base": 0.02767765190525232,
+   "se": 0.0007503400908205907
+  },
+  "estacion=EGLC": {
+   "eventos": 115,
+   "filas": 1266,
+   "delta": -0.00442209775784156,
+   "pct_eventos": 0.08792048929663608,
+   "pct_filas": 0.1266,
+   "brier_modelo": 0.05148465462987948,
+   "brier_mercado": 0.04706255687203792,
+   "bss_modelo": 0.14031005765518456,
+   "bss_mercado": 0.2141501755274261,
+   "tasa_base": 0.06398104265402843,
+   "se": 0.0023960628669594626
+  },
+  "lead=24": {
+   "eventos": 1263,
+   "filas": 4943,
+   "delta": -0.007819129834613053,
+   "pct_eventos": 0.9655963302752294,
+   "pct_filas": 0.4943,
+   "brier_modelo": 0.05309620640754447,
+   "brier_mercado": 0.04527707657293142,
+   "bss_modelo": 0.21968022898039774,
+   "bss_mercado": 0.33459280023428006,
+   "tasa_base": 0.07343718389641918,
+   "se": 0.001045459629511117
+  },
+  "lead=9": {
+   "eventos": 1308,
+   "filas": 5057,
+   "delta": -0.011532466689410263,
+   "pct_eventos": 1.0,
+   "pct_filas": 0.5057,
+   "brier_modelo": 0.05063039920869047,
+   "brier_mercado": 0.039097932519280204,
+   "bss_modelo": 0.2552319026030143,
+   "bss_mercado": 0.42487333164179486,
+   "tasa_base": 0.0733636543405181,
+   "se": 0.0013313248148491426
+  },
+  "precio_bin_0.1=0": {
+   "eventos": 1290,
+   "filas": 7919,
+   "delta": -0.004837697652999781,
+   "pct_eventos": 0.9862385321100917,
+   "pct_filas": 0.7919,
+   "brier_modelo": 0.013168440139424835,
+   "brier_mercado": 0.008330742486425053,
+   "bss_modelo": -0.5468248118228656,
+   "bss_mercado": 0.02143313540004277,
+   "tasa_base": 0.008586942795807552,
+   "se": 0.0004522493264257226
+  },
+  "precio_bin_0.1=1": {
+   "eventos": 301,
+   "filas": 573,
+   "delta": -0.010272466106177186,
+   "pct_eventos": 0.2301223241590214,
+   "pct_filas": 0.0573,
+   "brier_modelo": 0.10932270519867282,
+   "brier_mercado": 0.09905023909249563,
+   "bss_modelo": -0.11714330766184422,
+   "bss_mercado": -0.012171364799253181,
+   "tasa_base": 0.1099476439790576,
+   "se": 0.0030036104182454017
+  },
+  "precio_bin_0.1=2": {
+   "eventos": 267,
+   "filas": 541,
+   "delta": -0.006075703782459307,
+   "pct_eventos": 0.20412844036697247,
+   "pct_filas": 0.0541,
+   "brier_modelo": 0.18065982716508408,
+   "brier_mercado": 0.17458412338262477,
+   "bss_modelo": -0.022582557331630948,
+   "bss_mercado": 0.011807538180745758,
+   "tasa_base": 0.22920517560073936,
+   "se": 0.004680457294751132
+  },
+  "precio_bin_0.1=3": {
+   "eventos": 249,
+   "filas": 450,
+   "delta": -0.022963619389557155,
+   "pct_eventos": 0.19036697247706422,
+   "pct_filas": 0.045,
+   "brier_modelo": 0.24792346605622384,
+   "brier_mercado": 0.22495984666666669,
+   "bss_modelo": -0.09137848908470092,
+   "bss_mercado": 0.009709159583487281,
+   "tasa_base": 0.3488888888888889,
+   "se": 0.00725098234576904
+  },
+  "precio_bin_0.1=4": {
+   "eventos": 188,
+   "filas": 268,
+   "delta": -0.0583972779184552,
+   "pct_eventos": 0.1437308868501529,
+   "pct_filas": 0.0268,
+   "brier_modelo": 0.3074649738139776,
+   "brier_mercado": 0.24906769589552238,
+   "bss_modelo": -0.2342591258224418,
+   "bss_mercado": 0.00016553822937626084,
+   "tasa_base": 0.4701492537313433,
+   "se": 0.01548772556205941
+  },
+  "unidad=C": {
+   "eventos": 1026,
+   "filas": 7937,
+   "delta": -0.010387743019897734,
+   "pct_eventos": 0.7844036697247706,
+   "pct_filas": 0.7937,
+   "brier_modelo": 0.05461414575392823,
+   "brier_mercado": 0.044226402734030494,
+   "bss_modelo": 0.18855590441083447,
+   "bss_mercado": 0.34289454000850483,
+   "tasa_base": 0.07257150056696485,
+   "se": 0.0012034924519480738
+  },
+  "unidad=F": {
+   "eventos": 282,
+   "filas": 2063,
+   "delta": -0.007039324513772018,
+   "pct_eventos": 0.21559633027522937,
+   "pct_filas": 0.2063,
+   "brier_modelo": 0.041211828512802556,
+   "brier_mercado": 0.03417250399903054,
+   "bss_modelo": 0.41726879768828273,
+   "bss_mercado": 0.516804154050799,
+   "tasa_base": 0.07658749394086282,
+   "se": 0.002127986417264703
+  }
+ },
+ "celdas_insuficientes": {
+  "estacion=CYYZ": {
+   "eventos": 26,
+   "filas": 201
+  },
+  "estacion=DNMM": {
+   "eventos": 4,
+   "filas": 88
+  },
+  "estacion=EDDM": {
+   "eventos": 27,
+   "filas": 193
+  },
+  "estacion=EFHK": {
+   "eventos": 27,
+   "filas": 193
+  },
+  "estacion=EHAM": {
+   "eventos": 27,
+   "filas": 193
+  },
+  "estacion=EPWA": {
+   "eventos": 27,
+   "filas": 193
+  },
+  "estacion=FACT": {
+   "eventos": 27,
+   "filas": 193
+  },
+  "estacion=KATL": {
+   "eventos": 25,
+   "filas": 169
+  },
+  "estacion=KAUS": {
+   "eventos": 25,
+   "filas": 189
+  },
+  "estacion=KBKF": {
+   "eventos": 24,
+   "filas": 167
+  },
+  "estacion=KDAL": {
+   "eventos": 26,
+   "filas": 191
+  },
+  "estacion=KHOU": {
+   "eventos": 26,
+   "filas": 191
+  },
+  "estacion=KLAX": {
+   "eventos": 26,
+   "filas": 191
+  },
+  "estacion=KLGA": {
+   "eventos": 26,
+   "filas": 191
+  },
+  "estacion=KMIA": {
+   "eventos": 26,
+   "filas": 191
+  },
+  "estacion=KORD": {
+   "eventos": 26,
+   "filas": 191
+  },
+  "estacion=KSEA": {
+   "eventos": 26,
+   "filas": 201
+  },
+  "estacion=KSFO": {
+   "eventos": 26,
+   "filas": 191
+  },
+  "estacion=LEMD": {
+   "eventos": 27,
+   "filas": 193
+  },
+  "estacion=LFPB": {
+   "eventos": 26,
+   "filas": 181
+  },
+  "estacion=LFPG": {
+   "eventos": 1,
+   "filas": 22
+  },
+  "estacion=LIMC": {
+   "eventos": 27,
+   "filas": 193
+  },
+  "estacion=LTAC": {
+   "eventos": 27,
+   "filas": 193
+  },
+  "estacion=MMMX": {
+   "eventos": 25,
+   "filas": 189
+  },
+  "estacion=MPMG": {
+   "eventos": 24,
+   "filas": 188
+  },
+  "estacion=NZWN": {
+   "eventos": 27,
+   "filas": 193
+  },
+  "estacion=OEJN": {
+   "eventos": 27,
+   "filas": 193
+  },
+  "estacion=OPKC": {
+   "eventos": 26,
+   "filas": 171
+  },
+  "estacion=RCSS": {
+   "eventos": 30,
+   "filas": 219
+  },
+  "estacion=RJTT": {
+   "eventos": 27,
+   "filas": 193
+  },
+  "estacion=RKPK": {
+   "eventos": 27,
+   "filas": 193
+  },
+  "estacion=RKSI": {
+   "eventos": 45,
+   "filas": 331
+  },
+  "estacion=RPLL": {
+   "eventos": 26,
+   "filas": 171
+  },
+  "estacion=SAEZ": {
+   "eventos": 25,
+   "filas": 199
+  },
+  "estacion=SBGR": {
+   "eventos": 26,
+   "filas": 201
+  },
+  "estacion=VILK": {
+   "eventos": 26,
+   "filas": 191
+  },
+  "estacion=WIHH": {
+   "eventos": 8,
+   "filas": 155
+  },
+  "estacion=WMKK": {
+   "eventos": 27,
+   "filas": 193
+  },
+  "estacion=WSSS": {
+   "eventos": 27,
+   "filas": 193
+  },
+  "estacion=ZBAA": {
+   "eventos": 27,
+   "filas": 193
+  },
+  "estacion=ZGGG": {
+   "eventos": 26,
+   "filas": 171
+  },
+  "estacion=ZGSZ": {
+   "eventos": 27,
+   "filas": 193
+  },
+  "estacion=ZHCC": {
+   "eventos": 3,
+   "filas": 6
+  },
+  "estacion=ZHHH": {
+   "eventos": 27,
+   "filas": 193
+  },
+  "estacion=ZSPD": {
+   "eventos": 27,
+   "filas": 193
+  },
+  "estacion=ZSQD": {
+   "eventos": 24,
+   "filas": 127
+  },
+  "estacion=ZUCK": {
+   "eventos": 27,
+   "filas": 193
+  },
+  "estacion=ZUUU": {
+   "eventos": 27,
+   "filas": 193
+  },
+  "precio_bin_0.1=5": {
+   "eventos": 77,
+   "filas": 81
+  },
+  "precio_bin_0.1=6": {
+   "eventos": 21,
+   "filas": 23
+  },
+  "precio_bin_0.1=7": {
+   "eventos": 24,
+   "filas": 26
+  },
+  "precio_bin_0.1=8": {
+   "eventos": 28,
+   "filas": 31
+  },
+  "precio_bin_0.1=9": {
+   "eventos": 56,
+   "filas": 88
+  }
+ },
+ "ganadoras": {},
+ "VEREDICTO": "EL_MODELO_NO_SUPERA_AL_MERCADO_EN_NINGUNO_DE_LOS_ESTRATOS_DECLARADOS",
+ "ejes_no_disponibles": {
+  "antiguedad": "discovered_at nulo en 10000/10000 filas; el eje no se evalua y no se colapsa a una celda",
+  "spread_libro": "orderbook_snapshots vacia y todo price_history es MIDPOINT_ESTIMATED; PREREG_R22 \u00a70 premisa 1"
+ },
+ "celdas_degeneradas": {
+  "completitud=baja": {
+   "eventos": 1308,
+   "filas": 10000,
+   "delta": -0.009696964282083997,
+   "motivo": "cubre la muestra entera: no estratifica"
+  }
+ },
+ "nota": "Un resultado POSITIVO no es un hallazgo: es un candidato sobre el que preregistrar otra cosa (PREREG_R22 \u00a70). Brier es un promedio sobre toda la distribucion; el beneficio vive en un subconjunto elegido. Condicion necesaria, nunca suficiente."
+}

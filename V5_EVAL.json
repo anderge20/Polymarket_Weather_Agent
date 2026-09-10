@@ -1,0 +1,777 @@
+{
+ "n_extract": 1200,
+ "exclusiones": {
+  "historia=0<10": 64,
+  "historia=2<10": 60,
+  "historia=4<10": 46,
+  "historia=6<10": 32,
+  "historia=8<10": 32,
+  "f_o_y_nulo": 110,
+  "historia=5<10": 28,
+  "historia=7<10": 28,
+  "historia=9<10": 28
+ },
+ "contrastes": {
+  "icon_d2": {
+   "label": "icon_d2",
+   "n_obs": 80,
+   "n_eventos": 40,
+   "n_est": 2,
+   "regiones": [
+    "EUROPA"
+   ],
+   "mae_bruto_icon": 1.0262499999999999,
+   "mae_bruto_ecmwf": 1.3237500000000002,
+   "mae_res_icon": 1.1009302690268998,
+   "mae_res_ecmwf": 1.2122571547919614,
+   "rmse_icon": 1.4471474217750728,
+   "rmse_ecmwf": 1.6172236658136157,
+   "bias_icon": -0.5901055857444967,
+   "bias_ecmwf": -0.35277809109250285,
+   "delta_mae_res": -0.11132688576506156,
+   "ic95": null,
+   "clasificacion": "INCONCLUSO_POR_DISE\u00d1O"
+  },
+  "icon_eu": {
+   "label": "icon_eu",
+   "n_obs": 156,
+   "n_eventos": 78,
+   "n_est": 4,
+   "regiones": [
+    "EUROPA",
+    "ORIENTE_MEDIO"
+   ],
+   "mae_bruto_icon": 0.7365384615384614,
+   "mae_bruto_ecmwf": 1.2179487179487178,
+   "mae_res_icon": 0.7069686971809309,
+   "mae_res_ecmwf": 0.8570667104465309,
+   "rmse_icon": 0.964339060263407,
+   "rmse_ecmwf": 1.1553126201401407,
+   "bias_icon": 0.1495914194633536,
+   "bias_ecmwf": 0.30651704496658666,
+   "delta_mae_res": -0.15009801326560002,
+   "ic95": [
+    -0.24597477508879473,
+    -0.03653712022411493
+   ],
+   "clasificacion": "CONCLUYENTE EN SU ESTRATO"
+  },
+  "icon_global": {
+   "label": "icon_global",
+   "n_obs": 350,
+   "n_eventos": 175,
+   "n_est": 9,
+   "regiones": [
+    "ASIA_ESTE",
+    "ASIA_SUR",
+    "HEM_SUR",
+    "LATAM_NORTE"
+   ],
+   "mae_bruto_icon": 1.1700000000000002,
+   "mae_bruto_ecmwf": 1.3442857142857145,
+   "mae_res_icon": 1.1266460025490141,
+   "mae_res_ecmwf": 1.1692974281328086,
+   "rmse_icon": 1.558938706081426,
+   "rmse_ecmwf": 1.4859016399430804,
+   "bias_icon": -0.12790011717759026,
+   "bias_ecmwf": -0.07935400266449606,
+   "delta_mae_res": -0.04265142558379442,
+   "ic95": [
+    -0.19819419422491014,
+    0.12140009104315008
+   ],
+   "clasificacion": "INCONCLUSO (IC incluye 0)"
+  }
+ },
+ "por_lead": {
+  "icon_d2|9h": {
+   "label": "icon_d2 9h",
+   "n_obs": 40,
+   "n_eventos": 40,
+   "n_est": 2,
+   "regiones": [
+    "EUROPA"
+   ],
+   "mae_bruto_icon": 0.9425000000000001,
+   "mae_bruto_ecmwf": 1.1950000000000005,
+   "mae_res_icon": 1.074423061977414,
+   "mae_res_ecmwf": 1.1243723385847773,
+   "rmse_icon": 1.3979115878467845,
+   "rmse_ecmwf": 1.5343670457570724,
+   "bias_icon": -0.531355585744497,
+   "bias_ecmwf": -0.23652809109250272,
+   "delta_mae_res": -0.04994927660736326,
+   "ic95": null,
+   "clasificacion": "INCONCLUSO_POR_DISE\u00d1O"
+  },
+  "icon_d2|24h": {
+   "label": "icon_d2 24h",
+   "n_obs": 40,
+   "n_eventos": 40,
+   "n_est": 2,
+   "regiones": [
+    "EUROPA"
+   ],
+   "mae_bruto_icon": 1.1099999999999999,
+   "mae_bruto_ecmwf": 1.4525,
+   "mae_res_icon": 1.127437476076386,
+   "mae_res_ecmwf": 1.3001419709991455,
+   "rmse_icon": 1.4947623601309215,
+   "rmse_ecmwf": 1.6960373048462032,
+   "bias_icon": -0.6488555857444964,
+   "bias_ecmwf": -0.469028091092503,
+   "delta_mae_res": -0.17270449492275963,
+   "ic95": null,
+   "clasificacion": "INCONCLUSO_POR_DISE\u00d1O"
+  },
+  "icon_eu|9h": {
+   "label": "icon_eu 9h",
+   "n_obs": 78,
+   "n_eventos": 78,
+   "n_est": 4,
+   "regiones": [
+    "EUROPA",
+    "ORIENTE_MEDIO"
+   ],
+   "mae_bruto_icon": 0.7282051282051282,
+   "mae_bruto_ecmwf": 1.1435897435897435,
+   "mae_res_icon": 0.7057104433977164,
+   "mae_res_ecmwf": 0.7655967593541039,
+   "rmse_icon": 0.9519938297627415,
+   "rmse_ecmwf": 0.9827901575960702,
+   "bias_icon": 0.18869398356591788,
+   "bias_ecmwf": 0.3462606347101764,
+   "delta_mae_res": -0.05988631595638749,
+   "ic95": [
+    -0.16957429634937693,
+    0.015054487606638967
+   ],
+   "clasificacion": "INCONCLUSO (IC incluye 0)"
+  },
+  "icon_eu|24h": {
+   "label": "icon_eu 24h",
+   "n_obs": 78,
+   "n_eventos": 78,
+   "n_est": 4,
+   "regiones": [
+    "EUROPA",
+    "ORIENTE_MEDIO"
+   ],
+   "mae_bruto_icon": 0.7448717948717947,
+   "mae_bruto_ecmwf": 1.2923076923076924,
+   "mae_res_icon": 0.7082269509641455,
+   "mae_res_ecmwf": 0.948536661538958,
+   "rmse_icon": 0.9765282353281394,
+   "rmse_ecmwf": 1.3052271858348818,
+   "bias_icon": 0.11048885536078934,
+   "bias_ecmwf": 0.26677345522299695,
+   "delta_mae_res": -0.24030971057481254,
+   "ic95": [
+    -0.3933070589466957,
+    -0.05264546233942702
+   ],
+   "clasificacion": "CONCLUYENTE EN SU ESTRATO"
+  },
+  "icon_global|9h": {
+   "label": "icon_global 9h",
+   "n_obs": 175,
+   "n_eventos": 175,
+   "n_est": 9,
+   "regiones": [
+    "ASIA_ESTE",
+    "ASIA_SUR",
+    "HEM_SUR",
+    "LATAM_NORTE"
+   ],
+   "mae_bruto_icon": 1.126857142857143,
+   "mae_bruto_ecmwf": 1.3251428571428572,
+   "mae_res_icon": 1.097799174282517,
+   "mae_res_ecmwf": 1.1578586459201332,
+   "rmse_icon": 1.5357745262052078,
+   "rmse_ecmwf": 1.48708930444582,
+   "bias_icon": -0.12590011717759048,
+   "bias_ecmwf": -0.15049685980735322,
+   "delta_mae_res": -0.06005947163761616,
+   "ic95": [
+    -0.24095921846646506,
+    0.12534853787113853
+   ],
+   "clasificacion": "INCONCLUSO (IC incluye 0)"
+  },
+  "icon_global|24h": {
+   "label": "icon_global 24h",
+   "n_obs": 175,
+   "n_eventos": 175,
+   "n_est": 9,
+   "regiones": [
+    "ASIA_ESTE",
+    "ASIA_SUR",
+    "HEM_SUR",
+    "LATAM_NORTE"
+   ],
+   "mae_bruto_icon": 1.2131428571428573,
+   "mae_bruto_ecmwf": 1.3634285714285717,
+   "mae_res_icon": 1.1554928308155115,
+   "mae_res_ecmwf": 1.180736210345484,
+   "rmse_icon": 1.5817636938862993,
+   "rmse_ecmwf": 1.4847130253937688,
+   "bias_icon": -0.12990011717759,
+   "bias_ecmwf": -0.008211145521638923,
+   "delta_mae_res": -0.025243379529972465,
+   "ic95": [
+    -0.1907579399108037,
+    0.15424072705536207
+   ],
+   "clasificacion": "INCONCLUSO (IC incluye 0)"
+  }
+ },
+ "por_region": {
+  "icon_d2|EUROPA|9h": {
+   "label": "icon_d2 EUROPA 9h",
+   "n_obs": 40,
+   "n_eventos": 40,
+   "n_est": 2,
+   "regiones": [
+    "EUROPA"
+   ],
+   "mae_bruto_icon": 0.9425000000000001,
+   "mae_bruto_ecmwf": 1.1950000000000005,
+   "mae_res_icon": 1.074423061977414,
+   "mae_res_ecmwf": 1.1243723385847773,
+   "rmse_icon": 1.3979115878467845,
+   "rmse_ecmwf": 1.5343670457570724,
+   "bias_icon": -0.531355585744497,
+   "bias_ecmwf": -0.23652809109250272,
+   "delta_mae_res": -0.04994927660736326,
+   "ic95": null
+  },
+  "icon_d2|EUROPA|24h": {
+   "label": "icon_d2 EUROPA 24h",
+   "n_obs": 40,
+   "n_eventos": 40,
+   "n_est": 2,
+   "regiones": [
+    "EUROPA"
+   ],
+   "mae_bruto_icon": 1.1099999999999999,
+   "mae_bruto_ecmwf": 1.4525,
+   "mae_res_icon": 1.127437476076386,
+   "mae_res_ecmwf": 1.3001419709991455,
+   "rmse_icon": 1.4947623601309215,
+   "rmse_ecmwf": 1.6960373048462032,
+   "bias_icon": -0.6488555857444964,
+   "bias_ecmwf": -0.469028091092503,
+   "delta_mae_res": -0.17270449492275963,
+   "ic95": null
+  },
+  "icon_eu|EUROPA|9h": {
+   "label": "icon_eu EUROPA 9h",
+   "n_obs": 39,
+   "n_eventos": 39,
+   "n_est": 2,
+   "regiones": [
+    "EUROPA"
+   ],
+   "mae_bruto_icon": 0.9410256410256409,
+   "mae_bruto_ecmwf": 1.0487179487179488,
+   "mae_res_icon": 0.8484653008823069,
+   "mae_res_ecmwf": 0.8549469286248097,
+   "rmse_icon": 1.1376093474557571,
+   "rmse_ecmwf": 1.1343370316078663,
+   "bias_icon": 0.10826870469266034,
+   "bias_ecmwf": 0.40631293062766605,
+   "delta_mae_res": -0.006481627742502827,
+   "ic95": null
+  },
+  "icon_eu|ORIENTE_MEDIO|9h": {
+   "label": "icon_eu ORIENTE_MEDIO 9h",
+   "n_obs": 39,
+   "n_eventos": 39,
+   "n_est": 2,
+   "regiones": [
+    "ORIENTE_MEDIO"
+   ],
+   "mae_bruto_icon": 0.5153846153846153,
+   "mae_bruto_ecmwf": 1.238461538461538,
+   "mae_res_icon": 0.562955585913126,
+   "mae_res_ecmwf": 0.6762465900833979,
+   "rmse_icon": 0.7200204694270501,
+   "rmse_ecmwf": 0.8031391451414079,
+   "bias_icon": 0.26911926243917544,
+   "bias_ecmwf": 0.2862083387926867,
+   "delta_mae_res": -0.11329100417027194,
+   "ic95": null
+  },
+  "icon_eu|EUROPA|24h": {
+   "label": "icon_eu EUROPA 24h",
+   "n_obs": 39,
+   "n_eventos": 39,
+   "n_est": 2,
+   "regiones": [
+    "EUROPA"
+   ],
+   "mae_bruto_icon": 0.9256410256410255,
+   "mae_bruto_ecmwf": 1.3051282051282054,
+   "mae_res_icon": 0.8644470281041492,
+   "mae_res_ecmwf": 1.1988998856080082,
+   "rmse_icon": 1.150118694161605,
+   "rmse_ecmwf": 1.6163983165618057,
+   "bias_icon": 0.08262767905163489,
+   "bias_ecmwf": 0.3037488280635631,
+   "delta_mae_res": -0.334452857503859,
+   "ic95": null
+  },
+  "icon_eu|ORIENTE_MEDIO|24h": {
+   "label": "icon_eu ORIENTE_MEDIO 24h",
+   "n_obs": 39,
+   "n_eventos": 39,
+   "n_est": 2,
+   "regiones": [
+    "ORIENTE_MEDIO"
+   ],
+   "mae_bruto_icon": 0.5641025641025639,
+   "mae_bruto_ecmwf": 1.2794871794871798,
+   "mae_res_icon": 0.5520068738241417,
+   "mae_res_ecmwf": 0.6981734374699078,
+   "rmse_icon": 0.7644879188883132,
+   "rmse_ecmwf": 0.8913430851815992,
+   "bias_icon": 0.13835003166994378,
+   "bias_ecmwf": 0.22979808238243074,
+   "delta_mae_res": -0.14616656364576608,
+   "ic95": null
+  },
+  "icon_global|ASIA_ESTE|9h": {
+   "label": "icon_global ASIA_ESTE 9h",
+   "n_obs": 60,
+   "n_eventos": 60,
+   "n_est": 3,
+   "regiones": [
+    "ASIA_ESTE"
+   ],
+   "mae_bruto_icon": 1.0966666666666671,
+   "mae_bruto_ecmwf": 1.285,
+   "mae_res_icon": 1.0202560967302483,
+   "mae_res_ecmwf": 1.1100018558992135,
+   "rmse_icon": 1.376600744009858,
+   "rmse_ecmwf": 1.449674228112428,
+   "bias_icon": -0.07957329886767338,
+   "bias_ecmwf": -0.3899583790910897,
+   "delta_mae_res": -0.08974575916896521,
+   "ic95": [
+    -0.19074610832101713,
+    -0.026919849471395807
+   ]
+  },
+  "icon_global|ASIA_SUR|9h": {
+   "label": "icon_global ASIA_SUR 9h",
+   "n_obs": 39,
+   "n_eventos": 39,
+   "n_est": 2,
+   "regiones": [
+    "ASIA_SUR"
+   ],
+   "mae_bruto_icon": 1.094871794871795,
+   "mae_bruto_ecmwf": 0.9794871794871796,
+   "mae_res_icon": 0.9537146123189578,
+   "mae_res_ecmwf": 0.8130545299515486,
+   "rmse_icon": 1.3146805610025378,
+   "rmse_ecmwf": 0.9947186934547568,
+   "bias_icon": -0.33140645863387125,
+   "bias_ecmwf": -0.0036218392779801614,
+   "delta_mae_res": 0.14066008236740923,
+   "ic95": null
+  },
+  "icon_global|HEM_SUR|9h": {
+   "label": "icon_global HEM_SUR 9h",
+   "n_obs": 38,
+   "n_eventos": 38,
+   "n_est": 2,
+   "regiones": [
+    "HEM_SUR"
+   ],
+   "mae_bruto_icon": 1.2921052631578946,
+   "mae_bruto_ecmwf": 1.2868421052631578,
+   "mae_res_icon": 1.3263807747113037,
+   "mae_res_ecmwf": 1.2142246734688416,
+   "rmse_icon": 2.032306391248132,
+   "rmse_ecmwf": 1.6432687750544075,
+   "bias_icon": 0.34288823795946044,
+   "bias_ecmwf": 0.12721147950738249,
+   "delta_mae_res": 0.11215610124246211,
+   "ic95": null
+  },
+  "icon_global|LATAM_NORTE|9h": {
+   "label": "icon_global LATAM_NORTE 9h",
+   "n_obs": 38,
+   "n_eventos": 38,
+   "n_est": 2,
+   "regiones": [
+    "LATAM_NORTE"
+   ],
+   "mae_bruto_icon": 1.0421052631578946,
+   "mae_bruto_ecmwf": 1.7815789473684212,
+   "mae_res_icon": 1.1395302730567543,
+   "mae_res_ecmwf": 1.5309338795301086,
+   "rmse_icon": 1.4020339677729818,
+   "rmse_ecmwf": 1.7748681255789998,
+   "bias_icon": -0.45692167709885395,
+   "bias_ecmwf": -0.20084821605949313,
+   "delta_mae_res": -0.39140360647335437,
+   "ic95": null
+  },
+  "icon_global|ASIA_ESTE|24h": {
+   "label": "icon_global ASIA_ESTE 24h",
+   "n_obs": 60,
+   "n_eventos": 60,
+   "n_est": 3,
+   "regiones": [
+    "ASIA_ESTE"
+   ],
+   "mae_bruto_icon": 1.1633333333333333,
+   "mae_bruto_ecmwf": 1.3333333333333333,
+   "mae_res_icon": 1.0894720724815499,
+   "mae_res_ecmwf": 1.225038231560589,
+   "rmse_icon": 1.404959672932636,
+   "rmse_ecmwf": 1.5019660662172611,
+   "bias_icon": -0.07957329886767309,
+   "bias_ecmwf": -0.12829171242442303,
+   "delta_mae_res": -0.13556615907903913,
+   "ic95": [
+    -0.2671304178884859,
+    0.07375606123789846
+   ]
+  },
+  "icon_global|ASIA_SUR|24h": {
+   "label": "icon_global ASIA_SUR 24h",
+   "n_obs": 39,
+   "n_eventos": 39,
+   "n_est": 2,
+   "regiones": [
+    "ASIA_SUR"
+   ],
+   "mae_bruto_icon": 1.1897435897435902,
+   "mae_bruto_ecmwf": 1.2692307692307692,
+   "mae_res_icon": 1.0246279030264958,
+   "mae_res_ecmwf": 1.0655512924483115,
+   "rmse_icon": 1.4468614069253627,
+   "rmse_ecmwf": 1.3935351912271243,
+   "bias_icon": -0.3390987663261778,
+   "bias_ecmwf": 0.20407046841432774,
+   "delta_mae_res": -0.040923389421815726,
+   "ic95": null
+  },
+  "icon_global|HEM_SUR|24h": {
+   "label": "icon_global HEM_SUR 24h",
+   "n_obs": 38,
+   "n_eventos": 38,
+   "n_est": 2,
+   "regiones": [
+    "HEM_SUR"
+   ],
+   "mae_bruto_icon": 1.4394736842105262,
+   "mae_bruto_ecmwf": 1.1921052631578948,
+   "mae_res_icon": 1.4218193712025318,
+   "mae_res_ecmwf": 1.127336776669434,
+   "rmse_icon": 2.1188908245231133,
+   "rmse_ecmwf": 1.4956106035991674,
+   "bias_icon": 0.12709876427525,
+   "bias_ecmwf": 0.0956325321389615,
+   "delta_mae_res": 0.2944825945330978,
+   "ic95": null
+  },
+  "icon_global|LATAM_NORTE|24h": {
+   "label": "icon_global LATAM_NORTE 24h",
+   "n_obs": 38,
+   "n_eventos": 38,
+   "n_est": 2,
+   "regiones": [
+    "LATAM_NORTE"
+   ],
+   "mae_bruto_icon": 1.0894736842105264,
+   "mae_bruto_ecmwf": 1.6789473684210532,
+   "mae_res_icon": 1.1277183347392625,
+   "mae_res_ecmwf": 1.2824011841553082,
+   "rmse_icon": 1.3294213266477417,
+   "rmse_ecmwf": 1.5361871521919381,
+   "bias_icon": -0.2516585192041166,
+   "bias_ecmwf": -0.1403219002700197,
+   "delta_mae_res": -0.1546828494160457,
+   "ic95": null
+  }
+ },
+ "loso": {
+  "icon_d2": null,
+  "icon_eu": {
+   "base": -0.15009801326560002,
+   "filas": [
+    {
+     "excluida": "EFHK",
+     "delta": -0.1543726450238031,
+     "cambia_signo": false
+    },
+    {
+     "excluida": "LLBG",
+     "delta": -0.10698818669858434,
+     "cambia_signo": false
+    },
+    {
+     "excluida": "LTFM",
+     "delta": -0.207647663479386,
+     "cambia_signo": false
+    },
+    {
+     "excluida": "UUWW",
+     "delta": -0.1324314270465926,
+     "cambia_signo": false
+    }
+   ],
+   "algun_cambio": false
+  },
+  "icon_global": {
+   "base": -0.04265142558379442,
+   "filas": [
+    {
+     "excluida": "FACT",
+     "delta": -0.07279098530949102,
+     "cambia_signo": false
+    },
+    {
+     "excluida": "MMMX",
+     "delta": 0.007479854616464943,
+     "cambia_signo": true
+    },
+    {
+     "excluida": "MPMG",
+     "delta": -0.036661625721781776,
+     "cambia_signo": false
+    },
+    {
+     "excluida": "OPKC",
+     "delta": -0.013888033167259062,
+     "cambia_signo": false
+    },
+    {
+     "excluida": "RKSI",
+     "delta": -0.02918385034558213,
+     "cambia_signo": false
+    },
+    {
+     "excluida": "SBGR",
+     "delta": -0.07242782349860954,
+     "cambia_signo": false
+    },
+    {
+     "excluida": "VILK",
+     "delta": -0.09487955672693316,
+     "cambia_signo": false
+    },
+    {
+     "excluida": "ZGSZ",
+     "delta": -0.04958610898321392,
+     "cambia_signo": false
+    },
+    {
+     "excluida": "ZSQD",
+     "delta": -0.022085788310248766,
+     "cambia_signo": false
+    }
+   ],
+   "algun_cambio": true
+  }
+ },
+ "regimen": {
+  "icon_d2": {
+   "n": 80,
+   "media": 0.9165952432639849,
+   "mediana": 0.9165952432639849,
+   "p25": 0.6548904375482274,
+   "p75": 1.1783000489797424,
+   "resolucion_deg": 0.02
+  },
+  "icon_eu": {
+   "n": 156,
+   "media": 2.1229005913792567,
+   "mediana": 1.801674706491798,
+   "p25": 1.574560705826914,
+   "p75": 1.937093169511664,
+   "resolucion_deg": 0.0625
+  },
+  "icon_global": {
+   "n": 350,
+   "media": 6.870142491048029,
+   "mediana": 7.067871643263138,
+   "p25": 3.6967245235040305,
+   "p75": 7.551728926146731,
+   "resolucion_deg": 0.125
+  },
+  "ecmwf_ifs025": {
+   "n": 586,
+   "media": 9.640911064907113,
+   "mediana": 10.253310662887191,
+   "p25": 7.067871643263138,
+   "p75": 13.342078701784615,
+   "resolucion_deg": 0.25
+  }
+ },
+ "same_run": {
+  "icon_d2|9h": {
+   "label": "icon_d2 same-run 9h",
+   "n_obs": 40,
+   "n_eventos": 40,
+   "n_est": 2,
+   "regiones": [
+    "EUROPA"
+   ],
+   "mae_bruto_icon": 0.9425000000000001,
+   "mae_bruto_ecmwf": 1.1950000000000005,
+   "mae_res_icon": 1.074423061977414,
+   "mae_res_ecmwf": 1.1243723385847773,
+   "rmse_icon": 1.3979115878467845,
+   "rmse_ecmwf": 1.5343670457570724,
+   "bias_icon": -0.531355585744497,
+   "bias_ecmwf": -0.23652809109250272,
+   "delta_mae_res": -0.04994927660736326,
+   "ic95": null
+  },
+  "icon_eu|9h": {
+   "label": "icon_eu same-run 9h",
+   "n_obs": 78,
+   "n_eventos": 78,
+   "n_est": 4,
+   "regiones": [
+    "EUROPA",
+    "ORIENTE_MEDIO"
+   ],
+   "mae_bruto_icon": 0.7282051282051282,
+   "mae_bruto_ecmwf": 1.1435897435897435,
+   "mae_res_icon": 0.7057104433977164,
+   "mae_res_ecmwf": 0.7655967593541039,
+   "rmse_icon": 0.9519938297627415,
+   "rmse_ecmwf": 0.9827901575960702,
+   "bias_icon": 0.18869398356591788,
+   "bias_ecmwf": 0.3462606347101764,
+   "delta_mae_res": -0.05988631595638749,
+   "ic95": [
+    -0.16957429634937693,
+    0.015054487606638967
+   ]
+  },
+  "icon_global|9h": {
+   "label": "icon_global same-run 9h",
+   "n_obs": 175,
+   "n_eventos": 175,
+   "n_est": 9,
+   "regiones": [
+    "ASIA_ESTE",
+    "ASIA_SUR",
+    "HEM_SUR",
+    "LATAM_NORTE"
+   ],
+   "mae_bruto_icon": 1.126857142857143,
+   "mae_bruto_ecmwf": 1.3251428571428572,
+   "mae_res_icon": 1.097799174282517,
+   "mae_res_ecmwf": 1.1578586459201332,
+   "rmse_icon": 1.5357745262052078,
+   "rmse_ecmwf": 1.48708930444582,
+   "bias_icon": -0.12590011717759048,
+   "bias_ecmwf": -0.15049685980735322,
+   "delta_mae_res": -0.06005947163761616,
+   "ic95": [
+    -0.24095921846646506,
+    0.12534853787113853
+   ]
+  }
+ },
+ "frescura": {
+  "icon_d2|9h": {
+   "n": 40,
+   "age_icon": 9.0,
+   "age_ecmwf": 9.0
+  },
+  "icon_d2|24h": {
+   "n": 40,
+   "age_icon": 6.0,
+   "age_ecmwf": 12.0
+  },
+  "icon_eu|9h": {
+   "n": 78,
+   "age_icon": 9.0,
+   "age_ecmwf": 9.0
+  },
+  "icon_eu|24h": {
+   "n": 78,
+   "age_icon": 6.0,
+   "age_ecmwf": 12.0
+  },
+  "icon_global|9h": {
+   "n": 175,
+   "age_icon": 9.0,
+   "age_ecmwf": 9.0
+  },
+  "icon_global|24h": {
+   "n": 175,
+   "age_icon": 6.0,
+   "age_ecmwf": 12.0
+  }
+ },
+ "sensibilidad_OPKC": {
+  "icon_global": {
+   "con": -0.04265142558379442,
+   "sin": -0.013888033167259062
+  }
+ },
+ "recuento_componentes": {
+  "icon_eu": 156,
+  "icon_d2": 80,
+  "icon_global": 350
+ },
+ "recuento_unknown": {},
+ "composicion_por_estacion": {
+  "EFHK": [
+   "icon_eu"
+  ],
+  "EGLC": [
+   "icon_d2"
+  ],
+  "FACT": [
+   "icon_global"
+  ],
+  "LIMC": [
+   "icon_d2"
+  ],
+  "LLBG": [
+   "icon_eu"
+  ],
+  "LTFM": [
+   "icon_eu"
+  ],
+  "MMMX": [
+   "icon_global"
+  ],
+  "MPMG": [
+   "icon_global"
+  ],
+  "OPKC": [
+   "icon_global"
+  ],
+  "RKSI": [
+   "icon_global"
+  ],
+  "SBGR": [
+   "icon_global"
+  ],
+  "UUWW": [
+   "icon_eu"
+  ],
+  "VILK": [
+   "icon_global"
+  ],
+  "ZGSZ": [
+   "icon_global"
+  ],
+  "ZSQD": [
+   "icon_global"
+  ]
+ },
+ "inestables": []
+}

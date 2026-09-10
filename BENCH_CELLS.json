@@ -1,0 +1,302 @@
+{
+ "ecmwf_ifs025|LLBG": [
+  32.0,
+  35.0,
+  36.0
+ ],
+ "gfs_seamless|LLBG": [
+  32.04035,
+  34.921875,
+  36.0
+ ],
+ "icon_seamless|LLBG": [
+  32.0,
+  34.875,
+  36.0
+ ],
+ "ukmo_global_deterministic_10km|LLBG": [
+  31.96875,
+  34.875,
+  36.0
+ ],
+ "jma_gsm|LLBG": [
+  32.0,
+  35.0,
+  36.0
+ ],
+ "ecmwf_ifs025|LTFM": [
+  41.25,
+  28.75,
+  106.0
+ ],
+ "gfs_seamless|LTFM": [
+  41.177994,
+  28.710938,
+  106.0
+ ],
+ "icon_seamless|LTFM": [
+  41.25,
+  28.75,
+  106.0
+ ],
+ "ukmo_global_deterministic_10km|LTFM": [
+  41.25,
+  28.6875,
+  106.0
+ ],
+ "jma_gsm|LTFM": [
+  41.5,
+  28.5,
+  106.0
+ ],
+ "ecmwf_ifs025|UUWW": [
+  55.5,
+  37.25,
+  196.0
+ ],
+ "gfs_seamless|UUWW": [
+  55.58737,
+  37.265625,
+  196.0
+ ],
+ "icon_seamless|UUWW": [
+  55.5625,
+  37.25,
+  196.0
+ ],
+ "ukmo_global_deterministic_10km|UUWW": [
+  55.59375,
+  37.265625,
+  196.0
+ ],
+ "jma_gsm|UUWW": [
+  55.5,
+  37.5,
+  196.0
+ ],
+ "ecmwf_ifs025|EFHK": [
+  60.25,
+  25.0,
+  48.0
+ ],
+ "gfs_seamless|EFHK": [
+  60.273346,
+  24.960938,
+  48.0
+ ],
+ "icon_seamless|EFHK": [
+  60.3125,
+  24.9375,
+  48.0
+ ],
+ "ukmo_global_deterministic_10km|EFHK": [
+  60.28125,
+  25.03125,
+  48.0
+ ],
+ "jma_gsm|EFHK": [
+  60.5,
+  25.0,
+  48.0
+ ],
+ "ecmwf_ifs025|EGLC": [
+  51.5,
+  0.0,
+  4.0
+ ],
+ "gfs_seamless|EGLC": [
+  51.487137,
+  0.0,
+  4.0
+ ],
+ "icon_seamless|EGLC": [
+  51.5,
+  0.059999943,
+  4.0
+ ],
+ "ukmo_global_deterministic_10km|EGLC": [
+  51.46875,
+  0.0,
+  4.0
+ ],
+ "jma_gsm|EGLC": [
+  51.5,
+  0.0,
+  4.0
+ ],
+ "ecmwf_ifs025|FACT": [
+  -34.0,
+  18.5,
+  43.0
+ ],
+ "gfs_seamless|FACT": [
+  -33.914734,
+  18.632812,
+  43.0
+ ],
+ "icon_seamless|FACT": [
+  -34.0,
+  18.625,
+  43.0
+ ],
+ "ukmo_global_deterministic_10km|FACT": [
+  -33.9375,
+  18.5625,
+  43.0
+ ],
+ "jma_gsm|FACT": [
+  -34.0,
+  18.5,
+  43.0
+ ],
+ "ecmwf_ifs025|LIMC": [
+  45.75,
+  8.75,
+  221.0
+ ],
+ "gfs_seamless|LIMC": [
+  45.629684,
+  8.671875,
+  221.0
+ ],
+ "icon_seamless|LIMC": [
+  45.64,
+  8.719999,
+  221.0
+ ],
+ "ukmo_global_deterministic_10km|LIMC": [
+  45.65625,
+  8.71875,
+  221.0
+ ],
+ "jma_gsm|LIMC": [
+  45.5,
+  8.5,
+  221.0
+ ],
+ "ecmwf_ifs025|OPKC": [
+  24.75,
+  67.25,
+  13.0
+ ],
+ "gfs_seamless|OPKC": [
+  24.894241,
+  67.14844,
+  13.0
+ ],
+ "icon_seamless|OPKC": [
+  24.875,
+  67.125,
+  13.0
+ ],
+ "ukmo_global_deterministic_10km|OPKC": [
+  24.84375,
+  67.21875,
+  13.0
+ ],
+ "jma_gsm|OPKC": [
+  25.0,
+  67.0,
+  13.0
+ ],
+ "ecmwf_ifs025|RKSI": [
+  37.5,
+  126.5,
+  6.0
+ ],
+ "gfs_seamless|RKSI": [
+  37.429222,
+  126.44531,
+  6.0
+ ],
+ "icon_seamless|RKSI": [
+  37.625,
+  126.5,
+  6.0
+ ],
+ "ukmo_global_deterministic_10km|RKSI": [
+  37.5,
+  126.421875,
+  6.0
+ ],
+ "jma_gsm|RKSI": [
+  37.5,
+  126.5,
+  6.0
+ ],
+ "ecmwf_ifs025|VILK": [
+  26.75,
+  81.0,
+  123.0
+ ],
+ "gfs_seamless|VILK": [
+  26.768631,
+  80.859375,
+  123.0
+ ],
+ "icon_seamless|VILK": [
+  26.75,
+  80.875,
+  123.0
+ ],
+ "ukmo_global_deterministic_10km|VILK": [
+  26.71875,
+  80.859375,
+  123.0
+ ],
+ "jma_gsm|VILK": [
+  27.0,
+  81.0,
+  123.0
+ ],
+ "ecmwf_ifs025|ZGSZ": [
+  22.5,
+  114.0,
+  14.0
+ ],
+ "gfs_seamless|ZGSZ": [
+  22.551254,
+  114.140625,
+  14.0
+ ],
+ "icon_seamless|ZGSZ": [
+  22.5,
+  114.125,
+  14.0
+ ],
+ "ukmo_global_deterministic_10km|ZGSZ": [
+  22.59375,
+  114.046875,
+  14.0
+ ],
+ "jma_gsm|ZGSZ": [
+  22.5,
+  114.0,
+  14.0
+ ],
+ "ecmwf_ifs025|ZSQD": [
+  36.25,
+  120.25,
+  38.0
+ ],
+ "gfs_seamless|ZSQD": [
+  36.14058,
+  120.46875,
+  38.0
+ ],
+ "icon_seamless|ZSQD": [
+  36.125,
+  120.375,
+  38.0
+ ],
+ "ukmo_global_deterministic_10km|ZSQD": [
+  36.09375,
+  120.234375,
+  38.0
+ ],
+ "jma_gsm|ZSQD": [
+  36.0,
+  120.5,
+  38.0
+ ]
+}

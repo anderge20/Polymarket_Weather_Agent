@@ -1,0 +1,101 @@
+{
+ "resumen": {
+  "n_operaciones": 468,
+  "sin_observacion": 0,
+  "n_etiquetas_discrepantes": 4,
+  "tasa_discrepancia": 0.008547008547008548,
+  "mediana_pnl_venue": -0.0235996875,
+  "mediana_pnl_iem": -0.0235996875,
+  "total_pnl_venue": -2.805396425000001,
+  "total_pnl_iem": -0.8053964250000007,
+  "diferencia_total": 2.0,
+  "diferencia_por_operacion": 0.004273504273504274,
+  "direccion": {
+   "IEM_dice_gana_venue_dice_pierde": 3,
+   "IEM_dice_pierde_venue_dice_gana": 1
+  },
+  "discrepancias_por_estacion": {
+   "ZGSZ": 2,
+   "LIMC": 1,
+   "RKSI": 1
+  }
+ },
+ "discrepantes": [
+  {
+   "market_id": "2011371",
+   "estacion": "ZGSZ",
+   "fecha": "2026-04-20",
+   "lead": 9,
+   "p_mid": 0.0005,
+   "p_model": 0.2002222808273372,
+   "p_exec": 0.0105,
+   "edge_bruto": 0.1997222808273372,
+   "edge_neto": 0.1892027933273372,
+   "margen": 0.15546202840449505,
+   "gano": false,
+   "pnl": -0.011019487500000001,
+   "gano_iem": true,
+   "pnl_iem": 0.9889805125000001,
+   "observado": 28.0,
+   "lo": 28.0,
+   "hi": 28.0
+  },
+  {
+   "market_id": "2144910",
+   "estacion": "LIMC",
+   "fecha": "2026-05-05",
+   "lead": 9,
+   "p_mid": 0.0005,
+   "p_model": 0.2773279352226727,
+   "p_exec": 0.0105,
+   "edge_bruto": 0.2768279352226727,
+   "edge_neto": 0.26630844772267265,
+   "margen": 0.11912073032656789,
+   "gano": false,
+   "pnl": -0.011019487500000001,
+   "gano_iem": true,
+   "pnl_iem": 0.9889805125000001,
+   "observado": 15.0,
+   "lo": 15.0,
+   "hi": 15.0
+  },
+  {
+   "market_id": "2247417",
+   "estacion": "ZGSZ",
+   "fecha": "2026-05-15",
+   "lead": 9,
+   "p_mid": 0.027,
+   "p_model": 0.32113326780726376,
+   "p_exec": 0.037,
+   "edge_bruto": 0.29413326780726373,
+   "edge_neto": 0.28235171780726376,
+   "margen": 0.14649820366943764,
+   "gano": true,
+   "pnl": 0.96121845,
+   "gano_iem": false,
+   "pnl_iem": -0.03878155000000002,
+   "observado": 30.0,
+   "lo": 28.0,
+   "hi": 28.0
+  },
+  {
+   "market_id": "2289610",
+   "estacion": "RKSI",
+   "fecha": "2026-05-20",
+   "lead": 9,
+   "p_mid": 0.0005,
+   "p_model": 0.21143550041973674,
+   "p_exec": 0.0105,
+   "edge_bruto": 0.21093550041973674,
+   "edge_neto": 0.20041601291973674,
+   "margen": 0.066959997213483,
+   "gano": false,
+   "pnl": -0.011019487500000001,
+   "gano_iem": true,
+   "pnl_iem": 0.9889805125000001,
+   "observado": 20.0,
+   "lo": 20.0,
+   "hi": 20.0
+  }
+ ]
+}

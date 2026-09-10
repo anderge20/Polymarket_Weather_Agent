@@ -1,0 +1,341 @@
+{
+ "schema": "station_tz/v1",
+ "date": "2026-09-06",
+ "rule": "tz = tzname del registro ASOS de IEM (proveedor del label); día civil local W(m) se calcula con esta zona",
+ "n": 55,
+ "missing": [],
+ "conflicts": [],
+ "stations": [
+  {
+   "icao": "CYYZ",
+   "city": "Toronto",
+   "tz": "America/Toronto",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "DNMM",
+   "city": "Lagos",
+   "tz": "Africa/Lagos",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "EDDM",
+   "city": "Munich",
+   "tz": "Europe/Berlin",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "EFHK",
+   "city": "Helsinki",
+   "tz": "Europe/Helsinki",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "EGLC",
+   "city": "London",
+   "tz": "Europe/London",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "EHAM",
+   "city": "Amsterdam",
+   "tz": "Europe/Amsterdam",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "EPWA",
+   "city": "Warsaw",
+   "tz": "Europe/Warsaw",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "FACT",
+   "city": "Cape Town",
+   "tz": "Africa/Johannesburg",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "KATL",
+   "city": "Atlanta",
+   "tz": "America/New_York",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "KAUS",
+   "city": "Austin",
+   "tz": "America/Chicago",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "KBKF",
+   "city": "Denver",
+   "tz": "America/Denver",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "KDAL",
+   "city": "Dallas",
+   "tz": "America/Chicago",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "KHOU",
+   "city": "Houston",
+   "tz": "America/Chicago",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "KLAX",
+   "city": "Los Angeles",
+   "tz": "America/Los_Angeles",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "KLGA",
+   "city": "NYC",
+   "tz": "America/New_York",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "KMIA",
+   "city": "Miami",
+   "tz": "America/New_York",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "KORD",
+   "city": "Chicago",
+   "tz": "America/Chicago",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "KSEA",
+   "city": "Seattle",
+   "tz": "America/Los_Angeles",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "KSFO",
+   "city": "San Francisco",
+   "tz": "America/Los_Angeles",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "LEMD",
+   "city": "Madrid",
+   "tz": "Europe/Madrid",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "LFPB",
+   "city": "Paris",
+   "tz": "Europe/Paris",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "LFPG",
+   "city": "Paris",
+   "tz": "Europe/Paris",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "LIMC",
+   "city": "Milan",
+   "tz": "Europe/Rome",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "LLBG",
+   "city": "Tel Aviv",
+   "tz": "Asia/Jerusalem",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "LTAC",
+   "city": "Ankara",
+   "tz": "Europe/Istanbul",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "LTFM",
+   "city": "Istanbul",
+   "tz": "Europe/Istanbul",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "MMMX",
+   "city": "Mexico City",
+   "tz": "America/Mexico_City",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "MPMG",
+   "city": "Panama City",
+   "tz": "America/Panama",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "NZWN",
+   "city": "Wellington",
+   "tz": "Pacific/Auckland",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "OEJN",
+   "city": "Jeddah",
+   "tz": "Asia/Riyadh",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "OPKC",
+   "city": "Karachi",
+   "tz": "Asia/Karachi",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "RCSS",
+   "city": "Taipei",
+   "tz": "Asia/Taipei",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "RCTP",
+   "city": "Taipei",
+   "tz": "Asia/Taipei",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "RJTT",
+   "city": "Tokyo",
+   "tz": "Asia/Tokyo",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "RKPK",
+   "city": "Busan",
+   "tz": "Asia/Seoul",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "RKSI",
+   "city": "Seoul",
+   "tz": "Asia/Seoul",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "RPLL",
+   "city": "Manila",
+   "tz": "Asia/Manila",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "SAEZ",
+   "city": "Buenos Aires",
+   "tz": "America/Argentina/Buenos_Aires",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "SBGR",
+   "city": "Sao Paulo",
+   "tz": "America/Sao_Paulo",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "UUWW",
+   "city": "Moscow",
+   "tz": "Europe/Moscow",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "VHHH",
+   "city": "Hong Kong",
+   "tz": "Asia/Hong_Kong",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "VILK",
+   "city": "Lucknow",
+   "tz": "Asia/Kolkata",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "WIHH",
+   "city": "Jakarta",
+   "tz": "Asia/Jakarta",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "WMKK",
+   "city": "Kuala Lumpur",
+   "tz": "Asia/Kuala_Lumpur",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "WSSS",
+   "city": "Singapore",
+   "tz": "Asia/Singapore",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "ZBAA",
+   "city": "Beijing",
+   "tz": "Asia/Shanghai",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "ZGGG",
+   "city": "Guangzhou",
+   "tz": "Asia/Shanghai",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "ZGSZ",
+   "city": "Shenzhen",
+   "tz": "Asia/Shanghai",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "ZHCC",
+   "city": "Zhengzhou",
+   "tz": "Asia/Shanghai",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "ZHHH",
+   "city": "Wuhan",
+   "tz": "Asia/Shanghai",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "ZSJN",
+   "city": "Jinan",
+   "tz": "Asia/Shanghai",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "ZSPD",
+   "city": "Shanghai",
+   "tz": "Asia/Shanghai",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "ZSQD",
+   "city": "Qingdao",
+   "tz": "Asia/Shanghai",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "ZUCK",
+   "city": "Chongqing",
+   "tz": "Asia/Chongqing",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  },
+  {
+   "icao": "ZUUU",
+   "city": "Chengdu",
+   "tz": "Asia/Chongqing",
+   "source": "IEM ASOS metadata tzname (api/1/station)"
+  }
+ ],
+ "note": "conflicts recomputed comparing tz strings (first build compared dict vs str and listed false positives)"
+}

@@ -1,0 +1,3556 @@
+{
+ "schema": "target_date_extraction/v1",
+ "date": "2026-09-08",
+ "rule": "target_date = fecha del texto CONTRACTUAL del mercado (descripción, patrón \"on <D> <Mon> '<YY>\"). El SLUG es CONTROL, no fuente: 2D prohíbe expresamente inferir target_date de slug/question/endDate/close_time/resolution_timestamp. Si control y fuente discrepan -> fail-closed target_date_ambiguous (0 casos).",
+ "n_markets": 93221,
+ "extractable_slug": 93221,
+ "extractable_descr": 93221,
+ "agreement": 93221,
+ "disagreement": 0,
+ "differs_from_enddate": 440,
+ "differs_by_city": {
+  "Taipei": 44,
+  "Hong Kong": 33,
+  "Milan": 33,
+  "Madrid": 33,
+  "Warsaw": 33,
+  "Chongqing": 55,
+  "Beijing": 55,
+  "Wuhan": 55,
+  "Chengdu": 44,
+  "Shenzhen": 55
+ },
+ "note": "Los 440 casos con target_date != date(endDate) son de frontera de zona horaria: el mercado nombra el día D y endDate cae en D+1 12:00Z. Confirma la cuestión abierta de PHASE_2E §8 y refuta la premisa de que target_date sólo es resoluble para los 263 eventos con artefacto de investigación.",
+ "discrepancies": [
+  {
+   "market_id": "1609210",
+   "event_id": "276871",
+   "city": "Taipei",
+   "target_date": "2026-03-16",
+   "end_date": "2026-03-17",
+   "slug": "highest-temperature-in-taipei-on-march-16-2026-13corbelow"
+  },
+  {
+   "market_id": "1609211",
+   "event_id": "276871",
+   "city": "Taipei",
+   "target_date": "2026-03-16",
+   "end_date": "2026-03-17",
+   "slug": "highest-temperature-in-taipei-on-march-16-2026-14c"
+  },
+  {
+   "market_id": "1609212",
+   "event_id": "276871",
+   "city": "Taipei",
+   "target_date": "2026-03-16",
+   "end_date": "2026-03-17",
+   "slug": "highest-temperature-in-taipei-on-march-16-2026-15c"
+  },
+  {
+   "market_id": "1609213",
+   "event_id": "276871",
+   "city": "Taipei",
+   "target_date": "2026-03-16",
+   "end_date": "2026-03-17",
+   "slug": "highest-temperature-in-taipei-on-march-16-2026-16c"
+  },
+  {
+   "market_id": "1609214",
+   "event_id": "276871",
+   "city": "Taipei",
+   "target_date": "2026-03-16",
+   "end_date": "2026-03-17",
+   "slug": "highest-temperature-in-taipei-on-march-16-2026-17c"
+  },
+  {
+   "market_id": "1609215",
+   "event_id": "276871",
+   "city": "Taipei",
+   "target_date": "2026-03-16",
+   "end_date": "2026-03-17",
+   "slug": "highest-temperature-in-taipei-on-march-16-2026-18c"
+  },
+  {
+   "market_id": "1609216",
+   "event_id": "276871",
+   "city": "Taipei",
+   "target_date": "2026-03-16",
+   "end_date": "2026-03-17",
+   "slug": "highest-temperature-in-taipei-on-march-16-2026-19c"
+  },
+  {
+   "market_id": "1609217",
+   "event_id": "276871",
+   "city": "Taipei",
+   "target_date": "2026-03-16",
+   "end_date": "2026-03-17",
+   "slug": "highest-temperature-in-taipei-on-march-16-2026-20c"
+  },
+  {
+   "market_id": "1609218",
+   "event_id": "276871",
+   "city": "Taipei",
+   "target_date": "2026-03-16",
+   "end_date": "2026-03-17",
+   "slug": "highest-temperature-in-taipei-on-march-16-2026-21c"
+  },
+  {
+   "market_id": "1609219",
+   "event_id": "276871",
+   "city": "Taipei",
+   "target_date": "2026-03-16",
+   "end_date": "2026-03-17",
+   "slug": "highest-temperature-in-taipei-on-march-16-2026-22c"
+  },
+  {
+   "market_id": "1609220",
+   "event_id": "276871",
+   "city": "Taipei",
+   "target_date": "2026-03-16",
+   "end_date": "2026-03-17",
+   "slug": "highest-temperature-in-taipei-on-march-16-2026-23corhigher"
+  },
+  {
+   "market_id": "1609221",
+   "event_id": "276872",
+   "city": "Hong Kong",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-hong-kong-on-march-17-2026-17corbelow"
+  },
+  {
+   "market_id": "1609222",
+   "event_id": "276872",
+   "city": "Hong Kong",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-hong-kong-on-march-17-2026-18c"
+  },
+  {
+   "market_id": "1609223",
+   "event_id": "276872",
+   "city": "Hong Kong",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-hong-kong-on-march-17-2026-19c"
+  },
+  {
+   "market_id": "1609224",
+   "event_id": "276872",
+   "city": "Hong Kong",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-hong-kong-on-march-17-2026-20c"
+  },
+  {
+   "market_id": "1609225",
+   "event_id": "276872",
+   "city": "Hong Kong",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-hong-kong-on-march-17-2026-21c"
+  },
+  {
+   "market_id": "1609226",
+   "event_id": "276872",
+   "city": "Hong Kong",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-hong-kong-on-march-17-2026-22c"
+  },
+  {
+   "market_id": "1609227",
+   "event_id": "276872",
+   "city": "Hong Kong",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-hong-kong-on-march-17-2026-23c"
+  },
+  {
+   "market_id": "1609228",
+   "event_id": "276872",
+   "city": "Hong Kong",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-hong-kong-on-march-17-2026-24c"
+  },
+  {
+   "market_id": "1609229",
+   "event_id": "276872",
+   "city": "Hong Kong",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-hong-kong-on-march-17-2026-25c"
+  },
+  {
+   "market_id": "1609230",
+   "event_id": "276872",
+   "city": "Hong Kong",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-hong-kong-on-march-17-2026-26c"
+  },
+  {
+   "market_id": "1609231",
+   "event_id": "276872",
+   "city": "Hong Kong",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-hong-kong-on-march-17-2026-27corhigher"
+  },
+  {
+   "market_id": "1609232",
+   "event_id": "276873",
+   "city": "Milan",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-milan-on-march-17-2026-8corbelow"
+  },
+  {
+   "market_id": "1609233",
+   "event_id": "276873",
+   "city": "Milan",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-milan-on-march-17-2026-9c"
+  },
+  {
+   "market_id": "1609234",
+   "event_id": "276873",
+   "city": "Milan",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-milan-on-march-17-2026-10c"
+  },
+  {
+   "market_id": "1609235",
+   "event_id": "276873",
+   "city": "Milan",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-milan-on-march-17-2026-11c"
+  },
+  {
+   "market_id": "1609236",
+   "event_id": "276873",
+   "city": "Milan",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-milan-on-march-17-2026-12c"
+  },
+  {
+   "market_id": "1609237",
+   "event_id": "276873",
+   "city": "Milan",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-milan-on-march-17-2026-13c"
+  },
+  {
+   "market_id": "1609238",
+   "event_id": "276873",
+   "city": "Milan",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-milan-on-march-17-2026-14c"
+  },
+  {
+   "market_id": "1609239",
+   "event_id": "276873",
+   "city": "Milan",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-milan-on-march-17-2026-15c"
+  },
+  {
+   "market_id": "1609240",
+   "event_id": "276873",
+   "city": "Milan",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-milan-on-march-17-2026-16c"
+  },
+  {
+   "market_id": "1609241",
+   "event_id": "276873",
+   "city": "Milan",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-milan-on-march-17-2026-17c"
+  },
+  {
+   "market_id": "1609242",
+   "event_id": "276873",
+   "city": "Milan",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-milan-on-march-17-2026-18corhigher"
+  },
+  {
+   "market_id": "1609243",
+   "event_id": "276874",
+   "city": "Madrid",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-madrid-on-march-17-2026-16corbelow"
+  },
+  {
+   "market_id": "1609244",
+   "event_id": "276874",
+   "city": "Madrid",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-madrid-on-march-17-2026-17c"
+  },
+  {
+   "market_id": "1609245",
+   "event_id": "276874",
+   "city": "Madrid",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-madrid-on-march-17-2026-18c"
+  },
+  {
+   "market_id": "1609246",
+   "event_id": "276874",
+   "city": "Madrid",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-madrid-on-march-17-2026-19c"
+  },
+  {
+   "market_id": "1609247",
+   "event_id": "276874",
+   "city": "Madrid",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-madrid-on-march-17-2026-20c"
+  },
+  {
+   "market_id": "1609248",
+   "event_id": "276874",
+   "city": "Madrid",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-madrid-on-march-17-2026-21c"
+  },
+  {
+   "market_id": "1609249",
+   "event_id": "276874",
+   "city": "Madrid",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-madrid-on-march-17-2026-22c"
+  },
+  {
+   "market_id": "1609250",
+   "event_id": "276874",
+   "city": "Madrid",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-madrid-on-march-17-2026-23c"
+  },
+  {
+   "market_id": "1609251",
+   "event_id": "276874",
+   "city": "Madrid",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-madrid-on-march-17-2026-24c"
+  },
+  {
+   "market_id": "1609252",
+   "event_id": "276874",
+   "city": "Madrid",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-madrid-on-march-17-2026-25c"
+  },
+  {
+   "market_id": "1609253",
+   "event_id": "276874",
+   "city": "Madrid",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-madrid-on-march-17-2026-26corhigher"
+  },
+  {
+   "market_id": "1609254",
+   "event_id": "276875",
+   "city": "Warsaw",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-warsaw-on-march-17-2026-5corbelow"
+  },
+  {
+   "market_id": "1609255",
+   "event_id": "276875",
+   "city": "Warsaw",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-warsaw-on-march-17-2026-6c"
+  },
+  {
+   "market_id": "1609256",
+   "event_id": "276875",
+   "city": "Warsaw",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-warsaw-on-march-17-2026-7c"
+  },
+  {
+   "market_id": "1609257",
+   "event_id": "276875",
+   "city": "Warsaw",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-warsaw-on-march-17-2026-8c"
+  },
+  {
+   "market_id": "1609258",
+   "event_id": "276875",
+   "city": "Warsaw",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-warsaw-on-march-17-2026-9c"
+  },
+  {
+   "market_id": "1609259",
+   "event_id": "276875",
+   "city": "Warsaw",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-warsaw-on-march-17-2026-10c"
+  },
+  {
+   "market_id": "1609260",
+   "event_id": "276875",
+   "city": "Warsaw",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-warsaw-on-march-17-2026-11c"
+  },
+  {
+   "market_id": "1609261",
+   "event_id": "276875",
+   "city": "Warsaw",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-warsaw-on-march-17-2026-12c"
+  },
+  {
+   "market_id": "1609262",
+   "event_id": "276875",
+   "city": "Warsaw",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-warsaw-on-march-17-2026-13c"
+  },
+  {
+   "market_id": "1609263",
+   "event_id": "276875",
+   "city": "Warsaw",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-warsaw-on-march-17-2026-14c"
+  },
+  {
+   "market_id": "1609264",
+   "event_id": "276875",
+   "city": "Warsaw",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-warsaw-on-march-17-2026-15corhigher"
+  },
+  {
+   "market_id": "1609272",
+   "event_id": "276883",
+   "city": "Taipei",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-taipei-on-march-17-2026-20corbelow"
+  },
+  {
+   "market_id": "1609273",
+   "event_id": "276883",
+   "city": "Taipei",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-taipei-on-march-17-2026-21c"
+  },
+  {
+   "market_id": "1609274",
+   "event_id": "276883",
+   "city": "Taipei",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-taipei-on-march-17-2026-22c"
+  },
+  {
+   "market_id": "1609275",
+   "event_id": "276883",
+   "city": "Taipei",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-taipei-on-march-17-2026-23c"
+  },
+  {
+   "market_id": "1609276",
+   "event_id": "276883",
+   "city": "Taipei",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-taipei-on-march-17-2026-24c"
+  },
+  {
+   "market_id": "1609277",
+   "event_id": "276883",
+   "city": "Taipei",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-taipei-on-march-17-2026-25c"
+  },
+  {
+   "market_id": "1609278",
+   "event_id": "276883",
+   "city": "Taipei",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-taipei-on-march-17-2026-26c"
+  },
+  {
+   "market_id": "1609279",
+   "event_id": "276883",
+   "city": "Taipei",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-taipei-on-march-17-2026-27c"
+  },
+  {
+   "market_id": "1609280",
+   "event_id": "276883",
+   "city": "Taipei",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-taipei-on-march-17-2026-28c"
+  },
+  {
+   "market_id": "1609281",
+   "event_id": "276883",
+   "city": "Taipei",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-taipei-on-march-17-2026-29c"
+  },
+  {
+   "market_id": "1609282",
+   "event_id": "276883",
+   "city": "Taipei",
+   "target_date": "2026-03-17",
+   "end_date": "2026-03-18",
+   "slug": "highest-temperature-in-taipei-on-march-17-2026-30corhigher"
+  },
+  {
+   "market_id": "1609283",
+   "event_id": "276884",
+   "city": "Hong Kong",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-hong-kong-on-march-18-2026-18corbelow"
+  },
+  {
+   "market_id": "1609284",
+   "event_id": "276884",
+   "city": "Hong Kong",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-hong-kong-on-march-18-2026-19c"
+  },
+  {
+   "market_id": "1609285",
+   "event_id": "276884",
+   "city": "Hong Kong",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-hong-kong-on-march-18-2026-20c"
+  },
+  {
+   "market_id": "1609286",
+   "event_id": "276884",
+   "city": "Hong Kong",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-hong-kong-on-march-18-2026-21c"
+  },
+  {
+   "market_id": "1609287",
+   "event_id": "276884",
+   "city": "Hong Kong",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-hong-kong-on-march-18-2026-22c"
+  },
+  {
+   "market_id": "1609288",
+   "event_id": "276884",
+   "city": "Hong Kong",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-hong-kong-on-march-18-2026-23c"
+  },
+  {
+   "market_id": "1609289",
+   "event_id": "276884",
+   "city": "Hong Kong",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-hong-kong-on-march-18-2026-24c"
+  },
+  {
+   "market_id": "1609290",
+   "event_id": "276884",
+   "city": "Hong Kong",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-hong-kong-on-march-18-2026-25c"
+  },
+  {
+   "market_id": "1609291",
+   "event_id": "276884",
+   "city": "Hong Kong",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-hong-kong-on-march-18-2026-26c"
+  },
+  {
+   "market_id": "1609292",
+   "event_id": "276884",
+   "city": "Hong Kong",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-hong-kong-on-march-18-2026-27c"
+  },
+  {
+   "market_id": "1609293",
+   "event_id": "276884",
+   "city": "Hong Kong",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-hong-kong-on-march-18-2026-28corhigher"
+  },
+  {
+   "market_id": "1609294",
+   "event_id": "276885",
+   "city": "Milan",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-milan-on-march-18-2026-6corbelow"
+  },
+  {
+   "market_id": "1609295",
+   "event_id": "276885",
+   "city": "Milan",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-milan-on-march-18-2026-7c"
+  },
+  {
+   "market_id": "1609296",
+   "event_id": "276885",
+   "city": "Milan",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-milan-on-march-18-2026-8c"
+  },
+  {
+   "market_id": "1609297",
+   "event_id": "276885",
+   "city": "Milan",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-milan-on-march-18-2026-9c"
+  },
+  {
+   "market_id": "1609298",
+   "event_id": "276885",
+   "city": "Milan",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-milan-on-march-18-2026-10c"
+  },
+  {
+   "market_id": "1609299",
+   "event_id": "276885",
+   "city": "Milan",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-milan-on-march-18-2026-11c"
+  },
+  {
+   "market_id": "1609300",
+   "event_id": "276885",
+   "city": "Milan",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-milan-on-march-18-2026-12c"
+  },
+  {
+   "market_id": "1609301",
+   "event_id": "276885",
+   "city": "Milan",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-milan-on-march-18-2026-13c"
+  },
+  {
+   "market_id": "1609302",
+   "event_id": "276885",
+   "city": "Milan",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-milan-on-march-18-2026-14c"
+  },
+  {
+   "market_id": "1609303",
+   "event_id": "276885",
+   "city": "Milan",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-milan-on-march-18-2026-15c"
+  },
+  {
+   "market_id": "1609304",
+   "event_id": "276885",
+   "city": "Milan",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-milan-on-march-18-2026-16corhigher"
+  },
+  {
+   "market_id": "1609305",
+   "event_id": "276886",
+   "city": "Madrid",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-madrid-on-march-18-2026-13corbelow"
+  },
+  {
+   "market_id": "1609306",
+   "event_id": "276886",
+   "city": "Madrid",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-madrid-on-march-18-2026-14c"
+  },
+  {
+   "market_id": "1609307",
+   "event_id": "276886",
+   "city": "Madrid",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-madrid-on-march-18-2026-15c"
+  },
+  {
+   "market_id": "1609308",
+   "event_id": "276886",
+   "city": "Madrid",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-madrid-on-march-18-2026-16c"
+  },
+  {
+   "market_id": "1609309",
+   "event_id": "276886",
+   "city": "Madrid",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-madrid-on-march-18-2026-17c"
+  },
+  {
+   "market_id": "1609310",
+   "event_id": "276886",
+   "city": "Madrid",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-madrid-on-march-18-2026-18c"
+  },
+  {
+   "market_id": "1609311",
+   "event_id": "276886",
+   "city": "Madrid",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-madrid-on-march-18-2026-19c"
+  },
+  {
+   "market_id": "1609312",
+   "event_id": "276886",
+   "city": "Madrid",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-madrid-on-march-18-2026-20c"
+  },
+  {
+   "market_id": "1609313",
+   "event_id": "276886",
+   "city": "Madrid",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-madrid-on-march-18-2026-21c"
+  },
+  {
+   "market_id": "1609314",
+   "event_id": "276886",
+   "city": "Madrid",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-madrid-on-march-18-2026-22c"
+  },
+  {
+   "market_id": "1609315",
+   "event_id": "276886",
+   "city": "Madrid",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-madrid-on-march-18-2026-23corhigher"
+  },
+  {
+   "market_id": "1609316",
+   "event_id": "276887",
+   "city": "Warsaw",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-warsaw-on-march-18-2026-6corbelow"
+  },
+  {
+   "market_id": "1609317",
+   "event_id": "276887",
+   "city": "Warsaw",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-warsaw-on-march-18-2026-7c"
+  },
+  {
+   "market_id": "1609318",
+   "event_id": "276887",
+   "city": "Warsaw",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-warsaw-on-march-18-2026-8c"
+  },
+  {
+   "market_id": "1609319",
+   "event_id": "276887",
+   "city": "Warsaw",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-warsaw-on-march-18-2026-9c"
+  },
+  {
+   "market_id": "1609320",
+   "event_id": "276887",
+   "city": "Warsaw",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-warsaw-on-march-18-2026-10c"
+  },
+  {
+   "market_id": "1609321",
+   "event_id": "276887",
+   "city": "Warsaw",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-warsaw-on-march-18-2026-11c"
+  },
+  {
+   "market_id": "1609322",
+   "event_id": "276887",
+   "city": "Warsaw",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-warsaw-on-march-18-2026-12c"
+  },
+  {
+   "market_id": "1609323",
+   "event_id": "276887",
+   "city": "Warsaw",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-warsaw-on-march-18-2026-13c"
+  },
+  {
+   "market_id": "1609324",
+   "event_id": "276887",
+   "city": "Warsaw",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-warsaw-on-march-18-2026-14c"
+  },
+  {
+   "market_id": "1609325",
+   "event_id": "276887",
+   "city": "Warsaw",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-warsaw-on-march-18-2026-15c"
+  },
+  {
+   "market_id": "1609326",
+   "event_id": "276887",
+   "city": "Warsaw",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-warsaw-on-march-18-2026-16corhigher"
+  },
+  {
+   "market_id": "1609327",
+   "event_id": "276888",
+   "city": "Taipei",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-taipei-on-march-18-2026-21corbelow"
+  },
+  {
+   "market_id": "1609328",
+   "event_id": "276888",
+   "city": "Taipei",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-taipei-on-march-18-2026-22c"
+  },
+  {
+   "market_id": "1609329",
+   "event_id": "276888",
+   "city": "Taipei",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-taipei-on-march-18-2026-23c"
+  },
+  {
+   "market_id": "1609330",
+   "event_id": "276888",
+   "city": "Taipei",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-taipei-on-march-18-2026-24c"
+  },
+  {
+   "market_id": "1609331",
+   "event_id": "276888",
+   "city": "Taipei",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-taipei-on-march-18-2026-25c"
+  },
+  {
+   "market_id": "1609332",
+   "event_id": "276888",
+   "city": "Taipei",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-taipei-on-march-18-2026-26c"
+  },
+  {
+   "market_id": "1609333",
+   "event_id": "276888",
+   "city": "Taipei",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-taipei-on-march-18-2026-27c"
+  },
+  {
+   "market_id": "1609334",
+   "event_id": "276888",
+   "city": "Taipei",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-taipei-on-march-18-2026-28c"
+  },
+  {
+   "market_id": "1609335",
+   "event_id": "276888",
+   "city": "Taipei",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-taipei-on-march-18-2026-29c"
+  },
+  {
+   "market_id": "1609336",
+   "event_id": "276888",
+   "city": "Taipei",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-taipei-on-march-18-2026-30c"
+  },
+  {
+   "market_id": "1609337",
+   "event_id": "276888",
+   "city": "Taipei",
+   "target_date": "2026-03-18",
+   "end_date": "2026-03-19",
+   "slug": "highest-temperature-in-taipei-on-march-18-2026-31corhigher"
+  },
+  {
+   "market_id": "1609338",
+   "event_id": "276889",
+   "city": "Hong Kong",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-hong-kong-on-march-19-2026-18corbelow"
+  },
+  {
+   "market_id": "1609339",
+   "event_id": "276889",
+   "city": "Hong Kong",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-hong-kong-on-march-19-2026-19c"
+  },
+  {
+   "market_id": "1609340",
+   "event_id": "276889",
+   "city": "Hong Kong",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-hong-kong-on-march-19-2026-20c"
+  },
+  {
+   "market_id": "1609341",
+   "event_id": "276889",
+   "city": "Hong Kong",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-hong-kong-on-march-19-2026-21c"
+  },
+  {
+   "market_id": "1609342",
+   "event_id": "276889",
+   "city": "Hong Kong",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-hong-kong-on-march-19-2026-22c"
+  },
+  {
+   "market_id": "1609343",
+   "event_id": "276889",
+   "city": "Hong Kong",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-hong-kong-on-march-19-2026-23c"
+  },
+  {
+   "market_id": "1609344",
+   "event_id": "276889",
+   "city": "Hong Kong",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-hong-kong-on-march-19-2026-24c"
+  },
+  {
+   "market_id": "1609345",
+   "event_id": "276889",
+   "city": "Hong Kong",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-hong-kong-on-march-19-2026-25c"
+  },
+  {
+   "market_id": "1609346",
+   "event_id": "276889",
+   "city": "Hong Kong",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-hong-kong-on-march-19-2026-26c"
+  },
+  {
+   "market_id": "1609347",
+   "event_id": "276889",
+   "city": "Hong Kong",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-hong-kong-on-march-19-2026-27c"
+  },
+  {
+   "market_id": "1609348",
+   "event_id": "276889",
+   "city": "Hong Kong",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-hong-kong-on-march-19-2026-28corhigher"
+  },
+  {
+   "market_id": "1609349",
+   "event_id": "276890",
+   "city": "Milan",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-milan-on-march-19-2026-8corbelow"
+  },
+  {
+   "market_id": "1609350",
+   "event_id": "276890",
+   "city": "Milan",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-milan-on-march-19-2026-9c"
+  },
+  {
+   "market_id": "1609351",
+   "event_id": "276890",
+   "city": "Milan",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-milan-on-march-19-2026-10c"
+  },
+  {
+   "market_id": "1609352",
+   "event_id": "276890",
+   "city": "Milan",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-milan-on-march-19-2026-11c"
+  },
+  {
+   "market_id": "1609353",
+   "event_id": "276890",
+   "city": "Milan",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-milan-on-march-19-2026-12c"
+  },
+  {
+   "market_id": "1609354",
+   "event_id": "276890",
+   "city": "Milan",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-milan-on-march-19-2026-13c"
+  },
+  {
+   "market_id": "1609355",
+   "event_id": "276890",
+   "city": "Milan",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-milan-on-march-19-2026-14c"
+  },
+  {
+   "market_id": "1609356",
+   "event_id": "276890",
+   "city": "Milan",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-milan-on-march-19-2026-15c"
+  },
+  {
+   "market_id": "1609357",
+   "event_id": "276890",
+   "city": "Milan",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-milan-on-march-19-2026-16c"
+  },
+  {
+   "market_id": "1609358",
+   "event_id": "276890",
+   "city": "Milan",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-milan-on-march-19-2026-17c"
+  },
+  {
+   "market_id": "1609359",
+   "event_id": "276890",
+   "city": "Milan",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-milan-on-march-19-2026-18corhigher"
+  },
+  {
+   "market_id": "1609360",
+   "event_id": "276891",
+   "city": "Madrid",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-madrid-on-march-19-2026-13corbelow"
+  },
+  {
+   "market_id": "1609361",
+   "event_id": "276891",
+   "city": "Madrid",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-madrid-on-march-19-2026-14c"
+  },
+  {
+   "market_id": "1609362",
+   "event_id": "276891",
+   "city": "Madrid",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-madrid-on-march-19-2026-15c"
+  },
+  {
+   "market_id": "1609363",
+   "event_id": "276891",
+   "city": "Madrid",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-madrid-on-march-19-2026-16c"
+  },
+  {
+   "market_id": "1609364",
+   "event_id": "276891",
+   "city": "Madrid",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-madrid-on-march-19-2026-17c"
+  },
+  {
+   "market_id": "1609365",
+   "event_id": "276891",
+   "city": "Madrid",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-madrid-on-march-19-2026-18c"
+  },
+  {
+   "market_id": "1609366",
+   "event_id": "276891",
+   "city": "Madrid",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-madrid-on-march-19-2026-19c"
+  },
+  {
+   "market_id": "1609367",
+   "event_id": "276891",
+   "city": "Madrid",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-madrid-on-march-19-2026-20c"
+  },
+  {
+   "market_id": "1609368",
+   "event_id": "276891",
+   "city": "Madrid",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-madrid-on-march-19-2026-21c"
+  },
+  {
+   "market_id": "1609369",
+   "event_id": "276891",
+   "city": "Madrid",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-madrid-on-march-19-2026-22c"
+  },
+  {
+   "market_id": "1609370",
+   "event_id": "276891",
+   "city": "Madrid",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-madrid-on-march-19-2026-23corhigher"
+  },
+  {
+   "market_id": "1609371",
+   "event_id": "276892",
+   "city": "Warsaw",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-warsaw-on-march-19-2026-3corbelow"
+  },
+  {
+   "market_id": "1609372",
+   "event_id": "276892",
+   "city": "Warsaw",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-warsaw-on-march-19-2026-4c"
+  },
+  {
+   "market_id": "1609373",
+   "event_id": "276892",
+   "city": "Warsaw",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-warsaw-on-march-19-2026-5c"
+  },
+  {
+   "market_id": "1609374",
+   "event_id": "276892",
+   "city": "Warsaw",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-warsaw-on-march-19-2026-6c"
+  },
+  {
+   "market_id": "1609375",
+   "event_id": "276892",
+   "city": "Warsaw",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-warsaw-on-march-19-2026-7c"
+  },
+  {
+   "market_id": "1609376",
+   "event_id": "276892",
+   "city": "Warsaw",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-warsaw-on-march-19-2026-8c"
+  },
+  {
+   "market_id": "1609377",
+   "event_id": "276892",
+   "city": "Warsaw",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-warsaw-on-march-19-2026-9c"
+  },
+  {
+   "market_id": "1609378",
+   "event_id": "276892",
+   "city": "Warsaw",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-warsaw-on-march-19-2026-10c"
+  },
+  {
+   "market_id": "1609379",
+   "event_id": "276892",
+   "city": "Warsaw",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-warsaw-on-march-19-2026-11c"
+  },
+  {
+   "market_id": "1609380",
+   "event_id": "276892",
+   "city": "Warsaw",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-warsaw-on-march-19-2026-12c"
+  },
+  {
+   "market_id": "1609381",
+   "event_id": "276892",
+   "city": "Warsaw",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-warsaw-on-march-19-2026-13corhigher"
+  },
+  {
+   "market_id": "1609382",
+   "event_id": "276893",
+   "city": "Taipei",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-taipei-on-march-19-2026-19corbelow"
+  },
+  {
+   "market_id": "1609383",
+   "event_id": "276893",
+   "city": "Taipei",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-taipei-on-march-19-2026-20c"
+  },
+  {
+   "market_id": "1609384",
+   "event_id": "276893",
+   "city": "Taipei",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-taipei-on-march-19-2026-21c"
+  },
+  {
+   "market_id": "1609385",
+   "event_id": "276893",
+   "city": "Taipei",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-taipei-on-march-19-2026-22c"
+  },
+  {
+   "market_id": "1609386",
+   "event_id": "276893",
+   "city": "Taipei",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-taipei-on-march-19-2026-23c"
+  },
+  {
+   "market_id": "1609387",
+   "event_id": "276893",
+   "city": "Taipei",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-taipei-on-march-19-2026-24c"
+  },
+  {
+   "market_id": "1609388",
+   "event_id": "276893",
+   "city": "Taipei",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-taipei-on-march-19-2026-25c"
+  },
+  {
+   "market_id": "1609389",
+   "event_id": "276893",
+   "city": "Taipei",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-taipei-on-march-19-2026-26c"
+  },
+  {
+   "market_id": "1609390",
+   "event_id": "276893",
+   "city": "Taipei",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-taipei-on-march-19-2026-27c"
+  },
+  {
+   "market_id": "1609391",
+   "event_id": "276893",
+   "city": "Taipei",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-taipei-on-march-19-2026-28c"
+  },
+  {
+   "market_id": "1609392",
+   "event_id": "276893",
+   "city": "Taipei",
+   "target_date": "2026-03-19",
+   "end_date": "2026-03-20",
+   "slug": "highest-temperature-in-taipei-on-march-19-2026-29corhigher"
+  },
+  {
+   "market_id": "1655879",
+   "event_id": "287675",
+   "city": "Chongqing",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-chongqing-on-march-20-2026-9corbelow"
+  },
+  {
+   "market_id": "1655880",
+   "event_id": "287675",
+   "city": "Chongqing",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-chongqing-on-march-20-2026-10c"
+  },
+  {
+   "market_id": "1655881",
+   "event_id": "287675",
+   "city": "Chongqing",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-chongqing-on-march-20-2026-11c"
+  },
+  {
+   "market_id": "1655882",
+   "event_id": "287675",
+   "city": "Chongqing",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-chongqing-on-march-20-2026-12c"
+  },
+  {
+   "market_id": "1655883",
+   "event_id": "287675",
+   "city": "Chongqing",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-chongqing-on-march-20-2026-13c"
+  },
+  {
+   "market_id": "1655884",
+   "event_id": "287675",
+   "city": "Chongqing",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-chongqing-on-march-20-2026-14c"
+  },
+  {
+   "market_id": "1655885",
+   "event_id": "287675",
+   "city": "Chongqing",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-chongqing-on-march-20-2026-15c"
+  },
+  {
+   "market_id": "1655886",
+   "event_id": "287675",
+   "city": "Chongqing",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-chongqing-on-march-20-2026-16c"
+  },
+  {
+   "market_id": "1655887",
+   "event_id": "287675",
+   "city": "Chongqing",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-chongqing-on-march-20-2026-17c"
+  },
+  {
+   "market_id": "1655888",
+   "event_id": "287675",
+   "city": "Chongqing",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-chongqing-on-march-20-2026-18c"
+  },
+  {
+   "market_id": "1655889",
+   "event_id": "287675",
+   "city": "Chongqing",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-chongqing-on-march-20-2026-19corhigher"
+  },
+  {
+   "market_id": "1655890",
+   "event_id": "287676",
+   "city": "Beijing",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-beijing-on-march-20-2026-10corbelow"
+  },
+  {
+   "market_id": "1655891",
+   "event_id": "287676",
+   "city": "Beijing",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-beijing-on-march-20-2026-11c"
+  },
+  {
+   "market_id": "1655892",
+   "event_id": "287676",
+   "city": "Beijing",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-beijing-on-march-20-2026-12c"
+  },
+  {
+   "market_id": "1655893",
+   "event_id": "287676",
+   "city": "Beijing",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-beijing-on-march-20-2026-13c"
+  },
+  {
+   "market_id": "1655894",
+   "event_id": "287676",
+   "city": "Beijing",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-beijing-on-march-20-2026-14c"
+  },
+  {
+   "market_id": "1655895",
+   "event_id": "287676",
+   "city": "Beijing",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-beijing-on-march-20-2026-15c"
+  },
+  {
+   "market_id": "1655896",
+   "event_id": "287676",
+   "city": "Beijing",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-beijing-on-march-20-2026-16c"
+  },
+  {
+   "market_id": "1655897",
+   "event_id": "287676",
+   "city": "Beijing",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-beijing-on-march-20-2026-17c"
+  },
+  {
+   "market_id": "1655898",
+   "event_id": "287676",
+   "city": "Beijing",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-beijing-on-march-20-2026-18c"
+  },
+  {
+   "market_id": "1655899",
+   "event_id": "287676",
+   "city": "Beijing",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-beijing-on-march-20-2026-19c"
+  },
+  {
+   "market_id": "1655900",
+   "event_id": "287676",
+   "city": "Beijing",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-beijing-on-march-20-2026-20corhigher"
+  },
+  {
+   "market_id": "1655901",
+   "event_id": "287677",
+   "city": "Wuhan",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-wuhan-on-march-20-2026-8corbelow"
+  },
+  {
+   "market_id": "1655902",
+   "event_id": "287677",
+   "city": "Wuhan",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-wuhan-on-march-20-2026-9c"
+  },
+  {
+   "market_id": "1655903",
+   "event_id": "287677",
+   "city": "Wuhan",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-wuhan-on-march-20-2026-10c"
+  },
+  {
+   "market_id": "1655904",
+   "event_id": "287677",
+   "city": "Wuhan",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-wuhan-on-march-20-2026-11c"
+  },
+  {
+   "market_id": "1655905",
+   "event_id": "287677",
+   "city": "Wuhan",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-wuhan-on-march-20-2026-12c"
+  },
+  {
+   "market_id": "1655906",
+   "event_id": "287677",
+   "city": "Wuhan",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-wuhan-on-march-20-2026-13c"
+  },
+  {
+   "market_id": "1655907",
+   "event_id": "287677",
+   "city": "Wuhan",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-wuhan-on-march-20-2026-14c"
+  },
+  {
+   "market_id": "1655908",
+   "event_id": "287677",
+   "city": "Wuhan",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-wuhan-on-march-20-2026-15c"
+  },
+  {
+   "market_id": "1655909",
+   "event_id": "287677",
+   "city": "Wuhan",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-wuhan-on-march-20-2026-16c"
+  },
+  {
+   "market_id": "1655910",
+   "event_id": "287677",
+   "city": "Wuhan",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-wuhan-on-march-20-2026-17c"
+  },
+  {
+   "market_id": "1655911",
+   "event_id": "287677",
+   "city": "Wuhan",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-wuhan-on-march-20-2026-18corhigher"
+  },
+  {
+   "market_id": "1655912",
+   "event_id": "287678",
+   "city": "Chengdu",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-chengdu-on-march-20-2026-14corbelow"
+  },
+  {
+   "market_id": "1655913",
+   "event_id": "287678",
+   "city": "Chengdu",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-chengdu-on-march-20-2026-15c"
+  },
+  {
+   "market_id": "1655914",
+   "event_id": "287678",
+   "city": "Chengdu",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-chengdu-on-march-20-2026-16c"
+  },
+  {
+   "market_id": "1655915",
+   "event_id": "287678",
+   "city": "Chengdu",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-chengdu-on-march-20-2026-17c"
+  },
+  {
+   "market_id": "1655916",
+   "event_id": "287678",
+   "city": "Chengdu",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-chengdu-on-march-20-2026-18c"
+  },
+  {
+   "market_id": "1655917",
+   "event_id": "287678",
+   "city": "Chengdu",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-chengdu-on-march-20-2026-19c"
+  },
+  {
+   "market_id": "1655918",
+   "event_id": "287678",
+   "city": "Chengdu",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-chengdu-on-march-20-2026-20c"
+  },
+  {
+   "market_id": "1655919",
+   "event_id": "287678",
+   "city": "Chengdu",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-chengdu-on-march-20-2026-21c"
+  },
+  {
+   "market_id": "1655920",
+   "event_id": "287678",
+   "city": "Chengdu",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-chengdu-on-march-20-2026-22c"
+  },
+  {
+   "market_id": "1655921",
+   "event_id": "287678",
+   "city": "Chengdu",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-chengdu-on-march-20-2026-23c"
+  },
+  {
+   "market_id": "1655922",
+   "event_id": "287678",
+   "city": "Chengdu",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-chengdu-on-march-20-2026-24corhigher"
+  },
+  {
+   "market_id": "1655923",
+   "event_id": "287679",
+   "city": "Shenzhen",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-shenzhen-on-march-20-2026-19corbelow"
+  },
+  {
+   "market_id": "1655924",
+   "event_id": "287679",
+   "city": "Shenzhen",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-shenzhen-on-march-20-2026-20c"
+  },
+  {
+   "market_id": "1655925",
+   "event_id": "287679",
+   "city": "Shenzhen",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-shenzhen-on-march-20-2026-21c"
+  },
+  {
+   "market_id": "1655926",
+   "event_id": "287679",
+   "city": "Shenzhen",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-shenzhen-on-march-20-2026-22c"
+  },
+  {
+   "market_id": "1655927",
+   "event_id": "287679",
+   "city": "Shenzhen",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-shenzhen-on-march-20-2026-23c"
+  },
+  {
+   "market_id": "1655928",
+   "event_id": "287679",
+   "city": "Shenzhen",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-shenzhen-on-march-20-2026-24c"
+  },
+  {
+   "market_id": "1655929",
+   "event_id": "287679",
+   "city": "Shenzhen",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-shenzhen-on-march-20-2026-25c"
+  },
+  {
+   "market_id": "1655930",
+   "event_id": "287679",
+   "city": "Shenzhen",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-shenzhen-on-march-20-2026-26c"
+  },
+  {
+   "market_id": "1655932",
+   "event_id": "287679",
+   "city": "Shenzhen",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-shenzhen-on-march-20-2026-27c"
+  },
+  {
+   "market_id": "1655943",
+   "event_id": "287679",
+   "city": "Shenzhen",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-shenzhen-on-march-20-2026-28c"
+  },
+  {
+   "market_id": "1655947",
+   "event_id": "287679",
+   "city": "Shenzhen",
+   "target_date": "2026-03-20",
+   "end_date": "2026-03-21",
+   "slug": "highest-temperature-in-shenzhen-on-march-20-2026-29corhigher"
+  },
+  {
+   "market_id": "1655948",
+   "event_id": "287694",
+   "city": "Chongqing",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-chongqing-on-march-21-2026-11corbelow"
+  },
+  {
+   "market_id": "1655949",
+   "event_id": "287694",
+   "city": "Chongqing",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-chongqing-on-march-21-2026-12c"
+  },
+  {
+   "market_id": "1655950",
+   "event_id": "287694",
+   "city": "Chongqing",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-chongqing-on-march-21-2026-13c"
+  },
+  {
+   "market_id": "1655951",
+   "event_id": "287694",
+   "city": "Chongqing",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-chongqing-on-march-21-2026-14c"
+  },
+  {
+   "market_id": "1655952",
+   "event_id": "287694",
+   "city": "Chongqing",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-chongqing-on-march-21-2026-15c"
+  },
+  {
+   "market_id": "1655953",
+   "event_id": "287694",
+   "city": "Chongqing",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-chongqing-on-march-21-2026-16c"
+  },
+  {
+   "market_id": "1655954",
+   "event_id": "287694",
+   "city": "Chongqing",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-chongqing-on-march-21-2026-17c"
+  },
+  {
+   "market_id": "1655955",
+   "event_id": "287694",
+   "city": "Chongqing",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-chongqing-on-march-21-2026-18c"
+  },
+  {
+   "market_id": "1655956",
+   "event_id": "287694",
+   "city": "Chongqing",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-chongqing-on-march-21-2026-19c"
+  },
+  {
+   "market_id": "1655957",
+   "event_id": "287694",
+   "city": "Chongqing",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-chongqing-on-march-21-2026-20c"
+  },
+  {
+   "market_id": "1655958",
+   "event_id": "287694",
+   "city": "Chongqing",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-chongqing-on-march-21-2026-21corhigher"
+  },
+  {
+   "market_id": "1655959",
+   "event_id": "287695",
+   "city": "Beijing",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-beijing-on-march-21-2026-12corbelow"
+  },
+  {
+   "market_id": "1655960",
+   "event_id": "287695",
+   "city": "Beijing",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-beijing-on-march-21-2026-13c"
+  },
+  {
+   "market_id": "1655961",
+   "event_id": "287695",
+   "city": "Beijing",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-beijing-on-march-21-2026-14c"
+  },
+  {
+   "market_id": "1655962",
+   "event_id": "287695",
+   "city": "Beijing",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-beijing-on-march-21-2026-15c"
+  },
+  {
+   "market_id": "1655963",
+   "event_id": "287695",
+   "city": "Beijing",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-beijing-on-march-21-2026-16c"
+  },
+  {
+   "market_id": "1655964",
+   "event_id": "287695",
+   "city": "Beijing",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-beijing-on-march-21-2026-17c"
+  },
+  {
+   "market_id": "1655965",
+   "event_id": "287695",
+   "city": "Beijing",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-beijing-on-march-21-2026-18c"
+  },
+  {
+   "market_id": "1655966",
+   "event_id": "287695",
+   "city": "Beijing",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-beijing-on-march-21-2026-19c"
+  },
+  {
+   "market_id": "1655967",
+   "event_id": "287695",
+   "city": "Beijing",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-beijing-on-march-21-2026-20c"
+  },
+  {
+   "market_id": "1655968",
+   "event_id": "287695",
+   "city": "Beijing",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-beijing-on-march-21-2026-21c"
+  },
+  {
+   "market_id": "1655969",
+   "event_id": "287695",
+   "city": "Beijing",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-beijing-on-march-21-2026-22corhigher"
+  },
+  {
+   "market_id": "1655970",
+   "event_id": "287696",
+   "city": "Wuhan",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-wuhan-on-march-21-2026-12corbelow"
+  },
+  {
+   "market_id": "1655971",
+   "event_id": "287696",
+   "city": "Wuhan",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-wuhan-on-march-21-2026-13c"
+  },
+  {
+   "market_id": "1655972",
+   "event_id": "287696",
+   "city": "Wuhan",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-wuhan-on-march-21-2026-14c"
+  },
+  {
+   "market_id": "1655973",
+   "event_id": "287696",
+   "city": "Wuhan",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-wuhan-on-march-21-2026-15c"
+  },
+  {
+   "market_id": "1655974",
+   "event_id": "287696",
+   "city": "Wuhan",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-wuhan-on-march-21-2026-16c"
+  },
+  {
+   "market_id": "1655975",
+   "event_id": "287696",
+   "city": "Wuhan",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-wuhan-on-march-21-2026-17c"
+  },
+  {
+   "market_id": "1655976",
+   "event_id": "287696",
+   "city": "Wuhan",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-wuhan-on-march-21-2026-18c"
+  },
+  {
+   "market_id": "1655977",
+   "event_id": "287696",
+   "city": "Wuhan",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-wuhan-on-march-21-2026-19c"
+  },
+  {
+   "market_id": "1655978",
+   "event_id": "287696",
+   "city": "Wuhan",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-wuhan-on-march-21-2026-20c"
+  },
+  {
+   "market_id": "1655979",
+   "event_id": "287696",
+   "city": "Wuhan",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-wuhan-on-march-21-2026-21c"
+  },
+  {
+   "market_id": "1655980",
+   "event_id": "287696",
+   "city": "Wuhan",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-wuhan-on-march-21-2026-22corhigher"
+  },
+  {
+   "market_id": "1655982",
+   "event_id": "287697",
+   "city": "Chengdu",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-chengdu-on-march-21-2026-14corbelow"
+  },
+  {
+   "market_id": "1655983",
+   "event_id": "287697",
+   "city": "Chengdu",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-chengdu-on-march-21-2026-15c"
+  },
+  {
+   "market_id": "1655984",
+   "event_id": "287697",
+   "city": "Chengdu",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-chengdu-on-march-21-2026-16c"
+  },
+  {
+   "market_id": "1655985",
+   "event_id": "287697",
+   "city": "Chengdu",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-chengdu-on-march-21-2026-17c"
+  },
+  {
+   "market_id": "1655986",
+   "event_id": "287697",
+   "city": "Chengdu",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-chengdu-on-march-21-2026-18c"
+  },
+  {
+   "market_id": "1655987",
+   "event_id": "287697",
+   "city": "Chengdu",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-chengdu-on-march-21-2026-19c"
+  },
+  {
+   "market_id": "1655988",
+   "event_id": "287697",
+   "city": "Chengdu",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-chengdu-on-march-21-2026-20c"
+  },
+  {
+   "market_id": "1655989",
+   "event_id": "287697",
+   "city": "Chengdu",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-chengdu-on-march-21-2026-21c"
+  },
+  {
+   "market_id": "1655990",
+   "event_id": "287697",
+   "city": "Chengdu",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-chengdu-on-march-21-2026-22c"
+  },
+  {
+   "market_id": "1655991",
+   "event_id": "287697",
+   "city": "Chengdu",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-chengdu-on-march-21-2026-23c"
+  },
+  {
+   "market_id": "1655992",
+   "event_id": "287697",
+   "city": "Chengdu",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-chengdu-on-march-21-2026-24corhigher"
+  },
+  {
+   "market_id": "1655993",
+   "event_id": "287698",
+   "city": "Shenzhen",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-shenzhen-on-march-21-2026-18corbelow"
+  },
+  {
+   "market_id": "1655994",
+   "event_id": "287698",
+   "city": "Shenzhen",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-shenzhen-on-march-21-2026-19c"
+  },
+  {
+   "market_id": "1655995",
+   "event_id": "287698",
+   "city": "Shenzhen",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-shenzhen-on-march-21-2026-20c"
+  },
+  {
+   "market_id": "1655996",
+   "event_id": "287698",
+   "city": "Shenzhen",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-shenzhen-on-march-21-2026-21c"
+  },
+  {
+   "market_id": "1655997",
+   "event_id": "287698",
+   "city": "Shenzhen",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-shenzhen-on-march-21-2026-22c"
+  },
+  {
+   "market_id": "1655998",
+   "event_id": "287698",
+   "city": "Shenzhen",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-shenzhen-on-march-21-2026-23c"
+  },
+  {
+   "market_id": "1655999",
+   "event_id": "287698",
+   "city": "Shenzhen",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-shenzhen-on-march-21-2026-24c"
+  },
+  {
+   "market_id": "1656000",
+   "event_id": "287698",
+   "city": "Shenzhen",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-shenzhen-on-march-21-2026-25c"
+  },
+  {
+   "market_id": "1656001",
+   "event_id": "287698",
+   "city": "Shenzhen",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-shenzhen-on-march-21-2026-26c"
+  },
+  {
+   "market_id": "1656002",
+   "event_id": "287698",
+   "city": "Shenzhen",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-shenzhen-on-march-21-2026-27c"
+  },
+  {
+   "market_id": "1656003",
+   "event_id": "287698",
+   "city": "Shenzhen",
+   "target_date": "2026-03-21",
+   "end_date": "2026-03-22",
+   "slug": "highest-temperature-in-shenzhen-on-march-21-2026-28corhigher"
+  },
+  {
+   "market_id": "1656004",
+   "event_id": "287699",
+   "city": "Chongqing",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-chongqing-on-march-22-2026-16corbelow"
+  },
+  {
+   "market_id": "1656005",
+   "event_id": "287699",
+   "city": "Chongqing",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-chongqing-on-march-22-2026-17c"
+  },
+  {
+   "market_id": "1656006",
+   "event_id": "287699",
+   "city": "Chongqing",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-chongqing-on-march-22-2026-18c"
+  },
+  {
+   "market_id": "1656007",
+   "event_id": "287699",
+   "city": "Chongqing",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-chongqing-on-march-22-2026-19c"
+  },
+  {
+   "market_id": "1656008",
+   "event_id": "287699",
+   "city": "Chongqing",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-chongqing-on-march-22-2026-20c"
+  },
+  {
+   "market_id": "1656009",
+   "event_id": "287699",
+   "city": "Chongqing",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-chongqing-on-march-22-2026-21c"
+  },
+  {
+   "market_id": "1656010",
+   "event_id": "287699",
+   "city": "Chongqing",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-chongqing-on-march-22-2026-22c"
+  },
+  {
+   "market_id": "1656011",
+   "event_id": "287699",
+   "city": "Chongqing",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-chongqing-on-march-22-2026-23c"
+  },
+  {
+   "market_id": "1656012",
+   "event_id": "287699",
+   "city": "Chongqing",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-chongqing-on-march-22-2026-24c"
+  },
+  {
+   "market_id": "1656013",
+   "event_id": "287699",
+   "city": "Chongqing",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-chongqing-on-march-22-2026-25c"
+  },
+  {
+   "market_id": "1656014",
+   "event_id": "287699",
+   "city": "Chongqing",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-chongqing-on-march-22-2026-26corhigher"
+  },
+  {
+   "market_id": "1656015",
+   "event_id": "287700",
+   "city": "Beijing",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-beijing-on-march-22-2026-16corbelow"
+  },
+  {
+   "market_id": "1656016",
+   "event_id": "287700",
+   "city": "Beijing",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-beijing-on-march-22-2026-17c"
+  },
+  {
+   "market_id": "1656017",
+   "event_id": "287700",
+   "city": "Beijing",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-beijing-on-march-22-2026-18c"
+  },
+  {
+   "market_id": "1656018",
+   "event_id": "287700",
+   "city": "Beijing",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-beijing-on-march-22-2026-19c"
+  },
+  {
+   "market_id": "1656019",
+   "event_id": "287700",
+   "city": "Beijing",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-beijing-on-march-22-2026-20c"
+  },
+  {
+   "market_id": "1656020",
+   "event_id": "287700",
+   "city": "Beijing",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-beijing-on-march-22-2026-21c"
+  },
+  {
+   "market_id": "1656021",
+   "event_id": "287700",
+   "city": "Beijing",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-beijing-on-march-22-2026-22c"
+  },
+  {
+   "market_id": "1656022",
+   "event_id": "287700",
+   "city": "Beijing",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-beijing-on-march-22-2026-23c"
+  },
+  {
+   "market_id": "1656023",
+   "event_id": "287700",
+   "city": "Beijing",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-beijing-on-march-22-2026-24c"
+  },
+  {
+   "market_id": "1656024",
+   "event_id": "287700",
+   "city": "Beijing",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-beijing-on-march-22-2026-25c"
+  },
+  {
+   "market_id": "1656025",
+   "event_id": "287700",
+   "city": "Beijing",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-beijing-on-march-22-2026-26corhigher"
+  },
+  {
+   "market_id": "1656026",
+   "event_id": "287701",
+   "city": "Wuhan",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-wuhan-on-march-22-2026-14corbelow"
+  },
+  {
+   "market_id": "1656027",
+   "event_id": "287701",
+   "city": "Wuhan",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-wuhan-on-march-22-2026-15c"
+  },
+  {
+   "market_id": "1656028",
+   "event_id": "287701",
+   "city": "Wuhan",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-wuhan-on-march-22-2026-16c"
+  },
+  {
+   "market_id": "1656029",
+   "event_id": "287701",
+   "city": "Wuhan",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-wuhan-on-march-22-2026-17c"
+  },
+  {
+   "market_id": "1656030",
+   "event_id": "287701",
+   "city": "Wuhan",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-wuhan-on-march-22-2026-18c"
+  },
+  {
+   "market_id": "1656031",
+   "event_id": "287701",
+   "city": "Wuhan",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-wuhan-on-march-22-2026-19c"
+  },
+  {
+   "market_id": "1656032",
+   "event_id": "287701",
+   "city": "Wuhan",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-wuhan-on-march-22-2026-20c"
+  },
+  {
+   "market_id": "1656033",
+   "event_id": "287701",
+   "city": "Wuhan",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-wuhan-on-march-22-2026-21c"
+  },
+  {
+   "market_id": "1656034",
+   "event_id": "287701",
+   "city": "Wuhan",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-wuhan-on-march-22-2026-22c"
+  },
+  {
+   "market_id": "1656035",
+   "event_id": "287701",
+   "city": "Wuhan",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-wuhan-on-march-22-2026-23c"
+  },
+  {
+   "market_id": "1656036",
+   "event_id": "287701",
+   "city": "Wuhan",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-wuhan-on-march-22-2026-24corhigher"
+  },
+  {
+   "market_id": "1656055",
+   "event_id": "287710",
+   "city": "Shenzhen",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-shenzhen-on-march-22-2026-20corbelow"
+  },
+  {
+   "market_id": "1656057",
+   "event_id": "287710",
+   "city": "Shenzhen",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-shenzhen-on-march-22-2026-21c"
+  },
+  {
+   "market_id": "1656060",
+   "event_id": "287710",
+   "city": "Shenzhen",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-shenzhen-on-march-22-2026-22c"
+  },
+  {
+   "market_id": "1656063",
+   "event_id": "287710",
+   "city": "Shenzhen",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-shenzhen-on-march-22-2026-23c"
+  },
+  {
+   "market_id": "1656066",
+   "event_id": "287710",
+   "city": "Shenzhen",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-shenzhen-on-march-22-2026-24c"
+  },
+  {
+   "market_id": "1656069",
+   "event_id": "287710",
+   "city": "Shenzhen",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-shenzhen-on-march-22-2026-25c"
+  },
+  {
+   "market_id": "1656072",
+   "event_id": "287710",
+   "city": "Shenzhen",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-shenzhen-on-march-22-2026-26c"
+  },
+  {
+   "market_id": "1656075",
+   "event_id": "287710",
+   "city": "Shenzhen",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-shenzhen-on-march-22-2026-27c"
+  },
+  {
+   "market_id": "1656078",
+   "event_id": "287710",
+   "city": "Shenzhen",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-shenzhen-on-march-22-2026-28c"
+  },
+  {
+   "market_id": "1656082",
+   "event_id": "287710",
+   "city": "Shenzhen",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-shenzhen-on-march-22-2026-29c"
+  },
+  {
+   "market_id": "1656085",
+   "event_id": "287710",
+   "city": "Shenzhen",
+   "target_date": "2026-03-22",
+   "end_date": "2026-03-23",
+   "slug": "highest-temperature-in-shenzhen-on-march-22-2026-30corhigher"
+  },
+  {
+   "market_id": "1656114",
+   "event_id": "287712",
+   "city": "Chongqing",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-chongqing-on-march-23-2026-14corbelow"
+  },
+  {
+   "market_id": "1656115",
+   "event_id": "287712",
+   "city": "Chongqing",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-chongqing-on-march-23-2026-15c"
+  },
+  {
+   "market_id": "1656116",
+   "event_id": "287712",
+   "city": "Chongqing",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-chongqing-on-march-23-2026-16c"
+  },
+  {
+   "market_id": "1656117",
+   "event_id": "287712",
+   "city": "Chongqing",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-chongqing-on-march-23-2026-17c"
+  },
+  {
+   "market_id": "1656118",
+   "event_id": "287712",
+   "city": "Chongqing",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-chongqing-on-march-23-2026-18c"
+  },
+  {
+   "market_id": "1656119",
+   "event_id": "287712",
+   "city": "Chongqing",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-chongqing-on-march-23-2026-19c"
+  },
+  {
+   "market_id": "1656120",
+   "event_id": "287712",
+   "city": "Chongqing",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-chongqing-on-march-23-2026-20c"
+  },
+  {
+   "market_id": "1656121",
+   "event_id": "287712",
+   "city": "Chongqing",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-chongqing-on-march-23-2026-21c"
+  },
+  {
+   "market_id": "1656122",
+   "event_id": "287712",
+   "city": "Chongqing",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-chongqing-on-march-23-2026-22c"
+  },
+  {
+   "market_id": "1656123",
+   "event_id": "287712",
+   "city": "Chongqing",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-chongqing-on-march-23-2026-23c"
+  },
+  {
+   "market_id": "1656124",
+   "event_id": "287712",
+   "city": "Chongqing",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-chongqing-on-march-23-2026-24corhigher"
+  },
+  {
+   "market_id": "1656125",
+   "event_id": "287713",
+   "city": "Beijing",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-beijing-on-march-23-2026-13corbelow"
+  },
+  {
+   "market_id": "1656126",
+   "event_id": "287713",
+   "city": "Beijing",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-beijing-on-march-23-2026-14c"
+  },
+  {
+   "market_id": "1656127",
+   "event_id": "287713",
+   "city": "Beijing",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-beijing-on-march-23-2026-15c"
+  },
+  {
+   "market_id": "1656128",
+   "event_id": "287713",
+   "city": "Beijing",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-beijing-on-march-23-2026-16c"
+  },
+  {
+   "market_id": "1656129",
+   "event_id": "287713",
+   "city": "Beijing",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-beijing-on-march-23-2026-17c"
+  },
+  {
+   "market_id": "1656130",
+   "event_id": "287713",
+   "city": "Beijing",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-beijing-on-march-23-2026-18c"
+  },
+  {
+   "market_id": "1656131",
+   "event_id": "287713",
+   "city": "Beijing",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-beijing-on-march-23-2026-19c"
+  },
+  {
+   "market_id": "1656132",
+   "event_id": "287713",
+   "city": "Beijing",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-beijing-on-march-23-2026-20c"
+  },
+  {
+   "market_id": "1656133",
+   "event_id": "287713",
+   "city": "Beijing",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-beijing-on-march-23-2026-21c"
+  },
+  {
+   "market_id": "1656134",
+   "event_id": "287713",
+   "city": "Beijing",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-beijing-on-march-23-2026-22c"
+  },
+  {
+   "market_id": "1656135",
+   "event_id": "287713",
+   "city": "Beijing",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-beijing-on-march-23-2026-23corhigher"
+  },
+  {
+   "market_id": "1656136",
+   "event_id": "287714",
+   "city": "Wuhan",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-wuhan-on-march-23-2026-11corbelow"
+  },
+  {
+   "market_id": "1656137",
+   "event_id": "287714",
+   "city": "Wuhan",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-wuhan-on-march-23-2026-12c"
+  },
+  {
+   "market_id": "1656138",
+   "event_id": "287714",
+   "city": "Wuhan",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-wuhan-on-march-23-2026-13c"
+  },
+  {
+   "market_id": "1656139",
+   "event_id": "287714",
+   "city": "Wuhan",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-wuhan-on-march-23-2026-14c"
+  },
+  {
+   "market_id": "1656140",
+   "event_id": "287714",
+   "city": "Wuhan",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-wuhan-on-march-23-2026-15c"
+  },
+  {
+   "market_id": "1656141",
+   "event_id": "287714",
+   "city": "Wuhan",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-wuhan-on-march-23-2026-16c"
+  },
+  {
+   "market_id": "1656142",
+   "event_id": "287714",
+   "city": "Wuhan",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-wuhan-on-march-23-2026-17c"
+  },
+  {
+   "market_id": "1656143",
+   "event_id": "287714",
+   "city": "Wuhan",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-wuhan-on-march-23-2026-18c"
+  },
+  {
+   "market_id": "1656144",
+   "event_id": "287714",
+   "city": "Wuhan",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-wuhan-on-march-23-2026-19c"
+  },
+  {
+   "market_id": "1656145",
+   "event_id": "287714",
+   "city": "Wuhan",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-wuhan-on-march-23-2026-20c"
+  },
+  {
+   "market_id": "1656147",
+   "event_id": "287714",
+   "city": "Wuhan",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-wuhan-on-march-23-2026-21corhigher"
+  },
+  {
+   "market_id": "1656423",
+   "event_id": "287732",
+   "city": "Chengdu",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-chengdu-on-march-23-2026-9corbelow"
+  },
+  {
+   "market_id": "1656425",
+   "event_id": "287732",
+   "city": "Chengdu",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-chengdu-on-march-23-2026-10c"
+  },
+  {
+   "market_id": "1656427",
+   "event_id": "287732",
+   "city": "Chengdu",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-chengdu-on-march-23-2026-11c"
+  },
+  {
+   "market_id": "1656428",
+   "event_id": "287732",
+   "city": "Chengdu",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-chengdu-on-march-23-2026-12c"
+  },
+  {
+   "market_id": "1656429",
+   "event_id": "287732",
+   "city": "Chengdu",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-chengdu-on-march-23-2026-13c"
+  },
+  {
+   "market_id": "1656430",
+   "event_id": "287732",
+   "city": "Chengdu",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-chengdu-on-march-23-2026-14c"
+  },
+  {
+   "market_id": "1656431",
+   "event_id": "287732",
+   "city": "Chengdu",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-chengdu-on-march-23-2026-15c"
+  },
+  {
+   "market_id": "1656432",
+   "event_id": "287732",
+   "city": "Chengdu",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-chengdu-on-march-23-2026-16c"
+  },
+  {
+   "market_id": "1656433",
+   "event_id": "287732",
+   "city": "Chengdu",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-chengdu-on-march-23-2026-17c"
+  },
+  {
+   "market_id": "1656434",
+   "event_id": "287732",
+   "city": "Chengdu",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-chengdu-on-march-23-2026-18c"
+  },
+  {
+   "market_id": "1656435",
+   "event_id": "287732",
+   "city": "Chengdu",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-chengdu-on-march-23-2026-19corhigher"
+  },
+  {
+   "market_id": "1656436",
+   "event_id": "287735",
+   "city": "Shenzhen",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-shenzhen-on-march-23-2026-20corbelow"
+  },
+  {
+   "market_id": "1656437",
+   "event_id": "287735",
+   "city": "Shenzhen",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-shenzhen-on-march-23-2026-21c"
+  },
+  {
+   "market_id": "1656438",
+   "event_id": "287735",
+   "city": "Shenzhen",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-shenzhen-on-march-23-2026-22c"
+  },
+  {
+   "market_id": "1656439",
+   "event_id": "287735",
+   "city": "Shenzhen",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-shenzhen-on-march-23-2026-23c"
+  },
+  {
+   "market_id": "1656440",
+   "event_id": "287735",
+   "city": "Shenzhen",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-shenzhen-on-march-23-2026-24c"
+  },
+  {
+   "market_id": "1656441",
+   "event_id": "287735",
+   "city": "Shenzhen",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-shenzhen-on-march-23-2026-25c"
+  },
+  {
+   "market_id": "1656442",
+   "event_id": "287735",
+   "city": "Shenzhen",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-shenzhen-on-march-23-2026-26c"
+  },
+  {
+   "market_id": "1656443",
+   "event_id": "287735",
+   "city": "Shenzhen",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-shenzhen-on-march-23-2026-27c"
+  },
+  {
+   "market_id": "1656444",
+   "event_id": "287735",
+   "city": "Shenzhen",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-shenzhen-on-march-23-2026-28c"
+  },
+  {
+   "market_id": "1656445",
+   "event_id": "287735",
+   "city": "Shenzhen",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-shenzhen-on-march-23-2026-29c"
+  },
+  {
+   "market_id": "1656446",
+   "event_id": "287735",
+   "city": "Shenzhen",
+   "target_date": "2026-03-23",
+   "end_date": "2026-03-24",
+   "slug": "highest-temperature-in-shenzhen-on-march-23-2026-30corhigher"
+  },
+  {
+   "market_id": "1656447",
+   "event_id": "287736",
+   "city": "Chongqing",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-chongqing-on-march-24-2026-10corbelow"
+  },
+  {
+   "market_id": "1656448",
+   "event_id": "287736",
+   "city": "Chongqing",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-chongqing-on-march-24-2026-11c"
+  },
+  {
+   "market_id": "1656449",
+   "event_id": "287736",
+   "city": "Chongqing",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-chongqing-on-march-24-2026-12c"
+  },
+  {
+   "market_id": "1656450",
+   "event_id": "287736",
+   "city": "Chongqing",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-chongqing-on-march-24-2026-13c"
+  },
+  {
+   "market_id": "1656451",
+   "event_id": "287736",
+   "city": "Chongqing",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-chongqing-on-march-24-2026-14c"
+  },
+  {
+   "market_id": "1656452",
+   "event_id": "287736",
+   "city": "Chongqing",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-chongqing-on-march-24-2026-15c"
+  },
+  {
+   "market_id": "1656453",
+   "event_id": "287736",
+   "city": "Chongqing",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-chongqing-on-march-24-2026-16c"
+  },
+  {
+   "market_id": "1656454",
+   "event_id": "287736",
+   "city": "Chongqing",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-chongqing-on-march-24-2026-17c"
+  },
+  {
+   "market_id": "1656455",
+   "event_id": "287736",
+   "city": "Chongqing",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-chongqing-on-march-24-2026-18c"
+  },
+  {
+   "market_id": "1656456",
+   "event_id": "287736",
+   "city": "Chongqing",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-chongqing-on-march-24-2026-19c"
+  },
+  {
+   "market_id": "1656457",
+   "event_id": "287736",
+   "city": "Chongqing",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-chongqing-on-march-24-2026-20corhigher"
+  },
+  {
+   "market_id": "1656460",
+   "event_id": "287737",
+   "city": "Beijing",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-beijing-on-march-24-2026-15corbelow"
+  },
+  {
+   "market_id": "1656461",
+   "event_id": "287737",
+   "city": "Beijing",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-beijing-on-march-24-2026-16c"
+  },
+  {
+   "market_id": "1656462",
+   "event_id": "287737",
+   "city": "Beijing",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-beijing-on-march-24-2026-17c"
+  },
+  {
+   "market_id": "1656463",
+   "event_id": "287737",
+   "city": "Beijing",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-beijing-on-march-24-2026-18c"
+  },
+  {
+   "market_id": "1656464",
+   "event_id": "287737",
+   "city": "Beijing",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-beijing-on-march-24-2026-19c"
+  },
+  {
+   "market_id": "1656465",
+   "event_id": "287737",
+   "city": "Beijing",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-beijing-on-march-24-2026-20c"
+  },
+  {
+   "market_id": "1656466",
+   "event_id": "287737",
+   "city": "Beijing",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-beijing-on-march-24-2026-21c"
+  },
+  {
+   "market_id": "1656467",
+   "event_id": "287737",
+   "city": "Beijing",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-beijing-on-march-24-2026-22c"
+  },
+  {
+   "market_id": "1656468",
+   "event_id": "287737",
+   "city": "Beijing",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-beijing-on-march-24-2026-23c"
+  },
+  {
+   "market_id": "1656469",
+   "event_id": "287737",
+   "city": "Beijing",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-beijing-on-march-24-2026-24c"
+  },
+  {
+   "market_id": "1656470",
+   "event_id": "287737",
+   "city": "Beijing",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-beijing-on-march-24-2026-25corhigher"
+  },
+  {
+   "market_id": "1656478",
+   "event_id": "287745",
+   "city": "Wuhan",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-wuhan-on-march-24-2026-9corbelow"
+  },
+  {
+   "market_id": "1656479",
+   "event_id": "287745",
+   "city": "Wuhan",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-wuhan-on-march-24-2026-10c"
+  },
+  {
+   "market_id": "1656480",
+   "event_id": "287745",
+   "city": "Wuhan",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-wuhan-on-march-24-2026-11c"
+  },
+  {
+   "market_id": "1656481",
+   "event_id": "287745",
+   "city": "Wuhan",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-wuhan-on-march-24-2026-12c"
+  },
+  {
+   "market_id": "1656482",
+   "event_id": "287745",
+   "city": "Wuhan",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-wuhan-on-march-24-2026-13c"
+  },
+  {
+   "market_id": "1656483",
+   "event_id": "287745",
+   "city": "Wuhan",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-wuhan-on-march-24-2026-14c"
+  },
+  {
+   "market_id": "1656484",
+   "event_id": "287745",
+   "city": "Wuhan",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-wuhan-on-march-24-2026-15c"
+  },
+  {
+   "market_id": "1656485",
+   "event_id": "287745",
+   "city": "Wuhan",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-wuhan-on-march-24-2026-16c"
+  },
+  {
+   "market_id": "1656487",
+   "event_id": "287745",
+   "city": "Wuhan",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-wuhan-on-march-24-2026-17c"
+  },
+  {
+   "market_id": "1656490",
+   "event_id": "287745",
+   "city": "Wuhan",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-wuhan-on-march-24-2026-18c"
+  },
+  {
+   "market_id": "1656494",
+   "event_id": "287745",
+   "city": "Wuhan",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-wuhan-on-march-24-2026-19corhigher"
+  },
+  {
+   "market_id": "1656517",
+   "event_id": "287747",
+   "city": "Chengdu",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-chengdu-on-march-24-2026-11corbelow"
+  },
+  {
+   "market_id": "1656520",
+   "event_id": "287747",
+   "city": "Chengdu",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-chengdu-on-march-24-2026-12c"
+  },
+  {
+   "market_id": "1656524",
+   "event_id": "287747",
+   "city": "Chengdu",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-chengdu-on-march-24-2026-13c"
+  },
+  {
+   "market_id": "1656527",
+   "event_id": "287747",
+   "city": "Chengdu",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-chengdu-on-march-24-2026-14c"
+  },
+  {
+   "market_id": "1656530",
+   "event_id": "287747",
+   "city": "Chengdu",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-chengdu-on-march-24-2026-15c"
+  },
+  {
+   "market_id": "1656534",
+   "event_id": "287747",
+   "city": "Chengdu",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-chengdu-on-march-24-2026-16c"
+  },
+  {
+   "market_id": "1656537",
+   "event_id": "287747",
+   "city": "Chengdu",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-chengdu-on-march-24-2026-17c"
+  },
+  {
+   "market_id": "1656540",
+   "event_id": "287747",
+   "city": "Chengdu",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-chengdu-on-march-24-2026-18c"
+  },
+  {
+   "market_id": "1656544",
+   "event_id": "287747",
+   "city": "Chengdu",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-chengdu-on-march-24-2026-19c"
+  },
+  {
+   "market_id": "1656546",
+   "event_id": "287747",
+   "city": "Chengdu",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-chengdu-on-march-24-2026-20c"
+  },
+  {
+   "market_id": "1656547",
+   "event_id": "287747",
+   "city": "Chengdu",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-chengdu-on-march-24-2026-21corhigher"
+  },
+  {
+   "market_id": "1656548",
+   "event_id": "287748",
+   "city": "Shenzhen",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-shenzhen-on-march-24-2026-20corbelow"
+  },
+  {
+   "market_id": "1656549",
+   "event_id": "287748",
+   "city": "Shenzhen",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-shenzhen-on-march-24-2026-21c"
+  },
+  {
+   "market_id": "1656550",
+   "event_id": "287748",
+   "city": "Shenzhen",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-shenzhen-on-march-24-2026-22c"
+  },
+  {
+   "market_id": "1656551",
+   "event_id": "287748",
+   "city": "Shenzhen",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-shenzhen-on-march-24-2026-23c"
+  },
+  {
+   "market_id": "1656552",
+   "event_id": "287748",
+   "city": "Shenzhen",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-shenzhen-on-march-24-2026-24c"
+  },
+  {
+   "market_id": "1656553",
+   "event_id": "287748",
+   "city": "Shenzhen",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-shenzhen-on-march-24-2026-25c"
+  },
+  {
+   "market_id": "1656554",
+   "event_id": "287748",
+   "city": "Shenzhen",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-shenzhen-on-march-24-2026-26c"
+  },
+  {
+   "market_id": "1656555",
+   "event_id": "287748",
+   "city": "Shenzhen",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-shenzhen-on-march-24-2026-27c"
+  },
+  {
+   "market_id": "1656556",
+   "event_id": "287748",
+   "city": "Shenzhen",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-shenzhen-on-march-24-2026-28c"
+  },
+  {
+   "market_id": "1656557",
+   "event_id": "287748",
+   "city": "Shenzhen",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-shenzhen-on-march-24-2026-29c"
+  },
+  {
+   "market_id": "1656558",
+   "event_id": "287748",
+   "city": "Shenzhen",
+   "target_date": "2026-03-24",
+   "end_date": "2026-03-25",
+   "slug": "highest-temperature-in-shenzhen-on-march-24-2026-30corhigher"
+  }
+ ],
+ "correction_A26": {
+  "descr_full_date": 93221,
+  "slug_month_day": 93221,
+  "slug_with_year": 93088,
+  "agreement_month_day": 93221,
+  "agreement_year_where_both": 93088,
+  "year_disagreements": 0,
+  "note": "A-25 declaraba dos vias independientes con acuerdo 100% en fecha completa; el año del slug se tomaba de endDate. Corregido en A-26."
+ },
+ "status_A27": "EVIDENCIA DE CONSTRUCTIBILIDAD, NO AUTORIZACION. 2D §C prohíbe derivar target_date de resolution_timestamp/close_time/endDate/question/slug/description y de cualquier fuente heurística, y declara que no existe campo estructurado: el contrato es insatisfacible tal como está. El operador y Strategy A NUNCA lo derivan (parámetro del caller, fail-closed). Que el caller R14 lo pueble con esta extracción es decisión pendiente vía 2D §V."
+}

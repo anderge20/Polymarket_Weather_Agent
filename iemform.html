@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+        <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IEM :: Download ASOS/AWOS/METAR Data</title>
+    <meta name="description" content="Iowa State University, Iowa Environmental Mesonet">
+    <meta name="author" content="daryl herzmann akrherz@iastate.edu">
+
+    <link href="/vendor/bootstrap/5.3.6/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons for UI and navigation -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link href="/css/iastate-iem.css" rel="stylesheet">
+
+    <!-- Any page specific headextra content here -->
+    <link rel="stylesheet" href="/vendor/openlayers/10.8.0/ol.css" type="text/css">
+<link rel="stylesheet" href="/css/iemss.css" type="text/css"><link rel="stylesheet" href="download.css">
+    <!-- Essential Social Tags -->
+    <meta property="og:title" content="IEM :: Download ASOS/AWOS/METAR Data">
+    <meta property="og:description" content="Iowa Environmental Mesonet of Iowa State University">
+    <meta property="og:image" content="https://mesonet.agron.iastate.edu/images/logo_large.png">
+    <meta property="og:url" content="https://mesonet.agron.iastate.edu/request/download.phtml?network=GB__ASOS">
+        <meta name="twitter:card" content="summary">
+
+    <!-- Non-essential -->
+    <meta name="twitter:creator" content="@akrherz">
+    <!-- Le fav and touch icons -->
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="apple-touch-icon-precomposed" sizes="144x144" href="/apple-touch-icon-precomposed.png">
+    <link rel="apple-touch-icon-precomposed" sizes="114x114" href="/apple-touch-icon-precomposed.png">
+    <link rel="apple-touch-icon-precomposed" sizes="72x72" href="/apple-touch-icon-precomposed.png">
+    <link rel="apple-touch-icon-precomposed" href="/apple-touch-icon-precomposed.png">
+  </head>
+
+  <body>
+    <a href="#main-content" class="visually-hidden-focusable">Skip to main content</a>
+<header>
+<!-- Mobile navbar: Simple single row with logo, search, and hamburger -->
+<nav class="navbar-site d-block d-lg-none" aria-label="Utility navigation">
+    <div class="container">
+        <div class="mobile-navbar-row d-flex align-items-center">
+            <div class="mobile-logo me-2">
+                <a href="/" title="Home">
+                    <img src="/images/logo_small.png" alt="IEM" height="30">
+                </a>
+            </div>
+            
+            <div class="mobile-search flex-fill me-2">
+                <form action="/search" method="GET" role="search">
+                    <input name="q" aria-label="Search" title="Search" placeholder="Search 'DSM' 'autoplot 100' 'street address'" type="text" class="form-control form-control-sm">
+                </form>
+            </div>
+            
+            <div class="mobile-menu d-flex align-items-center">
+                <!-- Utility toggler removed per design: keep only primary-nav toggler -->
+                <button type="button" class="navbar-toggler p-1 ms-2" data-bs-toggle="collapse" data-bs-target="#navbar-menu-collapse" aria-controls="navbar-menu-collapse" aria-expanded="false" aria-label="Toggle primary navigation">
+                    <span class="navbar-toggler-icon"></span>
+                    <span class="visually-hidden">Primary navigation</span>
+                </button>
+            </div>
+        </div>
+        <!-- Mobile site links (contact, disclaimer, apps) now unified target -->
+        <div class="collapse" id="mobile-nav-collapse">
+            <ul class="nav navbar-nav mobile-site-nav" aria-label="Utility navigation links">
+                <li class="nav-item"><a class="nav-link" href="/info/contacts.php">contact us</a></li>
+                <li class="nav-item"><a class="nav-link" href="/disclaimer.php">disclaimer</a></li>
+                <li class="nav-item"><a class="nav-link" href="/apps.php">apps</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- Desktop navbar: ISU wordmark on left, search and links stacked on right -->
+<nav class="navbar-site d-none d-lg-block" aria-label="Utility navigation">
+    <div class="container">
+        <div class="desktop-navbar-row">
+            <div class="desktop-wordmark">
+                <a href="/" title="Home" class="wordmark-unit">
+                    <span class="wordmark-isu">Iowa State University</span>
+                    <span class="wordmark-unit-title">Iowa Environmental Mesonet</span>
+                </a>
+            </div>
+            
+            <div class="desktop-right">
+                <div class="desktop-search">
+                    <form action="/search" method="GET" role="search">
+                        <input name="q" aria-label="Search" title="Search" placeholder="Search 'DSM' 'autoplot 100' 'street address'" type="text" class="form-control">
+                    </form>
+                </div>
+                
+                <div class="desktop-links">
+                    <ul class="nav navbar-nav">
+                        <li class="nav-item"><a class="nav-link" href="/info/contacts.php">contact us</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/disclaimer.php">disclaimer</a></li>
+                        <li class="nav-item"><a class="nav-link" href="/apps.php">apps</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+</header>
+
+<!-- Main navigation menu navbar -->
+<nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom" aria-label="Primary navigation">
+    <div class="container">
+        <!-- Desktop IEM logo (visible in main nav on desktop) -->
+        <div class="d-none d-lg-block">
+            <a href="/"><img style="height: 50px;" alt="IEM" class="img-fluid float-start" src="/images/logo_small.png" /></a>
+        </div>
+        
+    <!-- Main navigation menu (collapsible on mobile) -->
+    <div class="navbar-collapse collapse" id="navbar-menu-collapse">
+            <div class="d-none d-lg-block">
+                <ul class="nav navbar-nav">
+                    <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" data-bs-toggle="dropdown"
+                        href="#" aria-label="Home resources menu"> <i class="bi bi-house-fill" aria-hidden="true"></i><span class="visually-hidden">Home resources</span> </a>
+                        <ul class="dropdown-menu">
+<li><a class="dropdown-item" href="/projects/iao/">Iowa Atmospheric Observatory</a></li>
+<li><a class="dropdown-item" href="/">Iowa Environmental Mesonet</a></li>
+<li><a class="dropdown-item" href="https://cocorahs.org">CoCoRaHS</a></li>
+<li><a class="dropdown-item" href="https://dailyerosion.org">Daily Erosion Project</a></li>
+<li><a class="dropdown-item" href="https://weather.im">Weather.IM Project</a></li>
+                        </ul>
+                    </li>
+<li class="nav-item dropdown"><a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#">Apps</a><ul class="dropdown-menu"><li><a class="dropdown-item" href="/apps.php">Application Index</a></li>
+<li><a class="dropdown-item" href="/plotting/auto/">Automated Data Plotting</a></li>
+<li><a class="dropdown-item" href="/climodat/">Climodat</a></li>
+<li><a class="dropdown-item" href="/climodat/monitor.php">Climodat Monitor</a></li>
+<li><a class="dropdown-item" href="/explorer/">IEM Explorer</a></li>
+<li><a class="dropdown-item" href="/rainfall/obhour.phtml">Hourly Precip</a></li>
+<li><a class="dropdown-item" href="/GIS/apps/rview/warnings.phtml">Interactive Radar</a></li>
+<li><a class="dropdown-item" href="/topics/pests/">Pest Maps + Forecasting</a></li>
+<li><a class="dropdown-item" href="/my/current.phtml">Sortable Currents</a></li>
+<li><a class="dropdown-item" href="/timemachine/">Time Machine</a></li>
+<li><a class="dropdown-item" href="/sites/windrose.phtml?station=AMW&amp;network=IA_ASOS">Wind Roses</a></li>
+</ul></li>
+<li class="nav-item dropdown"><a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#">Areas</a><ul class="dropdown-menu"><li><a class="dropdown-item" href="/agweather/">Ag Weather/Climate Info</a></li>
+<li><a class="dropdown-item" href="/archive/">Archive Mainpage</a></li>
+<li><a class="dropdown-item" href="/climate/">Climate Mainpage</a></li>
+<li><a class="dropdown-item" href="/current/">Current Mainpage</a></li>
+<li><a class="dropdown-item" href="/dm/">Drought</a></li>
+<li><a class="dropdown-item" href="/GIS/">GIS Mainpage</a></li>
+<li><a class="dropdown-item" href="/nws/">NWS Mainpage</a></li>
+<li><a class="dropdown-item" href="/current/severe.phtml">Severe Weather Mainpage</a></li>
+</ul></li>
+<li class="nav-item dropdown"><a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#">Datasets</a><ul class="dropdown-menu"><li><a class="dropdown-item" href="/COOP/extremes.php">Daily Climatology</a></li>
+<li><a class="dropdown-item" href="/request/daily.phtml">Daily Observations</a></li>
+<li><a class="dropdown-item" href="/info/datasets/">Dataset Documentation</a></li>
+<li><a class="dropdown-item" href="/iemre/">IEM Reanalysis</a></li>
+<li><a class="dropdown-item" href="/mos/">Model Output Statistics</a></li>
+<li><a class="dropdown-item" href="/docs/nexrad_mosaic/">NEXRAD Mosaic</a></li>
+<li><a class="dropdown-item" href="/request/gis/pireps.php">PIREP - Pilot Reports</a></li>
+<li><a class="dropdown-item" href="/roads/">Roads Mainpage</a></li>
+<li><a class="dropdown-item" href="/current/radar.phtml">RADAR &amp; Satellite</a></li>
+<li><a class="dropdown-item" href="/rainfall/">Rainfall Data</a></li>
+<li><a class="dropdown-item" href="/archive/raob/">Sounding Archive</a></li>
+<li><a class="dropdown-item" href="/smos/">Soil Moisture Satellite</a></li>
+</ul></li>
+<li class="nav-item dropdown"><a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#">Info</a><ul class="dropdown-menu"><li><a class="dropdown-item" href="/info.php">Info Mainpage</a></li>
+<li><a class="dropdown-item" href="/onsite/features/past.php">Daily Features</a></li>
+<li><a class="dropdown-item" href="/info/links.php">Links</a></li>
+<li><a class="dropdown-item" href="/onsite/news.phtml">News</a></li>
+<li><a class="dropdown-item" href="/present/">Presentations</a></li>
+<li><a class="dropdown-item" href="/info/refs.php">Referenced By</a></li>
+<li><a class="dropdown-item" href="/sites/locate.php">Station Data and Metadata</a></li>
+<li><a class="dropdown-item" href="/QC/">Quality Control</a></li>
+<li><a class="dropdown-item" href="/info/variables.phtml">Variables</a></li>
+</ul></li>
+<li class="nav-item dropdown"><a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#">Networks</a><ul class="dropdown-menu"><li><a class="dropdown-item" href="/sites/networks.php">Network Tables</a></li>
+<li><a class="dropdown-item" href="/ASOS/">ASOS/AWOS Airports</a></li>
+<li><a class="dropdown-item" href="/cocorahs/">CoCoRaHS - Citizen Science</a></li>
+<li><a class="dropdown-item" href="/DCP/">DCP/HADS/SHEF - Hydrological</a></li>
+<li><a class="dropdown-item" href="/COOP/">NWS COOP - Daily Climate</a></li>
+<li><a class="dropdown-item" href="/agclimate/">ISU Soil Moisture</a></li>
+<li><a class="dropdown-item" href="/nstl_flux/">NLAE Flux</a></li>
+<li><a class="dropdown-item" href="/RWIS/">RWIS - Roadway Weather</a></li>
+<li><a class="dropdown-item" href="/scan/">SCAN - NRCS Soil Climate</a></li>
+<li><a class="dropdown-item" href="/other/">Other</a></li>
+<li><a class="dropdown-item" href="/uscrn/">US Climate Reference</a></li>
+</ul></li>
+<li class="nav-item dropdown"><a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#">NWS Data</a><ul class="dropdown-menu"><li><a class="dropdown-item" href="/nws/">NWS Mainpage</a></li>
+<li><a class="dropdown-item" href="/lsr/">Local Storm Report App</a></li>
+<li><a class="dropdown-item" href="/cow/">IEM Cow (SBW Verification)</a></li>
+<li><a class="dropdown-item" href="/raccoon/">IEM Raccoon (SBW Powerpoints)</a></li>
+<li><a class="dropdown-item" href="/river/">River Summary</a></li>
+<li><a class="dropdown-item" href="/GIS/goes.phtml">Satellite Data</a></li>
+<li><a class="dropdown-item" href="/vtec/search.php">Search for Warnings</a></li>
+<li><a class="dropdown-item" href="/nws/sps_search/">Special Weather Statement (SPS) Search</a></li>
+<li><a class="dropdown-item" href="/nws/spc_outlook_search/">SPC Convective Outlook / MCD Search</a></li>
+<li><a class="dropdown-item" href="/GIS/apps/rview/watch.phtml">SPC Watches</a></li>
+<li><a class="dropdown-item" href="/nws/text.php">Text Archives Mainpage</a></li>
+<li><a class="dropdown-item" href="/wx/afos/list.phtml">Text Listing by WFO/Center/Product</a></li>
+<li><a class="dropdown-item" href="/wx/afos/">Text by Product ID</a></li>
+<li><a class="dropdown-item" href="/vtec/">VTEC Browser</a></li>
+</ul></li>
+<li class="nav-item dropdown"><a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#">Services</a><ul class="dropdown-menu"><li><a class="dropdown-item" href="/api/">API Mainpage</a></li>
+<li><a class="dropdown-item" href="/api/#cgi">CGI / Bulk Data</a></li>
+<li><a class="dropdown-item" href="/request/grx/">Gibson Ridge Placefiles</a></li>
+<li><a class="dropdown-item" href="/projects/iembot/">iembot</a></li>
+<li><a class="dropdown-item" href="/api/#json">JSON Webservices</a></li>
+<li><a class="dropdown-item" href="/request/ldm.php">LDM</a></li>
+<li><a class="dropdown-item" href="/request/maxcsv.py?help">Max CSV</a></li>
+<li><a class="dropdown-item" href="/ogc/">OGC Webservices</a></li>
+<li><a class="dropdown-item" href="/GIS/radmap_api.phtml">RadMap API</a></li>
+<li><a class="dropdown-item" href="/GIS/radview.phtml">RADAR Services</a></li>
+</ul></li>
+<li class="nav-item dropdown"><a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#">Webcams</a><ul class="dropdown-menu"><li><a class="dropdown-item" href="/projects/webcam.php">Webcam mainpage</a></li>
+<li><a class="dropdown-item" href="/current/bloop.phtml">Build your own lapses</a></li>
+<li><a class="dropdown-item" href="/cool/">Cool lapses</a></li>
+<li><a class="dropdown-item" href="/current/viewer.phtml">IEM Webcam Viewer</a></li>
+<li><a class="dropdown-item" href="/current/isucams.phtml">ISU Campus Webcams</a></li>
+<li><a class="dropdown-item" href="/current/camlapse/">Recent lapses</a></li>
+<li><a class="dropdown-item" href="/current/webcam.php">Still images</a></li>
+</ul></li>
+                </ul>
+            </div>
+            <div class="d-lg-none py-2">
+                <div class="accordion" id="mobile-primary-nav-accordion">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="mobile-nav-home-heading">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#mobile-nav-home-collapse" aria-expanded="false"
+                                aria-controls="mobile-nav-home-collapse">Home</button>
+                        </h2>
+                        <div id="mobile-nav-home-collapse" class="accordion-collapse collapse"
+                            aria-labelledby="mobile-nav-home-heading" data-bs-parent="#mobile-primary-nav-accordion">
+                            <div class="accordion-body py-2">
+<a class="d-block py-1 text-decoration-none" href="/projects/iao/">Iowa Atmospheric Observatory</a>
+<a class="d-block py-1 text-decoration-none" href="/">Iowa Environmental Mesonet</a>
+<a class="d-block py-1 text-decoration-none" href="https://cocorahs.org">CoCoRaHS</a>
+<a class="d-block py-1 text-decoration-none" href="https://dailyerosion.org">Daily Erosion Project</a>
+<a class="d-block py-1 text-decoration-none" href="https://weather.im">Weather.IM Project</a>
+                            </div>
+                        </div>
+                    </div>
+<div class="accordion-item"><h2 class="accordion-header" id="mobile-nav-tab-0-heading"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#mobile-nav-tab-0-collapse" aria-expanded="false" aria-controls="mobile-nav-tab-0-collapse">Apps</button></h2><div id="mobile-nav-tab-0-collapse" class="accordion-collapse collapse" aria-labelledby="mobile-nav-tab-0-heading" data-bs-parent="#mobile-primary-nav-accordion"><div class="accordion-body py-2"><a class="d-block py-1 text-decoration-none" href="/apps.php">Application Index</a>
+<a class="d-block py-1 text-decoration-none" href="/plotting/auto/">Automated Data Plotting</a>
+<a class="d-block py-1 text-decoration-none" href="/climodat/">Climodat</a>
+<a class="d-block py-1 text-decoration-none" href="/climodat/monitor.php">Climodat Monitor</a>
+<a class="d-block py-1 text-decoration-none" href="/explorer/">IEM Explorer</a>
+<a class="d-block py-1 text-decoration-none" href="/rainfall/obhour.phtml">Hourly Precip</a>
+<a class="d-block py-1 text-decoration-none" href="/GIS/apps/rview/warnings.phtml">Interactive Radar</a>
+<a class="d-block py-1 text-decoration-none" href="/topics/pests/">Pest Maps + Forecasting</a>
+<a class="d-block py-1 text-decoration-none" href="/my/current.phtml">Sortable Currents</a>
+<a class="d-block py-1 text-decoration-none" href="/timemachine/">Time Machine</a>
+<a class="d-block py-1 text-decoration-none" href="/sites/windrose.phtml?station=AMW&amp;network=IA_ASOS">Wind Roses</a>
+</div></div></div>
+<div class="accordion-item"><h2 class="accordion-header" id="mobile-nav-tab-1-heading"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#mobile-nav-tab-1-collapse" aria-expanded="false" aria-controls="mobile-nav-tab-1-collapse">Areas</button></h2><div id="mobile-nav-tab-1-collapse" class="accordion-collapse collapse" aria-labelledby="mobile-nav-tab-1-heading" data-bs-parent="#mobile-primary-nav-accordion"><div class="accordion-body py-2"><a class="d-block py-1 text-decoration-none" href="/agweather/">Ag Weather/Climate Info</a>
+<a class="d-block py-1 text-decoration-none" href="/archive/">Archive Mainpage</a>
+<a class="d-block py-1 text-decoration-none" href="/climate/">Climate Mainpage</a>
+<a class="d-block py-1 text-decoration-none" href="/current/">Current Mainpage</a>
+<a class="d-block py-1 text-decoration-none" href="/dm/">Drought</a>
+<a class="d-block py-1 text-decoration-none" href="/GIS/">GIS Mainpage</a>
+<a class="d-block py-1 text-decoration-none" href="/nws/">NWS Mainpage</a>
+<a class="d-block py-1 text-decoration-none" href="/current/severe.phtml">Severe Weather Mainpage</a>
+</div></div></div>
+<div class="accordion-item"><h2 class="accordion-header" id="mobile-nav-tab-2-heading"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#mobile-nav-tab-2-collapse" aria-expanded="false" aria-controls="mobile-nav-tab-2-collapse">Datasets</button></h2><div id="mobile-nav-tab-2-collapse" class="accordion-collapse collapse" aria-labelledby="mobile-nav-tab-2-heading" data-bs-parent="#mobile-primary-nav-accordion"><div class="accordion-body py-2"><a class="d-block py-1 text-decoration-none" href="/COOP/extremes.php">Daily Climatology</a>
+<a class="d-block py-1 text-decoration-none" href="/request/daily.phtml">Daily Observations</a>
+<a class="d-block py-1 text-decoration-none" href="/info/datasets/">Dataset Documentation</a>
+<a class="d-block py-1 text-decoration-none" href="/iemre/">IEM Reanalysis</a>
+<a class="d-block py-1 text-decoration-none" href="/mos/">Model Output Statistics</a>
+<a class="d-block py-1 text-decoration-none" href="/docs/nexrad_mosaic/">NEXRAD Mosaic</a>
+<a class="d-block py-1 text-decoration-none" href="/request/gis/pireps.php">PIREP - Pilot Reports</a>
+<a class="d-block py-1 text-decoration-none" href="/roads/">Roads Mainpage</a>
+<a class="d-block py-1 text-decoration-none" href="/current/radar.phtml">RADAR &amp; Satellite</a>
+<a class="d-block py-1 text-decoration-none" href="/rainfall/">Rainfall Data</a>
+<a class="d-block py-1 text-decoration-none" href="/archive/raob/">Sounding Archive</a>
+<a class="d-block py-1 text-decoration-none" href="/smos/">Soil Moisture Satellite</a>
+</div></div></div>
+<div class="accordion-item"><h2 class="accordion-header" id="mobile-nav-tab-3-heading"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#mobile-nav-tab-3-collapse" aria-expanded="false" aria-controls="mobile-nav-tab-3-collapse">Info</button></h2><div id="mobile-nav-tab-3-collapse" class="accordion-collapse collapse" aria-labelledby="mobile-nav-tab-3-heading" data-bs-parent="#mobile-primary-nav-accordion"><div class="accordion-body py-2"><a class="d-block py-1 text-decoration-none" href="/info.php">Info Mainpage</a>
+<a class="d-block py-1 text-decoration-none" href="/onsite/features/past.php">Daily Features</a>
+<a class="d-block py-1 text-decoration-none" href="/info/links.php">Links</a>
+<a class="d-block py-1 text-decoration-none" href="/onsite/news.phtml">News</a>
+<a class="d-block py-1 text-decoration-none" href="/present/">Presentations</a>
+<a class="d-block py-1 text-decoration-none" href="/info/refs.php">Referenced By</a>
+<a class="d-block py-1 text-decoration-none" href="/sites/locate.php">Station Data and Metadata</a>
+<a class="d-block py-1 text-decoration-none" href="/QC/">Quality Control</a>
+<a class="d-block py-1 text-decoration-none" href="/info/variables.phtml">Variables</a>
+</div></div></div>
+<div class="accordion-item"><h2 class="accordion-header" id="mobile-nav-tab-4-heading"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#mobile-nav-tab-4-collapse" aria-expanded="false" aria-controls="mobile-nav-tab-4-collapse">Networks</button></h2><div id="mobile-nav-tab-4-collapse" class="accordion-collapse collapse" aria-labelledby="mobile-nav-tab-4-heading" data-bs-parent="#mobile-primary-nav-accordion"><div class="accordion-body py-2"><a class="d-block py-1 text-decoration-none" href="/sites/networks.php">Network Tables</a>
+<a class="d-block py-1 text-decoration-none" href="/ASOS/">ASOS/AWOS Airports</a>
+<a class="d-block py-1 text-decoration-none" href="/cocorahs/">CoCoRaHS - Citizen Science</a>
+<a class="d-block py-1 text-decoration-none" href="/DCP/">DCP/HADS/SHEF - Hydrological</a>
+<a class="d-block py-1 text-decoration-none" href="/COOP/">NWS COOP - Daily Climate</a>
+<a class="d-block py-1 text-decoration-none" href="/agclimate/">ISU Soil Moisture</a>
+<a class="d-block py-1 text-decoration-none" href="/nstl_flux/">NLAE Flux</a>
+<a class="d-block py-1 text-decoration-none" href="/RWIS/">RWIS - Roadway Weather</a>
+<a class="d-block py-1 text-decoration-none" href="/scan/">SCAN - NRCS Soil Climate</a>
+<a class="d-block py-1 text-decoration-none" href="/other/">Other</a>
+<a class="d-block py-1 text-decoration-none" href="/uscrn/">US Climate Reference</a>
+</div></div></div>
+<div class="accordion-item"><h2 class="accordion-header" id="mobile-nav-tab-5-heading"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#mobile-nav-tab-5-collapse" aria-expanded="false" aria-controls="mobile-nav-tab-5-collapse">NWS Data</button></h2><div id="mobile-nav-tab-5-collapse" class="accordion-collapse collapse" aria-labelledby="mobile-nav-tab-5-heading" data-bs-parent="#mobile-primary-nav-accordion"><div class="accordion-body py-2"><a class="d-block py-1 text-decoration-none" href="/nws/">NWS Mainpage</a>
+<a class="d-block py-1 text-decoration-none" href="/lsr/">Local Storm Report App</a>
+<a class="d-block py-1 text-decoration-none" href="/cow/">IEM Cow (SBW Verification)</a>
+<a class="d-block py-1 text-decoration-none" href="/raccoon/">IEM Raccoon (SBW Powerpoints)</a>
+<a class="d-block py-1 text-decoration-none" href="/river/">River Summary</a>
+<a class="d-block py-1 text-decoration-none" href="/GIS/goes.phtml">Satellite Data</a>
+<a class="d-block py-1 text-decoration-none" href="/vtec/search.php">Search for Warnings</a>
+<a class="d-block py-1 text-decoration-none" href="/nws/sps_search/">Special Weather Statement (SPS) Search</a>
+<a class="d-block py-1 text-decoration-none" href="/nws/spc_outlook_search/">SPC Convective Outlook / MCD Search</a>
+<a class="d-block py-1 text-decoration-none" href="/GIS/apps/rview/watch.phtml">SPC Watches</a>
+<a class="d-block py-1 text-decoration-none" href="/nws/text.php">Text Archives Mainpage</a>
+<a class="d-block py-1 text-decoration-none" href="/wx/afos/list.phtml">Text Listing by WFO/Center/Product</a>
+<a class="d-block py-1 text-decoration-none" href="/wx/afos/">Text by Product ID</a>
+<a class="d-block py-1 text-decoration-none" href="/vtec/">VTEC Browser</a>
+</div></div></div>
+<div class="accordion-item"><h2 class="accordion-header" id="mobile-nav-tab-6-heading"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#mobile-nav-tab-6-collapse" aria-expanded="false" aria-controls="mobile-nav-tab-6-collapse">Services</button></h2><div id="mobile-nav-tab-6-collapse" class="accordion-collapse collapse" aria-labelledby="mobile-nav-tab-6-heading" data-bs-parent="#mobile-primary-nav-accordion"><div class="accordion-body py-2"><a class="d-block py-1 text-decoration-none" href="/api/">API Mainpage</a>
+<a class="d-block py-1 text-decoration-none" href="/api/#cgi">CGI / Bulk Data</a>
+<a class="d-block py-1 text-decoration-none" href="/request/grx/">Gibson Ridge Placefiles</a>
+<a class="d-block py-1 text-decoration-none" href="/projects/iembot/">iembot</a>
+<a class="d-block py-1 text-decoration-none" href="/api/#json">JSON Webservices</a>
+<a class="d-block py-1 text-decoration-none" href="/request/ldm.php">LDM</a>
+<a class="d-block py-1 text-decoration-none" href="/request/maxcsv.py?help">Max CSV</a>
+<a class="d-block py-1 text-decoration-none" href="/ogc/">OGC Webservices</a>
+<a class="d-block py-1 text-decoration-none" href="/GIS/radmap_api.phtml">RadMap API</a>
+<a class="d-block py-1 text-decoration-none" href="/GIS/radview.phtml">RADAR Services</a>
+</div></div></div>
+<div class="accordion-item"><h2 class="accordion-header" id="mobile-nav-tab-7-heading"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#mobile-nav-tab-7-collapse" aria-expanded="false" aria-controls="mobile-nav-tab-7-collapse">Webcams</button></h2><div id="mobile-nav-tab-7-collapse" class="accordion-collapse collapse" aria-labelledby="mobile-nav-tab-7-heading" data-bs-parent="#mobile-primary-nav-accordion"><div class="accordion-body py-2"><a class="d-block py-1 text-decoration-none" href="/projects/webcam.php">Webcam mainpage</a>
+<a class="d-block py-1 text-decoration-none" href="/current/bloop.phtml">Build your own lapses</a>
+<a class="d-block py-1 text-decoration-none" href="/cool/">Cool lapses</a>
+<a class="d-block py-1 text-decoration-none" href="/current/viewer.phtml">IEM Webcam Viewer</a>
+<a class="d-block py-1 text-decoration-none" href="/current/isucams.phtml">ISU Campus Webcams</a>
+<a class="d-block py-1 text-decoration-none" href="/current/camlapse/">Recent lapses</a>
+<a class="d-block py-1 text-decoration-none" href="/current/webcam.php">Still images</a>
+</div></div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+<main role="main" id="main-content">
+<div class="container-fluid">
+
+
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item"><a href="/ASOS">ASOS Network</a></li>
+    <li class="breadcrumb-item active" aria-current="page">ASOS-AWOS-METAR Data Download</li>
+  </ol>
+</nav>
+
+<div class="row">
+<div class="col-lg-8 col-md-7">
+
+<p>The IEM maintains an ever growing archive of automated airport weather
+observations from around the world!  These observations are typically called
+'ASOS' or sometimes 'AWOS' sensors.  A more generic term may be METAR data,
+which is a term that describes the format the data is transmitted as. If you
+don't get data for a request, please feel free to
+<a href="/info/contacts.php">contact us</a> for help. The IEM also has a one
+minute interval dataset for <a href="asos/1min.phtml">US ASOS</a> (2000-)
+and <a href="awos/1min.php">Iowa AWOS</a> (1995-2011) sites.  This archive
+simply provides the as-is collection of historical observations, very little
+quality control is done.  More details on this dataset are
+<a href="/info/datasets/metar.html">here</a>.</p>
+
+<p><strong>Data Sources:</strong> The data made available on this page is sourced
+from a number of places including: <a href="https://www.unidata.ucar.edu/projects/#idd">Unidata IDD</a>,
+<a href="https://www.ncei.noaa.gov/products/land-based-station/integrated-surface-database">NCEI ISD</a>, and
+<a href="https://madis.ncep.noaa.gov/madis_OMO.shtml">MADIS One Minute ASOS</a>.</p>
+
+</div>
+<div class="col-lg-4 col-md-5">
+
+<p><strong>Tools/Libaries</strong></p>
+
+<p><strong>Python Script Examples</strong>
+<br /><a href="https://github.com/akrherz/iem/blob/main/scripts/asos/iem_scraper_example.py">fetch by network</a>
+<br /><a href="https://github.com/akrherz/iem/blob/main/scripts/asos/iem_scraper_example2.py">selectively fetch</a>
+</p>
+
+<p><strong>R Script Examples</strong>
+<br />A community user has contributed <a href="https://github.com/realmiketalbot/R-scripts/blob/master/iem_scraper_example.
+r">R language</a> version of the python script.
+There is also a <a href="https://docs.ropensci.org/riem/">riem R package</a>
+ allowing for easy access to this archive.</p>
+
+</div>
+</div>
+
+<p>This archive contains processed observations up until
+<code>2026-09-05T09:51:26Z</code>. Data
+is synced from the real-time ingest every 10 minutes.</p>
+
+<p>
+<a href="/cgi-bin/request/asos.py?help" class="btn btn-primary"><i class="bi bi-file-text" aria-hidden="true"></i> Backend documentation</a> exists for those that
+wish to script against this service.
+</p>
+
+<form name="netselect" class="mb-3">
+  <label for="network-select" class="form-label"><strong>Select Network</strong></label>
+  <select name="network" class="iemselect2"><option value="AF__ASOS">Afghanistan ASOS</option><option value="AL_ASOS">Alabama ASOS</option><option value="AK_ASOS">Alaska ASOS</option><option value="AL__ASOS">Albania ASOS</option><option value="CA_AB_ASOS">Alberta CA ASOS</option><option value="DZ__ASOS">Algeria ASOS</option><option value="AS_ASOS">American Samoa ASOS</option><option value="AO__ASOS">Angola ASOS</option><option value="AI__ASOS">Anguilla ASOS</option><option value="AQ__ASOS">Antarctica ASOS</option><option value="AG__ASOS">Antigua and Barbuda ASOS</option><option value="AR__ASOS">Argentina ASOS</option><option value="AZ_ASOS">Arizona ASOS</option><option value="AR_ASOS">Arkansas ASOS</option><option value="AM__ASOS">Armenia ASOS</option><option value="AW__ASOS">Aruba ASOS</option><option value="AU__ASOS">Australia ASOS</option><option value="AT__ASOS">Austria ASOS</option><option value="AZ__ASOS">Azerbaijan ASOS</option><option value="BS__ASOS">Bahamas ASOS</option><option value="BH__ASOS">Bahrain ASOS</option><option value="BD__ASOS">Bangladesh ASOS</option><option value="BB__ASOS">Barbados ASOS</option><option value="BY__ASOS">Belarus ASOS</option><option value="BE__ASOS">Belgium ASOS</option><option value="BZ__ASOS">Belize ASOS</option><option value="BJ__ASOS">Benin ASOS</option><option value="BM__ASOS">Bermuda ASOS</option><option value="BT__ASOS">Bhutan ASOS</option><option value="BO__ASOS">Bolivia ASOS</option><option value="BA__ASOS">Bosnia and Herzegovina ASOS</option><option value="BW__ASOS">Botswana ASOS</option><option value="BR__ASOS">Brazil ASOS</option><option value="CA_BC_ASOS">British Columbia CA ASOS</option><option value="IO__ASOS">British Indian Ocean Territory ASOS</option><option value="VG__ASOS">British Virgin Islands ASOS</option><option value="BG__ASOS">Bulgaria ASOS</option><option value="BF__ASOS">Burkina Faso ASOS</option><option value="BI__ASOS">Burundi ASOS</option><option value="CA_ASOS">California ASOS</option><option value="KH__ASOS">Cambodia ASOS</option><option value="CM__ASOS">Cameroon ASOS</option><option value="CV__ASOS">Cape Verde ASOS</option><option value="CF__ASOS">Central African Republic ASOS</option><option value="TD__ASOS">Chad ASOS</option><option value="CL__ASOS">Chile ASOS</option><option value="CN__ASOS">China ASOS</option><option value="CO__ASOS">Colombia ASOS</option><option value="CO_ASOS">Colorado ASOS</option><option value="KM__ASOS">Comoros ASOS</option><option value="CG__ASOS">Congo ASOS</option><option value="CT_ASOS">Connecticut ASOS</option><option value="CK__ASOS">Cook Islands ASOS</option><option value="CR__ASOS">Costa Rica ASOS</option><option value="HR__ASOS">Croatia ASOS</option><option value="CU__ASOS">Cuba ASOS</option><option value="CY__ASOS">Cyprus ASOS</option><option value="CZ__ASOS">Czech Republic ASOS</option><option value="DE_ASOS">Delaware ASOS</option><option value="CD__ASOS">Democratic Republic of the Congo ASOS</option><option value="DK__ASOS">Denmark ASOS</option><option value="DJ__ASOS">Djibouti ASOS</option><option value="DM__ASOS">Dominica ASOS</option><option value="DO__ASOS">Dominican Republic ASOS</option><option value="EC__ASOS">Ecuador ASOS</option><option value="EG__ASOS">Egypt ASOS</option><option value="SV__ASOS">El Salvador ASOS</option><option value="GQ__ASOS">Equatorial Guinea ASOS</option><option value="EE__ASOS">Estonia ASOS</option><option value="SZ__ASOS">Eswatini ASOS</option><option value="ET__ASOS">Ethiopia ASOS</option><option value="FK__ASOS">Falkland Islands ASOS</option><option value="FM__ASOS">Federated States of Micronesia ASOS</option><option value="FJ__ASOS">Fiji ASOS</option><option value="FI__ASOS">Finland ASOS</option><option value="FL_ASOS">Florida ASOS</option><option value="FR__ASOS">France ASOS</option><option value="PF__ASOS">French Polynesia ASOS</option><option value="GA__ASOS">Gabon ASOS</option><option value="GM__ASOS">Gambia ASOS</option><option value="GA_ASOS">Georgia ASOS</option><option value="GE__ASOS">Georgia (Country) ASOS</option><option value="DE__ASOS">Germany ASOS</option><option value="GH__ASOS">Ghana ASOS</option><option value="GI__ASOS">Gibraltar ASOS</option><option value="KY__ASOS">Grand Cayman ASOS</option><option value="GB__ASOS" selected>Great Britain ASOS</option><option value="GR__ASOS">Greece ASOS</option><option value="GL__ASOS">Greenland ASOS</option><option value="GD__ASOS">Grenada ASOS</option><option value="GP__ASOS">Guadeloupe ASOS</option><option value="GU_ASOS">Guam ASOS</option><option value="GT__ASOS">Guatemala ASOS</option><option value="GN__ASOS">Guinea ASOS</option><option value="GW__ASOS">Guinea-Bissau ASOS</option><option value="GY__ASOS">Guyana ASOS</option><option value="HT__ASOS">Haiti ASOS</option><option value="HI_ASOS">Hawaii ASOS</option><option value="HN__ASOS">Honduras ASOS</option><option value="HK__ASOS">Hong Kong ASOS</option><option value="HU__ASOS">Hungary ASOS</option><option value="IS__ASOS">Iceland ASOS</option><option value="ID_ASOS">Idaho ASOS</option><option value="IL_ASOS">Illinois ASOS</option><option value="IN__ASOS">India ASOS</option><option value="IN_ASOS">Indiana ASOS</option><option value="ID__ASOS">Indonesia ASOS</option><option value="IA_ASOS">Iowa ASOS</option><option value="IR__ASOS">Iran ASOS</option><option value="IQ__ASOS">Iraq ASOS</option><option value="IE__ASOS">Ireland ASOS</option><option value="IL__ASOS">Israel ASOS</option><option value="IT__ASOS">Italy ASOS</option><option value="CI__ASOS">Ivory Coast ASOS</option><option value="JM__ASOS">Jamaica ASOS</option><option value="JP__ASOS">Japan ASOS</option><option value="JO__ASOS">Jordan ASOS</option><option value="KS_ASOS">Kansas ASOS</option><option value="KZ__ASOS">Kazakhstan ASOS</option><option value="KY_ASOS">Kentucky ASOS</option><option value="KE__ASOS">Kenya ASOS</option><option value="KI__ASOS">Kiribati ASOS</option><option value="KW__ASOS">Kuwait ASOS</option><option value="KG__ASOS">Kyrgyzstan ASOS</option><option value="LA__ASOS">Lao ASOS</option><option value="LV__ASOS">Latvia ASOS</option><option value="LB__ASOS">Lebanon ASOS</option><option value="LS__ASOS">Lesotho ASOS</option><option value="LR__ASOS">Liberia ASOS</option><option value="LY__ASOS">Libya ASOS</option><option value="LT__ASOS">Lithuania ASOS</option><option value="LA_ASOS">Louisiana ASOS</option><option value="LU__ASOS">Luxembourg ASOS</option><option value="MK__ASOS">Macedonia ASOS</option><option value="MG__ASOS">Madagascar ASOS</option><option value="ME_ASOS">Maine ASOS</option><option value="MW__ASOS">Malawi ASOS</option><option value="MY__ASOS">Malaysia ASOS</option><option value="MV__ASOS">Maldives ASOS</option><option value="ML__ASOS">Mali ASOS</option><option value="CA_MB_ASOS">Manitoba CA ASOS</option><option value="MH__ASOS">Marshall Islands ASOS</option><option value="MD_ASOS">Maryland ASOS</option><option value="MA_ASOS">Massachusetts ASOS</option><option value="MR__ASOS">Mauritania ASOS</option><option value="MU__ASOS">Mauritius ASOS</option><option value="MX__ASOS">Mexico ASOS</option><option value="MI_ASOS">Michigan ASOS</option><option value="MN_ASOS">Minnesota ASOS</option><option value="MS_ASOS">Mississippi ASOS</option><option value="MO_ASOS">Missouri ASOS</option><option value="MD__ASOS">Moldova ASOS</option><option value="MN__ASOS">Mongolia ASOS</option><option value="MT_ASOS">Montana ASOS</option><option value="MA__ASOS">Morocco ASOS</option><option value="MZ__ASOS">Mozambique ASOS</option><option value="MM__ASOS">Myanmar ASOS</option><option value="NA__ASOS">Namibia ASOS</option><option value="NE_ASOS">Nebraska ASOS</option><option value="NP__ASOS">Nepal ASOS</option><option value="AN__ASOS">Netherlands Antilles ASOS</option><option value="NL__ASOS">Netherlands ASOS</option><option value="NV_ASOS">Nevada ASOS</option><option value="CA_NB_ASOS">New Brunswick CA ASOS</option><option value="NC__ASOS">New Caledonia ASOS</option><option value="CA_NF_ASOS">Newfoundland CA ASOS</option><option value="NH_ASOS">New Hampshire ASOS</option><option value="NJ_ASOS">New Jersey ASOS</option><option value="NM_ASOS">New Mexico ASOS</option><option value="NY_ASOS">New York ASOS</option><option value="NF__ASOS">New Zealand ASOS</option><option value="NI__ASOS">Nicaragua ASOS</option><option value="NE__ASOS">Niger ASOS</option><option value="NG__ASOS">Nigeria ASOS</option><option value="NC_ASOS">North Carolina ASOS</option><option value="ND_ASOS">North Dakota ASOS</option><option value="MP__ASOS">Northern Mariana Islands ASOS</option><option value="KP__ASOS">North Korea</option><option value="CA_NT_ASOS">Northwest Territories CA ASOS</option><option value="NO__ASOS">Norway ASOS</option><option value="CA_NS_ASOS">Nova Scotia CA ASOS</option><option value="CA_NU_ASOS">Nunavut Canada ASOS</option><option value="OH_ASOS">Ohio ASOS</option><option value="OK_ASOS">Oklahoma ASOS</option><option value="OM__ASOS">Oman ASOS</option><option value="CA_ON_ASOS">Ontario CA ASOS</option><option value="OR_ASOS">Oregon ASOS</option><option value="PK__ASOS">Pakistan ASOS</option><option value="PA__ASOS">Panama ASOS</option><option value="PG__ASOS">Papua New Guinea ASOS</option><option value="PY__ASOS">Paraguay ASOS</option><option value="PA_ASOS">Pennsylvania ASOS</option><option value="PE__ASOS">Peru ASOS</option><option value="PH__ASOS">Philippines ASOS</option><option value="PL__ASOS">Poland ASOS</option><option value="PT__ASOS">Portugal ASOS</option><option value="CA_PE_ASOS">Prince Edward Island Canada ASOS</option><option value="PR_ASOS">Puerto Rico ASOS</option><option value="QA__ASOS">Qatar ASOS</option><option value="CA_QC_ASOS">Quebec CA ASOS</option><option value="RI_ASOS">Rhode Island ASOS</option><option value="RO__ASOS">Romania ASOS</option><option value="RU__ASOS">Russian Federation ASOS</option><option value="RW__ASOS">Rwanda ASOS</option><option value="SH__ASOS">Saint Helena ASOS</option><option value="KN__ASOS">Saint Kitts and Nevis ASOS</option><option value="LC__ASOS">Saint Lucia ASOS</option><option value="VC__ASOS">Saint Vincent and the Grenadines ASOS</option><option value="WS__ASOS">Samoa ASOS</option><option value="ST__ASOS">Sao Tome and Principe ASOS</option><option value="CA_SK_ASOS">Saskatchewan CA ASOS</option><option value="SA__ASOS">Saudi Arabia ASOS</option><option value="SN__ASOS">Senegal ASOS</option><option value="RS__ASOS">Serbia and Montenegro ASOS</option><option value="SC__ASOS">Seychelles ASOS</option><option value="SL__ASOS">Sierra Leone ASOS</option><option value="SG__ASOS">Singapore ASOS</option><option value="SK__ASOS">Slovakia ASOS</option><option value="SI__ASOS">Slovenia ASOS</option><option value="SB__ASOS">Solomon Islands ASOS</option><option value="SO__ASOS">Somalia ASOS</option><option value="ZA__ASOS">South Africa ASOS</option><option value="SC_ASOS">South Carolina ASOS</option><option value="SD_ASOS">South Dakota ASOS</option><option value="KR__ASOS">South Korea ASOS</option><option value="ES__ASOS">Spain ASOS</option><option value="LK__ASOS">Sri Lanka ASOS</option><option value="SD__ASOS">Sudan ASOS</option><option value="SR__ASOS">Suriname ASOS</option><option value="SE__ASOS">Sweden ASOS</option><option value="CH__ASOS">Switzerland ASOS</option><option value="SY__ASOS">Syria ASOS</option><option value="TW__ASOS">Taiwan ASOS</option><option value="TJ__ASOS">Tajikistan ASOS</option><option value="TZ__ASOS">Tanzania ASOS</option><option value="TN_ASOS">Tennessee ASOS</option><option value="TX_ASOS">Texas ASOS</option><option value="TH__ASOS">Thailand ASOS</option><option value="TG__ASOS">Togo ASOS</option><option value="TO__ASOS">Tonga ASOS</option><option value="TT__ASOS">Trinidad and Tobago ASOS</option><option value="TN__ASOS">Tunisia ASOS</option><option value="TR__ASOS">Turkey ASOS</option><option value="TM__ASOS">Turkmenistan ASOS</option><option value="TC__ASOS">Turks and Caicos Islands</option><option value="UG__ASOS">Uganda ASOS</option><option value="UA__ASOS">Ukraine ASOS</option><option value="AE__ASOS">United Arab Emirates ASOS</option><option value="UN__ASOS">Unknown / Classified Military ASOS</option><option value="UY__ASOS">Uruguay ASOS</option><option value="UT_ASOS">Utah ASOS</option><option value="UZ__ASOS">Uzbekistan ASOS</option><option value="VU__ASOS">Vanuatu ASOS</option><option value="VE__ASOS">Venezuela ASOS</option><option value="VT_ASOS">Vermont ASOS</option><option value="VN__ASOS">Viet Nam ASOS</option><option value="VA_ASOS">Virginia ASOS</option><option value="VI_ASOS">Virgin Islands ASOS</option><option value="WA_ASOS">Washington ASOS</option><option value="WV_ASOS">West Virginia ASOS</option><option value="WI_ASOS">Wisconsin ASOS</option><option value="WY_ASOS">Wyoming ASOS</option><option value="YE__ASOS">Yemen ASOS</option><option value="CA_YT_ASOS">Yukon Canada ASOS</option><option value="ZM__ASOS">Zambia ASOS</option><option value="ZW__ASOS">Zimbabwe ASOS</option></select>
+  <button type="submit" class="btn btn-outline-primary btn-sm ms-2">Switch to Network</button>
+</form>
+
+<form target="_blank" method="GET" action="/cgi-bin/request/asos.py" name="iemss">
+  <input type="hidden" name="network" value="GB__ASOS">
+  <div class="form2url"></div>
+  <div class="row">
+    <div class="col-lg-7 col-md-6">
+
+<h4>1) Select Station/Network by clicking on location: </h4>
+
+<p>If you select no stations, you can download up to a
+<strong>24 hour period</strong> of all
+data available from this archive!  If you select stations, the aggregate
+request limit is <strong>1,000 station years</strong> worth of data.</p>
+
+
+<div id="iemss" data-network="GB__ASOS" data-name="station" data-supports-all="0"></div>
+
+</div>
+<div class="col-lg-5 col-md-6">
+
+<h4>2) Select From Available Data:</h4>
+
+<p><strong>Note:</strong> Precipitation data is unavailable for non-US sites.
+The Heat Index/Wind Chill value retroactively use current NWS equations.</p>
+
+<select name="data" size="10" multiple class="form-select">
+    <option value="all" SELECTED>All Available</option>
+    <option value="tmpf">Air Temperature [F]</option>
+    <option value="tmpc">Air Temperature [C]</option>
+    <option value="dwpf">Dew Point [F]</option>
+    <option value="dwpc">Dew Point [C]</option>
+    <option value="relh">Relative Humidity [%]</option>
+    <option value="feel">Heat Index/Wind Chill [F]</option>
+    <option value="drct">Wind Direction </option>
+    <option value="sknt">Wind Speed [knots]</option>
+    <option value="sped">Wind Speed [mph]</option>
+    <option value="alti">Altimeter [inches]</option>
+    <option value="mslp">Sea Level Pressure [mb]</option>
+    <option value="p01m">1 hour Precipitation [mm]</option>
+    <option value="p01i">1 hour Precipitation [inch]</option>
+    <option value="vsby">Visibility [miles]</option>
+    <option value="gust">Wind Gust [knots]</option>
+    <option value="gust_mph">Wind Gust [mph]</option>
+    <option value="skyc1">Cloud Coverage Level 1</option>
+    <option value="skyc2">Cloud Coverage Level 2</option>
+    <option value="skyc3">Cloud Coverage Level 3</option>
+    <option value="skyl1">Cloud Height Level 1 [ft]</option>
+    <option value="skyl2">Cloud Height Level 2 [ft]</option>
+    <option value="skyl3">Cloud Height Level 3 [ft]</option>
+    <option value="wxcodes">Present Weather Code(s)</option>
+    <option value="ice_accretion_1hr">Ice Accretion 1 Hour</option>
+    <option value="ice_accretion_3hr">Ice Accretion 3 Hour</option>
+    <option value="ice_accretion_6hr">Ice Accretion 6 Hour</option>
+    <option value="peak_wind_gust">Peak Wind Gust [knots]</option>
+    <option value="peak_wind_gust_mph">Peak Wind Gust [MPH]</option>
+    <option value="peak_wind_drct">Peak Wind Direction [deg]</option>
+    <option value="peak_wind_time">Peak Wind Time</option>
+    <option value="snowdepth">Snow Depth (4-group) [inch]</option>
+    <option value="metar">Raw METAR</option>
+</select>
+
+
+<br><br>
+<h4>3) Select Date Range:</h4>
+<p><strong>Note:</strong> These dates define timestamps starting at
+midnight of the selected timezone.  The start date is inclusive and the
+end date is exclusive.</p>
+
+<table class="table table-bordered table-sm align-middle">
+<tr><th>Start Date:</th><td><select name="year1"><option value="1900">1900</option><option value="1901">1901</option><option value="1902">1902</option><option value="1903">1903</option><option value="1904">1904</option><option value="1905">1905</option><option value="1906">1906</option><option value="1907">1907</option><option value="1908">1908</option><option value="1909">1909</option><option value="1910">1910</option><option value="1911">1911</option><option value="1912">1912</option><option value="1913">1913</option><option value="1914">1914</option><option value="1915">1915</option><option value="1916">1916</option><option value="1917">1917</option><option value="1918">1918</option><option value="1919">1919</option><option value="1920">1920</option><option value="1921">1921</option><option value="1922">1922</option><option value="1923">1923</option><option value="1924">1924</option><option value="1925">1925</option><option value="1926">1926</option><option value="1927">1927</option><option value="1928">1928</option><option value="1929">1929</option><option value="1930">1930</option><option value="1931">1931</option><option value="1932">1932</option><option value="1933">1933</option><option value="1934">1934</option><option value="1935">1935</option><option value="1936">1936</option><option value="1937">1937</option><option value="1938">1938</option><option value="1939">1939</option><option value="1940">1940</option><option value="1941">1941</option><option value="1942">1942</option><option value="1943">1943</option><option value="1944">1944</option><option value="1945">1945</option><option value="1946">1946</option><option value="1947">1947</option><option value="1948">1948</option><option value="1949">1949</option><option value="1950">1950</option><option value="1951">1951</option><option value="1952">1952</option><option value="1953">1953</option><option value="1954">1954</option><option value="1955">1955</option><option value="1956">1956</option><option value="1957">1957</option><option value="1958">1958</option><option value="1959">1959</option><option value="1960">1960</option><option value="1961">1961</option><option value="1962">1962</option><option value="1963">1963</option><option value="1964">1964</option><option value="1965">1965</option><option value="1966">1966</option><option value="1967">1967</option><option value="1968">1968</option><option value="1969">1969</option><option value="1970">1970</option><option value="1971">1971</option><option value="1972">1972</option><option value="1973">1973</option><option value="1974">1974</option><option value="1975">1975</option><option value="1976">1976</option><option value="1977">1977</option><option value="1978">1978</option><option value="1979">1979</option><option value="1980">1980</option><option value="1981">1981</option><option value="1982">1982</option><option value="1983">1983</option><option value="1984">1984</option><option value="1985">1985</option><option value="1986">1986</option><option value="1987">1987</option><option value="1988">1988</option><option value="1989">1989</option><option value="1990">1990</option><option value="1991">1991</option><option value="1992">1992</option><option value="1993">1993</option><option value="1994">1994</option><option value="1995">1995</option><option value="1996">1996</option><option value="1997">1997</option><option value="1998">1998</option><option value="1999">1999</option><option value="2000">2000</option><option value="2001">2001</option><option value="2002">2002</option><option value="2003">2003</option><option value="2004">2004</option><option value="2005">2005</option><option value="2006">2006</option><option value="2007">2007</option><option value="2008">2008</option><option value="2009">2009</option><option value="2010">2010</option><option value="2011">2011</option><option value="2012">2012</option><option value="2013">2013</option><option value="2014">2014</option><option value="2015">2015</option><option value="2016">2016</option><option value="2017">2017</option><option value="2018">2018</option><option value="2019">2019</option><option value="2020">2020</option><option value="2021">2021</option><option value="2022">2022</option><option value="2023">2023</option><option value="2024">2024</option><option value="2025">2025</option><option value="2026" selected>2026</option></select> <select name="month1"><option value="1" selected>Jan</option><option value="2">Feb</option><option value="3">Mar</option><option value="4">Apr</option><option value="5">May</option><option value="6">Jun</option><option value="7">Jul</option><option value="8">Aug</option><option value="9">Sep</option><option value="10">Oct</option><option value="11">Nov</option><option value="12">Dec</option></select> <select name="day1"><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option><option value="24">24</option><option value="25">25</option><option value="26">26</option><option value="27">27</option><option value="28">28</option><option value="29">29</option><option value="30">30</option><option value="31">31</option></select></td></tr>
+<tr><th>End Date:</th><td><select name="year2"><option value="1900">1900</option><option value="1901">1901</option><option value="1902">1902</option><option value="1903">1903</option><option value="1904">1904</option><option value="1905">1905</option><option value="1906">1906</option><option value="1907">1907</option><option value="1908">1908</option><option value="1909">1909</option><option value="1910">1910</option><option value="1911">1911</option><option value="1912">1912</option><option value="1913">1913</option><option value="1914">1914</option><option value="1915">1915</option><option value="1916">1916</option><option value="1917">1917</option><option value="1918">1918</option><option value="1919">1919</option><option value="1920">1920</option><option value="1921">1921</option><option value="1922">1922</option><option value="1923">1923</option><option value="1924">1924</option><option value="1925">1925</option><option value="1926">1926</option><option value="1927">1927</option><option value="1928">1928</option><option value="1929">1929</option><option value="1930">1930</option><option value="1931">1931</option><option value="1932">1932</option><option value="1933">1933</option><option value="1934">1934</option><option value="1935">1935</option><option value="1936">1936</option><option value="1937">1937</option><option value="1938">1938</option><option value="1939">1939</option><option value="1940">1940</option><option value="1941">1941</option><option value="1942">1942</option><option value="1943">1943</option><option value="1944">1944</option><option value="1945">1945</option><option value="1946">1946</option><option value="1947">1947</option><option value="1948">1948</option><option value="1949">1949</option><option value="1950">1950</option><option value="1951">1951</option><option value="1952">1952</option><option value="1953">1953</option><option value="1954">1954</option><option value="1955">1955</option><option value="1956">1956</option><option value="1957">1957</option><option value="1958">1958</option><option value="1959">1959</option><option value="1960">1960</option><option value="1961">1961</option><option value="1962">1962</option><option value="1963">1963</option><option value="1964">1964</option><option value="1965">1965</option><option value="1966">1966</option><option value="1967">1967</option><option value="1968">1968</option><option value="1969">1969</option><option value="1970">1970</option><option value="1971">1971</option><option value="1972">1972</option><option value="1973">1973</option><option value="1974">1974</option><option value="1975">1975</option><option value="1976">1976</option><option value="1977">1977</option><option value="1978">1978</option><option value="1979">1979</option><option value="1980">1980</option><option value="1981">1981</option><option value="1982">1982</option><option value="1983">1983</option><option value="1984">1984</option><option value="1985">1985</option><option value="1986">1986</option><option value="1987">1987</option><option value="1988">1988</option><option value="1989">1989</option><option value="1990">1990</option><option value="1991">1991</option><option value="1992">1992</option><option value="1993">1993</option><option value="1994">1994</option><option value="1995">1995</option><option value="1996">1996</option><option value="1997">1997</option><option value="1998">1998</option><option value="1999">1999</option><option value="2000">2000</option><option value="2001">2001</option><option value="2002">2002</option><option value="2003">2003</option><option value="2004">2004</option><option value="2005">2005</option><option value="2006">2006</option><option value="2007">2007</option><option value="2008">2008</option><option value="2009">2009</option><option value="2010">2010</option><option value="2011">2011</option><option value="2012">2012</option><option value="2013">2013</option><option value="2014">2014</option><option value="2015">2015</option><option value="2016">2016</option><option value="2017">2017</option><option value="2018">2018</option><option value="2019">2019</option><option value="2020">2020</option><option value="2021">2021</option><option value="2022">2022</option><option value="2023">2023</option><option value="2024">2024</option><option value="2025">2025</option><option value="2026" selected>2026</option></select> <select name="month2"><option value="1">Jan</option><option value="2">Feb</option><option value="3">Mar</option><option value="4">Apr</option><option value="5">May</option><option value="6">Jun</option><option value="7">Jul</option><option value="8">Aug</option><option value="9" selected>Sep</option><option value="10">Oct</option><option value="11">Nov</option><option value="12">Dec</option></select> <select name="day2"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5" selected>5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option><option value="24">24</option><option value="25">25</option><option value="26">26</option><option value="27">27</option><option value="28">28</option><option value="29">29</option><option value="30">30</option><option value="31">31</option></select></td></tr>
+</table>
+
+<h4>4) Timezone of Observation Times:</h4>
+<p><i>The following options are available for how the observation time is
+    presented.</i></p>
+<select name="tz"><option value="Etc/UTC" selected>Coordinated Universal Time (UTC)</option><option value="America/New_York">America/New_York (EST/EDT)</option><option value="America/Chicago">America/Chicago (CST/CDT)</option><option value="America/Denver">America/Denver (MST/MDT)</option><option value="America/Los_Angeles">America/Los_Angeles (PST/PDT)</option><option value="America/Anchorage">America/Anchorage (AKST/AKDT)</option></select>
+
+<h4>5) Download Options:</h4>
+
+<p><strong>Data Format:</strong>
+<select name="format" class="form-select form-select-sm w-auto d-inline-block ms-2">
+<option value="onlycomma">Comma Delimited</option>
+<option value="onlytdf">Tab Delimited</option>
+<option value="comma">Comma Delimited (With DEBUG headers)</option>
+<option value="tdf">Tab Delimited (With DEBUG headers)</option>
+</select></p>
+
+<p><strong>Include Latitude + Longitude?</strong>
+<select name="latlon" class="form-select form-select-sm w-auto d-inline-block ms-2">
+  <option value="no">No
+  <option value="yes">Yes
+</select></p>
+
+<p><strong>Include Elevation (meters)?</strong>
+<select name="elev" class="form-select form-select-sm w-auto d-inline-block ms-2">
+  <option value="no">No</option>
+  <option value="yes">Yes</option>
+</select></p>
+
+<p><strong>How to represent missing data?</strong>
+<select name="missing" class="form-select form-select-sm w-auto d-inline-block ms-2">
+  <option value="M">Use 'M'</option>
+  <option value="null">Use 'null'</option>
+  <option value="empty">Use blank/empty string</option>
+</select></p>
+
+<p><strong>How to represent Trace reports?</strong>
+<select name="trace" class="form-select form-select-sm w-auto d-inline-block ms-2">
+  <option value="T">Use 'T'</option>
+  <option value="null">Use 'null'</option>
+  <option value="empty">Use blank/empty string</option>
+  <option value="0.0001">Use float 0.0001</option>
+</select></p>
+
+<p>
+<select name="direct" class="form-select form-select-sm w-auto d-inline-block ms-2">
+  <option value="no">View result data in web browser</option>
+  <option value="yes">Save result data to file on computer</option>
+</select></p>
+
+<h4>6) Limit Report Types</h4>
+
+<p>See <a href="/onsite/news.phtml?id=1434">news item</a> on recent changes
+made for report types.  When in doubt, pick both routine and specials.</p>
+
+<div class="form-check">
+  <input class="form-check-input" type="checkbox" name="report_type" value="1" id="rt1">
+  <label class="form-check-label" for="rt1">MADIS HFMETAR / 5 Minute ASOS</label>
+</div>
+<div class="form-check">
+  <input class="form-check-input" type="checkbox" name="report_type" value="3" id="rt3" checked>
+  <label class="form-check-label" for="rt3">Routine / Once Hourly</label>
+</div>
+<div class="form-check">
+  <input class="form-check-input" type="checkbox" name="report_type" value="4" id="rt4" checked>
+  <label class="form-check-label" for="rt4">Specials</label>
+</div>
+
+<h4>7) Finally, get Data:</h4>
+
+  <button type="submit" class="btn btn-success">Get Data</button>
+  <button type="reset" class="btn btn-secondary ms-2">Reset</button>
+
+         </div>
+         </div>
+
+</form>
+
+<p><strong>Download Variable Description</strong>
+    <br /><a href="https://www.weather.gov/media/asos/aum-toc.pdf">ASOS User's Guide</a>
+        has detailed information about these data variables. The value "M" represents
+        either value that was reported as missing or a value that was set to missing
+        after meeting some general quality control check, or a value that was never
+        reported by the sensor.  The METAR format makes it difficult to determine
+        which of the three cases may have happened.</p>
+
+<dl class="dl-horizontal">
+<dt>station:</dt>
+<dd>three or four character site identifier</dd>
+<dt>valid:</dt>
+<dd>timestamp of the observation</dd>
+<dt>tmpf:</dt>
+<dd>Air Temperature in Fahrenheit, typically @ 2 meters</dd>
+<dt>dwpf:</dt>
+<dd>Dew Point Temperature in Fahrenheit, typically @ 2 meters</dd>
+<dt>relh:</dt>
+<dd>Relative Humidity in %</dd>
+<dt>drct:</dt>
+<dd>Wind Direction in degrees from *true* north</dd>
+<dt>sknt:</dt>
+<dd>Wind Speed in knots	</dd>
+<dt>p01i:</dt>
+<dd>One hour precipitation for the period from the observation time
+to the time of the previous hourly precipitation reset.  This varies slightly
+by site. Values are in inches. This value may or may not contain frozen
+        precipitation melted by some device on the sensor or estimated
+        by some other means.  Unfortunately, we do not know of an
+        authoritative database denoting which station has which sensor.</dd>
+<dt>alti:</dt>
+<dd>Pressure altimeter in inches</dd>
+<dt>mslp:</dt>
+<dd>Sea Level Pressure in millibar</dd>
+<dt>vsby:</dt>
+<dd>Visibility in miles</dd>
+<dt>gust:</dt>
+<dd>Wind Gust in knots</dd>
+<dt>skyc1:</dt>
+<dd>Sky Level 1 Coverage</dd>
+<dt>skyc2:</dt>
+<dd>Sky Level 2 Coverage</dd>
+<dt>skyc3:</dt>
+<dd>Sky Level 3 Coverage</dd>
+<dt>skyc4:</dt>
+<dd>Sky Level 4 Coverage</dd>
+<dt>skyl1:</dt>
+<dd>Sky Level 1 Altitude in feet</dd>
+<dt>skyl2:</dt>
+<dd>Sky Level 2 Altitude in feet</dd>
+<dt>skyl3:</dt>
+<dd>Sky Level 3 Altitude in feet</dd>
+<dt>skyl4:</dt>
+<dd>Sky Level 4 Altitude in feet</dd>
+<dt>wxcodes:</dt>
+<dd>Present Weather Codes (space seperated)</dd>
+<dt>feel:</dt>
+<dd>Apparent Temperature (Wind Chill or Heat Index) in Fahrenheit</dd>
+<dt>ice_accretion_1hr:</dt>
+<dd>Ice Accretion over 1 Hour (inches)</dd>
+<dt>ice_accretion_3hr:</dt>
+<dd>Ice Accretion over 3 Hours (inches)</dd>
+<dt>ice_accretion_6hr:</dt>
+<dd>Ice Accretion over 6 Hours (inches)</dd>
+<dt>peak_wind_gust:</dt>
+<dd>Peak Wind Gust (from PK WND METAR remark) (knots)</dd>
+<dt>peak_wind_drct:</dt>
+<dd>Peak Wind Gust Direction (from PK WND METAR remark) (deg)</dd>
+<dt>peak_wind_time:</dt>
+<dd>Peak Wind Gust Time (from PK WND METAR remark)</dd>
+<dt>metar:</dt>
+<dd>unprocessed reported observation in METAR format</dd>
+</dl>
+<h3>Publications Citing IEM Data (<a href="/info/refs.php">View All</a>)</h3>
+<p>These are the most recent 10 publications that have cited the usage of data
+from this page. This
+list is not exhaustive, so please <a href="/info/contacts.php">let us know</a>
+if you have a publication that should be added.</p>
+<ul><li>Gao, Y., Z. Dou, et al. 2026, Factors associated with discrepancies between scheduled and actual flight block times: evidence from U.S. domestic airline operations. Transportation Research Part A: Policy and Practice. Vol 213 <a href="https://doi.org/10.1016/j.tra.2026.105227">https://doi.org/10.1016/j.tra.2026.105227</a></li><li>Kačar, R. and D.  Ćulibrk. 2026, Fuel Burn Prediction from Open Flight Trajectory and Meteorological Data for the PRC Data Challenge 2025. Journal of Open Aviation Science (2026), Vol.4 <a href="https://doi.org/10.59490/joas.2026.8766">https://doi.org/10.59490/joas.2026.8766</a></li><li>Wong, L., M. Allen, et al. 2026, Rising Temperatures, Rising Calls: Environmental Heat’s Burden on EMS in Boston at the City and Neighborhood Scales. J Urban Health. <a href="https://doi.org/10.1007/s11524-026-01125-8">https://doi.org/10.1007/s11524-026-01125-8</a></li><li>Eghomwanre, A., F. Ovenseri, et al. 2026,  A. Health Risk Assessment of Diurnal Fine Particulate Matter Exposure in Selected Urban Microenvironments of Benin City, Nigeria. Aerosol Sci Eng. <a href="https://doi.org/10.1007/s41810-026-00423-7">https://doi.org/10.1007/s41810-026-00423-7</a></li><li>Medeiros, J. 2026, Human cloud reports overstate nighttime clearing: a ceilometer, GOES, and VIIRS comparison at eight Canadian airports. <a href="https://doi.org/10.22541/essoar.15007419/v1">https://doi.org/10.22541/essoar.15007419/v1</a></li><li>Li, T., Y. Sheng, et al. 2026 Energy-Aware Wind-Resilient Routing for Truck-Assisted Multi-UAV Delivery under Wind Uncertainty. <a href="https://arxiv.org/abs/2608.11641v1">https://arxiv.org/abs/2608.11641v1</a></li><li>Alharbi, F., M. Abbas, et al. 2026, An Integrated explainable machine learning framework for pavement condition assessment and maintenance prioritization: A Saudi Arabian case study. Sci Rep (2026) <a href="https://doi.org/10.1038/s41598-026-63353-x">https://doi.org/10.1038/s41598-026-63353-x</a></li><li>Ji, Q., I. Dey, et al. 2026, Turbulent seismoacoustic imprints during a hurricane landfall. Environmental Seismology. Vol 393, Iss 6811 <a href="https://doi.org/10.1126/science.adt7323">https://doi.org/10.1126/science.adt7323</a></li><li>Wang, T., B. Bakare, et al. 2026, Digital twin for city traffic emissions using deep vision and real time monitoring. npj Sustainable Mobility and Transport volume 3, Article number: 50. <a href="https://doi.org/10.1038/s44333-026-00116-1">https://doi.org/10.1038/s44333-026-00116-1</a></li><li>Hutton, P. 2026, Assessing Shifts in Alaska Rain-On-Snow Winter Seasonality Using a Newly Developed Dynamically Downscaled ERA5 Dataset. Masters Thesis. University of Alaska Fairbanks <a href="https://www.proquest.com/docview/3373638952">https://www.proquest.com/docview/3373638952</a></li></ul></div><!--/.container-->
+</main>
+<footer>
+    <div class="container" id="iem-footer" aria-label="Site footer">
+        <div class="row">
+
+            <!-- footer-associates -->
+            <section class="footer-associates col-sm-12 col-md-3">
+                <ul>
+                    <li><a href="https://iastate.edu"><img src="/vendor/img/isu-stacked.svg" class="wordmark-isu" alt="Iowa State University"></a></li>
+                    <li><a href="https://www.ag.iastate.edu">College of Ag</a></li>
+                    <li><a href="https://www.agron.iastate.edu">Department of Agronomy</a></li>
+                </ul>
+            </section>
+
+            <!-- footer-contact -->
+            <section class="footer-contact col-sm-12 col-md-3" aria-labelledby="footer-contact-heading">
+                <h2 id="footer-contact-heading" class="visually-hidden">Contact</h2>
+                <address class="mb-2">
+                    <strong>Department of Agronomy</strong><br>
+                    <a href="https://maps.google.com/?q=716+Farm+House+Ln+Ames,+IA+50011">716 Farm House Ln<br>
+                    Ames, IA 50011</a>
+                </address>
+                <a href="mailto:akrherz@iastate.edu">akrherz@iastate.edu</a><br>
+            </section>
+
+            <!-- footer-social -->
+            <section class="footer-social col-sm-12 col-md-3" aria-labelledby="footer-social-heading">
+                <h2 id="footer-social-heading" class="visually-hidden">Social media</h2>
+                <ul class=" labeled">
+                <li><a href="https://www.facebook.com/IEM-157789644737/"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> Facebook</a></li>
+                <li><a href="https://x.com/akrherz"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> Twitter</a></li>
+                <li><a href="https://github.com/akrherz/iem"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> Github</a></li>
+                <li><a href="https://youtube.com/akrherz"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> YouTube</a></li>
+                <li><a href="/rss.php"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> RSS</a></li>
+                </ul>
+            </section>
+
+            <!-- footer-legal -->
+            <section class="footer-legal col-sm-12 col-md-3" aria-labelledby="footer-legal-heading">
+                <h2 id="footer-legal-heading" class="visually-hidden">Legal</h2>
+                <p>Copyright &copy; 2001-2026<br>
+                                Iowa State University<br>
+                                of Science and Technology<br>
+                                All rights reserved.</p>
+                <ul>
+                    <li><a href="https://www.policy.iastate.edu/policy/discrimination">Non-discrimination Policy</a></li>
+                    <li><a href="https://www.policy.iastate.edu/electronicprivacy">Privacy Policy</a></li>
+                    <li><a href="https://digitalaccess.iastate.edu">Digital Access &amp; Accessibility</a></li>
+                </ul>
+            </section>
+
+        </div>
+    </div>
+</footer>
+    <script src="/vendor/bootstrap/5.3.6/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/iastate-iem.js"></script>
+
+    <script src="/vendor/openlayers/10.8.0/ol.js"></script>
+<script src="/js/iemss.js?v=4"></script>
+<script type="module" src="/js/form2url.module.js"></script>  </body>
+</html>

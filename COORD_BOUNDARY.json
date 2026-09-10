@@ -1,0 +1,119 @@
+{
+ "EGLC": {
+  "icao": "EGLC",
+  "city": "London",
+  "base": "icon_d2",
+  "lat": 51.50528,
+  "lon": 0.05528,
+  "flips": {},
+  "min_flip_deg": null
+ },
+ "LTAC": {
+  "icao": "LTAC",
+  "city": "Ankara",
+  "base": "icon_eu",
+  "lat": 40.12808,
+  "lon": 32.99508,
+  "flips": {},
+  "min_flip_deg": null
+ },
+ "EDDM": {
+  "icao": "EDDM",
+  "city": "Munich",
+  "base": "icon_d2",
+  "lat": 48.35833,
+  "lon": 11.80917,
+  "flips": {},
+  "min_flip_deg": null
+ },
+ "LLBG": {
+  "icao": "LLBG",
+  "city": "Tel Aviv",
+  "base": "icon_eu",
+  "lat": 32.01139,
+  "lon": 34.88667,
+  "flips": {},
+  "min_flip_deg": null
+ },
+ "EPWA": {
+  "icao": "EPWA",
+  "city": "Warsaw",
+  "base": "icon_eu",
+  "lat": 52.16278,
+  "lon": 20.96111,
+  "flips": {},
+  "min_flip_deg": null
+ },
+ "LIMC": {
+  "icao": "LIMC",
+  "city": "Milan",
+  "base": "icon_d2",
+  "lat": 45.63,
+  "lon": 8.72306,
+  "flips": {},
+  "min_flip_deg": null
+ },
+ "LEMD": {
+  "icao": "LEMD",
+  "city": "Madrid",
+  "base": "icon_eu",
+  "lat": 40.46667,
+  "lon": -3.55556,
+  "flips": {},
+  "min_flip_deg": null
+ },
+ "LTFM": {
+  "icao": "LTFM",
+  "city": "Istanbul",
+  "base": "icon_eu",
+  "lat": 41.2629,
+  "lon": 28.7413,
+  "flips": {},
+  "min_flip_deg": null
+ },
+ "UUWW": {
+  "icao": "UUWW",
+  "city": "Moscow",
+  "base": "icon_eu",
+  "lat": 55.5915,
+  "lon": 37.2615,
+  "flips": {},
+  "min_flip_deg": null
+ },
+ "EHAM": {
+  "icao": "EHAM",
+  "city": "Amsterdam",
+  "base": "icon_d2",
+  "lat": 52.31541,
+  "lon": 4.79016,
+  "flips": {},
+  "min_flip_deg": null
+ },
+ "EFHK": {
+  "icao": "EFHK",
+  "city": "Helsinki",
+  "base": "icon_eu",
+  "lat": 60.31722,
+  "lon": 24.96333,
+  "flips": {},
+  "min_flip_deg": null
+ },
+ "LFPB": {
+  "icao": "LFPB",
+  "city": "Paris",
+  "base": "icon_d2",
+  "lat": 48.96722,
+  "lon": 2.42722,
+  "flips": {},
+  "min_flip_deg": null
+ },
+ "LFPG": {
+  "icao": "LFPG",
+  "city": "Paris",
+  "base": "icon_d2",
+  "lat": 49.01528,
+  "lon": 2.53444,
+  "flips": {},
+  "min_flip_deg": null
+ }
+}

@@ -1,0 +1,4626 @@
+[
+ {
+  "station": "KLAX",
+  "day": "2025-12-29",
+  "y_first": 23,
+  "y_final": 23,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KLAX",
+  "day": "2025-12-30",
+  "y_first": 22,
+  "y_final": 22,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "LLBG",
+  "day": "2025-12-30",
+  "y_first": 19,
+  "y_final": 19,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KHOU",
+  "day": "2025-12-29",
+  "y_first": 7,
+  "y_final": 7,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KHOU",
+  "day": "2025-12-30",
+  "y_first": 13,
+  "y_final": 13,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KLGA",
+  "day": "2025-12-30",
+  "y_first": 3,
+  "y_final": 3,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KSEA",
+  "day": "2025-12-29",
+  "y_first": 6,
+  "y_final": 6,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KSEA",
+  "day": "2025-12-30",
+  "y_first": 9,
+  "y_final": 9,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KSFO",
+  "day": "2025-12-29",
+  "y_first": 16,
+  "y_final": 16,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KSFO",
+  "day": "2025-12-30",
+  "y_first": 14,
+  "y_final": 14,
+  "delta": 0,
+  "n_obs": 25
+ },
+ {
+  "station": "KBKF",
+  "day": "2025-12-29",
+  "y_first": 1,
+  "y_final": 1,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "CYYZ",
+  "day": "2025-12-30",
+  "y_first": -4,
+  "y_final": -4,
+  "delta": 0,
+  "n_obs": 37
+ },
+ {
+  "station": "KORD",
+  "day": "2025-12-30",
+  "y_first": -6,
+  "y_final": -6,
+  "delta": 0,
+  "n_obs": 36
+ },
+ {
+  "station": "OPKC",
+  "day": "2025-12-30",
+  "y_first": 26,
+  "y_final": 26,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "VHHH",
+  "day": "2025-12-30",
+  "y_first": 22,
+  "y_final": 22,
+  "delta": 0,
+  "n_obs": 49
+ },
+ {
+  "station": "OEJN",
+  "day": "2025-12-30",
+  "y_first": 29,
+  "y_final": 29,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KDAL",
+  "day": "2025-12-29",
+  "y_first": 5,
+  "y_final": 5,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KDAL",
+  "day": "2025-12-30",
+  "y_first": 12,
+  "y_final": 12,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KATL",
+  "day": "2025-12-30",
+  "y_first": 6,
+  "y_final": 6,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KMIA",
+  "day": "2025-12-30",
+  "y_first": 23,
+  "y_final": 23,
+  "delta": 0,
+  "n_obs": 36
+ },
+ {
+  "station": "MPMG",
+  "day": "2025-12-30",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "RKPK",
+  "day": "2025-12-30",
+  "y_first": 8,
+  "y_final": 8,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "MMMX",
+  "day": "2025-12-29",
+  "y_first": 18,
+  "y_final": 18,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "MMMX",
+  "day": "2025-12-30",
+  "y_first": 18,
+  "y_final": 18,
+  "delta": 0,
+  "n_obs": 25
+ },
+ {
+  "station": "WMKK",
+  "day": "2025-12-30",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 52
+ },
+ {
+  "station": "KAUS",
+  "day": "2025-12-29",
+  "y_first": 7,
+  "y_final": 7,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KAUS",
+  "day": "2025-12-30",
+  "y_first": 14,
+  "y_final": 14,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "WSSS",
+  "day": "2025-12-30",
+  "y_first": 30,
+  "y_final": 30,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "LTAC",
+  "day": "2025-12-29",
+  "y_first": -5,
+  "y_final": -5,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "LTAC",
+  "day": "2025-12-30",
+  "y_first": 5,
+  "y_final": 5,
+  "delta": 0,
+  "n_obs": 52
+ },
+ {
+  "station": "EGLC",
+  "day": "2025-12-30",
+  "y_first": 7,
+  "y_final": 7,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KBKF",
+  "day": "2025-12-30",
+  "y_first": 11,
+  "y_final": 11,
+  "delta": 0,
+  "n_obs": 23
+ },
+ {
+  "station": "OPKC",
+  "day": "2025-12-31",
+  "y_first": 20,
+  "y_final": 20,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KLAX",
+  "day": "2026-01-02",
+  "y_first": 18,
+  "y_final": 18,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KLAX",
+  "day": "2026-01-03",
+  "y_first": 18,
+  "y_final": 18,
+  "delta": 0,
+  "n_obs": 41
+ },
+ {
+  "station": "LLBG",
+  "day": "2026-01-03",
+  "y_first": 17,
+  "y_final": 17,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KHOU",
+  "day": "2026-01-02",
+  "y_first": 24,
+  "y_final": 24,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KHOU",
+  "day": "2026-01-03",
+  "y_first": 26,
+  "y_final": 26,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KLGA",
+  "day": "2026-01-03",
+  "y_first": -1,
+  "y_final": -1,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KSEA",
+  "day": "2026-01-02",
+  "y_first": 9,
+  "y_final": 9,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KSEA",
+  "day": "2026-01-03",
+  "y_first": 12,
+  "y_final": 12,
+  "delta": 0,
+  "n_obs": 36
+ },
+ {
+  "station": "KSFO",
+  "day": "2026-01-02",
+  "y_first": 17,
+  "y_final": 17,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KSFO",
+  "day": "2026-01-03",
+  "y_first": 17,
+  "y_final": 17,
+  "delta": 0,
+  "n_obs": 28
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-01-02",
+  "y_first": 10,
+  "y_final": 10,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "CYYZ",
+  "day": "2026-01-03",
+  "y_first": -3,
+  "y_final": -3,
+  "delta": 0,
+  "n_obs": 32
+ },
+ {
+  "station": "KORD",
+  "day": "2026-01-03",
+  "y_first": -3,
+  "y_final": -3,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-01-03",
+  "y_first": 24,
+  "y_final": 24,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "VHHH",
+  "day": "2026-01-03",
+  "y_first": 18,
+  "y_final": 18,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "OEJN",
+  "day": "2026-01-03",
+  "y_first": 30,
+  "y_final": 30,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KDAL",
+  "day": "2026-01-02",
+  "y_first": 21,
+  "y_final": 21,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KDAL",
+  "day": "2026-01-03",
+  "y_first": 19,
+  "y_final": 19,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KATL",
+  "day": "2026-01-03",
+  "y_first": 14,
+  "y_final": 14,
+  "delta": 0,
+  "n_obs": 33
+ },
+ {
+  "station": "KMIA",
+  "day": "2026-01-03",
+  "y_first": 25,
+  "y_final": 25,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "MPMG",
+  "day": "2026-01-03",
+  "y_first": 30,
+  "y_final": 30,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "RKPK",
+  "day": "2026-01-03",
+  "y_first": 5,
+  "y_final": 5,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-01-02",
+  "y_first": 22,
+  "y_final": 22,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-01-03",
+  "y_first": 24,
+  "y_final": 24,
+  "delta": 0,
+  "n_obs": 34
+ },
+ {
+  "station": "WMKK",
+  "day": "2026-01-03",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 50
+ },
+ {
+  "station": "KAUS",
+  "day": "2026-01-02",
+  "y_first": 25,
+  "y_final": 25,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KAUS",
+  "day": "2026-01-03",
+  "y_first": 24,
+  "y_final": 24,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "WSSS",
+  "day": "2026-01-03",
+  "y_first": 30,
+  "y_final": 30,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-01-02",
+  "y_first": -13,
+  "y_final": -13,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-01-03",
+  "y_first": 0,
+  "y_final": 0,
+  "delta": 0,
+  "n_obs": 50
+ },
+ {
+  "station": "EGLC",
+  "day": "2026-01-03",
+  "y_first": 3,
+  "y_final": 3,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-01-03",
+  "y_first": 18,
+  "y_final": 18,
+  "delta": 0,
+  "n_obs": 23
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-01-04",
+  "y_first": 12,
+  "y_final": 12,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KLAX",
+  "day": "2026-01-17",
+  "y_first": 22,
+  "y_final": 22,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KLAX",
+  "day": "2026-01-18",
+  "y_first": 24,
+  "y_final": 24,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "LLBG",
+  "day": "2026-01-18",
+  "y_first": 16,
+  "y_final": 16,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KHOU",
+  "day": "2026-01-17",
+  "y_first": 11,
+  "y_final": 11,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KHOU",
+  "day": "2026-01-18",
+  "y_first": 13,
+  "y_final": 13,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KLGA",
+  "day": "2026-01-18",
+  "y_first": 2,
+  "y_final": 2,
+  "delta": 0,
+  "n_obs": 34
+ },
+ {
+  "station": "KSEA",
+  "day": "2026-01-17",
+  "y_first": 11,
+  "y_final": 11,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KSEA",
+  "day": "2026-01-18",
+  "y_first": 9,
+  "y_final": 9,
+  "delta": 0,
+  "n_obs": 29
+ },
+ {
+  "station": "KSFO",
+  "day": "2026-01-17",
+  "y_first": 14,
+  "y_final": 14,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KSFO",
+  "day": "2026-01-18",
+  "y_first": 16,
+  "y_final": 16,
+  "delta": 0,
+  "n_obs": 23
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-01-17",
+  "y_first": 0,
+  "y_final": 0,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "CYYZ",
+  "day": "2026-01-18",
+  "y_first": -2,
+  "y_final": -2,
+  "delta": 0,
+  "n_obs": 34
+ },
+ {
+  "station": "KORD",
+  "day": "2026-01-18",
+  "y_first": -8,
+  "y_final": -8,
+  "delta": 0,
+  "n_obs": 36
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-01-18",
+  "y_first": 26,
+  "y_final": 26,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "VHHH",
+  "day": "2026-01-18",
+  "y_first": 26,
+  "y_final": 26,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "OEJN",
+  "day": "2026-01-18",
+  "y_first": 28,
+  "y_final": 28,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KDAL",
+  "day": "2026-01-17",
+  "y_first": 4,
+  "y_final": 4,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KDAL",
+  "day": "2026-01-18",
+  "y_first": 16,
+  "y_final": 16,
+  "delta": 0,
+  "n_obs": 25
+ },
+ {
+  "station": "KATL",
+  "day": "2026-01-18",
+  "y_first": 9,
+  "y_final": 9,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KMIA",
+  "day": "2026-01-18",
+  "y_first": 27,
+  "y_final": 27,
+  "delta": 0,
+  "n_obs": 28
+ },
+ {
+  "station": "MPMG",
+  "day": "2026-01-18",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "RKPK",
+  "day": "2026-01-18",
+  "y_first": 14,
+  "y_final": 14,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-01-17",
+  "y_first": 19,
+  "y_final": 19,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-01-18",
+  "y_first": 21,
+  "y_final": 21,
+  "delta": 0,
+  "n_obs": 32
+ },
+ {
+  "station": "WMKK",
+  "day": "2026-01-18",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KAUS",
+  "day": "2026-01-17",
+  "y_first": 9,
+  "y_final": 9,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KAUS",
+  "day": "2026-01-18",
+  "y_first": 18,
+  "y_final": 18,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "WSSS",
+  "day": "2026-01-18",
+  "y_first": 31,
+  "y_final": 31,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-01-17",
+  "y_first": -4,
+  "y_final": -4,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-01-18",
+  "y_first": 0,
+  "y_final": 0,
+  "delta": 0,
+  "n_obs": 49
+ },
+ {
+  "station": "EGLC",
+  "day": "2026-01-18",
+  "y_first": 11,
+  "y_final": 11,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-01-18",
+  "y_first": 11,
+  "y_final": 11,
+  "delta": 0,
+  "n_obs": 23
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-01-19",
+  "y_first": 14,
+  "y_final": 14,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KLAX",
+  "day": "2026-02-02",
+  "y_first": 18,
+  "y_final": 18,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KLAX",
+  "day": "2026-02-03",
+  "y_first": 23,
+  "y_final": 23,
+  "delta": 0,
+  "n_obs": 26
+ },
+ {
+  "station": "LLBG",
+  "day": "2026-02-03",
+  "y_first": 19,
+  "y_final": 19,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KHOU",
+  "day": "2026-02-02",
+  "y_first": 17,
+  "y_final": 17,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KHOU",
+  "day": "2026-02-03",
+  "y_first": 21,
+  "y_final": 21,
+  "delta": 0,
+  "n_obs": 30
+ },
+ {
+  "station": "KLGA",
+  "day": "2026-02-03",
+  "y_first": 1,
+  "y_final": 1,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KSEA",
+  "day": "2026-02-02",
+  "y_first": 12,
+  "y_final": 12,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KSEA",
+  "day": "2026-02-03",
+  "y_first": 12,
+  "y_final": 12,
+  "delta": 0,
+  "n_obs": 33
+ },
+ {
+  "station": "KSFO",
+  "day": "2026-02-02",
+  "y_first": 19,
+  "y_final": 19,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KSFO",
+  "day": "2026-02-03",
+  "y_first": 18,
+  "y_final": 18,
+  "delta": 0,
+  "n_obs": 27
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-02-02",
+  "y_first": 8,
+  "y_final": 8,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "CYYZ",
+  "day": "2026-02-03",
+  "y_first": -3,
+  "y_final": -3,
+  "delta": 0,
+  "n_obs": 36
+ },
+ {
+  "station": "KORD",
+  "day": "2026-02-03",
+  "y_first": -2,
+  "y_final": -2,
+  "delta": 0,
+  "n_obs": 27
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-02-03",
+  "y_first": 29,
+  "y_final": 29,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "VHHH",
+  "day": "2026-02-03",
+  "y_first": 21,
+  "y_final": 21,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "OEJN",
+  "day": "2026-02-03",
+  "y_first": 30,
+  "y_final": 30,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KDAL",
+  "day": "2026-02-02",
+  "y_first": 18,
+  "y_final": 18,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KDAL",
+  "day": "2026-02-03",
+  "y_first": 19,
+  "y_final": 19,
+  "delta": 0,
+  "n_obs": 35
+ },
+ {
+  "station": "KATL",
+  "day": "2026-02-03",
+  "y_first": 16,
+  "y_final": 16,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KMIA",
+  "day": "2026-02-03",
+  "y_first": 21,
+  "y_final": 21,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "MPMG",
+  "day": "2026-02-03",
+  "y_first": 25,
+  "y_final": 25,
+  "delta": 0,
+  "n_obs": 13
+ },
+ {
+  "station": "RKPK",
+  "day": "2026-02-03",
+  "y_first": 8,
+  "y_final": 8,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-02-02",
+  "y_first": 20,
+  "y_final": 20,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-02-03",
+  "y_first": 23,
+  "y_final": 23,
+  "delta": 0,
+  "n_obs": 30
+ },
+ {
+  "station": "WMKK",
+  "day": "2026-02-03",
+  "y_first": 35,
+  "y_final": 35,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KAUS",
+  "day": "2026-02-02",
+  "y_first": 19,
+  "y_final": 19,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KAUS",
+  "day": "2026-02-03",
+  "y_first": 22,
+  "y_final": 22,
+  "delta": 0,
+  "n_obs": 29
+ },
+ {
+  "station": "WSSS",
+  "day": "2026-02-03",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 49
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-02-02",
+  "y_first": 4,
+  "y_final": 4,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-02-03",
+  "y_first": 6,
+  "y_final": 6,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "EGLC",
+  "day": "2026-02-03",
+  "y_first": 7,
+  "y_final": 7,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-02-03",
+  "y_first": 11,
+  "y_final": 11,
+  "delta": 0,
+  "n_obs": 25
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-02-04",
+  "y_first": 15,
+  "y_final": 15,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KLAX",
+  "day": "2026-02-17",
+  "y_first": 14,
+  "y_final": 14,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KLAX",
+  "day": "2026-02-18",
+  "y_first": 14,
+  "y_final": 14,
+  "delta": 0,
+  "n_obs": 27
+ },
+ {
+  "station": "LLBG",
+  "day": "2026-02-18",
+  "y_first": 22,
+  "y_final": 22,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KHOU",
+  "day": "2026-02-17",
+  "y_first": 22,
+  "y_final": 22,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KHOU",
+  "day": "2026-02-18",
+  "y_first": 26,
+  "y_final": 26,
+  "delta": 0,
+  "n_obs": 27
+ },
+ {
+  "station": "KLGA",
+  "day": "2026-02-18",
+  "y_first": 6,
+  "y_final": 6,
+  "delta": 0,
+  "n_obs": 31
+ },
+ {
+  "station": "KSEA",
+  "day": "2026-02-17",
+  "y_first": 4,
+  "y_final": 4,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KSEA",
+  "day": "2026-02-18",
+  "y_first": 5,
+  "y_final": 5,
+  "delta": 0,
+  "n_obs": 42
+ },
+ {
+  "station": "KSFO",
+  "day": "2026-02-17",
+  "y_first": 9,
+  "y_final": 9,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KSFO",
+  "day": "2026-02-18",
+  "y_first": 12,
+  "y_final": 12,
+  "delta": 0,
+  "n_obs": 26
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-02-17",
+  "y_first": 8,
+  "y_final": 8,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "CYYZ",
+  "day": "2026-02-18",
+  "y_first": 3,
+  "y_final": 3,
+  "delta": 0,
+  "n_obs": 44
+ },
+ {
+  "station": "KORD",
+  "day": "2026-02-18",
+  "y_first": 17,
+  "y_final": 17,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-02-18",
+  "y_first": 28,
+  "y_final": 28,
+  "delta": 0,
+  "n_obs": 47
+ },
+ {
+  "station": "VHHH",
+  "day": "2026-02-18",
+  "y_first": 22,
+  "y_final": 22,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "OEJN",
+  "day": "2026-02-18",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KDAL",
+  "day": "2026-02-17",
+  "y_first": 24,
+  "y_final": 24,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KDAL",
+  "day": "2026-02-18",
+  "y_first": 25,
+  "y_final": 25,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KATL",
+  "day": "2026-02-18",
+  "y_first": 20,
+  "y_final": 20,
+  "delta": 0,
+  "n_obs": 32
+ },
+ {
+  "station": "KMIA",
+  "day": "2026-02-18",
+  "y_first": 26,
+  "y_final": 26,
+  "delta": 0,
+  "n_obs": 26
+ },
+ {
+  "station": "MPMG",
+  "day": "2026-02-18",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "RKPK",
+  "day": "2026-02-18",
+  "y_first": 11,
+  "y_final": 11,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-02-17",
+  "y_first": 26,
+  "y_final": 26,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-02-18",
+  "y_first": 29,
+  "y_final": 29,
+  "delta": 0,
+  "n_obs": 33
+ },
+ {
+  "station": "WMKK",
+  "day": "2026-02-18",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KAUS",
+  "day": "2026-02-17",
+  "y_first": 26,
+  "y_final": 26,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KAUS",
+  "day": "2026-02-18",
+  "y_first": 25,
+  "y_final": 25,
+  "delta": 0,
+  "n_obs": 25
+ },
+ {
+  "station": "WSSS",
+  "day": "2026-02-18",
+  "y_first": 30,
+  "y_final": 30,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-02-17",
+  "y_first": 9,
+  "y_final": 9,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-02-18",
+  "y_first": 9,
+  "y_final": 9,
+  "delta": 0,
+  "n_obs": 50
+ },
+ {
+  "station": "EGLC",
+  "day": "2026-02-18",
+  "y_first": 6,
+  "y_final": 6,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-02-18",
+  "y_first": 12,
+  "y_final": 12,
+  "delta": 0,
+  "n_obs": 21
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-02-19",
+  "y_first": 22,
+  "y_final": 22,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KLAX",
+  "day": "2026-03-02",
+  "y_first": 17,
+  "y_final": 17,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KLAX",
+  "day": "2026-03-03",
+  "y_first": 19,
+  "y_final": 19,
+  "delta": 0,
+  "n_obs": 30
+ },
+ {
+  "station": "LLBG",
+  "day": "2026-03-03",
+  "y_first": 20,
+  "y_final": 20,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KHOU",
+  "day": "2026-03-02",
+  "y_first": 23,
+  "y_final": 23,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KHOU",
+  "day": "2026-03-03",
+  "y_first": 27,
+  "y_final": 27,
+  "delta": 0,
+  "n_obs": 28
+ },
+ {
+  "station": "KLGA",
+  "day": "2026-03-03",
+  "y_first": 1,
+  "y_final": 1,
+  "delta": 0,
+  "n_obs": 35
+ },
+ {
+  "station": "KSEA",
+  "day": "2026-03-02",
+  "y_first": 14,
+  "y_final": 14,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KSEA",
+  "day": "2026-03-03",
+  "y_first": 14,
+  "y_final": 14,
+  "delta": 0,
+  "n_obs": 28
+ },
+ {
+  "station": "KSFO",
+  "day": "2026-03-02",
+  "y_first": 17,
+  "y_final": 17,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KSFO",
+  "day": "2026-03-03",
+  "y_first": 16,
+  "y_final": 16,
+  "delta": 0,
+  "n_obs": 29
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-03-02",
+  "y_first": 19,
+  "y_final": 19,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "CYYZ",
+  "day": "2026-03-03",
+  "y_first": 3,
+  "y_final": 3,
+  "delta": 0,
+  "n_obs": 25
+ },
+ {
+  "station": "KORD",
+  "day": "2026-03-03",
+  "y_first": 6,
+  "y_final": 6,
+  "delta": 0,
+  "n_obs": 32
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-03-03",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "VHHH",
+  "day": "2026-03-03",
+  "y_first": 21,
+  "y_final": 21,
+  "delta": 0,
+  "n_obs": 66
+ },
+ {
+  "station": "OEJN",
+  "day": "2026-03-03",
+  "y_first": 27,
+  "y_final": 27,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KDAL",
+  "day": "2026-03-02",
+  "y_first": 27,
+  "y_final": 27,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KDAL",
+  "day": "2026-03-03",
+  "y_first": 29,
+  "y_final": 29,
+  "delta": 0,
+  "n_obs": 27
+ },
+ {
+  "station": "KATL",
+  "day": "2026-03-03",
+  "y_first": 17,
+  "y_final": 17,
+  "delta": 0,
+  "n_obs": 28
+ },
+ {
+  "station": "KMIA",
+  "day": "2026-03-03",
+  "y_first": 28,
+  "y_final": 28,
+  "delta": 0,
+  "n_obs": 28
+ },
+ {
+  "station": "MPMG",
+  "day": "2026-03-03",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "RKPK",
+  "day": "2026-03-03",
+  "y_first": 10,
+  "y_final": 10,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-03-02",
+  "y_first": 25,
+  "y_final": 25,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-03-03",
+  "y_first": 25,
+  "y_final": 25,
+  "delta": 0,
+  "n_obs": 31
+ },
+ {
+  "station": "WMKK",
+  "day": "2026-03-03",
+  "y_first": 34,
+  "y_final": 34,
+  "delta": 0,
+  "n_obs": 49
+ },
+ {
+  "station": "KAUS",
+  "day": "2026-03-02",
+  "y_first": 28,
+  "y_final": 28,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KAUS",
+  "day": "2026-03-03",
+  "y_first": 31,
+  "y_final": 31,
+  "delta": 0,
+  "n_obs": 27
+ },
+ {
+  "station": "WSSS",
+  "day": "2026-03-03",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 52
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-03-02",
+  "y_first": -2,
+  "y_final": -2,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-03-03",
+  "y_first": 12,
+  "y_final": 12,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "EGLC",
+  "day": "2026-03-03",
+  "y_first": 14,
+  "y_final": 14,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-03-03",
+  "y_first": 11,
+  "y_final": 11,
+  "delta": 0,
+  "n_obs": 25
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-03-04",
+  "y_first": 20,
+  "y_final": 20,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KLAX",
+  "day": "2026-03-17",
+  "y_first": 28,
+  "y_final": 28,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KLAX",
+  "day": "2026-03-18",
+  "y_first": 27,
+  "y_final": 27,
+  "delta": 0,
+  "n_obs": 25
+ },
+ {
+  "station": "LLBG",
+  "day": "2026-03-18",
+  "y_first": 30,
+  "y_final": 30,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KHOU",
+  "day": "2026-03-17",
+  "y_first": 13,
+  "y_final": 13,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KHOU",
+  "day": "2026-03-18",
+  "y_first": 22,
+  "y_final": 22,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KLGA",
+  "day": "2026-03-18",
+  "y_first": 2,
+  "y_final": 2,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KSEA",
+  "day": "2026-03-17",
+  "y_first": 12,
+  "y_final": 12,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KSEA",
+  "day": "2026-03-18",
+  "y_first": 13,
+  "y_final": 13,
+  "delta": 0,
+  "n_obs": 40
+ },
+ {
+  "station": "KSFO",
+  "day": "2026-03-17",
+  "y_first": 28,
+  "y_final": 28,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KSFO",
+  "day": "2026-03-18",
+  "y_first": 27,
+  "y_final": 27,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-03-17",
+  "y_first": 20,
+  "y_final": 20,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "CYYZ",
+  "day": "2026-03-18",
+  "y_first": -1,
+  "y_final": -1,
+  "delta": 0,
+  "n_obs": 32
+ },
+ {
+  "station": "KORD",
+  "day": "2026-03-18",
+  "y_first": 8,
+  "y_final": 8,
+  "delta": 0,
+  "n_obs": 43
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-03-18",
+  "y_first": 30,
+  "y_final": 30,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "VHHH",
+  "day": "2026-03-18",
+  "y_first": 28,
+  "y_final": 28,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "OEJN",
+  "day": "2026-03-18",
+  "y_first": 36,
+  "y_final": 36,
+  "delta": 0,
+  "n_obs": 25
+ },
+ {
+  "station": "KDAL",
+  "day": "2026-03-17",
+  "y_first": 17,
+  "y_final": 17,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KDAL",
+  "day": "2026-03-18",
+  "y_first": 23,
+  "y_final": 23,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KATL",
+  "day": "2026-03-18",
+  "y_first": 13,
+  "y_final": 13,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KMIA",
+  "day": "2026-03-18",
+  "y_first": 21,
+  "y_final": 21,
+  "delta": 0,
+  "n_obs": 39
+ },
+ {
+  "station": "MPMG",
+  "day": "2026-03-18",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "RKPK",
+  "day": "2026-03-18",
+  "y_first": 10,
+  "y_final": 10,
+  "delta": 0,
+  "n_obs": 31
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-03-17",
+  "y_first": 13,
+  "y_final": 13,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-03-18",
+  "y_first": 24,
+  "y_final": 24,
+  "delta": 0,
+  "n_obs": 32
+ },
+ {
+  "station": "WMKK",
+  "day": "2026-03-18",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KAUS",
+  "day": "2026-03-17",
+  "y_first": 18,
+  "y_final": 18,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KAUS",
+  "day": "2026-03-18",
+  "y_first": 25,
+  "y_final": 25,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "WSSS",
+  "day": "2026-03-18",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-03-17",
+  "y_first": 6,
+  "y_final": 6,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-03-18",
+  "y_first": 15,
+  "y_final": 15,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "EGLC",
+  "day": "2026-03-18",
+  "y_first": 18,
+  "y_final": 18,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-03-18",
+  "y_first": 27,
+  "y_final": 27,
+  "delta": 0,
+  "n_obs": 23
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-03-19",
+  "y_first": 19,
+  "y_final": 19,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KLAX",
+  "day": "2026-04-03",
+  "y_first": 26,
+  "y_final": 26,
+  "delta": 0,
+  "n_obs": 20
+ },
+ {
+  "station": "LLBG",
+  "day": "2026-04-03",
+  "y_first": 23,
+  "y_final": 23,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KHOU",
+  "day": "2026-04-03",
+  "y_first": 29,
+  "y_final": 29,
+  "delta": 0,
+  "n_obs": 28
+ },
+ {
+  "station": "KLGA",
+  "day": "2026-04-03",
+  "y_first": 18,
+  "y_final": 18,
+  "delta": 0,
+  "n_obs": 33
+ },
+ {
+  "station": "KSEA",
+  "day": "2026-04-03",
+  "y_first": 14,
+  "y_final": 14,
+  "delta": 0,
+  "n_obs": 20
+ },
+ {
+  "station": "KSFO",
+  "day": "2026-04-03",
+  "y_first": 22,
+  "y_final": 22,
+  "delta": 0,
+  "n_obs": 20
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-04-02",
+  "y_first": 22,
+  "y_final": 22,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "CYYZ",
+  "day": "2026-04-03",
+  "y_first": 23,
+  "y_final": 23,
+  "delta": 0,
+  "n_obs": 53
+ },
+ {
+  "station": "KORD",
+  "day": "2026-04-03",
+  "y_first": 21,
+  "y_final": 21,
+  "delta": 0,
+  "n_obs": 34
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-04-03",
+  "y_first": 27,
+  "y_final": 27,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "VHHH",
+  "day": "2026-04-03",
+  "y_first": 29,
+  "y_final": 29,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "OEJN",
+  "day": "2026-04-03",
+  "y_first": 36,
+  "y_final": 36,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KDAL",
+  "day": "2026-04-03",
+  "y_first": 28,
+  "y_final": 28,
+  "delta": 0,
+  "n_obs": 26
+ },
+ {
+  "station": "KATL",
+  "day": "2026-04-03",
+  "y_first": 28,
+  "y_final": 28,
+  "delta": 0,
+  "n_obs": 23
+ },
+ {
+  "station": "KMIA",
+  "day": "2026-04-03",
+  "y_first": 28,
+  "y_final": 28,
+  "delta": 0,
+  "n_obs": 22
+ },
+ {
+  "station": "MPMG",
+  "day": "2026-04-03",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 25
+ },
+ {
+  "station": "RKPK",
+  "day": "2026-04-03",
+  "y_first": 20,
+  "y_final": 20,
+  "delta": 0,
+  "n_obs": 30
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-04-02",
+  "y_first": 24,
+  "y_final": 24,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-04-03",
+  "y_first": 27,
+  "y_final": 27,
+  "delta": 0,
+  "n_obs": 29
+ },
+ {
+  "station": "WMKK",
+  "day": "2026-04-03",
+  "y_first": 34,
+  "y_final": 34,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KAUS",
+  "day": "2026-04-03",
+  "y_first": 28,
+  "y_final": 28,
+  "delta": 0,
+  "n_obs": 23
+ },
+ {
+  "station": "WSSS",
+  "day": "2026-04-03",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-04-02",
+  "y_first": 9,
+  "y_final": 9,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-04-03",
+  "y_first": 12,
+  "y_final": 12,
+  "delta": 0,
+  "n_obs": 50
+ },
+ {
+  "station": "EGLC",
+  "day": "2026-04-03",
+  "y_first": 16,
+  "y_final": 16,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-04-03",
+  "y_first": 20,
+  "y_final": 20,
+  "delta": 0,
+  "n_obs": 16
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-04-04",
+  "y_first": 20,
+  "y_final": 20,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KLAX",
+  "day": "2026-04-18",
+  "y_first": 24,
+  "y_final": 24,
+  "delta": 0,
+  "n_obs": 23
+ },
+ {
+  "station": "LLBG",
+  "day": "2026-04-18",
+  "y_first": 26,
+  "y_final": 26,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KHOU",
+  "day": "2026-04-18",
+  "y_first": 29,
+  "y_final": 29,
+  "delta": 0,
+  "n_obs": 31
+ },
+ {
+  "station": "KLGA",
+  "day": "2026-04-18",
+  "y_first": 17,
+  "y_final": 17,
+  "delta": 0,
+  "n_obs": 35
+ },
+ {
+  "station": "KSEA",
+  "day": "2026-04-18",
+  "y_first": 19,
+  "y_final": 19,
+  "delta": 0,
+  "n_obs": 23
+ },
+ {
+  "station": "KSFO",
+  "day": "2026-04-18",
+  "y_first": 22,
+  "y_final": 22,
+  "delta": 0,
+  "n_obs": 23
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-04-17",
+  "y_first": 1,
+  "y_final": 1,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "CYYZ",
+  "day": "2026-04-18",
+  "y_first": 20,
+  "y_final": 20,
+  "delta": 0,
+  "n_obs": 34
+ },
+ {
+  "station": "KORD",
+  "day": "2026-04-18",
+  "y_first": 25,
+  "y_final": 25,
+  "delta": 0,
+  "n_obs": 36
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-04-18",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "VHHH",
+  "day": "2026-04-18",
+  "y_first": 29,
+  "y_final": 29,
+  "delta": 0,
+  "n_obs": 49
+ },
+ {
+  "station": "OEJN",
+  "day": "2026-04-18",
+  "y_first": 41,
+  "y_final": 41,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KDAL",
+  "day": "2026-04-18",
+  "y_first": 27,
+  "y_final": 27,
+  "delta": 0,
+  "n_obs": 45
+ },
+ {
+  "station": "KATL",
+  "day": "2026-04-18",
+  "y_first": 28,
+  "y_final": 28,
+  "delta": 0,
+  "n_obs": 23
+ },
+ {
+  "station": "MPMG",
+  "day": "2026-04-18",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 23
+ },
+ {
+  "station": "RKPK",
+  "day": "2026-04-18",
+  "y_first": 23,
+  "y_final": 23,
+  "delta": 0,
+  "n_obs": 26
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-04-17",
+  "y_first": 28,
+  "y_final": 28,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-04-18",
+  "y_first": 30,
+  "y_final": 30,
+  "delta": 0,
+  "n_obs": 29
+ },
+ {
+  "station": "WMKK",
+  "day": "2026-04-18",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 49
+ },
+ {
+  "station": "KAUS",
+  "day": "2026-04-18",
+  "y_first": 27,
+  "y_final": 27,
+  "delta": 0,
+  "n_obs": 31
+ },
+ {
+  "station": "WSSS",
+  "day": "2026-04-18",
+  "y_first": 34,
+  "y_final": 34,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-04-17",
+  "y_first": 11,
+  "y_final": 11,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-04-18",
+  "y_first": 14,
+  "y_final": 14,
+  "delta": 0,
+  "n_obs": 53
+ },
+ {
+  "station": "EGLC",
+  "day": "2026-04-18",
+  "y_first": 16,
+  "y_final": 16,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-04-18",
+  "y_first": 13,
+  "y_final": 13,
+  "delta": 0,
+  "n_obs": 23
+ },
+ {
+  "station": "KMIA",
+  "day": "2026-04-18",
+  "y_first": 29,
+  "y_final": 29,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-04-19",
+  "y_first": 24,
+  "y_final": 24,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KLAX",
+  "day": "2026-05-03",
+  "y_first": 19,
+  "y_final": 19,
+  "delta": 0,
+  "n_obs": 27
+ },
+ {
+  "station": "LLBG",
+  "day": "2026-05-03",
+  "y_first": 25,
+  "y_final": 25,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KHOU",
+  "day": "2026-05-03",
+  "y_first": 26,
+  "y_final": 26,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KLGA",
+  "day": "2026-05-03",
+  "y_first": 16,
+  "y_final": 16,
+  "delta": 0,
+  "n_obs": 25
+ },
+ {
+  "station": "KSEA",
+  "day": "2026-05-03",
+  "y_first": 27,
+  "y_final": 27,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KSFO",
+  "day": "2026-05-03",
+  "y_first": 17,
+  "y_final": 17,
+  "delta": 0,
+  "n_obs": 28
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-05-02",
+  "y_first": 21,
+  "y_final": 21,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "CYYZ",
+  "day": "2026-05-03",
+  "y_first": 15,
+  "y_final": 15,
+  "delta": 0,
+  "n_obs": 25
+ },
+ {
+  "station": "KORD",
+  "day": "2026-05-03",
+  "y_first": 20,
+  "y_final": 20,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-05-03",
+  "y_first": 41,
+  "y_final": 41,
+  "delta": 0,
+  "n_obs": 49
+ },
+ {
+  "station": "VHHH",
+  "day": "2026-05-03",
+  "y_first": 30,
+  "y_final": 30,
+  "delta": 0,
+  "n_obs": 69
+ },
+ {
+  "station": "OEJN",
+  "day": "2026-05-03",
+  "y_first": 39,
+  "y_final": 39,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KDAL",
+  "day": "2026-05-03",
+  "y_first": 27,
+  "y_final": 27,
+  "delta": 0,
+  "n_obs": 26
+ },
+ {
+  "station": "KATL",
+  "day": "2026-05-03",
+  "y_first": 22,
+  "y_final": 22,
+  "delta": 0,
+  "n_obs": 23
+ },
+ {
+  "station": "KMIA",
+  "day": "2026-05-02",
+  "y_first": 29,
+  "y_final": 29,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KMIA",
+  "day": "2026-05-03",
+  "y_first": 29,
+  "y_final": 29,
+  "delta": 0,
+  "n_obs": 39
+ },
+ {
+  "station": "MPMG",
+  "day": "2026-05-03",
+  "y_first": 31,
+  "y_final": 31,
+  "delta": 0,
+  "n_obs": 22
+ },
+ {
+  "station": "RKPK",
+  "day": "2026-05-03",
+  "y_first": 17,
+  "y_final": 17,
+  "delta": 0,
+  "n_obs": 28
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-05-02",
+  "y_first": 27,
+  "y_final": 27,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-05-03",
+  "y_first": 27,
+  "y_final": 27,
+  "delta": 0,
+  "n_obs": 41
+ },
+ {
+  "station": "WMKK",
+  "day": "2026-05-03",
+  "y_first": 34,
+  "y_final": 34,
+  "delta": 0,
+  "n_obs": 54
+ },
+ {
+  "station": "KAUS",
+  "day": "2026-05-03",
+  "y_first": 27,
+  "y_final": 27,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "WSSS",
+  "day": "2026-05-03",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-05-02",
+  "y_first": 4,
+  "y_final": 4,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-05-03",
+  "y_first": 9,
+  "y_final": 9,
+  "delta": 0,
+  "n_obs": 52
+ },
+ {
+  "station": "EGLC",
+  "day": "2026-05-03",
+  "y_first": 20,
+  "y_final": 20,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-05-03",
+  "y_first": 24,
+  "y_final": 24,
+  "delta": 0,
+  "n_obs": 23
+ },
+ {
+  "station": "KLAX",
+  "day": "2026-05-18",
+  "y_first": 22,
+  "y_final": 22,
+  "delta": 0,
+  "n_obs": 28
+ },
+ {
+  "station": "LLBG",
+  "day": "2026-05-18",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KHOU",
+  "day": "2026-05-18",
+  "y_first": 31,
+  "y_final": 31,
+  "delta": 0,
+  "n_obs": 31
+ },
+ {
+  "station": "KLGA",
+  "day": "2026-05-18",
+  "y_first": 31,
+  "y_final": 31,
+  "delta": 0,
+  "n_obs": 23
+ },
+ {
+  "station": "KSEA",
+  "day": "2026-05-18",
+  "y_first": 18,
+  "y_final": 18,
+  "delta": 0,
+  "n_obs": 25
+ },
+ {
+  "station": "KSFO",
+  "day": "2026-05-18",
+  "y_first": 26,
+  "y_final": 26,
+  "delta": 0,
+  "n_obs": 22
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-05-17",
+  "y_first": 14,
+  "y_final": 14,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-05-18",
+  "y_first": 13,
+  "y_final": 13,
+  "delta": 0,
+  "n_obs": 33
+ },
+ {
+  "station": "CYYZ",
+  "day": "2026-05-18",
+  "y_first": 31,
+  "y_final": 31,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KORD",
+  "day": "2026-05-18",
+  "y_first": 27,
+  "y_final": 27,
+  "delta": 0,
+  "n_obs": 28
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-05-18",
+  "y_first": 35,
+  "y_final": 35,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "VHHH",
+  "day": "2026-05-18",
+  "y_first": 29,
+  "y_final": 29,
+  "delta": 0,
+  "n_obs": 54
+ },
+ {
+  "station": "OEJN",
+  "day": "2026-05-18",
+  "y_first": 48,
+  "y_final": 48,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KDAL",
+  "day": "2026-05-18",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 26
+ },
+ {
+  "station": "KATL",
+  "day": "2026-05-18",
+  "y_first": 31,
+  "y_final": 31,
+  "delta": 0,
+  "n_obs": 23
+ },
+ {
+  "station": "KMIA",
+  "day": "2026-05-18",
+  "y_first": 30,
+  "y_final": 30,
+  "delta": 0,
+  "n_obs": 27
+ },
+ {
+  "station": "MPMG",
+  "day": "2026-05-18",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 23
+ },
+ {
+  "station": "RKPK",
+  "day": "2026-05-18",
+  "y_first": 29,
+  "y_final": 29,
+  "delta": 0,
+  "n_obs": 26
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-05-17",
+  "y_first": 25,
+  "y_final": 25,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-05-18",
+  "y_first": 28,
+  "y_final": 28,
+  "delta": 0,
+  "n_obs": 31
+ },
+ {
+  "station": "WMKK",
+  "day": "2026-05-18",
+  "y_first": 34,
+  "y_final": 34,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KAUS",
+  "day": "2026-05-18",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 26
+ },
+ {
+  "station": "WSSS",
+  "day": "2026-05-18",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 51
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-05-17",
+  "y_first": 5,
+  "y_final": 5,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-05-18",
+  "y_first": 16,
+  "y_final": 16,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "EGLC",
+  "day": "2026-05-18",
+  "y_first": 16,
+  "y_final": 16,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-05-19",
+  "y_first": 29,
+  "y_final": 29,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KLAX",
+  "day": "2026-06-03",
+  "y_first": 20,
+  "y_final": 20,
+  "delta": 0,
+  "n_obs": 28
+ },
+ {
+  "station": "LLBG",
+  "day": "2026-06-03",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KHOU",
+  "day": "2026-06-03",
+  "y_first": 29,
+  "y_final": 29,
+  "delta": 0,
+  "n_obs": 41
+ },
+ {
+  "station": "KLGA",
+  "day": "2026-06-03",
+  "y_first": 28,
+  "y_final": 28,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KSEA",
+  "day": "2026-06-03",
+  "y_first": 29,
+  "y_final": 29,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KSFO",
+  "day": "2026-06-03",
+  "y_first": 21,
+  "y_final": 21,
+  "delta": 0,
+  "n_obs": 29
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-06-02",
+  "y_first": 22,
+  "y_final": 22,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "CYYZ",
+  "day": "2026-06-03",
+  "y_first": 29,
+  "y_final": 29,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KORD",
+  "day": "2026-06-03",
+  "y_first": 28,
+  "y_final": 28,
+  "delta": 0,
+  "n_obs": 25
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-06-03",
+  "y_first": 36,
+  "y_final": 36,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "VHHH",
+  "day": "2026-06-03",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 50
+ },
+ {
+  "station": "OEJN",
+  "day": "2026-06-03",
+  "y_first": 34,
+  "y_final": 34,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KDAL",
+  "day": "2026-06-03",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 29
+ },
+ {
+  "station": "KATL",
+  "day": "2026-06-03",
+  "y_first": 26,
+  "y_final": 26,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KMIA",
+  "day": "2026-06-03",
+  "y_first": 29,
+  "y_final": 29,
+  "delta": 0,
+  "n_obs": 30
+ },
+ {
+  "station": "MPMG",
+  "day": "2026-06-03",
+  "y_first": 30,
+  "y_final": 30,
+  "delta": 0,
+  "n_obs": 26
+ },
+ {
+  "station": "RKPK",
+  "day": "2026-06-03",
+  "y_first": 27,
+  "y_final": 27,
+  "delta": 0,
+  "n_obs": 29
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-06-02",
+  "y_first": 27,
+  "y_final": 27,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-06-03",
+  "y_first": 27,
+  "y_final": 27,
+  "delta": 0,
+  "n_obs": 33
+ },
+ {
+  "station": "WMKK",
+  "day": "2026-06-03",
+  "y_first": 34,
+  "y_final": 34,
+  "delta": 0,
+  "n_obs": 51
+ },
+ {
+  "station": "KAUS",
+  "day": "2026-06-03",
+  "y_first": 31,
+  "y_final": 31,
+  "delta": 0,
+  "n_obs": 28
+ },
+ {
+  "station": "WSSS",
+  "day": "2026-06-03",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-06-02",
+  "y_first": 17,
+  "y_final": 17,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-06-03",
+  "y_first": 26,
+  "y_final": 26,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "EGLC",
+  "day": "2026-06-03",
+  "y_first": 19,
+  "y_final": 19,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-06-03",
+  "y_first": 26,
+  "y_final": 26,
+  "delta": 0,
+  "n_obs": 23
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-06-04",
+  "y_first": 30,
+  "y_final": 30,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KLAX",
+  "day": "2026-06-18",
+  "y_first": 21,
+  "y_final": 21,
+  "delta": 0,
+  "n_obs": 35
+ },
+ {
+  "station": "LLBG",
+  "day": "2026-06-18",
+  "y_first": 30,
+  "y_final": 30,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KHOU",
+  "day": "2026-06-18",
+  "y_first": 34,
+  "y_final": 34,
+  "delta": 0,
+  "n_obs": 27
+ },
+ {
+  "station": "KLGA",
+  "day": "2026-06-18",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 32
+ },
+ {
+  "station": "KSEA",
+  "day": "2026-06-18",
+  "y_first": 26,
+  "y_final": 26,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KSFO",
+  "day": "2026-06-17",
+  "y_first": 21,
+  "y_final": 21,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KSFO",
+  "day": "2026-06-18",
+  "y_first": 22,
+  "y_final": 22,
+  "delta": 0,
+  "n_obs": 30
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-06-17",
+  "y_first": 34,
+  "y_final": 34,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "CYYZ",
+  "day": "2026-06-18",
+  "y_first": 22,
+  "y_final": 22,
+  "delta": 0,
+  "n_obs": 58
+ },
+ {
+  "station": "KORD",
+  "day": "2026-06-18",
+  "y_first": 23,
+  "y_final": 23,
+  "delta": 0,
+  "n_obs": 29
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-06-18",
+  "y_first": 34,
+  "y_final": 34,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "VHHH",
+  "day": "2026-06-18",
+  "y_first": 30,
+  "y_final": 30,
+  "delta": 0,
+  "n_obs": 85
+ },
+ {
+  "station": "OEJN",
+  "day": "2026-06-18",
+  "y_first": 39,
+  "y_final": 39,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KDAL",
+  "day": "2026-06-18",
+  "y_first": 34,
+  "y_final": 34,
+  "delta": 0,
+  "n_obs": 26
+ },
+ {
+  "station": "KATL",
+  "day": "2026-06-18",
+  "y_first": 31,
+  "y_final": 31,
+  "delta": 0,
+  "n_obs": 36
+ },
+ {
+  "station": "KMIA",
+  "day": "2026-06-18",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "MPMG",
+  "day": "2026-06-18",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "RKPK",
+  "day": "2026-06-18",
+  "y_first": 29,
+  "y_final": 29,
+  "delta": 0,
+  "n_obs": 26
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-06-17",
+  "y_first": 19,
+  "y_final": 19,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-06-18",
+  "y_first": 26,
+  "y_final": 26,
+  "delta": 0,
+  "n_obs": 35
+ },
+ {
+  "station": "WMKK",
+  "day": "2026-06-18",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KAUS",
+  "day": "2026-06-18",
+  "y_first": 36,
+  "y_final": 36,
+  "delta": 0,
+  "n_obs": 27
+ },
+ {
+  "station": "WSSS",
+  "day": "2026-06-18",
+  "y_first": 31,
+  "y_final": 31,
+  "delta": 0,
+  "n_obs": 49
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-06-17",
+  "y_first": 16,
+  "y_final": 16,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-06-18",
+  "y_first": 30,
+  "y_final": 30,
+  "delta": 0,
+  "n_obs": 49
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-06-18",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 23
+ },
+ {
+  "station": "EGLC",
+  "day": "2026-06-18",
+  "y_first": 26,
+  "y_final": 26,
+  "delta": 0,
+  "n_obs": 46
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-06-19",
+  "y_first": 29,
+  "y_final": 29,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KLAX",
+  "day": "2026-07-02",
+  "y_first": 21,
+  "y_final": 21,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KLAX",
+  "day": "2026-07-03",
+  "y_first": 22,
+  "y_final": 22,
+  "delta": 0,
+  "n_obs": 28
+ },
+ {
+  "station": "LLBG",
+  "day": "2026-07-03",
+  "y_first": 31,
+  "y_final": 31,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KHOU",
+  "day": "2026-07-03",
+  "y_first": 36,
+  "y_final": 36,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KLGA",
+  "day": "2026-07-03",
+  "y_first": 38,
+  "y_final": 38,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KSEA",
+  "day": "2026-07-03",
+  "y_first": 22,
+  "y_final": 22,
+  "delta": 0,
+  "n_obs": 26
+ },
+ {
+  "station": "KSFO",
+  "day": "2026-07-02",
+  "y_first": 21,
+  "y_final": 21,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KSFO",
+  "day": "2026-07-03",
+  "y_first": 21,
+  "y_final": 21,
+  "delta": 0,
+  "n_obs": 27
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-07-02",
+  "y_first": 29,
+  "y_final": 29,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-07-03",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 30
+ },
+ {
+  "station": "CYYZ",
+  "day": "2026-07-03",
+  "y_first": 35,
+  "y_final": 35,
+  "delta": 0,
+  "n_obs": 27
+ },
+ {
+  "station": "KORD",
+  "day": "2026-07-03",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 50
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-07-03",
+  "y_first": 36,
+  "y_final": 36,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "VHHH",
+  "day": "2026-07-03",
+  "y_first": 31,
+  "y_final": 31,
+  "delta": 0,
+  "n_obs": 76
+ },
+ {
+  "station": "OEJN",
+  "day": "2026-07-03",
+  "y_first": 36,
+  "y_final": 36,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KDAL",
+  "day": "2026-07-03",
+  "y_first": 36,
+  "y_final": 36,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KATL",
+  "day": "2026-07-03",
+  "y_first": 34,
+  "y_final": 34,
+  "delta": 0,
+  "n_obs": 28
+ },
+ {
+  "station": "KMIA",
+  "day": "2026-07-03",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 30
+ },
+ {
+  "station": "KMIA",
+  "day": "2026-07-02",
+  "y_first": 28,
+  "y_final": 28,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "MPMG",
+  "day": "2026-07-03",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "RKPK",
+  "day": "2026-07-03",
+  "y_first": 28,
+  "y_final": 28,
+  "delta": 0,
+  "n_obs": 35
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-07-02",
+  "y_first": 18,
+  "y_final": 18,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-07-03",
+  "y_first": 24,
+  "y_final": 24,
+  "delta": 0,
+  "n_obs": 27
+ },
+ {
+  "station": "WMKK",
+  "day": "2026-07-03",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KAUS",
+  "day": "2026-07-03",
+  "y_first": 36,
+  "y_final": 36,
+  "delta": 0,
+  "n_obs": 32
+ },
+ {
+  "station": "WSSS",
+  "day": "2026-07-03",
+  "y_first": 31,
+  "y_final": 31,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-07-02",
+  "y_first": 20,
+  "y_final": 20,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-07-03",
+  "y_first": 31,
+  "y_final": 31,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "EGLC",
+  "day": "2026-07-03",
+  "y_first": 27,
+  "y_final": 27,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-07-04",
+  "y_first": 30,
+  "y_final": 30,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KLAX",
+  "day": "2026-07-18",
+  "y_first": 26,
+  "y_final": 26,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "LLBG",
+  "day": "2026-07-18",
+  "y_first": 35,
+  "y_final": 35,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KHOU",
+  "day": "2026-07-18",
+  "y_first": 34,
+  "y_final": 34,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KLGA",
+  "day": "2026-07-18",
+  "y_first": 27,
+  "y_final": 27,
+  "delta": 0,
+  "n_obs": 30
+ },
+ {
+  "station": "KSEA",
+  "day": "2026-07-18",
+  "y_first": 23,
+  "y_final": 23,
+  "delta": 0,
+  "n_obs": 27
+ },
+ {
+  "station": "KSFO",
+  "day": "2026-07-18",
+  "y_first": 22,
+  "y_final": 22,
+  "delta": 0,
+  "n_obs": 28
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-07-17",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "CYYZ",
+  "day": "2026-07-18",
+  "y_first": 28,
+  "y_final": 28,
+  "delta": 0,
+  "n_obs": 31
+ },
+ {
+  "station": "KORD",
+  "day": "2026-07-18",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 25
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-07-18",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 47
+ },
+ {
+  "station": "VHHH",
+  "day": "2026-07-18",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 51
+ },
+ {
+  "station": "OEJN",
+  "day": "2026-07-18",
+  "y_first": 39,
+  "y_final": 39,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KDAL",
+  "day": "2026-07-18",
+  "y_first": 36,
+  "y_final": 36,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KATL",
+  "day": "2026-07-18",
+  "y_first": 34,
+  "y_final": 34,
+  "delta": 0,
+  "n_obs": 28
+ },
+ {
+  "station": "KMIA",
+  "day": "2026-07-18",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 26
+ },
+ {
+  "station": "MPMG",
+  "day": "2026-07-18",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "RKPK",
+  "day": "2026-07-18",
+  "y_first": 30,
+  "y_final": 30,
+  "delta": 0,
+  "n_obs": 29
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-07-17",
+  "y_first": 21,
+  "y_final": 21,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-07-18",
+  "y_first": 25,
+  "y_final": 25,
+  "delta": 0,
+  "n_obs": 44
+ },
+ {
+  "station": "WMKK",
+  "day": "2026-07-18",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 49
+ },
+ {
+  "station": "KAUS",
+  "day": "2026-07-18",
+  "y_first": 34,
+  "y_final": 34,
+  "delta": 0,
+  "n_obs": 26
+ },
+ {
+  "station": "WSSS",
+  "day": "2026-07-18",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-07-17",
+  "y_first": 19,
+  "y_final": 19,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-07-18",
+  "y_first": 29,
+  "y_final": 29,
+  "delta": 0,
+  "n_obs": 47
+ },
+ {
+  "station": "EGLC",
+  "day": "2026-07-18",
+  "y_first": 21,
+  "y_final": 21,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-07-18",
+  "y_first": 34,
+  "y_final": 34,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-07-19",
+  "y_first": 28,
+  "y_final": 28,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KLAX",
+  "day": "2026-08-03",
+  "y_first": 26,
+  "y_final": 26,
+  "delta": 0,
+  "n_obs": 31
+ },
+ {
+  "station": "LLBG",
+  "day": "2026-08-03",
+  "y_first": 34,
+  "y_final": 34,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KHOU",
+  "day": "2026-08-03",
+  "y_first": 36,
+  "y_final": 36,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KLGA",
+  "day": "2026-08-03",
+  "y_first": 29,
+  "y_final": 29,
+  "delta": 0,
+  "n_obs": 38
+ },
+ {
+  "station": "KSEA",
+  "day": "2026-08-03",
+  "y_first": 24,
+  "y_final": 24,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KSFO",
+  "day": "2026-08-03",
+  "y_first": 25,
+  "y_final": 25,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-08-02",
+  "y_first": 36,
+  "y_final": 36,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "CYYZ",
+  "day": "2026-08-03",
+  "y_first": 27,
+  "y_final": 27,
+  "delta": 0,
+  "n_obs": 35
+ },
+ {
+  "station": "KORD",
+  "day": "2026-08-03",
+  "y_first": 28,
+  "y_final": 28,
+  "delta": 0,
+  "n_obs": 26
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-08-03",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 47
+ },
+ {
+  "station": "VHHH",
+  "day": "2026-08-03",
+  "y_first": 30,
+  "y_final": 30,
+  "delta": 0,
+  "n_obs": 50
+ },
+ {
+  "station": "OEJN",
+  "day": "2026-08-03",
+  "y_first": 42,
+  "y_final": 42,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KDAL",
+  "day": "2026-08-03",
+  "y_first": 37,
+  "y_final": 37,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KATL",
+  "day": "2026-08-03",
+  "y_first": 30,
+  "y_final": 30,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KMIA",
+  "day": "2026-08-03",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 28
+ },
+ {
+  "station": "MPMG",
+  "day": "2026-08-03",
+  "y_first": 31,
+  "y_final": 31,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "RKPK",
+  "day": "2026-08-03",
+  "y_first": 38,
+  "y_final": 38,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-08-02",
+  "y_first": 26,
+  "y_final": 26,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-08-03",
+  "y_first": 27,
+  "y_final": 27,
+  "delta": 0,
+  "n_obs": 31
+ },
+ {
+  "station": "WMKK",
+  "day": "2026-08-03",
+  "y_first": 34,
+  "y_final": 34,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KAUS",
+  "day": "2026-08-03",
+  "y_first": 39,
+  "y_final": 39,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "WSSS",
+  "day": "2026-08-03",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-08-02",
+  "y_first": 19,
+  "y_final": 19,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-08-03",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "EGLC",
+  "day": "2026-08-03",
+  "y_first": 29,
+  "y_final": 29,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-08-03",
+  "y_first": 38,
+  "y_final": 38,
+  "delta": 0,
+  "n_obs": 23
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-08-04",
+  "y_first": 29,
+  "y_final": 29,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KLAX",
+  "day": "2026-08-18",
+  "y_first": 27,
+  "y_final": 27,
+  "delta": 0,
+  "n_obs": 25
+ },
+ {
+  "station": "LLBG",
+  "day": "2026-08-18",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KHOU",
+  "day": "2026-08-18",
+  "y_first": 34,
+  "y_final": 34,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KLGA",
+  "day": "2026-08-18",
+  "y_first": 29,
+  "y_final": 29,
+  "delta": 0,
+  "n_obs": 26
+ },
+ {
+  "station": "KSEA",
+  "day": "2026-08-18",
+  "y_first": 26,
+  "y_final": 26,
+  "delta": 0,
+  "n_obs": 30
+ },
+ {
+  "station": "KSFO",
+  "day": "2026-08-18",
+  "y_first": 20,
+  "y_final": 20,
+  "delta": 0,
+  "n_obs": 28
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-08-17",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "CYYZ",
+  "day": "2026-08-18",
+  "y_first": 27,
+  "y_final": 27,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KORD",
+  "day": "2026-08-18",
+  "y_first": 26,
+  "y_final": 26,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-08-18",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 46
+ },
+ {
+  "station": "VHHH",
+  "day": "2026-08-18",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 53
+ },
+ {
+  "station": "OEJN",
+  "day": "2026-08-18",
+  "y_first": 38,
+  "y_final": 38,
+  "delta": 0,
+  "n_obs": 23
+ },
+ {
+  "station": "KDAL",
+  "day": "2026-08-18",
+  "y_first": 40,
+  "y_final": 40,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KATL",
+  "day": "2026-08-18",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 29
+ },
+ {
+  "station": "KMIA",
+  "day": "2026-08-18",
+  "y_first": 37,
+  "y_final": 37,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "MPMG",
+  "day": "2026-08-18",
+  "y_first": 31,
+  "y_final": 31,
+  "delta": 0,
+  "n_obs": 26
+ },
+ {
+  "station": "RKPK",
+  "day": "2026-08-18",
+  "y_first": 31,
+  "y_final": 31,
+  "delta": 0,
+  "n_obs": 32
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-08-17",
+  "y_first": 24,
+  "y_final": 24,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-08-18",
+  "y_first": 26,
+  "y_final": 26,
+  "delta": 0,
+  "n_obs": 30
+ },
+ {
+  "station": "WMKK",
+  "day": "2026-08-18",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 50
+ },
+ {
+  "station": "KAUS",
+  "day": "2026-08-18",
+  "y_first": 38,
+  "y_final": 38,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "WSSS",
+  "day": "2026-08-18",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 49
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-08-17",
+  "y_first": 16,
+  "y_final": 16,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-08-18",
+  "y_first": 30,
+  "y_final": 30,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "EGLC",
+  "day": "2026-08-18",
+  "y_first": 26,
+  "y_final": 26,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-08-18",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 23
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-08-19",
+  "y_first": 28,
+  "y_final": 28,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "KLAX",
+  "day": "2026-09-01",
+  "y_first": 24,
+  "y_final": 24,
+  "delta": 0,
+  "n_obs": 28
+ },
+ {
+  "station": "LLBG",
+  "day": "2026-09-01",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KHOU",
+  "day": "2026-09-01",
+  "y_first": 31,
+  "y_final": 31,
+  "delta": 0,
+  "n_obs": 25
+ },
+ {
+  "station": "KLGA",
+  "day": "2026-09-01",
+  "y_first": 27,
+  "y_final": 27,
+  "delta": 0,
+  "n_obs": 42
+ },
+ {
+  "station": "KSEA",
+  "day": "2026-09-01",
+  "y_first": 22,
+  "y_final": 22,
+  "delta": 0,
+  "n_obs": 33
+ },
+ {
+  "station": "KSFO",
+  "day": "2026-09-01",
+  "y_first": 22,
+  "y_final": 22,
+  "delta": 0,
+  "n_obs": 26
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-08-31",
+  "y_first": 28,
+  "y_final": 28,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "CYYZ",
+  "day": "2026-09-01",
+  "y_first": 27,
+  "y_final": 27,
+  "delta": 0,
+  "n_obs": 37
+ },
+ {
+  "station": "KORD",
+  "day": "2026-09-01",
+  "y_first": 34,
+  "y_final": 34,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-09-01",
+  "y_first": 30,
+  "y_final": 30,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "VHHH",
+  "day": "2026-09-01",
+  "y_first": 30,
+  "y_final": 30,
+  "delta": 0,
+  "n_obs": 57
+ },
+ {
+  "station": "OEJN",
+  "day": "2026-09-01",
+  "y_first": 37,
+  "y_final": 37,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KDAL",
+  "day": "2026-09-01",
+  "y_first": 37,
+  "y_final": 37,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KATL",
+  "day": "2026-09-01",
+  "y_first": 34,
+  "y_final": 34,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KMIA",
+  "day": "2026-09-01",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 33
+ },
+ {
+  "station": "MPMG",
+  "day": "2026-09-01",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 25
+ },
+ {
+  "station": "RKPK",
+  "day": "2026-09-01",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 29
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-08-31",
+  "y_first": 19,
+  "y_final": 19,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-09-01",
+  "y_first": 23,
+  "y_final": 23,
+  "delta": 0,
+  "n_obs": 33
+ },
+ {
+  "station": "WMKK",
+  "day": "2026-09-01",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 50
+ },
+ {
+  "station": "KAUS",
+  "day": "2026-09-01",
+  "y_first": 38,
+  "y_final": 38,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "WSSS",
+  "day": "2026-09-01",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-08-31",
+  "y_first": 15,
+  "y_final": 15,
+  "delta": 0,
+  "n_obs": 1
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-09-01",
+  "y_first": 30,
+  "y_final": 30,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "EGLC",
+  "day": "2026-09-01",
+  "y_first": 23,
+  "y_final": 23,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-09-01",
+  "y_first": 30,
+  "y_final": 30,
+  "delta": 0,
+  "n_obs": 26
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-09-02",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 47
+ },
+ {
+  "station": "KLAX",
+  "day": "2026-09-02",
+  "y_first": 24,
+  "y_final": 24,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "LLBG",
+  "day": "2026-09-02",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 47
+ },
+ {
+  "station": "KHOU",
+  "day": "2026-09-02",
+  "y_first": 35,
+  "y_final": 35,
+  "delta": 0,
+  "n_obs": 26
+ },
+ {
+  "station": "KLGA",
+  "day": "2026-09-02",
+  "y_first": 23,
+  "y_final": 23,
+  "delta": 0,
+  "n_obs": 36
+ },
+ {
+  "station": "KSEA",
+  "day": "2026-09-02",
+  "y_first": 21,
+  "y_final": 21,
+  "delta": 0,
+  "n_obs": 28
+ },
+ {
+  "station": "KSFO",
+  "day": "2026-09-02",
+  "y_first": 22,
+  "y_final": 22,
+  "delta": 0,
+  "n_obs": 26
+ },
+ {
+  "station": "CYYZ",
+  "day": "2026-09-02",
+  "y_first": 28,
+  "y_final": 28,
+  "delta": 0,
+  "n_obs": 62
+ },
+ {
+  "station": "KORD",
+  "day": "2026-09-02",
+  "y_first": 35,
+  "y_final": 35,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "VHHH",
+  "day": "2026-09-02",
+  "y_first": 30,
+  "y_final": 30,
+  "delta": 0,
+  "n_obs": 59
+ },
+ {
+  "station": "OEJN",
+  "day": "2026-09-02",
+  "y_first": 37,
+  "y_final": 37,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KDAL",
+  "day": "2026-09-02",
+  "y_first": 38,
+  "y_final": 38,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KATL",
+  "day": "2026-09-02",
+  "y_first": 35,
+  "y_final": 35,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KMIA",
+  "day": "2026-09-02",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 30
+ },
+ {
+  "station": "MPMG",
+  "day": "2026-09-02",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "RKPK",
+  "day": "2026-09-02",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-09-02",
+  "y_first": 26,
+  "y_final": 26,
+  "delta": 0,
+  "n_obs": 32
+ },
+ {
+  "station": "WMKK",
+  "day": "2026-09-02",
+  "y_first": 34,
+  "y_final": 34,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KAUS",
+  "day": "2026-09-02",
+  "y_first": 38,
+  "y_final": 38,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "WSSS",
+  "day": "2026-09-02",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-09-02",
+  "y_first": 31,
+  "y_final": 31,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "EGLC",
+  "day": "2026-09-02",
+  "y_first": 21,
+  "y_final": 21,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-09-02",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-09-03",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KLAX",
+  "day": "2026-09-03",
+  "y_first": 25,
+  "y_final": 25,
+  "delta": 0,
+  "n_obs": 27
+ },
+ {
+  "station": "LLBG",
+  "day": "2026-09-03",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "KHOU",
+  "day": "2026-09-03",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 29
+ },
+ {
+  "station": "KLGA",
+  "day": "2026-09-03",
+  "y_first": 31,
+  "y_final": 31,
+  "delta": 0,
+  "n_obs": 35
+ },
+ {
+  "station": "KSEA",
+  "day": "2026-09-03",
+  "y_first": 20,
+  "y_final": 20,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KSFO",
+  "day": "2026-09-03",
+  "y_first": 22,
+  "y_final": 22,
+  "delta": 0,
+  "n_obs": 26
+ },
+ {
+  "station": "KBKF",
+  "day": "2026-09-03",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 25
+ },
+ {
+  "station": "CYYZ",
+  "day": "2026-09-03",
+  "y_first": 29,
+  "y_final": 29,
+  "delta": 0,
+  "n_obs": 25
+ },
+ {
+  "station": "KORD",
+  "day": "2026-09-03",
+  "y_first": 32,
+  "y_final": 32,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "VHHH",
+  "day": "2026-09-03",
+  "y_first": 31,
+  "y_final": 31,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "OEJN",
+  "day": "2026-09-03",
+  "y_first": 37,
+  "y_final": 37,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KDAL",
+  "day": "2026-09-03",
+  "y_first": 34,
+  "y_final": 34,
+  "delta": 0,
+  "n_obs": 26
+ },
+ {
+  "station": "KATL",
+  "day": "2026-09-03",
+  "y_first": 35,
+  "y_final": 35,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "KMIA",
+  "day": "2026-09-03",
+  "y_first": 34,
+  "y_final": 34,
+  "delta": 0,
+  "n_obs": 29
+ },
+ {
+  "station": "MPMG",
+  "day": "2026-09-03",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 27
+ },
+ {
+  "station": "RKPK",
+  "day": "2026-09-03",
+  "y_first": 31,
+  "y_final": 31,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "MMMX",
+  "day": "2026-09-03",
+  "y_first": 26,
+  "y_final": 26,
+  "delta": 0,
+  "n_obs": 42
+ },
+ {
+  "station": "WMKK",
+  "day": "2026-09-03",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 53
+ },
+ {
+  "station": "KAUS",
+  "day": "2026-09-03",
+  "y_first": 37,
+  "y_final": 37,
+  "delta": 0,
+  "n_obs": 24
+ },
+ {
+  "station": "WSSS",
+  "day": "2026-09-03",
+  "y_first": 33,
+  "y_final": 33,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "LTAC",
+  "day": "2026-09-03",
+  "y_first": 30,
+  "y_final": 30,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "EGLC",
+  "day": "2026-09-03",
+  "y_first": 26,
+  "y_final": 26,
+  "delta": 0,
+  "n_obs": 48
+ },
+ {
+  "station": "OPKC",
+  "day": "2026-09-04",
+  "y_first": 27,
+  "y_final": 27,
+  "delta": 0,
+  "n_obs": 1
+ }
+]

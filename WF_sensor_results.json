@@ -1,0 +1,195 @@
+[
+ {
+  "type": "result",
+  "key": "v2:85a4d1015a4f8da8de9ea64838a806ac18466ed43314e1913c579e6f4652e4c7",
+  "agentId": "ac6814a31a7856888",
+  "result": {
+   "fuentes": [
+    {
+     "nombre": "NWS ASOS Program — 'ASOS Sites by Equipment' (hoja 'DCP LatLong')",
+     "url": "https://www.weather.gov/media/asos/ASOS%20Sites%20by%20Equipment%20As%20Of%203_18_2025.xlsx (enlazado desde https://www.weather.gov/asos/asosequip.html)",
+     "publicador": "NOAA / National Weather Service, ASOS Program Office (Silver Spring, MD)",
+     "accesible": true,
+     "formato": "XLSX con 21 hojas (ACU, DCP, 'DCP LatLong', SCA, 'SCA LatLong', Ceilometer, Visibility, Anemometer, TTd, ...). La hoja 'DCP LatLong' tiene 847 filas; columnas: REGION, WFO, EQSID, EQUIP, LOCATION, STATE, 'DCP 1', 'DCP 2', 'DCP 3', EQ_OWNER. Las coordenadas van como texto 'lat, lon' con 6 decimales (~0,1 m nominal).",
+     "que_contiene": "OBSERVADO: lista oficial del NWS de equipos instalados por sitio ASOS, incluida la lat/lon de cada Data Collection Package (DCP = el pedestal/array de sensores: viento, T/Td, visibilidad, techo, precipitación). La página dice literalmente: 'ASOS Equipment Sites (T/Td updated 13 August 2025) is a tabbed spreadsheet that lists the following installed equipment by ASOS Site' y 'The data in this spreadsheet is provided \"As Is\" with no warranty'. Leyenda: 'EQSID = ICAO Site Identifier' (en realidad ID de 3 letras sin la K). Filas OBSERVADAS (DCP 1 = primario; DCP 2 = secundario): AUS 30.183112,-97.679889 / DCP2 30.209889,-97.680639 (EQ_OWNER FAA) · ATL 33.629717,-84.442237 / DCP2 33.651653,-84.434739 · DAL 32.838385,-96.835827 · HOU 29.645856,-95.282123 · ORD 41.960167,-87.931639 / DCP2 41.954973,-87.901806 · LAX 33.938162,-118.386598 / DCP2 33.952594,-118.408361 · MIA 25.788045,-80.316937 / DCP2 25.800362,-80.305881 · SFO 37.619617,-122.365625 / DCP2 37.614909,-122.355559 · LGA 40.77945,-73.880275 / DCP2 40.78262,-73.871945 · SEA 47.44467,-122.314425 / DCP2 47.465167,-122.30975. BKF NO aparece (sitio DoD/USSF, no ASOS del NWS).",
+     "como_obtener_coordenadas_sensor": "Descargar el xlsx, abrir hoja 'DCP LatLong', filtrar EQSID por el ID FAA de 3 letras (ORD, LAX...). 'DCP 1' es el DCP primario (el que reporta el METAR). Copia local ya descargada: /Users/mariaaleu/.claude/jobs/324ffe40/tmp/asos_sites_equip.xlsx (parseable sin openpyxl leyendo xl/worksheets/sheet3.xml + sharedStrings). El xlsx no lleva datum explícito; HOMR indica WGS84 para los mismos valores 'ASOS CM'."
+    },
+    {
+     "nombre": "NCEI HOMR — 'asos-stations.txt' (ASOS station list) + documentación 'ASOS_Table.txt'",
+     "url": "https://www.ncei.noaa.gov/access/homr/file/asos-stations.txt ; doc: https://www.ncei.noaa.gov/access/homr/file/ASOS_Table.txt ; índice: https://www.ncei.noaa.gov/access/homr/reports ; KMZ: https://www.ncei.noaa.gov/access/homr/file/asos-stations.kmz",
+     "publicador": "NOAA / NCEI (Historical Observing Metadata Repository)",
+     "accesible": true,
+     "formato": "Fichero de texto de ancho fijo (929 estaciones). Columnas: NCDCID, WBAN, COOPID, CALL (ID FAA de 3-4 letras, sin K), NAME, ALT_NAME, COUNTRY, ST, COUNTY, LAT, LON (X99.99999 = 5 decimales ≈ 1 m), ELEV, UTC, STNTYPE, BEGDT (fecha de comisionado ASOS), GHCND, ELEV_P (altura barómetro), ELEV_A (altura anemómetro).",
+     "que_contiene": "OBSERVADO — esta es la confirmación oficial explícita. ASOS_Table.txt dice literalmente: 'The location information includes latitude, longitude, elevation, and time zone for the primary DCP (data collection package) sensor equipment.' y en los campos LAT/LON: 'Latitude in decimal degrees ... This pertains to the primary DCP (data collection package) sensor equipment.' ELEV_P: 'Pressure sensor elevation in feet. Note that barometers are located in the bottom tray of the ACU (acquisition control unit) normally found in some part of the tower or another dry building near the equipment, not at the DCP location typically.' ELEV_A: 'Wind anemometer height in feet. Indicated DCP location can be used as base elevation for the anemometer heights.' Filas OBSERVADAS: LAX 33.93816,-118.3866 · SFO 37.61962,-122.36562 · MIA 25.78805,-80.31694 · ATL 33.62972,-84.44224 · ORD 41.96017,-87.93164 · LGA 40.77945,-73.88027 · AUS 30.18311,-97.67989 · DAL 32.83839,-96.83583 · HOU 29.64586,-95.28212 · SEA 47.44467,-122.31442. BKF no está en la lista.",
+     "como_obtener_coordenadas_sensor": "grep por el ID de 3 letras en la columna CALL (posiciones 023-026); LAT en 145-153, LON en 155-164. Copia local: /Users/mariaaleu/.claude/jobs/324ffe40/tmp/asos-stations.txt y ASOS_Table.txt."
+    },
+    {
+     "nombre": "NCEI HOMR — API JSON por estación (búsqueda por ICAO) y ficha web",
+     "url": "https://www.ncei.noaa.gov/access/homr/services/station/search?qid=ICAO:KORD (sustituir ICAO). Ficha web: https://www.ncei.noaa.gov/access/homr/#ncdcstnid=10003214 (ORD; otros ncdcStnId: LGA 20019451, DAL 10011000, ATL 20004906, SEA 20027732, MIA 20004250, HOU 20024452, LAX 20001642, AUS 20024650, SFO 10001448, BKF 20003754)",
+     "publicador": "NOAA / NCEI (HOMR)",
+     "accesible": true,
+     "formato": "JSON (stationCollection.stations[]: header, identifiers, location{latLonPairs[{latitude_dec, longitude_dec, precision, datum_horiz, source}], descriptions, elevations, topography}, platforms, relocations, remarks, updates)",
+     "que_contiene": "OBSERVADO: para las 10 estaciones NWS-ASOS, latLonPairs trae precision 'DDddddd', datum_horiz 'WGS84' y source 'ASOS CM' (ASOS Configuration Management del NWS). Remark GENERAL literal (presente en las 10): 'NCEI PERFORMED A BULK UPDATE TO ASOS STATION LOCATIONS FOLLOWING AN UPDATE FROM NWS'S ASOS CONFIGURATION MANAGEMENT (CM) DATABASE. PRIMARY STATION LATITUDE/LONGITUDE WAS UPDATED TO MATCH THE PRIMARY DCP (DATA COLLECTION PACKAGE) SENSOR EQUIPMENT REPORTING OBSERVATIONS TO NCEI. GROUND ELEVATION WAS UPDATED BASED UPON PROVIDED DCP LOCATIONS USING GIS. BAROMETRIC ELEVATION WAS UPDATED TO MATCH PRESSURE SENSOR ELEVATIONS, BUT NOTE THAT BAROMETERS ARE LOCATED IN THE BOTTOM TRAY OF THE ACU ...'. También da la posición del ACU (torre/edificio): ORD 41.954214,-87.907307 · LGA 40.773686,-73.884941 · DAL 32.845222,-96.849429 · ATL 33.641717,-84.421704 · SEA 47.455694,-122.301403 · MIA 25.795253,-80.271211 · HOU 29.645329,-95.288023 · LAX 33.944042,-118.403756 · AUS 30.196086,-97.665603 · SFO 37.615896,-122.383807. Descripciones de emplazamiento: LGA 'WEST SIDE OF LA GUARDIA AIRPORT 1800' SW OF RWY 13 THRESHOLD'; MIA 'ROOF TOP OF NORTHERN MOST ELEVATOR OF BLDG 702 IN CARGO AREA OF MIA INT AP'; HOU 'SOUTHWEST SIDE OF HOUSTON HOBBY AIRPORT EAST OF TAXIWAY O'. ORD remark: 'SITE (ASOS) MOVED 2.4 MILES S ON SAME PROPERTY ... SITE EXPANDED AND HAS MULTIPLE ASOS DCP UNITS' y 'SECONDARY ASOS DCP UNIT IS 1.6 MILES ESE OF PRIMARY ASOS DCP EQUIPMENT. LOCATION OF SECONDARY ASOS DCP EQUIPMENT: 41.95495, -87.90181'. LGA remark: 'ASOS LAT/LONG UPDATED BASED ON VALUES ENTERED IN HOMR ON 11/22/2021 FROM NWS ASOS PROGRAM DESIGNATING ASOS BOX AS CENTROID OF STATION'. KBKF: platforms [] (no ASOS), precision 'DDMM', 39.71667,-104.75, sin source ni datum.",
+     "como_obtener_coordenadas_sensor": "GET a la URL con qid=ICAO:Kxxx; leer stations[0].location.latLonPairs[0] (latitude_dec/longitude_dec, precision, source). Copias locales: /Users/mariaaleu/.claude/jobs/324ffe40/tmp/homr_K*.json"
+    },
+    {
+     "nombre": "NCEI Master Station History Report (MSHR Enhanced) — historial de ubicaciones",
+     "url": "https://www.ncei.noaa.gov/access/homr/file/mshr_enhanced.txt.zip (doc: https://www.ncei.noaa.gov/access/homr/file/MSHR_Enhanced_Table.txt; también emshr_lite.txt)",
+     "publicador": "NOAA / NCEI",
+     "accesible": true,
+     "formato": "ZIP (17,6 MB) con fichero de ancho fijo de ~600 MB (mshr_enhanced_202607.txt); campos LAT_DEC (pos 1300-1319), LON_DEC (1321-1340), LAT_LON_PRECISION, RELOCATION, LAT_LON_SOURCE, con periodos BEGIN/END por rendición.",
+     "que_contiene": "OBSERVADO para ORD (ncdc 10003214): 19960201-20040101 41.98611,-87.91417 · 20040101-20180301 41.995,-87.93361 · 20180301-20211122 41.96019,-87.93162 · 20211122-presente 41.96017,-87.93164. Es decir, el traslado del ASOS de O'Hare 2,4 mi al sur (efectivo 2018-03-01) está documentado; la coordenada actual coincide con el DCP primario. Sirve para fechar cambios de emplazamiento del sensor, no para la posición actual (para eso, asos-stations.txt).",
+     "como_obtener_coordenadas_sensor": "Descomprimir y grep por NCDC ID o WBAN; leer la última rendición (END en blanco). Copia local: /Users/mariaaleu/.claude/jobs/324ffe40/tmp/mshr/mshr_enhanced_202607.txt"
+    },
+    {
+     "nombre": "NCEI ISD station history (isd-history.txt)",
+     "url": "https://www.ncei.noaa.gov/pub/data/noaa/isd-history.txt",
+     "publicador": "NOAA / NCEI (Integrated Surface Database)",
+     "accesible": true,
+     "formato": "Texto de ancho fijo; LAT/LON 'in thousandths of decimal degrees' (3 decimales ≈ 100 m). Columnas USAF, WBAN, STATION NAME, CTRY, ST, CALL (ICAO con K), LAT, LON, ELEV, BEGIN, END.",
+     "que_contiene": "OBSERVADO (registros vigentes): KMIA 25.788,-80.317 · KATL 33.630,-84.442 · KHOU 29.646,-95.282 · KAUS 30.183,-97.680 · KDAL 32.838,-96.836 · KLAX 33.938,-118.387 · KBKF 39.717,-104.750 · KSFO 37.620,-122.366 · KLGA 40.779,-73.880 · KORD 41.960,-87.932 · KSEA 47.445,-122.314. Coinciden con la coordenada 'noaa' redondeada a 3 decimales en las 10 estaciones NWS; en KBKF NO coincide (AWC da 39.713,-104.758, ~0,8 km). No documenta si es sensor o ARP; precisión insuficiente (~100 m) para este uso.",
+     "como_obtener_coordenadas_sensor": "No apta como fuente primaria (solo 3 decimales, sin semántica del punto). Útil como contraste. Copia local: /Users/mariaaleu/.claude/jobs/324ffe40/tmp/isd-history.txt"
+    },
+    {
+     "nombre": "FAA NASR 28-day subscription — AWOS.csv (ASOS/AWOS)",
+     "url": "https://www.faa.gov/air_traffic/flight_info/aeronav/aero_data/NASR_Subscription/ (fichero 03_Sep_2026_AWOS_CSV.zip → AWOS.csv, 'AWOS DATA LAYOUT.pdf'); portal: https://nfdc.faa.gov",
+     "publicador": "FAA / Aeronautical Information Services (NFDC)",
+     "accesible": true,
+     "formato": "CSV (2.655 filas). Campos: ASOS_AWOS_ID, ASOS_AWOS_TYPE, LAT_DEG/MIN/SEC, LAT_DECIMAL, LONG_DECIMAL, ELEV, SURVEY_METHOD_CODE ('E - ESTIMATED' / 'S - SURVEYED'), SITE_NO, COMMISSIONED_DATE, REMARK. Datum NAD83 según README.",
+     "que_contiene": "OBSERVADO: el layout define LAT_DECIMAL como 'Weather System Latitude in Decimal Format' (el 'Weather System' = el ASOS/AWOS), pero los valores NO son consistentemente la posición del sensor: LAX 33.93818611,-118.38660277 (E), LGA 40.77947452,-73.88027986 (S), MIA 25.78807222,-80.31693333 (E), SFO 37.61961666,-122.36562222 (S) coinciden con el DCP primario a ≤3 m; en cambio ORD 41.97694027,-87.90814972 (E) es prácticamente el ARP (2,69 km del DCP), ATL 33.63663888,-84.42830555 (1,50 km), DAL 32.84594472,-96.85087666 (E, 1,64 km), SEA 47.44988888,-122.31177777 (0,61 km), HOU 29.64541861,-95.27888888 (0,32 km); AUS 30.20987802,-97.68062113 (S) coincide (~2 m) con el DCP 2 del NWS, no con el DCP 1. BKF: 0 filas (militar).",
+     "como_obtener_coordenadas_sensor": "Filtrar ASOS_AWOS_ID por ID de 3 letras. Solo fiable cuando SURVEY_METHOD_CODE='S' o coincide con NWS/HOMR; con 'E' o en blanco puede ser el ARP. Copia local: /Users/mariaaleu/.claude/jobs/324ffe40/tmp/nasr/AWOS.csv"
+    },
+    {
+     "nombre": "aviationweather.gov Data API — /api/data/stationinfo (la fuente 'noaa' de COORD_MASTER)",
+     "url": "https://aviationweather.gov/api/data/stationinfo?ids=KORD&format=json ; spec: https://aviationweather.gov/data/schema/openapi.yaml ; doc: https://aviationweather.gov/data/api/",
+     "publicador": "NOAA / NWS Aviation Weather Center",
+     "accesible": true,
+     "formato": "JSON/GeoJSON/XML; campos icaoId, iataId, faaId, site, lat, lon, elev, state, country, priority, siteType. 5 decimales.",
+     "que_contiene": "OBSERVADO hoy (2026-09-05): KATL 33.62972,-84.44223 · KAUS 30.1831,-97.68063 · KBKF 39.713,-104.758 · KDAL 32.83836,-96.83584 · KHOU 29.64582,-95.28214 · KLAX 33.93817,-118.3866 · KLGA 40.77945,-73.88027 · KMIA 25.78806,-80.31692 · KORD 41.96017,-87.93161 · KSEA 47.44467,-122.31442 · KSFO 37.61961,-122.36561 (idénticas a las de COORD_MASTER). openapi.yaml describe el endpoint solo como 'Station observation location information'; NO documenta la procedencia. Distancia al DCP 1 del NWS: LGA 0,4 m · SEA 0,4 m · ATL 0,7 m · LAX 0,9 m · SFO 1,5 m · ORD 2,4 m · MIA 2,4 m · DAL 3,0 m · HOU 4,3 m · AUS 71 m (AWC redondea lon a -97.68063). INFERIDO: AWC toma la posición del DCP primario del ASOS CM/HOMR — consistente numéricamente en 10/10 sitios, pero no está escrito en la doc de AWC.",
+     "como_obtener_coordenadas_sensor": "Ya se usa. Para KBKF (no NWS) la coordenada 39.713,-104.758 no se ha podido contrastar con ninguna fuente oficial de sensor. Copia: /Users/mariaaleu/.claude/jobs/324ffe40/tmp/awc_stationinfo.json y openapi.yaml"
+    },
+    {
+     "nombre": "NWS ASOS FAQ / página FAA ASOS-AWOS",
+     "url": "https://www.weather.gov/asos/faq.html ; https://www.faa.gov/air_traffic/weather/asos",
+     "publicador": "NWS / FAA",
+     "accesible": true,
+     "formato": "HTML (la de FAA es una SPA que requiere JavaScript; con curl solo se obtiene el cascarón: 'Please enable JavaScript to use this site.')",
+     "que_contiene": "OBSERVADO: el FAQ del NWS solo dice 'The physical sensor group typically requires an area of 75ft. by 59ft. clear of debris...' y enlaza a asosequip.html ('Here is a link to all active ASOS sites that the NWS maintains'). No aportan coordenadas por sí mismas.",
+     "como_obtener_coordenadas_sensor": "No aplicable; usar asosequip.html → xlsx."
+    }
+   ],
+   "mejor_fuente": "Para posición ACTUAL del sensor con semántica oficial explícita: NCEI HOMR 'asos-stations.txt' (https://www.ncei.noaa.gov/access/homr/file/asos-stations.txt, 5 decimales, WGS84, y cuya documentación ASOS_Table.txt afirma literalmente que LAT/LON 'pertains to the primary DCP (data collection package) sensor equipment'), corroborada por la lista del propio NWS ASOS Program (xlsx 'ASOS Sites by Equipment', hoja 'DCP LatLong', 6 decimales, con DCP 1/2/3) que proviene de la misma base ASOS Configuration Management. Ambas coinciden entre sí a <1 m y con la coordenada 'noaa' de aviationweather.gov a ≤5 m (KAUS 71 m) en las 10 estaciones NWS-ASOS.",
+   "notas": "VEREDICTO (OBSERVADO, no inferido): la hipótesis queda VERIFICADA con fuente oficial. La coordenada 'noaa' (aviationweather.gov stationinfo) es la ubicación del DCP primario del ASOS (el conjunto de sensores que genera el METAR), no el ARP. Evidencia: (1) NCEI ASOS_Table.txt: 'This pertains to the primary DCP (data collection package) sensor equipment'; (2) HOMR JSON: source='ASOS CM', precision='DDddddd', datum='WGS84', y remark 'PRIMARY STATION LATITUDE/LONGITUDE WAS UPDATED TO MATCH THE PRIMARY DCP (DATA COLLECTION PACKAGE) SENSOR EQUIPMENT REPORTING OBSERVATIONS TO NCEI'; (3) hoja 'DCP LatLong' del xlsx del NWS ASOS Program con esas mismas coordenadas. Precisión publicada: HOMR 5 decimales (~1 m), NWS xlsx 6 decimales; la coincidencia mutua es de 0,2–0,6 m.\n\nTABLA (lat, lon) DCP primario NWS xlsx | HOMR asos-stations.txt | AWC 'noaa' | d(AWC,DCP1):\nKLGA 40.77945,-73.880275 | 40.77945,-73.88027 | 40.77945,-73.88027 | 0,4 m\nKDAL 32.838385,-96.835827 | 32.83839,-96.83583 | 32.83836,-96.83584 | 3,0 m\nKATL 33.629717,-84.442237 | 33.62972,-84.44224 | 33.62972,-84.44223 | 0,7 m\nKSEA 47.44467,-122.314425 | 47.44467,-122.31442 | 47.44467,-122.31442 | 0,4 m\nKMIA 25.788045,-80.316937 | 25.78805,-80.31694 | 25.78806,-80.31692 | 2,4 m\nKORD 41.960167,-87.931639 | 41.96017,-87.93164 | 41.96017,-87.93161 | 2,4 m\nKBKF — (no está en NWS xlsx, ni en HOMR como ASOS [precision DDMM 39.71667,-104.75], ni en FAA AWOS.csv) | — | 39.713,-104.758 | sin verificar\nKHOU 29.645856,-95.282123 | 29.64586,-95.28212 | 29.64582,-95.28214 | 4,3 m\nKLAX 33.938162,-118.386598 | 33.93816,-118.3866 | 33.93817,-118.3866 | 0,9 m\nKAUS 30.183112,-97.679889 | 30.18311,-97.67989 | 30.1831,-97.68063 | 71 m\nKSFO 37.619617,-122.365625 | 37.61962,-122.36562 | 37.61961,-122.36561 | 1,5 m\nDistancia DCP1→ARP (OurAirports) OBSERVADA: ORD 3,02 km, MIA 2,86 km, AUS 2,35 km, LAX 2,03 km, ATL 1,52 km, DAL 1,31 km, SFO 0,81 km, LGA 0,69 km, HOU 0,52 km, SEA 0,48 km — coherente con el hallazgo previo.\n\nDCP secundarios (NWS xlsx 'DCP 2', también sensores pero NO los que alimentan el METAR primario): ORD 41.954973,-87.901806 · ATL 33.651653,-84.434739 · AUS 30.209889,-97.680639 · LAX 33.952594,-118.408361 · MIA 25.800362,-80.305881 · SFO 37.614909,-122.355559 · LGA 40.78262,-73.871945 · SEA 47.465167,-122.30975. Posición del ACU (torre/edificio, donde está el barómetro) según HOMR: ver fuente HOMR JSON.\n\nConsecuencias para COORD_MASTER: (a) 'noaa' es la fuente correcta para el sensor en las 10 estaciones NWS; (b) IEM difiere del DCP primario en KDAL (1,78 km), KHOU (0,93 km) y KSFO (0,82 km) — en esos tres IEM no representa el sensor; (c) FAA NASR no es fiable como posición del sensor (ORD = ARP con SURVEY_METHOD 'E'; AUS apunta al DCP 2); (d) KORD: el ASOS se trasladó 2,4 mi al sur con efecto 2018-03-01 (MSHR: de 41.995,-87.93361 a 41.96019,-87.93162), así que series anteriores a 2018 corresponden a otro emplazamiento; (e) KBKF es instalación DoD: no existe coordenada oficial NWS/NCEI del sensor; la de AWC (3 decimales) queda sin contrastar.\n\nINFERIDO (no documentado por AWC): que aviationweather.gov alimenta stationinfo desde el ASOS CM/HOMR; solo se apoya en la coincidencia numérica ≤5 m en 10/10 sitios.\n\nFicheros descargados (solo lectura, nada modificado en el proyecto): /Users/mariaaleu/.claude/jobs/324ffe40/tmp/{asos-stations.txt, ASOS_Table.txt, homr_K*.json, asos_sites_equip.xlsx, isd-history.txt, mshr_enhanced.txt.zip, mshr/mshr_enhanced_202607.txt, MSHR_Enhanced_Table.txt, nasr/AWOS.csv, nasr/AWOS DATA LAYOUT.pdf, awc_stationinfo.json, openapi.yaml, asosequip.html, faa_asos.html}. No se consultó Open-Meteo."
+  }
+ },
+ {
+  "type": "result",
+  "key": "v2:8a7902b7afe8e1723fc3e2a27c5d8b9aa59dedc64e88d827b4373c26c04e00e4",
+  "agentId": "a95c97996021f619c",
+  "result": {
+   "fuentes": [
+    {
+     "nombre": "FAA NASR 28-Day Subscription (índice, efectivo 2026-09-03)",
+     "url": "https://www.faa.gov/air_traffic/flight_info/aeronav/aero_data/NASR_Subscription/2026-09-03/",
+     "publicador": "FAA Aeronautical Information Services (nfdc.faa.gov)",
+     "accesible": true,
+     "formato": "HTML índice; enlaces a ZIP (CSV, TXT legacy, AIXM 5.1) y layouts TXT",
+     "que_contiene": "Página vigente del ciclo. Texto literal: 'Individual CSV groups ... ASOS/AWOS (AWOS) ... Weather Reporting Locations (WXL)' y 'AIXM 5.1 versions of the Navigation Aid, Airport, ASOS/AWOS, and Airway subscriber files are available'. 'Page last modified: August 05, 2026'. Nota: WebFetch devuelve 403 en faa.gov; funciona con curl + User-Agent de navegador. Los HEAD a nfdc.faa.gov dan 503, los GET dan 200.",
+     "como_obtener_coordenadas_sensor": "Descargar el grupo AWOS (CSV o TXT) desde los enlaces de la página (ver fuentes siguientes). Copia local: /Users/mariaaleu/.claude/jobs/324ffe40/tmp/nasr_2026-09-03.html"
+    },
+    {
+     "nombre": "FAA NASR ASOS/AWOS CSV (03_Sep_2026_AWOS_CSV.zip → AWOS.csv)",
+     "url": "https://nfdc.faa.gov/webContent/28DaySub/extra/03_Sep_2026_AWOS_CSV.zip",
+     "publicador": "FAA AIS / NASR",
+     "accesible": true,
+     "formato": "ZIP 535 KB con AWOS.csv (2655 filas, comillas dobles, ordenado por ASOS_AWOS_ID,ASOS_AWOS_TYPE), AWOS DATA LAYOUT.pdf, AWOS_CSV_DATA_STRUCTURE.csv, CSV_README.pdf",
+     "que_contiene": "Columnas: EFF_DATE, ASOS_AWOS_ID, ASOS_AWOS_TYPE, STATE_CODE, CITY, COUNTRY_CODE, COMMISSIONED_DATE, NAVAID_FLAG, LAT_DEG/MIN/SEC/HEMIS, LAT_DECIMAL, LONG_DEG/MIN/SEC/HEMIS, LONG_DECIMAL, ELEV, SURVEY_METHOD_CODE, PHONE_NO, SECOND_PHONE_NO, SITE_NO, SITE_TYPE_CODE, REMARK. Definición literal (AWOS DATA LAYOUT.pdf, eff. 12/01/2022): 'LAT_DECIMAL – Weather System Latitude in Decimal Format', 'SURVEY_METHOD_CODE – Weather System Location Determination Method  E - ESTIMATED  S - SURVEYED', 'SITE_NO – Landing Facility Site Number when Weather System Located at Airport'. FILAS OBSERVADAS (LAT_DECIMAL, LONG_DECIMAL, ELEV ft, SURVEY, SITE_NO, COMMISSIONED): LGA ASOS 40.77947452,-73.88027986, 6.5, S, 15794., 1996/05/23 | DAL ASOS 32.84594472,-96.85087666, 486.9, E, 23713., 1997/12/04 | ATL ASOS 33.63663888,-84.42830555, 1026.2, (vacío), 03640., 1995/08/03 | SEA ASOS 47.44988888,-122.31177777, 432.5, (vacío), 26395., 1996/09/26 | MIA ASOS 25.78807222,-80.31693333, 9.3, E, 03333., 1996/07/10 | ORD ASOS 41.97694027,-87.90814972, 680, E, 04508., 1996/02/16 | BKF: NO EXISTE fila (base militar, sin ASOS FAA) | HOU ASOS 29.64541861,-95.27888888, 46.3, (vacío), 24071., (sin fecha) | LAX ASOS 33.93818611,-118.38660277, 97, E, 01818., 1997/03/03 | AUS ASOS 30.20987802,-97.68062113, 532.1, S, 23369., 1997/10/09 | SFO ASOS 37.61961666,-122.36562222, 18, S, 02187., 1996/09/27. REMARK vacío en las 10.",
+     "como_obtener_coordenadas_sensor": "Leer LAT_DECIMAL/LONG_DECIMAL por ASOS_AWOS_ID (ID FAA de 3 letras, sin K) y comprobar SURVEY_METHOD_CODE y distancia al ARP de APT_BASE.csv (mismo SITE_NO). ADVERTENCIA OBSERVADA: en 772 de 2554 filas enlazadas a aeropuerto (30 %), y en 301 de 866 filas tipo ASOS (35 %), la coordenada está a <10 m del ARP; con SURVEY=E, 118/225 ASOS (52 %) son exactamente el ARP. Es decir, el fichero FAA usa a menudo el ARP como valor placeholder y NO garantiza la posición del sensor. Copia local: /Users/mariaaleu/.claude/jobs/324ffe40/tmp/awos_csv/AWOS.csv"
+    },
+    {
+     "nombre": "FAA NASR ASOS/AWOS legacy TXT (AWOS.zip → AWOS.txt) + layout awos_rf.txt",
+     "url": "https://nfdc.faa.gov/webContent/28DaySub/2026-09-03/AWOS.zip",
+     "publicador": "FAA AIS / NASR",
+     "accesible": true,
+     "formato": "ZIP 145 KB; AWOS.txt ancho fijo 255 chars, registros AWOS1 (base) y AWOS2 (remarks); layout en https://nfdc.faa.gov/webContent/28DaySub/2026-09-03/Layout_Data/awos_rf.txt",
+     "que_contiene": "Mismos datos que el CSV en DMS. Layout literal: 'L AN 0014 00032 N/A STATION LATITUDE DD-MM-SS.SSSSH', 'L AN 0015 00046 N/A STATION LONGITUDE DDD-MM-SS.SSSSH', 'SURVEY METHOD CODE E - ESTIMATED S - SURVEYED', 'LANDING FACILITY SITE NUMBER WHEN STATION LOCATED AT AIRPORT (EX. 04508.*A)'. Filas AWOS1 observadas: ATL 33-38-11.9000N 084-25-41.9000W | AUS 30-12-35.5609N 097-40-50.2361W (S) | DAL 32-50-45.4010N 096-51-03.1560W (E) | HOU 29-38-43.5070N 095-16-44.0000W | LAX 33-56-17.4700N 118-23-11.7700W (E) | LGA 40-46-46.1083N 073-52-49.0075W (S) | MIA 25-47-17.0600N 080-19-00.9600W (E, freq 119.15) | ORD 41-58-36.9850N 087-54-29.3390W (E) | SEA 47-26-59.6000N 122-18-42.4000W | SFO 37-37-10.6200N 122-21-56.2400W (S). README.txt: 'The AIXM5.1 ASOS/AWOS subscriber file contains the data also produced in the legacy AWOS.txt subscriber file. Both products are produced in parallel.'",
+     "como_obtener_coordenadas_sensor": "Parsear posiciones 32-45 (lat) y 46-60 (lon) de los registros AWOS1. Copias locales: /Users/mariaaleu/.claude/jobs/324ffe40/tmp/awos_txt/AWOS.txt, /Users/mariaaleu/.claude/jobs/324ffe40/tmp/awos_rf.txt, /Users/mariaaleu/.claude/jobs/324ffe40/tmp/README.txt"
+    },
+    {
+     "nombre": "FAA NASR Weather Reporting Locations CSV (03_Sep_2026_WXL_CSV.zip → WXL_BASE.csv)",
+     "url": "https://nfdc.faa.gov/webContent/28DaySub/extra/03_Sep_2026_WXL_CSV.zip",
+     "publicador": "FAA AIS / NASR",
+     "accesible": true,
+     "formato": "ZIP 597 KB; WXL_BASE.csv (WEA_ID, CITY, STATE, LAT/LONG DMS y DECIMAL, ELEV, SURVEY_METHOD_CODE) y WXL_SVC.csv (servicios METAR/TAF/SPECI...)",
+     "que_contiene": "Layout Wxl_rf.txt: 'LATITUDE OF THE WEATHER REPORTING LOCATION'. Coordenadas idénticas a AWOS.csv en los 10 ASOS; incluye BKF (que no está en AWOS.csv): BKF AURORA CO 39.70166666,-104.75166666, ELEV 5663, SURVEY S. Copia local: /Users/mariaaleu/.claude/jobs/324ffe40/tmp/wxl_csv/WXL_BASE.csv",
+     "como_obtener_coordenadas_sensor": "Igual que AWOS.csv; útil para estaciones militares/no-FAA. Misma limitación: valor = ARP en muchas filas (BKF está a 29 m del ARP)."
+    },
+    {
+     "nombre": "FAA NASR Airports CSV (03_Sep_2026_APT_CSV.zip → APT_BASE.csv, APT_RWY_END.csv)",
+     "url": "https://nfdc.faa.gov/webContent/28DaySub/extra/03_Sep_2026_APT_CSV.zip",
+     "publicador": "FAA AIS / NASR",
+     "accesible": true,
+     "formato": "ZIP 8 MB; APT_BASE.csv (ARP oficial: SITE_NO, ARPT_ID, ICAO_ID, LAT_DECIMAL, LONG_DECIMAL, SURVEY_METHOD_CODE), APT_RWY_END.csv (coordenadas de umbrales), APT_RMK.csv",
+     "que_contiene": "ARP oficial FAA (OBSERVADO): LGA 40.777242,-73.872606 | DAL 32.845945,-96.850877 | ATL 33.636700,-84.427864 | SEA 47.449889,-122.311778 | MIA 25.795361,-80.290116 | ORD 41.976940,-87.908150 | BKF 39.701761,-104.751961 | HOU 29.645800,-95.277232 | LAX 33.942496,-118.408049 | AUS 30.194527,-97.669876 | SFO 37.618806,-122.375417. Distancia NASR-AWOS→ARP (km): LGA 0.692, DAL 0.000, ATL 0.041, SEA 0.000, MIA 2.805, ORD 0.000, HOU 0.166, LAX 2.036, AUS 1.995, SFO 0.867. Sin remarks APT_RMK sobre ASOS en estos 11 aeropuertos.",
+     "como_obtener_coordenadas_sensor": "No contiene sensores; sirve para detectar cuándo AWOS.csv trae el ARP como placeholder (distancia ~0) y para geometría de pistas. Copia local: /Users/mariaaleu/.claude/jobs/324ffe40/tmp/apt_csv/"
+    },
+    {
+     "nombre": "NOAA NCEI HOMR (Historical Observing Metadata Repository) – API por WBAN",
+     "url": "https://www.ncei.noaa.gov/access/homr/services/station/search?qid=WBAN:94846&date=all",
+     "publicador": "NOAA NCEI (metadatos oficiales de estaciones NWS/ASOS)",
+     "accesible": true,
+     "formato": "JSON (stationCollection.stations[].location.latLonPairs con fecha, precisión, datum y 'source'; platforms; relocations; remarks)",
+     "que_contiene": "Coordenada actual (source 'ASOS CM', datum WGS84, desde 2021-11-22): ORD 41.96017,-87.93164 | AUS 30.18311,-97.67989 | ATL 33.62972,-84.44224 | DAL 32.83839,-96.83583 | HOU 29.64586,-95.28212 | SEA 47.44467,-122.31442 | MIA 25.78805,-80.31694 | LAX 33.93816,-118.3866 | SFO 37.61962,-122.36562 | LGA 40.77945,-73.88027 | BKF 39.71667,-104.75 (precisión DDMM, 1987, sin plataforma ASOS). Remark literal (idéntico en los 10 ASOS, fecha 2021-11-22): 'NCEI PERFORMED A BULK UPDATE TO ASOS STATION LOCATIONS FOLLOWING AN UPDATE FROM NWS'S ASOS CONFIGURATION MANAGEMENT (CM) DATABASE. PRIMARY STATION LATITUDE/LONGITUDE WAS UPDATED TO MATCH THE PRIMARY DCP (DATA COLLECTION PACKAGE) SENSOR EQUIPMENT REPORTING OBSERVATIONS TO NCEI. GROUND ELEVATION WAS UPDATED BASED UPON PROVIDED DCP LOCATIONS USING GIS. BAROMETRIC ELEVATION WAS UPDATED TO MATCH PRESSURE SENSOR ELEVATIONS, BUT NOTE THAT BAROMETERS ARE LOCATED IN THE BOTTOM TRAY OF THE ACU (ACQUISITION CONTROL UNIT) NORMALLY FOUND IN SOME PART OF TOWER OR ANOTHER DRY BUILDING NEAR THE EQUIPMENT, NOT AT THE DCP LOCATION TYPICALLY.' ORD además: 'SITE (ASOS) MOVED 2.4 MILES S ON SAME PROPERTY, WITH ELEVATION CHANGE OF 9 FEET HIGHER' (par 2018-03-01: 41.96019,-87.93162 'ASOS SITE SURVEY'; antes 41.995,-87.9336) y 'SECONDARY ASOS DCP UNIT IS 1.6 MILES ESE OF PRIMARY ASOS DCP EQUIPMENT. LOCATION OF SECONDARY ASOS DCP EQUIPMENT: 41.95495, -87.90181'. LGA: 'ASOS LAT/LONG UPDATED BASED ON VALUES ENTERED IN HOMR ON 11/22/2021 FROM NWS ASOS PROGRAM DESIGNATING ASOS BOX AS CENTROID OF STATION'.",
+     "como_obtener_coordenadas_sensor": "GET .../station/search?qid=WBAN:<wban>&date=all (o qid=ICAO:KXXX); tomar el latLonPair más reciente con source 'ASOS CM' o 'ASOS SITE SURVEY'. Copias locales: /Users/mariaaleu/.claude/jobs/324ffe40/tmp/homr/wban_*.json"
+    },
+    {
+     "nombre": "NOAA NCEI ISD station history (isd-history.csv)",
+     "url": "https://www.ncei.noaa.gov/pub/data/noaa/isd-history.csv",
+     "publicador": "NOAA NCEI",
+     "accesible": true,
+     "formato": "CSV (USAF, WBAN, STATION NAME, CTRY, STATE, ICAO, LAT, LON 3 decimales, ELEV(M), BEGIN, END)",
+     "que_contiene": "Filas vigentes: KMIA 722020/12839 +25.788,-080.317 | KATL 722190/13874 +33.630,-084.442 | KHOU 722440/12918 +29.646,-095.282 | KAUS 722540/13904 +30.183,-097.680 | KDAL 722580/13960 +32.838,-096.836 | KLAX 722950/23174 +33.938,-118.387 | KBKF 724695/23036 +39.717,-104.750 | KSFO 724940/23234 +37.620,-122.366 | KLGA 725030/14732 +40.779,-073.880 | KORD 725300/94846 +41.960,-087.932 | KSEA 727930/24233 +47.445,-122.314. Coinciden (a 3 decimales) con aviationweather.gov en los 11.",
+     "como_obtener_coordenadas_sensor": "Filtrar por ICAO; precisión limitada a 0.001°. Copia local: /Users/mariaaleu/.claude/jobs/324ffe40/tmp/isd-history.csv"
+    },
+    {
+     "nombre": "aviationweather.gov Data API stationinfo",
+     "url": "https://aviationweather.gov/api/data/stationinfo?ids=KLGA,KDAL,KATL,KSEA,KMIA,KORD,KBKF,KHOU,KLAX,KAUS,KSFO&format=json",
+     "publicador": "NOAA NWS Aviation Weather Center",
+     "accesible": true,
+     "formato": "JSON (icaoId, iataId, faaId, wmoId, lat, lon, elev, site, priority, siteType)",
+     "que_contiene": "Valores observados 2026-09-05: KATL 33.62972,-84.44223 | KAUS 30.1831,-97.68063 | KBKF 39.713,-104.758 | KDAL 32.83836,-96.83584 | KHOU 29.64582,-95.28214 | KLAX 33.93817,-118.3866 | KLGA 40.77945,-73.88027 | KMIA 25.78806,-80.31692 | KORD 41.96017,-87.93161 | KSEA 47.44467,-122.31442 | KSFO 37.61961,-122.36561. Idénticos a COORD_MASTER.noaa. Coinciden con HOMR 'ASOS CM' a ≤0.0001° en los 10 ASOS (excepción BKF: HOMR 39.71667,-104.75 con precisión DDMM).",
+     "como_obtener_coordenadas_sensor": "Ya es la coordenada NOAA usada en COORD_MASTER; la API no documenta su origen, pero los valores son los de HOMR/NWS ASOS CM (OBSERVADO por comparación). Copia local: /Users/mariaaleu/.claude/jobs/324ffe40/tmp/awc_stationinfo.json"
+    },
+    {
+     "nombre": "FAA Order JO 6560.20C – Siting Criteria for Automated Weather Observing Systems (AWOS)",
+     "url": "https://www.faa.gov/documentLibrary/media/Order/JO_6560_20C.pdf",
+     "publicador": "FAA Air Traffic Organization (09/06/2017)",
+     "accesible": true,
+     "formato": "PDF 691 KB",
+     "que_contiene": "Criterios de emplazamiento. Literal: 'The preferred siting of the cloud height, visibility and wind sensors is adjacent to the primary runway 1,000 feet (300 meters) to 3,000 feet (900 meters) down runway from the threshold ... The minimum distance perpendicular from the runway centerline must be 500 feet (150 meters). The maximum distance perpendicular from the runway centerline must not exceed 1,000 feet (300 meters).' Y: 'This order does not apply to the Automated Surface Observation System (ASOS). Refer to the Federal Standard for Siting Meteorological Sensors at Airports (FCM-S4 -1994) for ASOS siting guidelines.' No contiene coordenadas.",
+     "como_obtener_coordenadas_sensor": "No aplica (norma de emplazamiento, no inventario). Copia local: /Users/mariaaleu/.claude/jobs/324ffe40/tmp/JO_6560_20C.pdf y extracción de texto JO_6560_20C.txt"
+    },
+    {
+     "nombre": "FAA Surface Weather Observation Stations (ASOS/AWOS) – mapa por estado",
+     "url": "https://www.faa.gov/air_traffic/weather/asos",
+     "publicador": "FAA Air Traffic / Weather",
+     "accesible": true,
+     "formato": "HTML con mapa interactivo (JS); sin tabla ni endpoint de datos visible en el HTML",
+     "que_contiene": "Literal: 'Click a state or territory or select from the drop down to view weather observation station data for that area. Hover over a location for more information and a link to the METAR page. Last updated: Monday, August 10, 2026'. La variante ?state=IL no incluye 'ORD' ni coordenadas en el HTML servidor; los datos se cargan por JS (no localizado el endpoint).",
+     "como_obtener_coordenadas_sensor": "No utilizable por descarga; requeriría navegador. Copia local: /Users/mariaaleu/.claude/jobs/324ffe40/tmp/faa_asos_page.html"
+    },
+    {
+     "nombre": "UCAR/NCAR RAP stations.txt",
+     "url": "https://weather.ral.ucar.edu/surface/stations.txt",
+     "publicador": "NCAR/RAP (no oficial; compilación comunitaria, última actualización 08 MAY 2022)",
+     "accesible": true,
+     "formato": "TXT ancho fijo, lat/lon en grados y minutos enteros",
+     "que_contiene": "Ej.: 'IL CHICAGO O'HARE   KORD  ORD   72530  41 59N  087 56W  200'. Precisión ~1 minuto (~1.5 km): inútil para distinguir sensor de ARP.",
+     "como_obtener_coordenadas_sensor": "No recomendado. Copia local: /Users/mariaaleu/.claude/jobs/324ffe40/tmp/stations_ucar.txt"
+    }
+   ],
+   "mejor_fuente": "Para la posición del SENSOR ASOS: NOAA NCEI HOMR (https://www.ncei.noaa.gov/access/homr/services/station/search?qid=WBAN:<wban>&date=all), cuyo par lat/lon actual (source 'ASOS CM', 2021-11-22) se define literalmente como 'PRIMARY DCP (DATA COLLECTION PACKAGE) SENSOR EQUIPMENT' y coincide con aviationweather.gov a ≤0.0001° en los 10 ASOS. La fuente FAA oficial es NASR AWOS.csv (https://nfdc.faa.gov/webContent/28DaySub/extra/03_Sep_2026_AWOS_CSV.zip), pero en ~35 % de las filas ASOS (incl. ORD, DAL, SEA, ATL) trae el ARP como placeholder, así que solo es fiable cuando SURVEY_METHOD_CODE=S o la distancia al ARP de APT_BASE.csv es >100 m.",
+   "notas": "VEREDICTO SOBRE LA HIPÓTESIS ('NOAA = ubicación del sensor ASOS, no el ARP'): VERIFICADA con fuente oficial, pero NO por la vía FAA-NASR sino por NOAA-NCEI HOMR.\n\nOBSERVADO (1) – NASR AWOS.csv vs NOAA (aviationweather.gov), distancia en km: LGA 0.003, MIA 0.002, LAX 0.002, SFO 0.001 → coincidencia al metro. DAL 1.638, ATL 1.501, SEA 0.613, HOU 0.317, ORD 2.691, AUS 2.978 → NO coinciden. BKF: sin fila AWOS; WXL_BASE 39.701667,-104.751667 (=ARP a 29 m; NOAA a 1.372 km).\n\nOBSERVADO (2) – NASR AWOS.csv vs ARP oficial (APT_BASE.csv, mismo SITE_NO): ORD 0.000 km, DAL 0.000, SEA 0.000, ATL 0.041, HOU 0.166 → el fichero FAA lleva el ARP (ORD y DAL con SURVEY_METHOD_CODE=E; ATL, SEA, HOU en blanco). LGA 0.692, SFO 0.867, LAX 2.036, MIA 2.805, AUS 1.995 → valores propios. Estadística global del fichero: 772/2554 filas (30 %) a <10 m del ARP; ASOS: 301/866 (35 %); ASOS con E: 118/225 (52 %). Conclusión: NASR AWOS 'Weather System Latitude/Longitude' es en muchos casos un placeholder = ARP, no una posición medida del sensor.\n\nOBSERVADO (3) – HOMR (NCEI) define la coordenada actual como la del sensor: remark 2021-11-22 'PRIMARY STATION LATITUDE/LONGITUDE WAS UPDATED TO MATCH THE PRIMARY DCP (DATA COLLECTION PACKAGE) SENSOR EQUIPMENT REPORTING OBSERVATIONS TO NCEI'; source del par = 'ASOS CM' (NWS ASOS Configuration Management), datum WGS84. Comparación HOMR vs aviationweather.gov: ORD 41.96017,-87.93164 vs 41.96017,-87.93161; ATL 33.62972,-84.44224 vs 33.62972,-84.44223; DAL 32.83839,-96.83583 vs 32.83836,-96.83584; SEA idéntico; MIA 25.78805,-80.31694 vs 25.78806,-80.31692; LAX 33.93816,-118.3866 vs 33.93817,-118.3866; SFO 37.61962,-122.36562 vs 37.61961,-122.36561; LGA idéntico; HOU 29.64586,-95.28212 vs 29.64582,-95.28214; AUS 30.18311,-97.67989 vs 30.1831,-97.68063 (lon difiere 0.00074° ≈ 70 m, ver abajo). Por tanto la coordenada 'noaa' de COORD_MASTER es la posición del DCP/sensor ASOS según NWS, lo que explica los 1.5–2.8 km al ARP en ORD, MIA, LAX, AUS, ATL. ORD, además: HOMR registra 'SITE (ASOS) MOVED 2.4 MILES S ON SAME PROPERTY' (par 2018-03-01, 'ASOS SITE SURVEY' 41.96019,-87.93162; anterior 41.995,-87.9336), mientras NASR sigue mostrando el ARP con E.\n\nINFERIDO (4) – Geometría con APT_RWY_END.csv (apoya, no prueba): el punto NOAA queda a 100–350 m del eje de una pista y a 300–1000 m de un umbral en LGA (332 m del eje 04/22, 993 m del umbral 22), ATL (233 m eje 09R/27L, 531 m del 09R), SEA (246 m eje 16C/34C, 743 m del 34C), HOU (182 m eje 13R/31L, 630 m del 13R), LAX (111 m eje 07L/25R, 648 m del 25R), AUS (199 m eje 18R/36L, 356 m del 36L), SFO (248 m eje 10L/28R, 975 m del 28R), BKF (151 m eje 14/32, 335 m del 14). Esto es coherente con el criterio de emplazamiento de JO 6560.20C ('1,000 feet (300 meters) to 3,000 feet (900 meters) down runway from the threshold', 150–300 m del eje), aunque la orden aclara que ASOS se rige por FCM-S4-1994. En cambio, los puntos NASR de HOU (5 m del eje 13R/31L) y SEA (51 m del eje 16C/34C) caen sobre la pista, imposible para un sensor: prueba adicional de que son placeholders.\n\nDISCREPANCIA ABIERTA – AUS: NASR (SURVEY=S, 30-12-35.5609N 097-40-50.2361W → 30.209878,-97.680621) está en el extremo NORTE de la pista 18R/36L (130 m del eje, 413 m del umbral 18R, 1.995 km al N del ARP); HOMR/NOAA (30.18311,-97.67989; historial: 30.18306,-97.68 desde 1999-02-01 'ASOS SITE SURVEY' 2002; 30.1831,-97.6799 GPS) está en el extremo SUR (2.978 km de NASR). Ambos son emplazamientos plausibles; ninguna fuente oficial explica la diferencia (HOMR menciona ACU en 30.196086,-97.665603, que es el edificio, no el sensor). Observación sin explicación: la lon de aviationweather (-97.68063) coincide con la de NASR (-97.68062) y no con HOMR (-97.67989), mientras la lat coincide con HOMR. Tratar AUS como no resuelto.\n\nBKF: sin ASOS FAA/NWS (HOMR sin plataforma ASOS, par de 1987 con precisión DDMM). La coordenada NOAA 39.713,-104.758 no coincide con HOMR (39.71667,-104.75), ISD (39.717,-104.750) ni WXL (39.701667,-104.751667=ARP); origen no identificado.\n\nMÉTODO/ACCESO: faa.gov devuelve 403 a WebFetch y nfdc.faa.gov devuelve 503 a HEAD; con curl GET + User-Agent de navegador todo descargó con 200. No se consultó Open-Meteo. No se modificó ningún fichero del proyecto. Descargas en /Users/mariaaleu/.claude/jobs/324ffe40/tmp/ (03_Sep_2026_AWOS_CSV.zip, AWOS.zip, awos_rf.txt, README.txt, 03_Sep_2026_WXL_CSV.zip, 03_Sep_2026_APT_CSV.zip, JO_6560_20C.pdf, isd-history.csv, stations_ucar.txt, awc_stationinfo.json, homr/wban_*.json, nasr_2026-09-03.html, faa_asos_page.html). Otros IDs útiles: AIXM 5.1 https://nfdc.faa.gov/webContent/28DaySub/2026-09-03/aixm5.1.zip; suscripción completa https://nfdc.faa.gov/webContent/28DaySub/28DaySubscription_Effective_2026-09-03.zip; próximo ciclo 2026-10-01 (28 días)."
+  }
+ }
+]

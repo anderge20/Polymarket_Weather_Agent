@@ -1,0 +1,203 @@
+[
+ {
+  "refutada": true,
+  "hallazgos": [
+   {
+    "seccion": "§1.1 U5 × §4.3 × §7.1 E1 (measurement_rule no nulo vacía la ventana walk-forward)",
+    "problema": "OBSERVADO (DuckDB read_only, /Users/mariaaleu/pmw-catalog-v2/CATALOG_V2.duckdb, tabla mk): con endDate ≥ 2026-06-03 hay 38 665/51 051 mercados con measurement_rule NULL; por mes: 2026-06 14 894/14 894 NULL, 2026-07 16 687/16 687 NULL, 2026-08 7 051/17 259, 2026-09 33/2 211. Eventos cuyas bandas tienen todas measurement_rule no nulo: jun 0, jul 0, ago 928 (primer endDate 2026-08-06), sep 198. Causa OBSERVADA: resolution.py:126-138 devuelve None si la descripción no contiene 'Daily Observations' / 'by the Forecast' / 'Day High & Low'; en el catálogo P_WU_GENERIC_sin_calificador es 35 222/35 222 NULL y P_HKO_AbsDailyMax 1 859/1 859 NULL. INFERIDO: con la tabla §4.3 (jun = calibración pura; jul calibra con jun; ago con jun+jul) julio y agosto quedan NO_CALIBRATION por ventana vacía y sólo septiembre (parcial) tiene calibración (agosto) → E1 (≥ 2 meses de test) falla por construcción y el veredicto es NOT_EVALUABLE antes de ver un dato. Además U5 excluye el 100 % de HKO, contradiciendo U3 (inclusión condicional de HKO) y §6.3(c) (celda HKO). El criterio no es 'a posteriori' pero hace el preregistro no evaluable y abre la puerta a 'ajustar U5' tras el primer run.",
+    "correccion": "Eliminar U5 como filtro de exclusión y convertir measurement_rule en etiqueta de segmentación con valor declarado 'NULL/GENERIC' (o, si se mantiene como filtro, redefinir la capa estricta como target_date ≥ 2026-08-06, reescribir la tabla walk-forward con meses reales y declarar explícitamente que E1 no puede cumplirse con 2026-09 parcial). En ambos casos cuantificar en el prereg n_mercados/n_eventos por mes y por primary_rule que sobreviven a U1–U8 (cifras arriba) antes de congelar.",
+    "severidad": "BLOQUEANTE"
+   },
+   {
+    "seccion": "§1.1 U3 (compat_status 'según la salida de R14')",
+    "problema": "OBSERVADO: no existe tabla labels ni columnas label_source/contract_source/compat_status en ningún schema de origin/main (database.py:116-516; R27 ROADMAP.md:241 las pospone); R14 (ROADMAP.md:157-161) no tiene preregistro ni valores definidos para compat_status. PREREG_E2.md:5-7 excluyó del universo auditado P_byForecast y P_WU_GENERIC_sin_calificador; la cifra '54/57' (DECISIONS.md:355) sólo cubre P_WU_DailyObservations, P_NOAA_TempColumn, P_NOAA_HourlyData, P_HKO_AbsDailyMax y P_UNKNOWN. OBSERVADO en CATALOG_V2: en la ventana estricta P_WU_GENERIC es 31 757/51 051 mercados (62 %). INFERIDO: el universo del backtest queda determinado por cómo R14 (no congelado) asigne compat_status a reglas nunca auditadas; 'no hay decisión manual' delega una decisión abierta a un componente futuro, que es una elección a posteriori encubierta.",
+    "correccion": "Anexar al prereg la tabla congelada primary_rule → compat_status con las cifras E2 por estrato (n compatibles/n auditados) y declarar P_WU_GENERIC_sin_calificador y P_byForecast como UNKNOWN → excluidos (cuantificando la pérdida), o preregistrar y hashear la auditoría de esos estratos como dependencia bloqueante de R19. Definir los valores admisibles de compat_status y su regla en el propio prereg, no en R14.",
+    "severidad": "IMPORTANTE"
+   },
+   {
+    "seccion": "§2.4 Label ('label = 1 si winning_outcome es el token_id YES')",
+    "problema": "OBSERVADO: markets.winning_outcome es 'Yes' | 'No' (resolution.py:72, discovery.py:188; ROADMAP.md:159 'label es Yes/No por market'); en CATALOG_V2 mk: 8 553 'Yes', 84 629 'No', 39 NULL (todos con endDate 2026-05-19..22). labeling.build_label devuelve label = str(winning_outcome) (labeling.py:59). La comparación con un token_id nunca sería verdadera → una implementación literal da label = 0 siempre; una 'razonable' exige juicio del implementador. Criterio no verificable sin interpretación.",
+    "correccion": "Redefinir: label = 1 iff build_label(...)['label'] == 'Yes' para el market de la banda; 0 iff == 'No'; None (no resuelto, resolution_timestamp nulo o T ≥ resolution_timestamp) → exclusión stage=label. Añadir test en R19 con fixture 'Yes'/'No'.",
+    "severidad": "IMPORTANTE"
+   },
+   {
+    "seccion": "§1.1 U4 (markets.fee_status, exponent ≠ 1)",
+    "problema": "OBSERVADO: markets no tiene columna fee_status (database.py:149-186; sólo fee_regime :172); fee_status vive en market_fee_schedule con PK (fee_regime, dataset_version, record_version) (database.py:129-144), es decir por régimen, no por mercado. 'exponent' no es columna: sólo está dentro de raw_fee_fields JSON (fees.py:55-57, :68). Tal como está escrito, U4 no es ejecutable ni verificable sin decidir un JOIN y un parseo JSON.",
+    "correccion": "Escribir la consulta exacta: markets m JOIN market_fee_schedule s ON s.fee_regime = m.fee_regime AND s.dataset_version = m.dataset_version (record_version máximo); exigir s.fee_status = 'KNOWN' y json_extract(s.raw_fee_fields,'$.feeSchedule.exponent') = 1; declarar que la 'lectura por mercado' es en realidad por régimen dentro del dataset_version.",
+    "severidad": "IMPORTANTE"
+   },
+   {
+    "seccion": "§2.3 stale_quote (6 h) y puerta de cobertura 30 %",
+    "problema": "OBSERVADO: 2D §E LOCKED (PHASE_2D_STRATEGY_A_DESIGN.md:76-80) define p_market como el último indicative_price con observation_time ≤ T y 'falta de precio ⇒ banda NONE'; build_feature (features.py:74-87) no aplica ninguna ventana de frescura; 2D §D:65-66 y strategy_a.py:224-237 fijan la elegibilidad por EVENTO (exclusión entera, sin sumas parciales, W.6). El prereg (a) introduce una exclusión nueva fuera de build_feature que el motor aplicaría después de que strategy_a haya calculado Σ p_market y emitido señal con la cotización vieja; (b) la formula por MERCADO ('el mercado se excluye') contra la unidad de elegibilidad LOCKED; (c) la puerta de cobertura cuenta 'eventos excluidos por existence + forecast + pricing' pero pricing se registra por mercado, así que la fracción no está definida (¿evento con 1 banda stale cuenta como excluido?). Además el prereg no fija qué price_semantics admite: el CHECK (database.py:225-226) permite MIDPOINT_ESTIMATED, INDICATIVE, LAST_TRADE_INDICATIVE, NEAREST_TRADE_INDICATIVE y UNKNOWN, y 'EXECUTABLE' ni siquiera está en el CHECK (la guarda de features.py:90-91 es vacua sobre este schema). INFERIDO: margen para elegir a posteriori qué semánticas/fidelity entran.",
+    "correccion": "Declarar que stale_quote excluye el EVENTO completo (coherente con 2D) y que se implementa como prefiltro a generate_event_signals (o dentro de build_feature vía enmienda documentada con test); definir la fracción de cobertura como eventos con ≥ 1 banda excluida por existence/forecast/pricing sobre eventos U1–U8. Fijar price_semantics admisibles (p.ej. {MIDPOINT_ESTIMATED, INDICATIVE}; UNKNOWN → exclusión), fidelity y source_window admitidos.",
+    "severidad": "IMPORTANTE"
+   },
+   {
+    "seccion": "§1.4 y §6.3(e)(f), §7.4 C6 (región y componente ICON por estación)",
+    "problema": "OBSERVADO: la partición regional sólo existe para las 16 estaciones de V3 (PREREG_MODELSEL_GEOVAL_V3.md:15-21: EUROPA EGLC EFHK LIMC UUWW; ASIA_ESTE RKSI ZSJN ZSQD ZGSZ; ASIA_SUR VILK OPKC; ORIENTE_MEDIO LLBG LTFM; HEM_SUR FACT SBGR; LATAM_NORTE MMMX MPMG); PREREG_MODELSEL_V5.md no contiene 'ASIA_SUR' ni 'HEM_SUR' (grep vacío), así que la cita del prereg es incorrecta y no hay mapa región para 39 de las 55 estaciones. El mapa de componente sí existe (V5_UNIVERSE_COMPONENTS.json, 55 estaciones: 42 icon_global / 7 icon_eu / 6 icon_d2) pero sin .sha256 y con coord_src = STATION_COORDS_SNAPSHOT_v1, no v1.3 (D2 registra que 3/16 estaciones cambian de celda con D1). INFERIDO: la segmentación regional y la 'vigilancia' C6 se asignarían a posteriori, y el componente podría diferir del que produce v1.3.",
+    "correccion": "Añadir un Anexo C con la tabla congelada estación → (región, componente ICON) para las 55 estaciones, recalculada con el snapshot v1.3, con su sha256 en el manifiesto; o restringir (f) y C6 a las 16 estaciones de V3 y declararlo. Corregir la referencia a PREREG_MODELSEL_GEOVAL_V3.md.",
+    "severidad": "IMPORTANTE"
+   },
+   {
+    "seccion": "§2.2 / §10.1 (clave de join estación entre markets y weather_forecasts)",
+    "problema": "OBSERVADO: features.py:103-104 filtra weather_forecasts por station = markets.station, y markets.station es 'discovered station name' (database.py:156), mientras feat/ingest-2b escribe weather_forecasts.station = ICAO (git show origin/feat/ingest-2b:src/weather_agent/weather.py:269,285). El prereg no fija la clave de join. INFERIDO: o el 100 % de eventos cae en stage=forecast (y la puerta del 30 % dispara NOT_EVALUABLE) o R19 introduce un mapeo ad hoc no preregistrado.",
+    "correccion": "Fijar en §2.2 que la partición de latest_asof usa station_identifier (ICAO, D1-COORD v1.3) y exigir un test de R19 que falle si el join devuelve 0 forecasts para una estación del snapshot.",
+    "severidad": "MENOR"
+   },
+   {
+    "seccion": "§1.4 U7 / target_date (endDate = target_date 12:00Z presentado como OBS)",
+    "problema": "OBSERVADO: lo verificado es que la hora de endDate es 12:00:00Z en 8 557/8 557 eventos (PREREG_LEAD_HOURS_RANGE.md:7; consulta propia sobre ev); PREREG_E2.md:18-20 deja 'target_date == date(endDate)' como hipótesis a verificar, y 2D §C (PHASE_2D_STRATEGY_A_DESIGN.md:53-56) prohíbe derivar target_date de endDate dentro de Strategy A. El helper target_date_for no existe en main (grep vacío en src/). El prereg trata la igualdad como [OBS] y deja Wellington (NZWN, 23 eventos en la ventana con template explícito) a 'si el helper no define'. INFERIDO: la asignación de target_date (y por tanto el día civil que se etiqueta) queda a criterio de R8, sin regla congelada en el prereg.",
+    "correccion": "Reetiquetar como [INF]; fijar en el prereg la regla: target_date = fecha civil local de la estación (tz del snapshot v1.3) que contiene endDate − 12 h, o la extraída del texto según E2, y declarar el tratamiento de NZWN antes de R19 con test.",
+    "severidad": "MENOR"
+   },
+   {
+    "seccion": "§2.6 dataset_version y §3.1/§5.3 model_version, edge_net",
+    "problema": "OBSERVADO: dataset_versions está vacía en data/pmw.duckdb mientras price_history contiene 1 152 000 filas con dataset_version 'backfill_2b_v1' (2026-09-02..04, 400 tokens) no registrada; la regla 'última versión registrada al arrancar R21' no es un valor a priori y podría seleccionar una versión sin precios. strategy_a.py:48 fija MODEL_VERSION = 'stratA_pmodel_v1' (2D W.10:326) y predictions tiene PK con model_version y timestamp (database.py:406); el prereg define model_version = '<run M2>|p_weather_2D_v1' y quiere rellenar predictions.edge_net/signals.net_edge con H1 'en las filas del motor', pero test_strategy_a.py:272 exige NULL y las filas colisionarían por PK si comparten claves. INFERIDO: ambigüedad sobre qué filas escribe el motor y bajo qué versión.",
+    "correccion": "Nombrar el dataset_version (o su regla de construcción con exigencia de filas en price_history y weather_forecasts) en la enmienda que cierre R15/R17; fijar model_version del motor distinto de 'stratA_pmodel_v1' (p.ej. 'backtestA_v1|<M2_run>') y record_version propio; dejar constancia de que D19 (DECISIONS.md:381) autoriza rellenar edge_net sólo en esas filas.",
+    "severidad": "MENOR"
+   },
+   {
+    "seccion": "§6.4, §7.2 y §2.2 (definiciones estadísticas y cifras menores)",
+    "problema": "OBSERVADO: no se define el estadístico remuestreado del bootstrap por bloques estación-mes (¿suma de pnl sobre B bloques remuestreados con reemplazo, o media por bloque × B?) ni si el remuestreo es estratificado por mes; 'LOSO_sign_stability = 1.0' con réplicas 'una por estación con ≥ 1 trade' es trivialmente sensible a estaciones con 1 trade sin que se declare. §2.2 dice 'L_max máximo observado en F-3 (n = 307)': F3-CLOSURE-REPORT.md:48 da dwd_icon n = 78 (307 es el total de los 4 modelos). Stages 'fees/anchor/station/target_date/existence/forecast/features' no están entre los documentados (database.py:491; 2D §L:151-153 exige declararlos). §10.2 confirmado: DECISIONS.sha256 (d36749bf…, 09:51) ≠ shasum actual (ec320702…, 14:38); MODELSEL_V5_REPORT.sha256 lista 6c3c2a66… y 9b4eb188… (el fichero actual = 9b4eb188…); ROADMAP.md:296 cita D18 inexistente. FEES 4dbad3ab…, LEAD_RANGE 1d4161e8…, ASOF_V2 2b815fcb… y 2E 6e405d1a… coinciden.",
+    "correccion": "Escribir la fórmula del estadístico bootstrap (suma sobre bloques remuestreados, B = n.º de bloques observados, sin estratificar) y reportar LOSO también excluyendo estaciones con < 5 trades como sensibilidad no decisoria; corregir 'n = 78 pasadas dwd_icon'; listar los stages nuevos como valores declarados de markets_excluded.stage; nombrar el hash 9b4eb188… en §9.",
+    "severidad": "MENOR"
+   }
+  ]
+ },
+ {
+  "refutada": true,
+  "hallazgos": [
+   {
+    "seccion": "§1.1 U3 (universo) + §2.4 (label) + §10.1 R14",
+    "problema": "El criterio decisivo del universo queda delegado a un componente inexistente (R14) con un vocabulario que no existe en ningún documento: el preregistro exige `compat_status = COMPATIBLE` / `UNKNOWN` / `INCOMPATIBLE`, pero el único vocabulario definido es `{DIRECT, PROXY_AUDITED, PROXY_NOT_AUDITED, NONE}` (OBSERVADO: /Users/mariaaleu/pmw-e2/SETTLEMENT_OPERATORS_SPEC.draft.md:54 y :164). Peor: la regla no fija si entra `P_WU_GENERIC_sin_calificador`, que en la capa estricta es el 62 % del catálogo (OBSERVADO en CATALOG_V2.duckdb v3, event_endDate ≥ 2026-06-03: WU_GENERIC 31 757 mk / 2 887 ev; WU_DailyObs 9 053/823; NOAA_TempColumn 7 777/707; NOAA_Hourly 1 441/131; HKO 1 023/93; P_byForecast 0; total 51 051/4 641). El '54/57 compatibles' que cita U3 procede de una muestra E2 que EXCLUYÓ WU_GENERIC y byForecast (OBSERVADO: PREREG_E2.md:5-7), y el borrador de operadores marca WU_GENERIC, WU_DailyObs °F y CWA como FAIL_CLOSED (:140-152). Además §2.4 define el label como `winning_outcome` vía `labeling.build_label` (OBSERVADO: labeling.py:31-63), que no necesita ningún operador ni compat_status (el propio borrador :164 punto 3 lo llama 'verdad de validación'); por tanto U3 no es una consecuencia del label sino una restricción de universo cuya extensión (≈1 754 eventos vs 4 641) se decidirá después de congelar. Es la mayor rejilla abierta a posteriori del documento. INFERIDO: la etiqueta 'HKO entra únicamente si R14 emite COMPATIBLE' es una decisión manual diferida, no una regla.",
+    "correccion": "Fijar el universo por enumeración cerrada en el propio preregistro: lista de (contract_source, primary_rule/measurement_rule, unit) incluidos con n_mercados y n_eventos de CATALOG_V2 en la ventana estricta, y declarar explícitamente excluidos P_WU_GENERIC_sin_calificador, P_byForecast, WU_DailyObs °F y CWA (o justificar su inclusión ahora). Decidir HKO ahora (D17 ya lo declara STRONGLY SUPPORTED, DECISIONS.md:354-358). Alinear el vocabulario con el borrador (`compat_status ∈ {DIRECT, PROXY_AUDITED}`) y declarar que el label del backtest es `winning_outcome` y no depende de compat_status; U3 pasa a ser 'restricción de universo por operador auditado' con justificación (coincidencia con el universo de entrenamiento de M2). Cualquier cambio posterior de la lista = enmienda.",
+    "severidad": "BLOQUEANTE"
+   },
+   {
+    "seccion": "§3.1 (p_weather / cuantiles M2) + §7.1 E3 + §10.1 R16",
+    "problema": "`p_weather` —y con él todo el edge— depende íntegramente de cuantiles p10..p90 producidos por M2, que no tiene preregistro ni escritor (OBSERVADO: ROADMAP.md:170-175; features.py:40-45 lee `forecast_p10..p90` de `weather_forecasts`). El preregistro sólo fija la condición walk-forward (D−2) y deja libres método de cuantiles, estratificación (station/model/lead/mes), mínimos de muestra y jerarquía de fallback, es decir, los grados de libertad que determinan el signo del edge. Nada prohíbe redactar PREREG_M2 tras conocer parcialmente el catálogo ni correr el backtest con más de una variante de M2 bajo esta misma versión. Además, R16 prevé escribir los cuantiles como filas derivadas con nuevo `record_version` sobre una PK sin discriminador (ROADMAP.md:175; database.py PK weather_forecasts = station, model, issue_time, target_date, dataset_version, record_version), y `latest_asof` particiona por (station, model, target_date) (features.py:97-105): no está definido qué fila gana cuando coexisten la cruda (cuantiles NULL) y la derivada con el mismo `available_at`. INFERIDO: el resultado puede variar según qué fila seleccione el motor.",
+    "correccion": "Añadir como condición de evaluabilidad: `prereg_m2_sha256` registrado en el manifiesto ANTES de la primera métrica y una sola versión de M2 por versión de este preregistro (cualquier segunda variante = enmienda con re-run etiquetado). Fijar en este documento el mínimo de M2 que el backtest necesita: error = Y_final − forecast M1, cuantiles por (station, model, lead) con historia ≤ D−2, mínimo n declarado y sin fallback silencioso (banda NONE si no hay cuantiles). Especificar la regla de selección de fila en `weather_forecasts` (discriminador o `record_version` máximo con cuantiles no nulos y mismo `available_at`) y exigir un test.",
+    "severidad": "IMPORTANTE"
+   },
+   {
+    "seccion": "§1.4 (target_date) + §1.1 U7 + §10.1 R8",
+    "problema": "`target_date` por estación se delega a un helper R8 que no existe (`target_date_for`, ROADMAP.md:116-121), y el documento no fija la regla. Hay tensión entre documentos heredados: 2D §C (DECIDED-V1) dice que `target_date` NO se deriva de `endDate` (OBSERVADO: PHASE_2D_STRATEGY_A_DESIGN.md:53-58), mientras U7 y PREREG_LEAD_HOURS_RANGE.md:3 asumen `endDate = target_date 12:00:00Z`. El caso Wellington (endDate 12:00Z = medianoche civil local, 2E:135-137) afecta a 1 034 mercados de la ventana estricta (OBSERVADO en CATALOG_V2 v3) y su inclusión/exclusión queda a criterio de un helper posterior. `weather.py` de `feat/ingest-2b` (:143-155) exige `target_date` como entrada, no lo deriva.",
+    "correccion": "Fijar la regla en el preregistro: `target_date := fecha UTC de endDate` para las 55 estaciones (coherente con P1 cerrada: 8 557/8 557 a 12:00Z) y ventana de observación W(m) = día civil local de esa fecha (PREREG_MODELSEL_ASOF_V2.md:59); declarar explícitamente si Wellington entra con esa regla o queda excluida a priori (stage=`target_date`), sin depender de un helper futuro. Anotar la tensión con 2D §C como herencia: la derivación ocurre en el caller (motor), no en Strategy A.",
+    "severidad": "IMPORTANTE"
+   },
+   {
+    "seccion": "§1.4, §6.3(f), §7.4 C6 (región)",
+    "problema": "La segmentación por región 'con las mismas etiquetas que PREREG_MODELSEL_V5' no es reproducible: no existe tabla estación→región para 55 estaciones. OBSERVADO: V4_STATION_TABLE.json tiene `reg` sólo para 15 estaciones; V5_UNIVERSE_COMPONENTS.json (55) tiene `component` pero no región (claves: city, component, coord_src, icao, lat, lon, n_events, n_markets, per_run, tz); PREREG_MODELSEL_V5.md:222 promete la tabla como entregable y MODELSEL_V5_REPORT.md:81-92 sólo nombra 4 regiones con Δ. C6 convierte celdas regionales con IC95 en 'evidencia para M2/M3': con la asignación regional abierta, la segmentación es una elección a posteriori.",
+    "correccion": "Añadir Anexo C con la tabla cerrada `icao | región | componente ICON` para las 55 estaciones (tomando `component` de V5_UNIVERSE_COMPONENTS.json y fijando la partición regional ahora), hasheada dentro del preregistro; hasta que exista, degradar (f) y C6 a 'no se reporta'.",
+    "severidad": "IMPORTANTE"
+   },
+   {
+    "seccion": "§1.1 U8 + §2.3 puerta de cobertura + §7.1 E2",
+    "problema": "La puerta de cobertura (30 %) tiene denominador ambiguo por circularidad: U8 exige 'partición válida (Σ p_weather ≈ 1)', que sólo puede evaluarse con forecast disponible en T; un evento sin forecast falla U8 y a la vez stage=`forecast`, así que puede contarse en el denominador o en el numerador a conveniencia. Además U8 cita 2D §G (p_model, OPEN) cuando la partición es 2D §F (`band_integrity`/`is_partition`, estructural sobre etiquetas de banda; OBSERVADO: PHASE_2D_STRATEGY_A_DESIGN.md:66-80 y strategy_a.py `res.band_integrity`). No se dice si las exclusiones por `sum_pmarket_out_of_tolerance` (§4.4) cuentan en la puerta.",
+    "correccion": "Redefinir U8 como condición estructural: `band_integrity(labels).is_partition == True` (independiente del forecast). Denominador de la puerta = eventos que pasan U1–U8 estructurales; numerador = exclusiones por `existence + forecast + pricing(no_quote, stale_quote)`; declarar explícitamente que `sum_pweather/sum_pmarket_out_of_tolerance` se reportan aparte y no entran en la puerta (o sí, pero decidido ahora).",
+    "severidad": "IMPORTANTE"
+   },
+   {
+    "seccion": "§5.2 estrés x_exec, §6.1 LOSO, §7.2 SUCCESS_ROBUST",
+    "problema": "Falta la regla de qué se recalcula en cada variante. Para el estrés `x_exec` (condición de SUCCESS_ROBUST) no se dice si las señales y `tau*` se congelan del run primario o se regeneran con `p_entrada`; para LOSO no se dice si `tau*` se reselecciona sin la estación excluida. Sólo §4.4 (variante market_sum) declara 'mismo tau*'. Además §5.3 evalúa la fee en `p_entrada = p + x_exec`, mientras FEES_SEMANTICS.md §2 (5) (OBSERVADO) la evalúa en p y resta `x_exec` aparte: dos PnL distintos bajo estrés. Sin esto, la condición ROBUST admite dos lecturas.",
+    "correccion": "Declarar: señales, trades y `tau*` se fijan en el run primario; toda variante (H2/H3, x_exec, market_sum, LOSO, capa extendida) recalcula únicamente el PnL sobre el mismo conjunto de trades; LOSO sin reselección de tau. Elegir una sola fórmula bajo estrés (recomendado: la de FEES_SEMANTICS (5): `pnl_net = (Y − p) − c(p) − x_exec`) y escribirla en §5.3.",
+    "severidad": "IMPORTANTE"
+   },
+   {
+    "seccion": "§6.4 bootstrap / §6.1 LOSO / §7.1",
+    "problema": "No hay mínimo estructural de estaciones: con 1–2 estaciones con trades OOS, los bloques estación-mes degeneran y LOSO puede dejar 0 trades (métrica indefinida) o ser trivialmente 1.0. PREREG_MODELSEL_V5.md:150-156 (OBSERVADO) sí fija '≥ 3 estaciones' como mínimo estructural para que exista el estadístico; el preregistro hereda el bootstrap de V5 pero no esa condición.",
+    "correccion": "Añadir E6: ≥ 3 estaciones con ≥ 1 trade OOS en el lead de veredicto; si no, NOT_EVALUABLE (mínimo estructural, no umbral de tamaño, siguiendo V5 §8). Definir LOSO_sign_stability sobre réplicas con ≥ 1 trade restante.",
+    "severidad": "MENOR"
+   },
+   {
+    "seccion": "§1.1 U4",
+    "problema": "Cita `markets.fee_status` como columna [OBS], pero no existe: `fee_status` vive en `market_fee_schedule` con PK (fee_regime, dataset_version, record_version) (OBSERVADO: database.py:130-143); `markets` sólo tiene `fee_regime` (:172) y `tick_size` (:173). El criterio es aplicable por JOIN, pero el [OBS] es incorrecto y 'leído por mercado' significa en realidad `fee_regime` por mercado + estado por régimen.",
+    "correccion": "Redactar U4 como: `markets.fee_regime` (por mercado, Gamma) JOIN `market_fee_schedule.fee_status = 'KNOWN'` sobre (fee_regime, dataset_version); corregir la etiqueta [OBS].",
+    "severidad": "MENOR"
+   },
+   {
+    "seccion": "§1.1 U6",
+    "problema": "'estado no `proposed`' deja abierto qué otros valores (p. ej. `disputed`) entrarían. OBSERVADO en CATALOG_V2 mk: `resolved` 93 141, `proposed` 47, NULL 33; en la ventana estricta 51 051/51 051 `resolved` y `winning_outcome` no nulo.",
+    "correccion": "U6 := `umaResolutionStatus = 'resolved'` (enumeración cerrada), con los recuentos anteriores.",
+    "severidad": "MENOR"
+   },
+   {
+    "seccion": "§2.4 vs §3.1",
+    "problema": "§2.4 afirma que Y_final 'no se usa … como observación de entrenamiento as-of', pero §3.1 exige cuantiles M2 calculados con errores `f − Y_final` de eventos ≤ D−2, es decir, Y_final sí es observación de entrenamiento (walk-forward). La frase es contradictoria tal como está.",
+    "correccion": "Reformular: 'Y_final no se usa como feature de la fila ni se presenta como Y_asof; sí alimenta M2 únicamente vía walk-forward con target_date ≤ D−2 (§3.1)'.",
+    "severidad": "MENOR"
+   },
+   {
+    "seccion": "§7.2 SUCCESS_ROBUST vs FEES_SEMANTICS §6",
+    "problema": "FEES_SEMANTICS.md §6 (OBSERVADO, congelado en D19) define 'robusta a semántica de fees' como `pnl_net_H2 > 0` (estimación puntual) en la época weather_fees; el preregistro lo endurece a IC95 bootstrap que excluya 0 sin declararlo como desviación deliberada.",
+    "correccion": "Declarar la desviación explícitamente ('criterio ROBUST más estricto que FEES_SEMANTICS §6 por diseño') o alinearse con la estimación puntual; en ambos casos dejarlo escrito antes de congelar.",
+    "severidad": "MENOR"
+   },
+   {
+    "seccion": "§1.1 exclusiones / §9 artefactos (markets_excluded)",
+    "problema": "El preregistro introduce stages (`fees, anchor, station, target_date, existence, forecast, pricing, features`) fuera del vocabulario documentado `{discovery, pricing, labeling, feature}` (OBSERVADO: database.py comentario de `markets_excluded.stage`; PHASE_2D tabla :393 lo lista como DECIDED-V1). No hay CHECK, así que funcionará, pero además la PK de `markets_excluded` es (market_id, reason, dataset_version) sin `lead_hours`: si el motor escribe exclusiones por lead en esa tabla colisionarán.",
+    "correccion": "Declarar la extensión del enum de `stage` en el preregistro y fijar que las exclusiones por lead se persisten sólo en `exclusions.csv` (§9) o con `reason` que incluya el lead, sin modificar schema.",
+    "severidad": "MENOR"
+   },
+   {
+    "seccion": "§10.2 y Anexo B (citas a DECISIONS.md por línea)",
+    "problema": "Confirmado OBSERVADO: `DECISIONS.sha256` (2026-09-06 09:51, ec320702…) no coincide con `DECISIONS.md` actual (14:38, sha d36749bf…); `ROADMAP.md:296` cita D18 y DECISIONS.md salta de D17 a D19; `MODELSEL_V5_REPORT.sha256` contiene dos hashes. El preregistro cita DECISIONS.md por números de línea (:12-17, :190-210, :340-362…) que cambiarán en cuanto se registre D-nueva, dejando el documento congelado con referencias no verificables.",
+    "correccion": "Citar decisiones por identificador (D0, D12, D17, D19) más el sha256 de la versión de DECISIONS.md usada, regenerado y registrado antes de congelar; corregir D18→D16 en ROADMAP:296 (o registrar D18) antes del hash.",
+    "severidad": "MENOR"
+   }
+  ]
+ },
+ {
+  "refutada": true,
+  "hallazgos": [
+   {
+    "seccion": "§2.5 / §3.1 / §7.1-E3 (cuantiles M2 y flag no_lookahead_verified)",
+    "problema": "El preregistro afirma que `no_lookahead_verified = TRUE` 'sólo lo escribe el builder tras las guardas' y confía en él (§2.5) para excluir fugas, y remite la condición walk-forward de los cuantiles a un chequeo documental de PREREG_M2 (§3.1/E3). OBSERVADO: `features.py:97-105` selecciona la fila de `weather_forecasts` por `available_at ≤ T` con partición (station, model, target_date) y lee `forecast_p10..p90` de ESA MISMA fila (`features.py:144-150`); la guarda final (`features.py:199-215`) sólo comprueba `forecast.available_at ≤ T` y `price.observation_time ≤ T`. El esquema (`database.py:289-311`) no tiene ninguna columna que registre CUÁNDO fueron calculables los cuantiles; R16 prevé escribirlos 'como filas derivadas (record_version nuevo)' en `weather_forecasts` (`ROADMAP.md:172,175`) con el `available_at` de la pasada (issue_time + 4,76 h). INFERIDO: si M2 calcula cuantiles con errores posteriores a T (p.ej. agregados mensuales de `weather_errors`, cuyo esquema es (station, model, lead_hours, month) `database.py:334-352` y NO admite historia por evento ≤ D−2), el flag será TRUE igualmente y el motor no puede detectarlo. Es el único canal por el que Y_final puede entrar en `p_weather`, y el preregistro no tiene defensa a nivel de datos, sólo documental.",
+    "correccion": "Añadir en §2.5/§3.1 un requisito verificable por datos y un test en E5: (1) toda fila de cuantiles debe llevar su propio instante de disponibilidad (`quantiles_available_at` = max(available_at de las observaciones de la historia usada) o `derived_from_dataset_version` + `computed_at`), y R17/R19 deben exigir `quantiles_available_at ≤ T` además de `forecast.available_at ≤ T`; (2) el test anti-fuga de E5 debe construir un caso adversarial con cuantiles calculados de la muestra completa y verificar que la fila queda excluida; (3) declarar explícitamente que `no_lookahead_verified` en `features.py:215` NO certifica los cuantiles hasta que exista ese campo; (4) hasta entonces, cualquier run es como máximo EXPLORATORY (no basta con el chequeo documental de PREREG_M2). Registrar como enmienda del diseño 2D §F si hace falta tocar `features.py`.",
+    "severidad": "BLOQUEANTE"
+   },
+   {
+    "seccion": "§3.1 y §3.2 (regla `target_date ≤ D−2`) aplicada a los leads secundarios 36/48 h",
+    "problema": "El preregistro afirma que el desfase D−2 'garantiza que Y_final histórico ya estaba disponible en T' y aplica los mismos cuantiles/desbiasing a los leads 36 h y 48 h (§2.1, §6.2). OBSERVADO (cálculo con `STATIONS_TZ.json`, fin del día civil local de D−2 + 1,3 h como en V2 §9): a 36 h (T = D−1 00:00Z) la observación de D−2 NO estaba disponible en 15/28 estaciones con tz conocida (todas las americanas: KLAX/KSFO +8,3 h de retraso, KBKF/MMMX +7,3 h, KAUS/KDAL/KHOU/MPMG +6,3 h, KLGA/KMIA +5,3 h, SBGR +4,3 h, EGLC +0,3 h); a 48 h (T = D−2 12:00Z) falla en 28/28. OBSERVADO además con la resolución del mercado como criterio (`CATALOG_V2.duckdb` read-only, `umaEndDate`): el evento D−2 aún no estaba resuelto en T en 23/4 519 pares a 9 h, 67/4 519 (1,5 %) a 24 h, 1 692/4 519 (37 %) a 36 h y 4 518/4 519 a 48 h. La 'latencia ~1,3 h' citada de V2 se refiere al fin de la ventana de observación, no a la resolución del mercado (mediana `closedTime − endDate` = 10,5 h, p95 20,5 h, máx 87 h en el periodo estricto; 2E §4.2 dice '+0,38..+15,33 h', que el catálogo contradice).",
+    "correccion": "Hacer el corte de historia dependiente del lead y del reloj de disponibilidad de la observación: historia(e) = eventos con `observation.available_at ≤ T` (o, como aproximación conservadora, `target_date ≤ D − 2 − ceil(lead_hours/24)`: D−3 a 36 h, D−4 a 48 h). Reescribir la frase 'garantiza' como afirmación condicionada al lead ≤ 24 h y citar la latencia correcta (fin de día civil local + 1,3 h, no settlement). Si las figuras de 36/48 h se reportan con el corte D−2, etiquetarlas `NOT_ASOF_QUANTILES` igual que la capa extendida.",
+    "severidad": "IMPORTANTE"
+   },
+   {
+    "seccion": "§4.3 (walk-forward mensual de `tau`)",
+    "problema": "La ventana de calibración para el mes de test M es 'todo el mes M−1', pero los últimos eventos de M−1 no estaban resueltos en los primeros T del mes M. OBSERVADO (`CATALOG_V2.duckdb`, lead 24 h, `closedTime` por evento): eventos de calibración aún sin resolver en el primer T del mes de test: 49/1 354 (jul), 49/1 517 (ago), 55/1 569 (sep), ≈3,5 % de cada ventana. A 24 h el evento D−1 no está resuelto en T en 4 569/4 570 casos, así que cualquier calibración que llegue hasta el día anterior es estructuralmente no as-of. La selección es OOS respecto a los labels de test (no in-sample), pero `tau*(ℓ, M)` no era conocible en los T de los primeros ~2 días de M, lo que contradice la disciplina as-of que el propio documento impone a los cuantiles (§3.1).",
+    "correccion": "Definir la ventana de calibración con criterio as-of, no de calendario: calibración(M) = eventos con `resolution_timestamp ≤ T_primero(M)` (o, equivalente conservador, `target_date ≤ primer target_date de M − 3 días`), y reportar `n` excluidos por este corte. Alternativa más limpia: `tau*` recalculado por evento con historia = eventos resueltos antes de T (expanding, sin frontera de mes), manteniendo `n ≥ 30`.",
+    "severidad": "IMPORTANTE"
+   },
+   {
+    "seccion": "§2.6 (un único `dataset_version`) y §2.2/§2.3 (as-of de forecast y precio)",
+    "problema": "El preregistro exige 'exactamente un dataset_version para todo el run' y 'no se mezclan versiones', pero el código LOCKED que lo alimenta no puede cumplirlo. OBSERVADO: `features.py:74-82` (precio) y `:97-105` (forecast) NO filtran por `dataset_version` ni `record_version`; `strategy_a.py:204-213` repite la consulta 'NO dataset_version filter — matching features.py'; `db.latest_asof` (`database.py:851-859`) desempata con `row_number() OVER (PARTITION … ORDER BY available_at DESC)` sin criterio secundario, así que dos filas con el mismo `available_at` (p.ej. record_version 1 sin cuantiles y record_version 2 derivada por R16, o dos backfills con dataset_version distinto) se eligen de forma no determinista. ROADMAP R17 (`ROADMAP.md:179`) reconoce el defecto pero el preregistro no lo convierte en requisito. Es un canal por el que una fila escrita después (con cuantiles de muestra completa o precios re-ingeridos) puede entrar en T con el `available_at` de la pasada original.",
+    "correccion": "Añadir a §2.5/§10.1 (R17) como condición de evaluabilidad (E4 o nueva E6): el motor y `build_feature` filtran `dataset_version = <el del run>` en `price_history` y `weather_forecasts`, y `latest_asof` desempata por `record_version DESC` de forma explícita; test en E5 con dos `dataset_version` en la misma DB que verifique que sólo se lee el fijado. Declarar que esto es un cambio de código en 2C/2D LOCKED (no de esquema) y tramitarlo como enmienda antes del hash si se quiere mantener la promesa de §2.6.",
+    "severidad": "IMPORTANTE"
+   },
+   {
+    "seccion": "§0.2.2 y §1.3 (M1 'adoptado, no se revisa' y periodo estricto)",
+    "problema": "El modelo M1 se seleccionó con datos del MISMO periodo y en parte de las MISMAS estaciones que el backtest. OBSERVADO: V2/V3/V5 usan `target_date ∈ [2026-06-03, 2026-09-04]` (`PREREG_MODELSEL_ASOF_V2.md:44`, `PREREG_MODELSEL_GEOVAL_V3.md:38`), muestra V3 de 400 eventos en 16 estaciones (EFHK EGLC FACT LIMC LLBG LTFM MMMX MPMG OPKC RKSI SBGR UUWW VILK ZGSZ ZSJN ZSQD) más las 8 de V2 (KATL KBKF KDAL KHOU KLAX KLGA KMIA ZUCK): 24/55 estaciones del universo; el periodo estricto del backtest es idéntico (§1.3). La decisión D12 apoya el 75 % del universo en el desempate por frescura (§17), pero `icon_eu` se eligió por MAE residual en esos eventos. INFERIDO: sesgo de selección ('el modelo que mejor lo hizo aquí, evaluado aquí'); la magnitud es pequeña (2 modelos, diferencias mayormente inconcluyentes) pero el preregistro no lo declara y presenta el backtest como si M1 fuera exógeno. Mismo problema, menor, con `L_max = 4,76 h`: máximo de F-3 sobre 20 fechas jun–sep 2026 (`F3-CLOSURE-REPORT.md:3,17,37`), estimado dentro del periodo evaluado.",
+    "correccion": "Declarar en §0.2 y en el informe que M1 y L_max se fijaron con datos del periodo evaluado (no es un test confirmatorio del modelo). Añadir como segmento obligatorio de §6.3 la partición 'estación usada en MODELSEL (24) vs no usada (31)' y reportar el veredicto secundario sobre las 31 no usadas; si el signo del PnL se sostiene sólo en las 24, decirlo como limitación. Para L_max, mantener el máximo pero reportar sensibilidad con `L_max + 1 h` (cola no caracterizada) como variante sin selección.",
+    "severidad": "IMPORTANTE"
+   },
+   {
+    "seccion": "§1.1-U4, §5.2 (fees y tick 'leídos por mercado desde Gamma')",
+    "problema": "La lectura 'por mercado' no es as-of: Gamma devuelve el `feeSchedule`/`feesEnabled`/`orderPriceMinTickSize` ACTUALES, no los vigentes en T. OBSERVADO: `fees.py:48-70` mapea el objeto Gamma tal como se lee en discovery; `FEES_SEMANTICS.md:74,121` declara UNKNOWN la 'vigencia histórica del feeSchedule' y que 'Gamma no expone histórico'. En el periodo estricto los 51 051 mercados tienen el mismo `feeSchedule` (OBSERVADO, CATALOG_V2), así que el riesgo es un reescalado uniforme (cubierto en parte por H3 = 2×H1), pero el preregistro redacta U4 como si fuera información de T.",
+    "correccion": "Reformular U4/§5.1: 'fee_regime y tick son el estado actual de Gamma, no una lectura as-of; la vigencia histórica es UNKNOWN (FEES_SEMANTICS §7)'. Incluirlo en la limitación obligatoria del informe junto a §2.2/§2.4 y, para R22, registrar `feeSchedule` en cada snapshot del colector como ya propone FEES_SEMANTICS §6.",
+    "severidad": "MENOR"
+   },
+   {
+    "seccion": "§2.1 (justificación del ancla, herencia de 2E §4.2) y §3.1 (latencia citada)",
+    "problema": "El preregistro hereda de 2E la afirmación de que `closedTime` cae '+0,38 h a +15,33 h' después de `endDate` (medida sobre 9 ciudades un día) y cita '~1,3 h de latencia de settlement' para justificar D−2. OBSERVADO (CATALOG_V2, 4 641 eventos del periodo estricto): `closedTime − endDate` mín −14,75 h (Panamá 936283, cerrado ANTES de endDate y antes de T a 9 h), mediana 10,5 h, p95 20,5 h, máx 87 h (Hong Kong 86,97 h; Panamá 63,8 h; Los Ángeles/Denver ~44 h). `closedTime == umaEndDate` en todo el periodo. No es una fuga por sí misma (build_label excluye `T ≥ resolution_timestamp`), pero las cifras que sostienen el razonamiento as-of del documento son incorrectas y el caso `closedTime < T` no está previsto como stage de exclusión.",
+    "correccion": "Sustituir las cifras heredadas por la distribución real del periodo estricto (por ciudad) en §2.1/§3.1; añadir stage de exclusión explícito `closed_before_T` (closedTime ≤ T) además del rechazo de build_label; usar la latencia de OBSERVACIÓN (fin de día civil + 1,3 h) y no la de resolución al justificar D−2.",
+    "severidad": "MENOR"
+   },
+   {
+    "seccion": "§1.1-U6 y §1.1-U2 (filtros por estado de resolución)",
+    "problema": "U6 (`umaResolutionStatus ≠ proposed`) y U2 (label no nulo) son filtros que usan información posterior a T para definir el universo. OBSERVADO: en el periodo estricto los 4 641 eventos están `resolved` (0 `proposed`), así que el efecto es nulo en la capa que decide; los 47 `proposed` y 33 sin estado caen fuera. Sólo se señala para que el informe lo declare como filtro ex post (survivorship potencial) y no como propiedad as-of.",
+    "correccion": "Añadir una frase en §1.1: 'U2/U6 son filtros ex post sobre el estado de resolución; en el periodo estricto no excluyen ningún evento (4 641/4 641 resolved); en cualquier otra capa se reporta su fracción como posible sesgo de supervivencia'.",
+    "severidad": "MENOR"
+   }
+  ]
+ }
+]

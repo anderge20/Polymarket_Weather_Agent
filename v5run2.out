@@ -1,0 +1,115 @@
+=== 2026-09-06T07:22:01Z INICIO v5extract.py
+reanudando extracción: 3/1200 claves
+  25/1200
+  50/1200
+  75/1200
+  100/1200
+  125/1200
+  150/1200
+  175/1200
+  200/1200
+  225/1200
+  250/1200
+  275/1200
+  300/1200
+  325/1200
+  350/1200
+  375/1200
+  400/1200
+  425/1200
+  450/1200
+  475/1200
+  500/1200
+  525/1200
+  550/1200
+  575/1200
+  600/1200
+  625/1200
+  650/1200
+  675/1200
+  700/1200
+  725/1200
+  750/1200
+  775/1200
+  800/1200
+  825/1200
+  850/1200
+  875/1200
+  900/1200
+  925/1200
+  950/1200
+  975/1200
+  1000/1200
+  1025/1200
+  1050/1200
+  1075/1200
+  1100/1200
+  1125/1200
+  1150/1200
+  1175/1200
+  1200/1200
+LISTO_EXTRACT n= 1200
+=== 2026-09-06T07:35:29Z FIN v5extract.py rc=0
+=== 2026-09-06T07:35:29Z INICIO v5uni.py
+reanudando universo: 0/55
+  KLGA  NYC                 icon_global
+  EGLC  London              icon_d2
+  CYYZ  Toronto             icon_global
+  KDAL  Dallas              icon_global
+  RKSI  Seoul               icon_global
+  LTAC  Ankara              icon_eu
+  NZWN  Wellington          icon_global
+  KATL  Atlanta             icon_global
+  KSEA  Seattle             icon_global
+  KMIA  Miami               icon_global
+  KORD  Chicago             icon_global
+  SAEZ  Buenos Aires        icon_global
+  SBGR  Sao Paulo           icon_global
+  EDDM  Munich              icon_d2
+  VILK  Lucknow             icon_global
+  RJTT  Tokyo               icon_global
+  LLBG  Tel Aviv            icon_eu
+  WSSS  Singapore           icon_global
+  ZSPD  Shanghai            icon_global
+  EPWA  Warsaw              icon_eu
+  LIMC  Milan               icon_d2
+  LEMD  Madrid              icon_eu
+  ZBAA  Beijing             icon_global
+  ZUCK  Chongqing           icon_global
+  ZGSZ  Shenzhen            icon_global
+  ZHHH  Wuhan               icon_global
+  ZUUU  Chengdu             icon_global
+  KBKF  Denver              icon_global
+  KHOU  Houston             icon_global
+  KLAX  Los Angeles         icon_global
+  KAUS  Austin              icon_global
+  KSFO  San Francisco       icon_global
+  LTFM  Istanbul            icon_eu
+  UUWW  Moscow              icon_eu
+  MMMX  Mexico City         icon_global
+  EHAM  Amsterdam           icon_d2
+  RKPK  Busan               icon_global
+  EFHK  Helsinki            icon_eu
+  WMKK  Kuala Lumpur        icon_global
+  RCSS  Taipei              icon_global
+  MPMG  Panama City         icon_global
+  OEJN  Jeddah              icon_global
+  FACT  Cape Town           icon_global
+  ZGGG  Guangzhou           icon_global
+  OPKC  Karachi             icon_global
+  RPLL  Manila              icon_global
+  LFPB  Paris               icon_d2
+  ZSQD  Qingdao             icon_global
+  LFPG  Paris               icon_d2
+  WIHH  Jakarta             icon_global
+  DNMM  Lagos               icon_global
+  ZHCC  Zhengzhou           icon_global
+  ZSJN  Jinan               icon_global
+  RCTP  Taipei              icon_global
+  VHHH  Hong Kong           icon_global
+LISTO_UNI n= 55
+=== 2026-09-06T07:37:01Z FIN v5uni.py rc=0
+=== 2026-09-06T07:37:01Z INICIO v5eval.py
+V5_EVAL.json escrito. contrastes: {'icon_d2': 'INCONCLUSO_POR_DISEÑO', 'icon_eu': 'CONCLUYENTE EN SU ESTRATO', 'icon_global': 'INCONCLUSO (IC incluye 0)'}
+=== 2026-09-06T07:37:16Z FIN v5eval.py rc=0
+=== 2026-09-06T07:37:16Z CADENA V5 COMPLETA

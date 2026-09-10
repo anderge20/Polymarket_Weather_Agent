@@ -1,0 +1,1674 @@
+{
+ "KLGA": {
+  "icao": "KLGA",
+  "city": "NYC",
+  "d_iem_oa": 0.6936537551808222,
+  "IEM": {
+   "lat": 40.77945,
+   "lon": -73.88028,
+   "ecmwf_cell": [
+    40.75,
+    -74.0
+   ],
+   "ecmwf_elev": 2.0,
+   "ecmwf_t0": 20.7,
+   "icon_cell": [
+    40.75,
+    -73.875
+   ],
+   "icon_elev": 2.0,
+   "icon_t0": 21.8,
+   "component": "icon_global"
+  },
+  "OurAirports": {
+   "lat": 40.777199,
+   "lon": -73.872597,
+   "ecmwf_cell": [
+    40.75,
+    -73.75
+   ],
+   "ecmwf_elev": 1.0,
+   "ecmwf_t0": 20.6,
+   "icon_cell": [
+    40.75,
+    -73.875
+   ],
+   "icon_elev": 1.0,
+   "icon_t0": 21.8,
+   "component": "icon_global"
+  },
+  "cambia_celda_ecmwf": true,
+  "cambia_celda_icon": false,
+  "cambia_componente": false,
+  "delta_t_ecmwf": 0.1,
+  "delta_t_icon": 0.0
+ },
+ "EGLC": {
+  "icao": "EGLC",
+  "city": "London",
+  "d_iem_oa": 0.00211723356577779,
+  "IEM": {
+   "lat": 51.50528,
+   "lon": 0.05528,
+   "ecmwf_cell": [
+    51.5,
+    0.0
+   ],
+   "ecmwf_elev": 4.0,
+   "ecmwf_t0": 20.4,
+   "icon_cell": [
+    51.5,
+    0.06
+   ],
+   "icon_elev": 4.0,
+   "icon_t0": 20.2,
+   "component": "icon_d2"
+  },
+  "OurAirports": {
+   "lat": 51.505299,
+   "lon": 0.055278,
+   "ecmwf_cell": [
+    51.5,
+    0.0
+   ],
+   "ecmwf_elev": 4.0,
+   "ecmwf_t0": 20.4,
+   "icon_cell": [
+    51.5,
+    0.06
+   ],
+   "icon_elev": 4.0,
+   "icon_t0": 20.2,
+   "component": "icon_d2"
+  },
+  "cambia_celda_ecmwf": false,
+  "cambia_celda_icon": false,
+  "cambia_componente": false,
+  "delta_t_ecmwf": 0.0,
+  "delta_t_icon": 0.0
+ },
+ "LTAC": {
+  "icao": "LTAC",
+  "city": "Ankara",
+  "d_iem_oa": 0.0027918949095676326,
+  "IEM": {
+   "lat": 40.12808,
+   "lon": 32.99508,
+   "ecmwf_cell": [
+    40.25,
+    33.0
+   ],
+   "ecmwf_elev": 948.0,
+   "ecmwf_t0": 27.6,
+   "icon_cell": [
+    40.125,
+    33.0
+   ],
+   "icon_elev": 948.0,
+   "icon_t0": 28.1,
+   "component": "icon_eu"
+  },
+  "OurAirports": {
+   "lat": 40.128101,
+   "lon": 32.995098,
+   "ecmwf_cell": [
+    40.25,
+    33.0
+   ],
+   "ecmwf_elev": 948.0,
+   "ecmwf_t0": 27.6,
+   "icon_cell": [
+    40.125,
+    33.0
+   ],
+   "icon_elev": 948.0,
+   "icon_t0": 28.1,
+   "component": "icon_eu"
+  },
+  "cambia_celda_ecmwf": false,
+  "cambia_celda_icon": false,
+  "cambia_componente": false,
+  "delta_t_ecmwf": 0.0,
+  "delta_t_icon": 0.0
+ },
+ "KATL": {
+  "icao": "KATL",
+  "city": "Atlanta",
+  "d_iem_oa": 1.4652922932319226,
+  "IEM": {
+   "lat": 33.6301,
+   "lon": -84.4418,
+   "ecmwf_cell": [
+    33.75,
+    -84.5
+   ],
+   "ecmwf_elev": 309.0,
+   "ecmwf_t0": 23.8,
+   "icon_cell": [
+    33.625,
+    -84.5
+   ],
+   "icon_elev": 309.0,
+   "icon_t0": 23.4,
+   "component": "icon_global"
+  },
+  "OurAirports": {
+   "lat": 33.6367,
+   "lon": -84.428101,
+   "ecmwf_cell": [
+    33.75,
+    -84.5
+   ],
+   "ecmwf_elev": 302.0,
+   "ecmwf_t0": 23.8,
+   "icon_cell": [
+    33.625,
+    -84.375
+   ],
+   "icon_elev": 302.0,
+   "icon_t0": 23.4,
+   "component": "icon_global"
+  },
+  "cambia_celda_ecmwf": false,
+  "cambia_celda_icon": true,
+  "cambia_componente": false,
+  "delta_t_ecmwf": 0.0,
+  "delta_t_icon": 0.0
+ },
+ "KMIA": {
+  "icao": "KMIA",
+  "city": "Miami",
+  "d_iem_oa": 2.8614656569077006,
+  "IEM": {
+   "lat": 25.78805,
+   "lon": -80.31693,
+   "ecmwf_cell": [
+    25.75,
+    -80.25
+   ],
+   "ecmwf_elev": 2.0,
+   "ecmwf_t0": 27.2,
+   "icon_cell": [
+    25.75,
+    -80.375
+   ],
+   "icon_elev": 2.0,
+   "icon_t0": 26.8,
+   "component": "icon_global"
+  },
+  "OurAirports": {
+   "lat": 25.796011,
+   "lon": -80.289751,
+   "ecmwf_cell": [
+    25.75,
+    -80.25
+   ],
+   "ecmwf_elev": 2.0,
+   "ecmwf_t0": 27.2,
+   "icon_cell": [
+    25.75,
+    -80.25
+   ],
+   "icon_elev": 2.0,
+   "icon_t0": 27.6,
+   "component": "icon_global"
+  },
+  "cambia_celda_ecmwf": false,
+  "cambia_celda_icon": true,
+  "cambia_componente": false,
+  "delta_t_ecmwf": 0.0,
+  "delta_t_icon": -0.8
+ },
+ "KORD": {
+  "icao": "KORD",
+  "city": "Chicago",
+  "d_iem_oa": 3.0158223041736387,
+  "IEM": {
+   "lat": 41.9602,
+   "lon": -87.9316,
+   "ecmwf_cell": [
+    42.0,
+    -88.0
+   ],
+   "ecmwf_elev": 201.0,
+   "ecmwf_t0": 22.4,
+   "icon_cell": [
+    42.0,
+    -87.875
+   ],
+   "icon_elev": 201.0,
+   "icon_t0": 23.9,
+   "component": "icon_global"
+  },
+  "OurAirports": {
+   "lat": 41.9786,
+   "lon": -87.9048,
+   "ecmwf_cell": [
+    42.0,
+    -88.0
+   ],
+   "ecmwf_elev": 213.0,
+   "ecmwf_t0": 22.3,
+   "icon_cell": [
+    42.0,
+    -87.875
+   ],
+   "icon_elev": 213.0,
+   "icon_t0": 23.8,
+   "component": "icon_global"
+  },
+  "cambia_celda_ecmwf": false,
+  "cambia_celda_icon": false,
+  "cambia_componente": false,
+  "delta_t_ecmwf": 0.1,
+  "delta_t_icon": 0.1
+ },
+ "EDDM": {
+  "icao": "EDDM",
+  "city": "Munich",
+  "d_iem_oa": 1.777421369327456,
+  "IEM": {
+   "lat": 48.35833,
+   "lon": 11.80917,
+   "ecmwf_cell": [
+    48.25,
+    11.75
+   ],
+   "ecmwf_elev": 443.0,
+   "ecmwf_t0": 21.9,
+   "icon_cell": [
+    48.36,
+    11.8
+   ],
+   "icon_elev": 443.0,
+   "icon_t0": 21.3,
+   "component": "icon_d2"
+  },
+  "OurAirports": {
+   "lat": 48.353802,
+   "lon": 11.7861,
+   "ecmwf_cell": [
+    48.25,
+    11.75
+   ],
+   "ecmwf_elev": 453.0,
+   "ecmwf_t0": 21.8,
+   "icon_cell": [
+    48.36,
+    11.78
+   ],
+   "icon_elev": 453.0,
+   "icon_t0": 21.5,
+   "component": "icon_d2"
+  },
+  "cambia_celda_ecmwf": false,
+  "cambia_celda_icon": true,
+  "cambia_componente": false,
+  "delta_t_ecmwf": 0.1,
+  "delta_t_icon": -0.2
+ },
+ "RJTT": {
+  "icao": "RJTT",
+  "city": "Tokyo",
+  "d_iem_oa": 0.6669346135132028,
+  "IEM": {
+   "lat": 35.55333,
+   "lon": 139.78111,
+   "ecmwf_cell": [
+    35.75,
+    139.75
+   ],
+   "ecmwf_elev": 4.0,
+   "ecmwf_t0": 21.9,
+   "icon_cell": [
+    35.5,
+    139.75
+   ],
+   "icon_elev": 4.0,
+   "icon_t0": 23.0,
+   "component": "icon_global"
+  },
+  "OurAirports": {
+   "lat": 35.549678,
+   "lon": 139.786958,
+   "ecmwf_cell": [
+    35.75,
+    139.75
+   ],
+   "ecmwf_elev": 6.0,
+   "ecmwf_t0": 21.9,
+   "icon_cell": [
+    35.5,
+    139.75
+   ],
+   "icon_elev": 6.0,
+   "icon_t0": 23.0,
+   "component": "icon_global"
+  },
+  "cambia_celda_ecmwf": false,
+  "cambia_celda_icon": false,
+  "cambia_componente": false,
+  "delta_t_ecmwf": 0.0,
+  "delta_t_icon": 0.0
+ },
+ "LLBG": {
+  "icao": "LLBG",
+  "city": "Tel Aviv",
+  "d_iem_oa": 0.0029651876737243404,
+  "IEM": {
+   "lat": 32.01139,
+   "lon": 34.88667,
+   "ecmwf_cell": [
+    32.0,
+    35.0
+   ],
+   "ecmwf_elev": 36.0,
+   "ecmwf_t0": 33.2,
+   "icon_cell": [
+    32.0,
+    34.875
+   ],
+   "icon_elev": 36.0,
+   "icon_t0": 31.7,
+   "component": "icon_eu"
+  },
+  "OurAirports": {
+   "lat": 32.011398,
+   "lon": 34.8867,
+   "ecmwf_cell": [
+    32.0,
+    35.0
+   ],
+   "ecmwf_elev": 36.0,
+   "ecmwf_t0": 33.2,
+   "icon_cell": [
+    32.0,
+    34.875
+   ],
+   "icon_elev": 36.0,
+   "icon_t0": 31.7,
+   "component": "icon_eu"
+  },
+  "cambia_celda_ecmwf": false,
+  "cambia_celda_icon": false,
+  "cambia_componente": false,
+  "delta_t_ecmwf": 0.0,
+  "delta_t_icon": 0.0
+ },
+ "WSSS": {
+  "icao": "WSSS",
+  "city": "Singapore",
+  "d_iem_oa": 2.1830464363072153,
+  "IEM": {
+   "lat": 1.36667,
+   "lon": 103.98333,
+   "ecmwf_cell": [
+    1.5,
+    104.0
+   ],
+   "ecmwf_elev": 5.0,
+   "ecmwf_t0": 29.0,
+   "icon_cell": [
+    1.375,
+    104.0
+   ],
+   "icon_elev": 5.0,
+   "icon_t0": 28.4,
+   "component": "icon_global"
+  },
+  "OurAirports": {
+   "lat": 1.35019,
+   "lon": 103.994003,
+   "ecmwf_cell": [
+    1.5,
+    104.0
+   ],
+   "ecmwf_elev": 4.0,
+   "ecmwf_t0": 29.0,
+   "icon_cell": [
+    1.375,
+    104.0
+   ],
+   "icon_elev": 4.0,
+   "icon_t0": 28.4,
+   "component": "icon_global"
+  },
+  "cambia_celda_ecmwf": false,
+  "cambia_celda_icon": false,
+  "cambia_componente": false,
+  "delta_t_ecmwf": 0.0,
+  "delta_t_icon": 0.0
+ },
+ "ZSPD": {
+  "icao": "ZSPD",
+  "city": "Shanghai",
+  "d_iem_oa": 4.7062868143592596,
+  "IEM": {
+   "lat": 31.1166666667,
+   "lon": 121.766666667,
+   "ecmwf_cell": [
+    31.0,
+    121.75
+   ],
+   "ecmwf_elev": 3.0,
+   "ecmwf_t0": 25.7,
+   "icon_cell": [
+    31.125,
+    121.875
+   ],
+   "icon_elev": 3.0,
+   "icon_t0": 26.4,
+   "component": "icon_global"
+  },
+  "OurAirports": {
+   "lat": 31.1434,
+   "lon": 121.805,
+   "ecmwf_cell": [
+    31.25,
+    121.75
+   ],
+   "ecmwf_elev": 3.0,
+   "ecmwf_t0": 26.8,
+   "icon_cell": [
+    31.125,
+    121.875
+   ],
+   "icon_elev": 3.0,
+   "icon_t0": 26.4,
+   "component": "icon_global"
+  },
+  "cambia_celda_ecmwf": true,
+  "cambia_celda_icon": false,
+  "cambia_componente": false,
+  "delta_t_ecmwf": -1.1,
+  "delta_t_icon": 0.0
+ },
+ "EPWA": {
+  "icao": "EPWA",
+  "city": "Warsaw",
+  "d_iem_oa": 0.5217968822026602,
+  "IEM": {
+   "lat": 52.16278,
+   "lon": 20.96111,
+   "ecmwf_cell": [
+    52.25,
+    21.0
+   ],
+   "ecmwf_elev": 106.0,
+   "ecmwf_t0": 19.8,
+   "icon_cell": [
+    52.1875,
+    20.9375
+   ],
+   "icon_elev": 106.0,
+   "icon_t0": 21.2,
+   "component": "icon_eu"
+  },
+  "OurAirports": {
+   "lat": 52.165699,
+   "lon": 20.9671,
+   "ecmwf_cell": [
+    52.25,
+    21.0
+   ],
+   "ecmwf_elev": 105.0,
+   "ecmwf_t0": 19.8,
+   "icon_cell": [
+    52.1875,
+    20.9375
+   ],
+   "icon_elev": 105.0,
+   "icon_t0": 21.2,
+   "component": "icon_eu"
+  },
+  "cambia_celda_ecmwf": false,
+  "cambia_celda_icon": false,
+  "cambia_componente": false,
+  "delta_t_ecmwf": 0.0,
+  "delta_t_icon": 0.0
+ },
+ "LIMC": {
+  "icao": "LIMC",
+  "city": "Milan",
+  "d_iem_oa": 0.39830023445858814,
+  "IEM": {
+   "lat": 45.63,
+   "lon": 8.72306,
+   "ecmwf_cell": [
+    45.75,
+    8.75
+   ],
+   "ecmwf_elev": 221.0,
+   "ecmwf_t0": 30.0,
+   "icon_cell": [
+    45.64,
+    8.72
+   ],
+   "icon_elev": 221.0,
+   "icon_t0": 30.4,
+   "component": "icon_d2"
+  },
+  "OurAirports": {
+   "lat": 45.6306,
+   "lon": 8.72811,
+   "ecmwf_cell": [
+    45.75,
+    8.75
+   ],
+   "ecmwf_elev": 221.0,
+   "ecmwf_t0": 30.0,
+   "icon_cell": [
+    45.64,
+    8.72
+   ],
+   "icon_elev": 221.0,
+   "icon_t0": 30.4,
+   "component": "icon_d2"
+  },
+  "cambia_celda_ecmwf": false,
+  "cambia_celda_icon": false,
+  "cambia_componente": false,
+  "delta_t_ecmwf": 0.0,
+  "delta_t_icon": 0.0
+ },
+ "LEMD": {
+  "icao": "LEMD",
+  "city": "Madrid",
+  "d_iem_oa": 3.291087381045599,
+  "IEM": {
+   "lat": 40.46667,
+   "lon": -3.55556,
+   "ecmwf_cell": [
+    40.5,
+    -3.5
+   ],
+   "ecmwf_elev": 591.0,
+   "ecmwf_t0": 36.7,
+   "icon_cell": [
+    40.4375,
+    -3.5625
+   ],
+   "icon_elev": 591.0,
+   "icon_t0": 36.1,
+   "component": "icon_eu"
+  },
+  "OurAirports": {
+   "lat": 40.493407,
+   "lon": -3.572249,
+   "ecmwf_cell": [
+    40.5,
+    -3.5
+   ],
+   "ecmwf_elev": 601.0,
+   "ecmwf_t0": 36.6,
+   "icon_cell": [
+    40.5,
+    -3.5625
+   ],
+   "icon_elev": 601.0,
+   "icon_t0": 35.5,
+   "component": "icon_eu"
+  },
+  "cambia_celda_ecmwf": false,
+  "cambia_celda_icon": true,
+  "cambia_componente": false,
+  "delta_t_ecmwf": 0.1,
+  "delta_t_icon": 0.6
+ },
+ "ZBAA": {
+  "icao": "ZBAA",
+  "city": "Beijing",
+  "d_iem_oa": 0.899761720878526,
+  "IEM": {
+   "lat": 40.07413,
+   "lon": 116.587,
+   "ecmwf_cell": [
+    40.0,
+    116.5
+   ],
+   "ecmwf_elev": 33.0,
+   "ecmwf_t0": 27.6,
+   "icon_cell": [
+    40.125,
+    116.625
+   ],
+   "icon_elev": 33.0,
+   "icon_t0": 24.7,
+   "component": "icon_global"
+  },
+  "OurAirports": {
+   "lat": 40.077349,
+   "lon": 116.596702,
+   "ecmwf_cell": [
+    40.0,
+    116.5
+   ],
+   "ecmwf_elev": 33.0,
+   "ecmwf_t0": 27.6,
+   "icon_cell": [
+    40.125,
+    116.625
+   ],
+   "icon_elev": 33.0,
+   "icon_t0": 24.7,
+   "component": "icon_global"
+  },
+  "cambia_celda_ecmwf": false,
+  "cambia_celda_icon": false,
+  "cambia_componente": false,
+  "delta_t_ecmwf": 0.0,
+  "delta_t_icon": 0.0
+ },
+ "ZUCK": {
+  "icao": "ZUCK",
+  "city": "Chongqing",
+  "d_iem_oa": 27.076192744795826,
+  "IEM": {
+   "lat": 29.52,
+   "lon": 106.48,
+   "ecmwf_cell": [
+    29.5,
+    106.5
+   ],
+   "ecmwf_elev": 320.0,
+   "ecmwf_t0": 30.8,
+   "icon_cell": [
+    29.5,
+    106.5
+   ],
+   "icon_elev": 320.0,
+   "icon_t0": 32.5,
+   "component": "icon_global"
+  },
+  "OurAirports": {
+   "lat": 29.712254,
+   "lon": 106.651895,
+   "ecmwf_cell": [
+    29.75,
+    106.75
+   ],
+   "ecmwf_elev": 407.0,
+   "ecmwf_t0": 29.5,
+   "icon_cell": [
+    29.75,
+    106.625
+   ],
+   "icon_elev": 407.0,
+   "icon_t0": 31.3,
+   "component": "icon_global"
+  },
+  "cambia_celda_ecmwf": true,
+  "cambia_celda_icon": true,
+  "cambia_componente": false,
+  "delta_t_ecmwf": 1.3,
+  "delta_t_icon": 1.2
+ },
+ "ZGSZ": {
+  "icao": "ZGSZ",
+  "city": "Shenzhen",
+  "d_iem_oa": 32.046667427842536,
+  "IEM": {
+   "lat": 22.55,
+   "lon": 114.1,
+   "ecmwf_cell": [
+    22.5,
+    114.0
+   ],
+   "ecmwf_elev": 14.0,
+   "ecmwf_t0": 27.5,
+   "icon_cell": [
+    22.5,
+    114.125
+   ],
+   "icon_elev": 14.0,
+   "icon_t0": 27.3,
+   "component": "icon_global"
+  },
+  "OurAirports": {
+   "lat": 22.639474,
+   "lon": 113.803262,
+   "ecmwf_cell": [
+    22.75,
+    113.75
+   ],
+   "ecmwf_elev": 3.0,
+   "ecmwf_t0": 28.2,
+   "icon_cell": [
+    22.625,
+    113.875
+   ],
+   "icon_elev": 3.0,
+   "icon_t0": 28.1,
+   "component": "icon_global"
+  },
+  "cambia_celda_ecmwf": true,
+  "cambia_celda_icon": true,
+  "cambia_componente": false,
+  "delta_t_ecmwf": -0.7,
+  "delta_t_icon": -0.8
+ },
+ "ZHHH": {
+  "icao": "ZHHH",
+  "city": "Wuhan",
+  "d_iem_oa": 18.983149173966897,
+  "IEM": {
+   "lat": 30.62,
+   "lon": 114.13,
+   "ecmwf_cell": [
+    30.5,
+    114.25
+   ],
+   "ecmwf_elev": 26.0,
+   "ecmwf_t0": 25.1,
+   "icon_cell": [
+    30.625,
+    114.125
+   ],
+   "icon_elev": 26.0,
+   "icon_t0": 28.1,
+   "component": "icon_global"
+  },
+  "OurAirports": {
+   "lat": 30.774798,
+   "lon": 114.213723,
+   "ecmwf_cell": [
+    30.75,
+    114.25
+   ],
+   "ecmwf_elev": 34.0,
+   "ecmwf_t0": 26.3,
+   "icon_cell": [
+    30.75,
+    114.25
+   ],
+   "icon_elev": 34.0,
+   "icon_t0": 27.5,
+   "component": "icon_global"
+  },
+  "cambia_celda_ecmwf": true,
+  "cambia_celda_icon": true,
+  "cambia_componente": false,
+  "delta_t_ecmwf": -1.2,
+  "delta_t_icon": 0.6
+ },
+ "ZUUU": {
+  "icao": "ZUUU",
+  "city": "Chengdu",
+  "d_iem_oa": 13.823562568159693,
+  "IEM": {
+   "lat": 30.6666666667,
+   "lon": 104.016666667,
+   "ecmwf_cell": [
+    30.75,
+    104.0
+   ],
+   "ecmwf_elev": 507.0,
+   "ecmwf_t0": 30.0,
+   "icon_cell": [
+    30.625,
+    104.0
+   ],
+   "icon_elev": 507.0,
+   "icon_t0": 30.6,
+   "component": "icon_global"
+  },
+  "OurAirports": {
+   "lat": 30.558257,
+   "lon": 103.945966,
+   "ecmwf_cell": [
+    30.5,
+    104.0
+   ],
+   "ecmwf_elev": 492.0,
+   "ecmwf_t0": 27.7,
+   "icon_cell": [
+    30.5,
+    104.0
+   ],
+   "icon_elev": 492.0,
+   "icon_t0": 29.0,
+   "component": "icon_global"
+  },
+  "cambia_celda_ecmwf": true,
+  "cambia_celda_icon": true,
+  "cambia_componente": false,
+  "delta_t_ecmwf": 2.3,
+  "delta_t_icon": 1.6
+ },
+ "KHOU": {
+  "icao": "KHOU",
+  "city": "Houston",
+  "d_iem_oa": 1.0304950681025686,
+  "IEM": {
+   "lat": 29.63747,
+   "lon": -95.28245,
+   "ecmwf_cell": [
+    29.75,
+    -95.25
+   ],
+   "ecmwf_elev": 13.0,
+   "ecmwf_t0": 25.2,
+   "icon_cell": [
+    29.625,
+    -95.25
+   ],
+   "icon_elev": 13.0,
+   "icon_t0": 26.0,
+   "component": "icon_global"
+  },
+  "OurAirports": {
+   "lat": 29.645336,
+   "lon": -95.276812,
+   "ecmwf_cell": [
+    29.75,
+    -95.25
+   ],
+   "ecmwf_elev": 12.0,
+   "ecmwf_t0": 25.2,
+   "icon_cell": [
+    29.625,
+    -95.25
+   ],
+   "icon_elev": 12.0,
+   "icon_t0": 26.0,
+   "component": "icon_global"
+  },
+  "cambia_celda_ecmwf": false,
+  "cambia_celda_icon": false,
+  "cambia_componente": false,
+  "delta_t_ecmwf": 0.0,
+  "delta_t_icon": 0.0
+ },
+ "KLAX": {
+  "icao": "KLAX",
+  "city": "Los Angeles",
+  "d_iem_oa": 2.0382988010186964,
+  "IEM": {
+   "lat": 33.93816,
+   "lon": -118.38653,
+   "ecmwf_cell": [
+    34.0,
+    -118.25
+   ],
+   "ecmwf_elev": 29.0,
+   "ecmwf_t0": 18.5,
+   "icon_cell": [
+    34.0,
+    -118.375
+   ],
+   "icon_elev": 29.0,
+   "icon_t0": 17.5,
+   "component": "icon_global"
+  },
+  "OurAirports": {
+   "lat": 33.942501,
+   "lon": -118.407997,
+   "ecmwf_cell": [
+    34.0,
+    -118.25
+   ],
+   "ecmwf_elev": 44.0,
+   "ecmwf_t0": 18.4,
+   "icon_cell": [
+    34.0,
+    -118.375
+   ],
+   "icon_elev": 44.0,
+   "icon_t0": 17.4,
+   "component": "icon_global"
+  },
+  "cambia_celda_ecmwf": false,
+  "cambia_celda_icon": false,
+  "cambia_componente": false,
+  "delta_t_ecmwf": 0.1,
+  "delta_t_icon": 0.1
+ },
+ "KAUS": {
+  "icao": "KAUS",
+  "city": "Austin",
+  "d_iem_oa": 2.3543070123819287,
+  "IEM": {
+   "lat": 30.18304,
+   "lon": -97.67987,
+   "ecmwf_cell": [
+    30.25,
+    -97.75
+   ],
+   "ecmwf_elev": 147.0,
+   "ecmwf_t0": 24.8,
+   "icon_cell": [
+    30.125,
+    -97.625
+   ],
+   "icon_elev": 147.0,
+   "icon_t0": 25.5,
+   "component": "icon_global"
+  },
+  "OurAirports": {
+   "lat": 30.197535,
+   "lon": -97.662015,
+   "ecmwf_cell": [
+    30.25,
+    -97.75
+   ],
+   "ecmwf_elev": 149.0,
+   "ecmwf_t0": 24.8,
+   "icon_cell": [
+    30.25,
+    -97.625
+   ],
+   "icon_elev": 149.0,
+   "icon_t0": 24.8,
+   "component": "icon_global"
+  },
+  "cambia_celda_ecmwf": false,
+  "cambia_celda_icon": true,
+  "cambia_componente": false,
+  "delta_t_ecmwf": 0.0,
+  "delta_t_icon": 0.7
+ },
+ "LTFM": {
+  "icao": "LTFM",
+  "city": "Istanbul",
+  "d_iem_oa": 1.5360177503140338,
+  "IEM": {
+   "lat": 41.2629,
+   "lon": 28.7413,
+   "ecmwf_cell": [
+    41.25,
+    28.75
+   ],
+   "ecmwf_elev": 106.0,
+   "ecmwf_t0": 27.1,
+   "icon_cell": [
+    41.25,
+    28.75
+   ],
+   "icon_elev": 106.0,
+   "icon_t0": 27.1,
+   "component": "icon_eu"
+  },
+  "OurAirports": {
+   "lat": 41.274874,
+   "lon": 28.732136,
+   "ecmwf_cell": [
+    41.25,
+    28.75
+   ],
+   "ecmwf_elev": 78.0,
+   "ecmwf_t0": 27.2,
+   "icon_cell": [
+    41.25,
+    28.75
+   ],
+   "icon_elev": 78.0,
+   "icon_t0": 27.3,
+   "component": "icon_eu"
+  },
+  "cambia_celda_ecmwf": false,
+  "cambia_celda_icon": false,
+  "cambia_componente": false,
+  "delta_t_ecmwf": -0.1,
+  "delta_t_icon": -0.2
+ },
+ "UUWW": {
+  "icao": "UUWW",
+  "city": "Moscow",
+  "d_iem_oa": 0.00012772062712010227,
+  "IEM": {
+   "lat": 55.5915,
+   "lon": 37.2615,
+   "ecmwf_cell": [
+    55.5,
+    37.25
+   ],
+   "ecmwf_elev": 196.0,
+   "ecmwf_t0": 19.2,
+   "icon_cell": [
+    55.5625,
+    37.25
+   ],
+   "icon_elev": 196.0,
+   "icon_t0": 17.7,
+   "component": "icon_eu"
+  },
+  "OurAirports": {
+   "lat": 55.591499,
+   "lon": 37.261501,
+   "ecmwf_cell": [
+    55.5,
+    37.25
+   ],
+   "ecmwf_elev": 196.0,
+   "ecmwf_t0": 19.2,
+   "icon_cell": [
+    55.5625,
+    37.25
+   ],
+   "icon_elev": 196.0,
+   "icon_t0": 17.7,
+   "component": "icon_eu"
+  },
+  "cambia_celda_ecmwf": false,
+  "cambia_celda_icon": false,
+  "cambia_componente": false,
+  "delta_t_ecmwf": 0.0,
+  "delta_t_icon": 0.0
+ },
+ "EHAM": {
+  "icao": "EHAM",
+  "city": "Amsterdam",
+  "d_iem_oa": 1.9397088616488545,
+  "IEM": {
+   "lat": 52.31541,
+   "lon": 4.79016,
+   "ecmwf_cell": [
+    52.25,
+    4.75
+   ],
+   "ecmwf_elev": -5.0,
+   "ecmwf_t0": 17.4,
+   "icon_cell": [
+    52.32,
+    4.8
+   ],
+   "icon_elev": -5.0,
+   "icon_t0": 18.8,
+   "component": "icon_d2"
+  },
+  "OurAirports": {
+   "lat": 52.308601,
+   "lon": 4.76389,
+   "ecmwf_cell": [
+    52.25,
+    4.75
+   ],
+   "ecmwf_elev": 6.0,
+   "ecmwf_t0": 17.3,
+   "icon_cell": [
+    52.3,
+    4.76
+   ],
+   "icon_elev": 6.0,
+   "icon_t0": 18.8,
+   "component": "icon_d2"
+  },
+  "cambia_celda_ecmwf": false,
+  "cambia_celda_icon": true,
+  "cambia_componente": false,
+  "delta_t_ecmwf": 0.1,
+  "delta_t_icon": 0.0
+ },
+ "EFHK": {
+  "icao": "EFHK",
+  "city": "Helsinki",
+  "d_iem_oa": 0.12709724437820621,
+  "IEM": {
+   "lat": 60.31722,
+   "lon": 24.96333,
+   "ecmwf_cell": [
+    60.25,
+    25.0
+   ],
+   "ecmwf_elev": 52.0,
+   "ecmwf_t0": 16.6,
+   "icon_cell": [
+    60.3125,
+    24.9375
+   ],
+   "icon_elev": 52.0,
+   "icon_t0": 17.6,
+   "component": "icon_eu"
+  },
+  "OurAirports": {
+   "lat": 60.318363,
+   "lon": 24.963341,
+   "ecmwf_cell": [
+    60.25,
+    25.0
+   ],
+   "ecmwf_elev": 48.0,
+   "ecmwf_t0": 16.6,
+   "icon_cell": [
+    60.3125,
+    24.9375
+   ],
+   "icon_elev": 48.0,
+   "icon_t0": 17.6,
+   "component": "icon_eu"
+  },
+  "cambia_celda_ecmwf": false,
+  "cambia_celda_icon": false,
+  "cambia_componente": false,
+  "delta_t_ecmwf": 0.0,
+  "delta_t_icon": 0.0
+ },
+ "WMKK": {
+  "icao": "WMKK",
+  "city": "Kuala Lumpur",
+  "d_iem_oa": 3.4010765633495623,
+  "IEM": {
+   "lat": 2.71667,
+   "lon": 101.7,
+   "ecmwf_cell": [
+    2.75,
+    101.75
+   ],
+   "ecmwf_elev": 9.0,
+   "ecmwf_t0": 28.2,
+   "icon_cell": [
+    2.75,
+    101.75
+   ],
+   "icon_elev": 9.0,
+   "icon_t0": 28.8,
+   "component": "icon_global"
+  },
+  "OurAirports": {
+   "lat": 2.74558,
+   "lon": 101.709999,
+   "ecmwf_cell": [
+    2.75,
+    101.75
+   ],
+   "ecmwf_elev": 18.0,
+   "ecmwf_t0": 28.1,
+   "icon_cell": [
+    2.75,
+    101.75
+   ],
+   "icon_elev": 18.0,
+   "icon_t0": 28.7,
+   "component": "icon_global"
+  },
+  "cambia_celda_ecmwf": false,
+  "cambia_celda_icon": false,
+  "cambia_componente": false,
+  "delta_t_ecmwf": 0.1,
+  "delta_t_icon": 0.1
+ },
+ "MPMG": {
+  "icao": "MPMG",
+  "city": "Panama City",
+  "d_iem_oa": 4.418486228884643,
+  "IEM": {
+   "lat": 8.9833333333,
+   "lon": -79.5166666667,
+   "ecmwf_cell": [
+    9.0,
+    -79.5
+   ],
+   "ecmwf_elev": 12.0,
+   "ecmwf_t0": 26.7,
+   "icon_cell": [
+    9.0,
+    -79.5
+   ],
+   "icon_elev": 12.0,
+   "icon_t0": 27.0,
+   "component": "icon_global"
+  },
+  "OurAirports": {
+   "lat": 8.97334,
+   "lon": -79.555603,
+   "ecmwf_cell": [
+    9.0,
+    -79.5
+   ],
+   "ecmwf_elev": 5.0,
+   "ecmwf_t0": 26.8,
+   "icon_cell": [
+    9.0,
+    -79.5
+   ],
+   "icon_elev": 5.0,
+   "icon_t0": 27.0,
+   "component": "icon_global"
+  },
+  "cambia_celda_ecmwf": false,
+  "cambia_celda_icon": false,
+  "cambia_componente": false,
+  "delta_t_ecmwf": -0.1,
+  "delta_t_icon": 0.0
+ },
+ "OEJN": {
+  "icao": "OEJN",
+  "city": "Jeddah",
+  "d_iem_oa": 4.2898242067525665,
+  "IEM": {
+   "lat": 21.65983127,
+   "lon": 39.12220782,
+   "ecmwf_cell": [
+    21.75,
+    39.25
+   ],
+   "ecmwf_elev": 2.0,
+   "ecmwf_t0": 39.0,
+   "icon_cell": [
+    21.75,
+    39.125
+   ],
+   "icon_elev": 2.0,
+   "icon_t0": 38.0,
+   "component": "icon_global"
+  },
+  "OurAirports": {
+   "lat": 21.680241,
+   "lon": 39.157436,
+   "ecmwf_cell": [
+    21.75,
+    39.25
+   ],
+   "ecmwf_elev": 7.0,
+   "ecmwf_t0": 39.0,
+   "icon_cell": [
+    21.75,
+    39.125
+   ],
+   "icon_elev": 7.0,
+   "icon_t0": 37.9,
+   "component": "icon_global"
+  },
+  "cambia_celda_ecmwf": false,
+  "cambia_celda_icon": false,
+  "cambia_componente": false,
+  "delta_t_ecmwf": 0.0,
+  "delta_t_icon": 0.1
+ },
+ "FACT": {
+  "icao": "FACT",
+  "city": "Cape Town",
+  "d_iem_oa": 0.911063994633309,
+  "IEM": {
+   "lat": -33.9666666667,
+   "lon": 18.6,
+   "ecmwf_cell": [
+    -34.0,
+    18.5
+   ],
+   "ecmwf_elev": 42.0,
+   "ecmwf_t0": 23.0,
+   "icon_cell": [
+    -34.0,
+    18.625
+   ],
+   "icon_elev": 42.0,
+   "icon_t0": 25.4,
+   "component": "icon_global"
+  },
+  "OurAirports": {
+   "lat": -33.97403,
+   "lon": 18.604333,
+   "ecmwf_cell": [
+    -34.0,
+    18.5
+   ],
+   "ecmwf_elev": 42.0,
+   "ecmwf_t0": 23.0,
+   "icon_cell": [
+    -34.0,
+    18.625
+   ],
+   "icon_elev": 42.0,
+   "icon_t0": 25.4,
+   "component": "icon_global"
+  },
+  "cambia_celda_ecmwf": false,
+  "cambia_celda_icon": false,
+  "cambia_componente": false,
+  "delta_t_ecmwf": 0.0,
+  "delta_t_icon": 0.0
+ },
+ "OPKC": {
+  "icao": "OPKC",
+  "city": "Karachi",
+  "d_iem_oa": 6.774241547379267,
+  "IEM": {
+   "lat": 24.84558,
+   "lon": 67.16137,
+   "ecmwf_cell": [
+    24.75,
+    67.25
+   ],
+   "ecmwf_elev": 13.0,
+   "ecmwf_t0": 27.2,
+   "icon_cell": [
+    24.875,
+    67.125
+   ],
+   "icon_elev": 13.0,
+   "icon_t0": 30.2,
+   "component": "icon_global"
+  },
+  "OurAirports": {
+   "lat": 24.9065,
+   "lon": 67.160797,
+   "ecmwf_cell": [
+    25.0,
+    67.25
+   ],
+   "ecmwf_elev": 24.0,
+   "ecmwf_t0": 30.0,
+   "icon_cell": [
+    24.875,
+    67.125
+   ],
+   "icon_elev": 24.0,
+   "icon_t0": 30.1,
+   "component": "icon_global"
+  },
+  "cambia_celda_ecmwf": true,
+  "cambia_celda_icon": false,
+  "cambia_componente": false,
+  "delta_t_ecmwf": -2.8,
+  "delta_t_icon": 0.1
+ },
+ "RPLL": {
+  "icao": "RPLL",
+  "city": "Manila",
+  "d_iem_oa": 1.7110107001063297,
+  "IEM": {
+   "lat": 14.5069,
+   "lon": 121.0042,
+   "ecmwf_cell": [
+    14.5,
+    121.0
+   ],
+   "ecmwf_elev": 7.0,
+   "ecmwf_t0": 26.2,
+   "icon_cell": [
+    14.625,
+    121.0
+   ],
+   "icon_elev": 7.0,
+   "icon_t0": 25.9,
+   "component": "icon_global"
+  },
+  "OurAirports": {
+   "lat": 14.5086,
+   "lon": 121.019997,
+   "ecmwf_cell": [
+    14.5,
+    121.0
+   ],
+   "ecmwf_elev": 13.0,
+   "ecmwf_t0": 26.2,
+   "icon_cell": [
+    14.5,
+    121.125
+   ],
+   "icon_elev": 13.0,
+   "icon_t0": 26.1,
+   "component": "icon_global"
+  },
+  "cambia_celda_ecmwf": false,
+  "cambia_celda_icon": true,
+  "cambia_componente": false,
+  "delta_t_ecmwf": 0.0,
+  "delta_t_icon": -0.2
+ },
+ "LFPB": {
+  "icao": "LFPB",
+  "city": "Paris",
+  "d_iem_oa": 0.8746650812948604,
+  "IEM": {
+   "lat": 48.96722,
+   "lon": 2.42722,
+   "ecmwf_cell": [
+    49.0,
+    2.5
+   ],
+   "ecmwf_elev": 50.0,
+   "ecmwf_t0": 21.6,
+   "icon_cell": [
+    48.96,
+    2.42
+   ],
+   "icon_elev": 50.0,
+   "icon_t0": 22.5,
+   "component": "icon_d2"
+  },
+  "OurAirports": {
+   "lat": 48.962276,
+   "lon": 2.436539,
+   "ecmwf_cell": [
+    49.0,
+    2.5
+   ],
+   "ecmwf_elev": 42.0,
+   "ecmwf_t0": 21.6,
+   "icon_cell": [
+    48.96,
+    2.44
+   ],
+   "icon_elev": 42.0,
+   "icon_t0": 22.4,
+   "component": "icon_d2"
+  },
+  "cambia_celda_ecmwf": false,
+  "cambia_celda_icon": true,
+  "cambia_componente": false,
+  "delta_t_ecmwf": 0.0,
+  "delta_t_icon": 0.1
+ },
+ "ZSQD": {
+  "icao": "ZSQD",
+  "city": "Qingdao",
+  "d_iem_oa": 39.519687323770505,
+  "IEM": {
+   "lat": 36.06667,
+   "lon": 120.33333,
+   "ecmwf_cell": [
+    36.25,
+    120.25
+   ],
+   "ecmwf_elev": 38.0,
+   "ecmwf_t0": 24.4,
+   "icon_cell": [
+    36.125,
+    120.375
+   ],
+   "icon_elev": 38.0,
+   "icon_t0": 25.0,
+   "component": "icon_global"
+  },
+  "OurAirports": {
+   "lat": 36.361953,
+   "lon": 120.088171,
+   "ecmwf_cell": [
+    36.25,
+    120.0
+   ],
+   "ecmwf_elev": 8.0,
+   "ecmwf_t0": 24.9,
+   "icon_cell": [
+    36.375,
+    120.125
+   ],
+   "icon_elev": 8.0,
+   "icon_t0": 24.1,
+   "component": "icon_global"
+  },
+  "cambia_celda_ecmwf": true,
+  "cambia_celda_icon": true,
+  "cambia_componente": false,
+  "delta_t_ecmwf": -0.5,
+  "delta_t_icon": 0.9
+ },
+ "LFPG": {
+  "icao": "LFPG",
+  "city": "Paris",
+  "d_iem_oa": 1.597924246262857,
+  "IEM": {
+   "lat": 49.01528,
+   "lon": 2.53444,
+   "ecmwf_cell": [
+    49.0,
+    2.5
+   ],
+   "ecmwf_elev": 109.0,
+   "ecmwf_t0": 21.2,
+   "icon_cell": [
+    49.02,
+    2.54
+   ],
+   "icon_elev": 109.0,
+   "icon_t0": 21.9,
+   "component": "icon_d2"
+  },
+  "OurAirports": {
+   "lat": 49.00896,
+   "lon": 2.554117,
+   "ecmwf_cell": [
+    49.0,
+    2.5
+   ],
+   "ecmwf_elev": 103.0,
+   "ecmwf_t0": 21.2,
+   "icon_cell": [
+    49.0,
+    2.56
+   ],
+   "icon_elev": 103.0,
+   "icon_t0": 22.1,
+   "component": "icon_d2"
+  },
+  "cambia_celda_ecmwf": false,
+  "cambia_celda_icon": true,
+  "cambia_componente": false,
+  "delta_t_ecmwf": 0.0,
+  "delta_t_icon": -0.2
+ },
+ "ZHCC": {
+  "icao": "ZHCC",
+  "city": "Zhengzhou",
+  "d_iem_oa": 27.915634745710435,
+  "IEM": {
+   "lat": 34.7166666667,
+   "lon": 113.65,
+   "ecmwf_cell": [
+    34.75,
+    113.75
+   ],
+   "ecmwf_elev": 115.0,
+   "ecmwf_t0": 26.9,
+   "icon_cell": [
+    34.75,
+    113.625
+   ],
+   "icon_elev": 115.0,
+   "icon_t0": 26.5,
+   "component": "icon_global"
+  },
+  "OurAirports": {
+   "lat": 34.526497,
+   "lon": 113.849165,
+   "ecmwf_cell": [
+    34.5,
+    113.75
+   ],
+   "ecmwf_elev": 147.0,
+   "ecmwf_t0": 23.8,
+   "icon_cell": [
+    34.5,
+    113.875
+   ],
+   "icon_elev": 147.0,
+   "icon_t0": 24.5,
+   "component": "icon_global"
+  },
+  "cambia_celda_ecmwf": true,
+  "cambia_celda_icon": true,
+  "cambia_componente": false,
+  "delta_t_ecmwf": 3.1,
+  "delta_t_icon": 2.0
+ },
+ "ZSJN": {
+  "icao": "ZSJN",
+  "city": "Jinan",
+  "d_iem_oa": 0.9098607152726919,
+  "IEM": {
+   "lat": 36.8555,
+   "lon": 117.206,
+   "ecmwf_cell": [
+    36.75,
+    117.25
+   ],
+   "ecmwf_elev": 24.0,
+   "ecmwf_t0": 26.5,
+   "icon_cell": [
+    36.875,
+    117.25
+   ],
+   "icon_elev": 24.0,
+   "icon_t0": 23.9,
+   "component": "icon_global"
+  },
+  "OurAirports": {
+   "lat": 36.857201,
+   "lon": 117.216003,
+   "ecmwf_cell": [
+    36.75,
+    117.25
+   ],
+   "ecmwf_elev": 22.0,
+   "ecmwf_t0": 26.5,
+   "icon_cell": [
+    36.875,
+    117.25
+   ],
+   "icon_elev": 22.0,
+   "icon_t0": 23.9,
+   "component": "icon_global"
+  },
+  "cambia_celda_ecmwf": false,
+  "cambia_celda_icon": false,
+  "cambia_componente": false,
+  "delta_t_ecmwf": 0.0,
+  "delta_t_icon": 0.0
+ },
+ "VHHH": {
+  "icao": "VHHH",
+  "city": "Hong Kong",
+  "d_iem_oa": 0.7754846007869793,
+  "IEM": {
+   "lat": 22.30944,
+   "lon": 113.92194,
+   "ecmwf_cell": [
+    22.25,
+    114.0
+   ],
+   "ecmwf_elev": 6.0,
+   "ecmwf_t0": 26.9,
+   "icon_cell": [
+    22.375,
+    114.0
+   ],
+   "icon_elev": 6.0,
+   "icon_t0": 27.6,
+   "component": "icon_global"
+  },
+  "OurAirports": {
+   "lat": 22.31184,
+   "lon": 113.914862,
+   "ecmwf_cell": [
+    22.25,
+    114.0
+   ],
+   "ecmwf_elev": 6.0,
+   "ecmwf_t0": 26.9,
+   "icon_cell": [
+    22.375,
+    114.0
+   ],
+   "icon_elev": 6.0,
+   "icon_t0": 27.6,
+   "component": "icon_global"
+  },
+  "cambia_celda_ecmwf": false,
+  "cambia_celda_icon": false,
+  "cambia_componente": false,
+  "delta_t_ecmwf": 0.0,
+  "delta_t_icon": 0.0
+ }
+}

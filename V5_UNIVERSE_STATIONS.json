@@ -1,0 +1,497 @@
+[
+ {
+  "icao": "KLGA",
+  "city": "NYC",
+  "n_markets": 2136,
+  "n_events": 200,
+  "lat": 40.777199,
+  "lon": -73.872597,
+  "name": "LaGuardia Airport"
+ },
+ {
+  "icao": "EGLC",
+  "city": "London",
+  "n_markets": 2129,
+  "n_events": 199,
+  "lat": 51.505299,
+  "lon": 0.055278,
+  "name": "London City Airport"
+ },
+ {
+  "icao": "CYYZ",
+  "city": "Toronto",
+  "n_markets": 2129,
+  "n_events": 199,
+  "lat": 43.675935,
+  "lon": -79.629421,
+  "name": "Toronto Pearson International Airport"
+ },
+ {
+  "icao": "KDAL",
+  "city": "Dallas",
+  "n_markets": 2125,
+  "n_events": 199,
+  "lat": 32.844776,
+  "lon": -96.847653,
+  "name": "Dallas Love Field"
+ },
+ {
+  "icao": "RKSI",
+  "city": "Seoul",
+  "n_markets": 2121,
+  "n_events": 199,
+  "lat": 37.469101,
+  "lon": 126.450996,
+  "name": "Incheon International Airport"
+ },
+ {
+  "icao": "LTAC",
+  "city": "Ankara",
+  "n_markets": 2115,
+  "n_events": 197,
+  "lat": 40.128101,
+  "lon": 32.995098,
+  "name": "Esenbo\u011fa International Airport"
+ },
+ {
+  "icao": "NZWN",
+  "city": "Wellington",
+  "n_markets": 2115,
+  "n_events": 197,
+  "lat": -41.326839,
+  "lon": 174.806862,
+  "name": "Wellington International Airport"
+ },
+ {
+  "icao": "KATL",
+  "city": "Atlanta",
+  "n_markets": 2114,
+  "n_events": 198,
+  "lat": 33.6367,
+  "lon": -84.428101,
+  "name": "Hartsfield Jackson Atlanta International Airport"
+ },
+ {
+  "icao": "KSEA",
+  "city": "Seattle",
+  "n_markets": 2107,
+  "n_events": 197,
+  "lat": 47.447943,
+  "lon": -122.310276,
+  "name": "Seattle\u2013Tacoma International Airport"
+ },
+ {
+  "icao": "KMIA",
+  "city": "Miami",
+  "n_markets": 2104,
+  "n_events": 196,
+  "lat": 25.796011,
+  "lon": -80.289751,
+  "name": "Miami International Airport"
+ },
+ {
+  "icao": "KORD",
+  "city": "Chicago",
+  "n_markets": 2104,
+  "n_events": 196,
+  "lat": 41.9786,
+  "lon": -87.9048,
+  "name": "Chicago O'Hare International Airport"
+ },
+ {
+  "icao": "SAEZ",
+  "city": "Buenos Aires",
+  "n_markets": 2096,
+  "n_events": 196,
+  "lat": -34.8222,
+  "lon": -58.5358,
+  "name": "Ezeiza International Airport - Ministro Pistarini"
+ },
+ {
+  "icao": "SBGR",
+  "city": "Sao Paulo",
+  "n_markets": 2083,
+  "n_events": 195,
+  "lat": -23.431274,
+  "lon": -46.469954,
+  "name": "S\u00e3o Paulo/Guarulhos\u2013Governor Andr\u00e9 Franco Montoro International Airport"
+ },
+ {
+  "icao": "EDDM",
+  "city": "Munich",
+  "n_markets": 1980,
+  "n_events": 182,
+  "lat": 48.353802,
+  "lon": 11.7861,
+  "name": "Munich Airport"
+ },
+ {
+  "icao": "VILK",
+  "city": "Lucknow",
+  "n_markets": 1980,
+  "n_events": 182,
+  "lat": 26.760599,
+  "lon": 80.889297,
+  "name": "Chaudhary Charan Singh International Airport"
+ },
+ {
+  "icao": "RJTT",
+  "city": "Tokyo",
+  "n_markets": 1935,
+  "n_events": 177,
+  "lat": 35.549678,
+  "lon": 139.786958,
+  "name": "Tokyo Haneda International Airport"
+ },
+ {
+  "icao": "LLBG",
+  "city": "Tel Aviv",
+  "n_markets": 1935,
+  "n_events": 177,
+  "lat": 32.011398,
+  "lon": 34.8867,
+  "name": "Ben Gurion International Airport"
+ },
+ {
+  "icao": "WSSS",
+  "city": "Singapore",
+  "n_markets": 1908,
+  "n_events": 174,
+  "lat": 1.35019,
+  "lon": 103.994003,
+  "name": "Singapore Changi Airport"
+ },
+ {
+  "icao": "ZSPD",
+  "city": "Shanghai",
+  "n_markets": 1908,
+  "n_events": 174,
+  "lat": 31.1434,
+  "lon": 121.805,
+  "name": "Shanghai Pudong International Airport"
+ },
+ {
+  "icao": "EPWA",
+  "city": "Warsaw",
+  "n_markets": 1881,
+  "n_events": 171,
+  "lat": 52.165699,
+  "lon": 20.9671,
+  "name": "Warsaw Chopin Airport"
+ },
+ {
+  "icao": "LIMC",
+  "city": "Milan",
+  "n_markets": 1881,
+  "n_events": 171,
+  "lat": 45.6306,
+  "lon": 8.72811,
+  "name": "Milan Malpensa International Airport"
+ },
+ {
+  "icao": "LEMD",
+  "city": "Madrid",
+  "n_markets": 1881,
+  "n_events": 171,
+  "lat": 40.493407,
+  "lon": -3.572249,
+  "name": "Adolfo Su\u00e1rez Madrid\u2013Barajas Airport"
+ },
+ {
+  "icao": "ZBAA",
+  "city": "Beijing",
+  "n_markets": 1837,
+  "n_events": 167,
+  "lat": 40.077349,
+  "lon": 116.596702,
+  "name": "Beijing Capital International Airport"
+ },
+ {
+  "icao": "ZUCK",
+  "city": "Chongqing",
+  "n_markets": 1837,
+  "n_events": 167,
+  "lat": 29.712254,
+  "lon": 106.651895,
+  "name": "Chongqing Jiangbei International Airport"
+ },
+ {
+  "icao": "ZGSZ",
+  "city": "Shenzhen",
+  "n_markets": 1837,
+  "n_events": 167,
+  "lat": 22.639474,
+  "lon": 113.803262,
+  "name": "Shenzhen Bao'an International Airport"
+ },
+ {
+  "icao": "ZHHH",
+  "city": "Wuhan",
+  "n_markets": 1837,
+  "n_events": 167,
+  "lat": 30.774798,
+  "lon": 114.213723,
+  "name": "Wuhan Tianhe International Airport"
+ },
+ {
+  "icao": "ZUUU",
+  "city": "Chengdu",
+  "n_markets": 1826,
+  "n_events": 166,
+  "lat": 30.558257,
+  "lon": 103.945966,
+  "name": "Chengdu Shuangliu International Airport"
+ },
+ {
+  "icao": "KBKF",
+  "city": "Denver",
+  "n_markets": 1782,
+  "n_events": 162,
+  "lat": 39.701698,
+  "lon": -104.751999,
+  "name": "Buckley Space Force Base"
+ },
+ {
+  "icao": "KHOU",
+  "city": "Houston",
+  "n_markets": 1782,
+  "n_events": 162,
+  "lat": 29.645336,
+  "lon": -95.276812,
+  "name": "William P. Hobby Airport"
+ },
+ {
+  "icao": "KLAX",
+  "city": "Los Angeles",
+  "n_markets": 1782,
+  "n_events": 162,
+  "lat": 33.942501,
+  "lon": -118.407997,
+  "name": "Los Angeles International Airport"
+ },
+ {
+  "icao": "KAUS",
+  "city": "Austin",
+  "n_markets": 1771,
+  "n_events": 161,
+  "lat": 30.197535,
+  "lon": -97.662015,
+  "name": "Austin Bergstrom International Airport"
+ },
+ {
+  "icao": "KSFO",
+  "city": "San Francisco",
+  "n_markets": 1771,
+  "n_events": 161,
+  "lat": 37.619806,
+  "lon": -122.374821,
+  "name": "San Francisco International Airport"
+ },
+ {
+  "icao": "LTFM",
+  "city": "Istanbul",
+  "n_markets": 1738,
+  "n_events": 158,
+  "lat": 41.274874,
+  "lon": 28.732136,
+  "name": "\u0130stanbul Airport"
+ },
+ {
+  "icao": "UUWW",
+  "city": "Moscow",
+  "n_markets": 1727,
+  "n_events": 157,
+  "lat": 55.591499,
+  "lon": 37.261501,
+  "name": "Vnukovo International Airport"
+ },
+ {
+  "icao": "MMMX",
+  "city": "Mexico City",
+  "n_markets": 1716,
+  "n_events": 156,
+  "lat": 19.435822,
+  "lon": -99.07033,
+  "name": "Mexico City Benito Ju\u00e1rez International Airport"
+ },
+ {
+  "icao": "EHAM",
+  "city": "Amsterdam",
+  "n_markets": 1694,
+  "n_events": 154,
+  "lat": 52.308601,
+  "lon": 4.76389,
+  "name": "Amsterdam Airport Schiphol"
+ },
+ {
+  "icao": "RKPK",
+  "city": "Busan",
+  "n_markets": 1694,
+  "n_events": 154,
+  "lat": 35.179501,
+  "lon": 128.938004,
+  "name": "Gimhae International Airport"
+ },
+ {
+  "icao": "EFHK",
+  "city": "Helsinki",
+  "n_markets": 1694,
+  "n_events": 154,
+  "lat": 60.318363,
+  "lon": 24.963341,
+  "name": "Helsinki Vantaa Airport"
+ },
+ {
+  "icao": "WMKK",
+  "city": "Kuala Lumpur",
+  "n_markets": 1694,
+  "n_events": 154,
+  "lat": 2.74558,
+  "lon": 101.709999,
+  "name": "Kuala Lumpur International Airport"
+ },
+ {
+  "icao": "RCSS",
+  "city": "Taipei",
+  "n_markets": 1672,
+  "n_events": 152,
+  "lat": 25.067244,
+  "lon": 121.552822,
+  "name": "Taipei Songshan International Airport"
+ },
+ {
+  "icao": "MPMG",
+  "city": "Panama City",
+  "n_markets": 1661,
+  "n_events": 151,
+  "lat": 8.97334,
+  "lon": -79.555603,
+  "name": "Marcos A. Gelabert International Airport"
+ },
+ {
+  "icao": "OEJN",
+  "city": "Jeddah",
+  "n_markets": 1628,
+  "n_events": 148,
+  "lat": 21.680241,
+  "lon": 39.157436,
+  "name": "King Abdulaziz International Airport"
+ },
+ {
+  "icao": "FACT",
+  "city": "Cape Town",
+  "n_markets": 1606,
+  "n_events": 146,
+  "lat": -33.97403,
+  "lon": 18.604333,
+  "name": "Cape Town International Airport"
+ },
+ {
+  "icao": "ZGGG",
+  "city": "Guangzhou",
+  "n_markets": 1551,
+  "n_events": 141,
+  "lat": 23.392401,
+  "lon": 113.299004,
+  "name": "Guangzhou Baiyun International Airport"
+ },
+ {
+  "icao": "OPKC",
+  "city": "Karachi",
+  "n_markets": 1551,
+  "n_events": 141,
+  "lat": 24.9065,
+  "lon": 67.160797,
+  "name": "Jinnah International Airport"
+ },
+ {
+  "icao": "RPLL",
+  "city": "Manila",
+  "n_markets": 1551,
+  "n_events": 141,
+  "lat": 14.5086,
+  "lon": 121.019997,
+  "name": "Ninoy Aquino International Airport"
+ },
+ {
+  "icao": "LFPB",
+  "city": "Paris",
+  "n_markets": 1540,
+  "n_events": 140,
+  "lat": 48.962276,
+  "lon": 2.436539,
+  "name": "Paris-Le Bourget International Airport"
+ },
+ {
+  "icao": "ZSQD",
+  "city": "Qingdao",
+  "n_markets": 1452,
+  "n_events": 132,
+  "lat": 36.361953,
+  "lon": 120.088171,
+  "name": "Qingdao Jiaodong International Airport"
+ },
+ {
+  "icao": "LFPG",
+  "city": "Paris",
+  "n_markets": 575,
+  "n_events": 57,
+  "lat": 49.00896,
+  "lon": 2.554117,
+  "name": "Charles de Gaulle International Airport"
+ },
+ {
+  "icao": "WIHH",
+  "city": "Jakarta",
+  "n_markets": 517,
+  "n_events": 47,
+  "lat": -6.266989,
+  "lon": 106.890318,
+  "name": "Halim Perdanakusuma International Airport"
+ },
+ {
+  "icao": "DNMM",
+  "city": "Lagos",
+  "n_markets": 385,
+  "n_events": 35,
+  "lat": 6.57737,
+  "lon": 3.32116,
+  "name": "Murtala Muhammed International Airport"
+ },
+ {
+  "icao": "ZHCC",
+  "city": "Zhengzhou",
+  "n_markets": 330,
+  "n_events": 30,
+  "lat": 34.526497,
+  "lon": 113.849165,
+  "name": "Zhengzhou Xinzheng International Airport"
+ },
+ {
+  "icao": "ZSJN",
+  "city": "Jinan",
+  "n_markets": 330,
+  "n_events": 30,
+  "lat": 36.857201,
+  "lon": 117.216003,
+  "name": "Jinan Yaoqiang International Airport"
+ },
+ {
+  "icao": "RCTP",
+  "city": "Taipei",
+  "n_markets": 132,
+  "n_events": 12,
+  "lat": 25.0777,
+  "lon": 121.233002,
+  "name": "Taiwan Taoyuan International Airport"
+ },
+ {
+  "icao": "VHHH",
+  "city": "Hong Kong",
+  "n_markets": 18,
+  "n_events": 2,
+  "lat": 22.31184,
+  "lon": 113.914862,
+  "name": "Hong Kong International Airport"
+ }
+]

@@ -1,0 +1,3 @@
+ask-codex: sin respuesta tras 600s. Codex puede estar ocupado con otra tarea;
+           mira tu ventana de Codex — el mensaje sí quedó encolado.
+exit=3

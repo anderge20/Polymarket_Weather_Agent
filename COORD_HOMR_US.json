@@ -1,0 +1,156 @@
+{
+ "KATL": {
+  "wban": "13874",
+  "homr": [
+   33.62972,
+   -84.44224
+  ],
+  "source": "ASOS CM",
+  "precision": "DDddddd",
+  "begin": "2021-11-22",
+  "d_noaa_km": 0.0009258468524467528,
+  "d_oa_km": 1.5218015581759934,
+  "d_iem_km": 0.058693472927916275,
+  "remark": "NCEI PERFORMED A BULK UPDATE TO ASOS STATION LOCATIONS FOLLOWING AN UP"
+ },
+ "KAUS": {
+  "wban": "13904",
+  "homr": [
+   30.18311,
+   -97.67989
+  ],
+  "source": "ASOS CM",
+  "precision": "DDddddd",
+  "begin": "2021-11-22",
+  "d_noaa_km": 0.07113709308151991,
+  "d_oa_km": 2.350389391100471,
+  "d_iem_km": 0.00801752518268233,
+  "remark": "PER ASOS NWS CM, ACQUISITION CONTROL UNIT (ACU) LOCATION IS: 30.196086"
+ },
+ "KBKF": {
+  "wban": "23062",
+  "homr": [
+   39.76746,
+   -104.86948
+  ],
+  "source": "USGS TOPOGRAPHICAL MAP",
+  "precision": "DDddddd",
+  "begin": "2019-08-08",
+  "d_noaa_km": 11.292861839662477,
+  "d_oa_km": 12.425389763639714,
+  "d_iem_km": 12.449976913456172,
+  "remark": ""
+ },
+ "KDAL": {
+  "wban": "13960",
+  "homr": [
+   32.83839,
+   -96.83583
+  ],
+  "source": "ASOS CM",
+  "precision": "DDddddd",
+  "begin": "2021-11-22",
+  "d_noaa_km": 0.0034642068830543007,
+  "d_oa_km": 1.3131023806376971,
+  "d_iem_km": 1.777777473675295,
+  "remark": "NCEI PERFORMED A BULK UPDATE TO ASOS STATION LOCATIONS FOLLOWING AN UP"
+ },
+ "KHOU": {
+  "wban": "12918",
+  "homr": [
+   29.64586,
+   -95.28212
+  ],
+  "source": "ASOS CM",
+  "precision": "DDddddd",
+  "begin": "2021-11-22",
+  "d_noaa_km": 0.004849595053388719,
+  "d_oa_km": 0.5162619844340147,
+  "d_iem_km": 0.9334704001039837,
+  "remark": "PER ASOS NWS CM, ACQUISITION CONTROL UNIT (ACU) LOCATION IS: 29.645329"
+ },
+ "KLAX": {
+  "wban": "23174",
+  "homr": [
+   33.93816,
+   -118.3866
+  ],
+  "source": "ASOS CM",
+  "precision": "DDddddd",
+  "begin": "2021-11-22",
+  "d_noaa_km": 0.0011119492658909769,
+  "d_oa_km": 2.0320255951518367,
+  "d_iem_km": 0.00645762805330954,
+  "remark": "UPDATED LAT/LONG TO MATCH THE ASOS CM SPREADSHEET RECEIVED FROM NCEI. "
+ },
+ "KLGA": {
+  "wban": "14732",
+  "homr": [
+   40.77945,
+   -73.88027
+  ],
+  "source": "ASOS CM",
+  "precision": "DDddddd",
+  "begin": "1996-05-01",
+  "d_noaa_km": 0.0,
+  "d_oa_km": 0.6928685361715418,
+  "d_iem_km": 0.0008420006385031148,
+  "remark": "CORRECT BACK TO 5/1/1996, THE COMMISSIONING DATE OF THE ASOS, THE LAT/"
+ },
+ "KMIA": {
+  "wban": "12839",
+  "homr": [
+   25.78805,
+   -80.31694
+  ],
+  "source": "ASOS CM",
+  "precision": "DDddddd",
+  "begin": "2021-11-22",
+  "d_noaa_km": 0.002290439781158497,
+  "d_oa_km": 2.862417737089383,
+  "d_iem_km": 0.001001209712918009,
+  "remark": "NCEI PERFORMED A BULK UPDATE TO ASOS STATION LOCATIONS FOLLOWING AN UP"
+ },
+ "KORD": {
+  "wban": "94846",
+  "homr": [
+   41.96017,
+   -87.93164
+  ],
+  "source": "ASOS CM",
+  "precision": "DDddddd",
+  "begin": "2021-11-22",
+  "d_noaa_km": 0.0024805691205585486,
+  "d_oa_km": 3.020515328614612,
+  "d_iem_km": 0.004697546039672483,
+  "remark": "SITE (ASOS) MOVED 2.4 MILES S ON SAME PROPERTY, WITH ELEVATION CHANGE "
+ },
+ "KSEA": {
+  "wban": "24233",
+  "homr": [
+   47.44467,
+   -122.31442
+  ],
+  "source": "ASOS CM",
+  "precision": "DDddddd",
+  "begin": "2021-11-22",
+  "d_noaa_km": 0.0,
+  "d_oa_km": 0.479127298421997,
+  "d_iem_km": 0.004368503421113581,
+  "remark": "NCEI PERFORMED A BULK UPDATE TO ASOS STATION LOCATIONS FOLLOWING AN UP"
+ },
+ "KSFO": {
+  "wban": "23234",
+  "homr": [
+   37.61962,
+   -122.36562
+  ],
+  "source": "ASOS CM",
+  "precision": "DDddddd",
+  "begin": "2021-11-22",
+  "d_noaa_km": 0.0014185055598748386,
+  "d_oa_km": 0.8106441721116281,
+  "d_iem_km": 0.8196549519557412,
+  "remark": "NCEI PERFORMED A BULK UPDATE TO ASOS STATION LOCATIONS FOLLOWING AN UP"
+ }
+}

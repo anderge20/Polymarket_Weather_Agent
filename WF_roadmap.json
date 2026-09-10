@@ -1,0 +1,323 @@
+{
+ "definicion_completo": "COMPLETO significa que el proyecto Polymarket_Weather_Agent puede ejecutar de extremo a extremo, sobre DATOS REALES y sin operar dinero real, la cadena: (1) catálogo Gamma real ingerido en la DuckDB operativa (markets/outcomes/fees) con checkpoint resumible; (2) price_history real desde CLOB /prices-history (fidelity=1, ventanas <=48h) con dataset_version/provenance; (3) weather_forecasts reales desde Open-Meteo con available_at fail-closed derivado de disponibilidad empírica (F3), para el/los modelos elegidos en M1 y con coordenadas canónicas D1; (4) weather_observations y labels retrospectivos (Y_final) con decisión registrada sobre Y_final vs Y_asof_T; (5) weather_errors -> cuantiles p10..p90 por estación/modelo/lead/mes (M2) preregistrados; (6) features persistidas en la tabla features con no_lookahead_verified=True, filtro por dataset_version y token YES explícito; (7) p_weather calculado con un SettlementOperator explícito por fuente (fail-closed sin operador); (8) Strategy A con tau/tolerancias preregistradas, edge_net con modelo de coste (fees confirmadas) y sizing; (9) motor de backtest walk-forward que escribe backtest_results con métricas Brier/log-loss/PnL bruto y neto segmentadas por epoch/template, ejecutado sobre el catálogo real y con informe de validación versionado en el repo (no en results/ ignorado); (10) modo PAPER: paper_trades con price_layer SIMULATED_EXECUTABLE alimentado por un colector forward-only (orderbook/trades), corriendo N días sin intervención y con informe de evaluación paper vs backtest. Cada uno de estos pasos debe estar IMPLEMENTADO (código en main vía PR, nunca push directo), TESTED (pytest verde, sin stubs skip) y VALIDATED (harness sobre datos reales con informe hasheado). Quedan explícitamente FUERA de COMPLETO: ejecución con dinero real, wallet/órdenes, Strategy B, y cualquier elusión de cuotas (Open-Meteo 429) o borrado de datos. Un preregistro precede a cada ejecución evaluativa (V5, M2, backtest, calibración de tau, paper run).",
+ "estado_actual": "OBSERVADO (verificado ahora y en los inventarios): repo canónico /Users/mariaaleu/workspace/Polymarket_Weather_Agent en main@5287122, limpio; baseline `PYTHONPATH=src python3 -m pytest tests/ -q` = 127 passed / 4 skipped (los 4 skips son los stubs de ingestión: tests/test_market_asof.py:25,32 y tests/test_weather_asof.py:26,33). Implementado y testeado: esquema DuckDB v3 (database.py:50, 17 tablas + discovery_checkpoint), discovery Gamma atómica con checkpoint (discovery.py:236-364), parsing de resolución (resolution.py), mapeo de fees parcial (fees.py), probability.py (cuantiles->banda), features.build_feature as-of (features.py:30-217, devuelve dict, no persiste), labeling.build_label (función pura), Strategy A V1 (strategy_a.py, 21 tests) y harnesses validate_2b/2c/2d. NADA escribe weather_forecasts, weather_observations, weather_errors, price_history, features, trades, orderbook_snapshots, paper_trades ni backtest_results desde src/ (grep: solo tests y validate_2d.py con filas sintéticas); validate_2d.py:286 fija validated=False. No existe DuckDB operativa poblada (data/ ausente); el único run real fue GitHub Actions 2026-08-23 (smoke crasheado, corregido en bbf9f1e sin evidencia de re-run). Fuera del repo: worktree /private/tmp/pmw-publish/worktree con prices.py (CLOB prices-history), PHASE_2E_SETTLEMENT_OPERATOR_DESIGN.md y test_market_asof.py reescrito, todo sin commit; PHASE_2E_LEAD_HOURS_ANCHOR.md (RATIFIED, sin código) solo en /private/tmp/pmw-publish cuyo .git carece de HEAD. Investigación en ~/pmw-e2 (sin git): M1 NO SELECCIONADO (V5_STATUS.md:5); V5.2 preregistrado (sha 260481c2...) pero no ejecutado por HTTP 429 en single-runs/historical de Open-Meteo hasta ~2026-09-06; vigilante quota_watch.sh PID 8074 activo pero sin encadenar v5run.sh; v5uni.py:6,42-43 aún usa coordenadas IEM/OurAirports contra D1; hashes declarados de muestras V2/V3 no coinciden con disco; CODEX_REPLY_01.txt vacío (D3 en curso). Catálogo real completo disponible solo como investigación: ~/pmw-catalog-v2/CATALOG_V2.duckdb (8557 eventos, 93221 mercados, sin precios). Coordenadas canónicas D1 en STATION_COORDS_SNAPSHOT_v1.json (53 canónicas + OPKC/WSSS abiertas; HK y Taipei sin ICAO). Fees: semántica makerBaseFee/takerBaseFee=1000 vs rate 0.05 sin confirmar -> edge_net/net_edge NULL (strategy_a.py:251,265). Wunderground (fuente contractual del 85.6% de mercados) sin acceso programático; operador de settlement solo con evidencia parcial HKO (164/166). INFERIDO: el proyecto está en el límite entre 2D (señal bruta sobre datos sintéticos) y 2E (ingestión real); ninguna fase está VALIDATED con evidencia persistida en el repo.",
+ "roadmap": [
+  {
+   "id": "R0",
+   "titulo": "Consolidar árboles y custodia de artefactos",
+   "descripcion": "OBSERVADO: prices.py, PHASE_2E_SETTLEMENT_OPERATOR_DESIGN.md y el diff de tests/test_market_asof.py viven sin commit en /private/tmp/pmw-publish/worktree; PHASE_2E_LEAD_HOURS_ANCHOR.md solo existe en /private/tmp/pmw-publish (raíz con .git sin HEAD); los scripts constructores de CATALOG_V2 están en ~/.claude/jobs/324ffe40/tmp y apuntan a /private/tmp/pmw-publish/src (vacío); ~/pmw-e2 y ~/pmw-catalog-v2 no tienen git. Trabajo: crear rama feature en el canónico ~/workspace/Polymarket_Weather_Agent, traer los cuatro ficheros del worktree y el doc 2E lead_hours, versionar enum_v2.py/desc.py bajo scripts/research/, y poner ~/pmw-e2 bajo git (o un subdirectorio docs/research/ del repo) con los .sha256 existentes. Nunca push a main: todo vía PR.",
+   "depende_de": [],
+   "owner_sugerido": "Codex",
+   "tamano": "S",
+   "criterio_de_hecho": "`git -C ~/workspace/Polymarket_Weather_Agent log --oneline` en rama feature muestra un commit que contiene src/weather_agent/polymarket/prices.py, PHASE_2E_LEAD_HOURS_ANCHOR.md, PHASE_2E_SETTLEMENT_OPERATOR_DESIGN.md y scripts/research/enum_v2.py; `git status` del worktree en /private/tmp queda limpio o el worktree se elimina; ~/pmw-e2 tiene .git con commit inicial y DECISIONS.md rastreado; pytest sigue en >=127 passed."
+  },
+  {
+   "id": "R1",
+   "titulo": "Cerrar D3: respuesta de Codex y registro de propiedad por pista",
+   "descripcion": "OBSERVADO: DECISIONS.md:43-47 D3 EN CURSO; CODEX_MSG_01.txt enviado con D1-D3 y 4 preguntas; CODEX_REPLY_01.txt = 0 bytes. Trabajo: obtener respuesta de Codex (objeciones a D1/D2/D3, reparto, lista de 'completo'), registrar en DECISIONS.md qué pista posee cada agente (Claude: V5->M1->M2/M3 spec; Codex: ingestión/features/backtest/paper en repo) y resolver la colisión de nombre 'D1' (ancla lead_hours en PHASE_2E vs coordenadas en DECISIONS.md) renombrando una de las dos. Si Codex objeta D1 -> V5.3.",
+   "depende_de": [],
+   "owner_sugerido": "ambos",
+   "tamano": "S",
+   "criterio_de_hecho": "CODEX_REPLY_01.txt no vacío y DECISIONS.md contiene una entrada D3 con estado ADOPTADA, tabla owner->ítems de este roadmap y nota de desambiguación 'D1-coords' vs '2E-D1-anchor'."
+  },
+  {
+   "id": "R2",
+   "titulo": "Alinear v5uni.py y §14 con D1 antes de que vuelva la cuota (V5.3 si procede)",
+   "descripcion": "OBSERVADO: v5uni.py:6 carga req_lat/req_lon de MODELSEL_GEOVAL_V3_SAMPLE.json (coords IEM) y :42-43 usa OurAirports para el resto; D1 (DECISIONS.md:19-23) prohíbe IEM como posición y relega OurAirports a control; PREREG_MODELSEL_V5.md:218-219 §14 sigue diciendo 'Coordenadas: OurAirports'. Además el vigilante PID 8074 no encadena v5run.sh (línea de comando observada). Trabajo: reescribir v5uni.py para leer STATION_COORDS_SNAPSHOT_v1.json, emitir enmienda V5.3 al §14 con nuevo hash, actualizar V5_STATUS.md a V5.2/V5.3 y D4, y añadir a v5run.sh una validación de 2-3 pares antes de las 4000 peticiones. NO lanzar ninguna petición a Open-Meteo.",
+   "depende_de": [
+    "R1"
+   ],
+   "owner_sugerido": "Claude",
+   "tamano": "S",
+   "criterio_de_hecho": "`grep -n SNAPSHOT /Users/mariaaleu/pmw-e2/v5uni.py` devuelve la carga del snapshot y no hay referencia a req_lat de V3_SAMPLE; PREREG_MODELSEL_V5.md §14 cita STATION_COORDS_SNAPSHOT_v1 y PREREG_MODELSEL_V5.sha256 coincide con el fichero; V5_STATUS.md menciona v5extract.py, 4000 peticiones y el hash vigente.",
+   "bloqueo": "Ventana: debe completarse antes de que quota_watch.sh imprima CUOTA_RESTABLECIDA (~2026-09-06); no consultar Open-Meteo."
+  },
+  {
+   "id": "R3",
+   "titulo": "Reconciliar hashes de muestras V2/V3 y documentar método de hashing",
+   "descripcion": "OBSERVADO: MODELSEL_GEOVAL_V3_SAMPLE.json declarado 7a57ce0a... (V3 report:5, V4:4, PREREG V5:52) vs disco 6e253e38...; MODELSEL_ASOF_V2_SAMPLE.json declarado a0157ed7... vs disco 29464fbb...; ningún .py del directorio usa hashlib. Trabajo: determinar el objeto hasheado, re-declarar hashes en un addendum (sin reescribir informes congelados) y añadir un script hash_manifest.py que genere .sha256 de todos los artefactos JSON.",
+   "depende_de": [
+    "R0"
+   ],
+   "owner_sugerido": "Claude",
+   "tamano": "S",
+   "criterio_de_hecho": "Existe ~/pmw-e2/HASH_RECONCILIATION.md explicando la discrepancia y un manifest.sha256 cuyo `shasum -a 256 -c` pasa para todos los ficheros listados; el informe V5 citará solo hashes verificables."
+  },
+  {
+   "id": "R4",
+   "titulo": "Ejecutar V5.2/V5.3 al restablecerse la cuota (sin sortear 429)",
+   "descripcion": "OBSERVADO: v5run.sh encadena v5extract -> v5uni -> v5eval; v5extract reanudable, 429 -> SystemExit(3); V5_EXTRACT.json/V5_EVAL.json no existen; PREREG V5 §1 limita a rebajar confianza o mostrar homogeneidad. Trabajo: cuando quota_watch.sh termine con 200, lanzar manualmente ./v5run.sh (4000 + ~440 peticiones), relanzar tras 429 intermedios, y producir MODELSEL_V5_REPORT.md con hash.",
+   "depende_de": [
+    "R2",
+    "R3"
+   ],
+   "owner_sugerido": "Claude",
+   "tamano": "M",
+   "criterio_de_hecho": "Existen V5_EXTRACT.json (4000 filas o registro explícito de las faltantes), V5_DATASET.json, V5_EVAL.json y MODELSEL_V5_REPORT.md con .sha256; v5eval.py no se negó por extracción incompleta.",
+   "bloqueo": "HTTP 429 Open-Meteo single-runs/historical hasta ~2026-09-06; puerta 'no sortear cuotas'."
+  },
+  {
+   "id": "R5",
+   "titulo": "Clasificar §15 y emitir recomendación M1 (§16)",
+   "descripcion": "OBSERVADO: categorías A/B/C/D y opciones M1 1-5 congeladas en PREREG_MODELSEL_V5.md:228-259; D2 dice que M1 se decide con esos criterios; V3 empate práctico (Δ −0.0376, IC incluye 0) y V4 signo invertido a 24h. Trabajo: clasificar el resultado V5, recomendar exactamente una opción (posiblemente dependiente de componente/lead u opción 5), declarar límite de transportabilidad a leads >~45h y registrar M1 en DECISIONS.md. Si sale opción 5, preregistrar la ronda confirmatoria con muestra nueva como sub-ítem.",
+   "depende_de": [
+    "R4"
+   ],
+   "owner_sugerido": "ambos",
+   "tamano": "S",
+   "criterio_de_hecho": "DECISIONS.md contiene entrada 'M1' con estado ADOPTADA, opción elegida, categoría §15 y modelo(s) por componente/lead que consumirá R15."
+  },
+  {
+   "id": "R6",
+   "titulo": "Higiene de comentarios/docstrings desfasados en el repo",
+   "descripcion": "OBSERVADO: database.py:641-642 y :667 'SCHEMA_VERSION stays 2' vs :50 = 3; validate_2b.py:1094-1095 BLOCKER de checkpoint stub-tested anterior a 2C; validate_2c.py:17 idem; config.py:11,19 referencia phase1_5/ inexistente; discovery.py:4-5 'NOT tested/validated' pese a suite verde; PHASE_2B_FINAL_BUNDLE.txt checksums PENDING. Trabajo: corregir textos sin cambiar comportamiento, calcular checksums del bundle o marcarlo como histórico.",
+   "depende_de": [
+    "R0"
+   ],
+   "owner_sugerido": "Codex",
+   "tamano": "S",
+   "criterio_de_hecho": "`grep -rn 'stays 2' src scripts` vacío; `grep -rn phase1_5 src` vacío; pytest sigue 127+ passed; PR mergeado."
+  },
+  {
+   "id": "R7",
+   "titulo": "Registro de estaciones en el repo: coordenadas D1, ICAO variable en el tiempo, tz y exclusiones",
+   "descripcion": "OBSERVADO: el repo no define coordenadas (config.py:103 única mención; DEFAULT_CITY_REGISTRY tiene 6 ciudades l.120-181); STATION_COORDS_SNAPSHOT_v1.json (55 estaciones, sha ebe21014...) vive fuera de git; cambios de ICAO París LFPG->LFPB 2026-04-19 y Taipei RCTP->RCSS 2026-04-05 (CATALOG_V2 v3); HK (1859) y Taipei (77) sin ICAO; STATIONS_TZ.json solo 28. Trabajo: tabla station_registry (icao, city, lat, lon, source, status, valid_from/valid_to, tz, settlement_source) cargada desde el snapshot vía migración v4 o fichero de datos versionado; resolver ICAO por (city, fecha); marcar HK/Taipei como sin ruta METAR.",
+   "depende_de": [
+    "R0"
+   ],
+   "owner_sugerido": "Codex",
+   "tamano": "M",
+   "criterio_de_hecho": "`SELECT count(*) FROM station_registry` = 55 con 53 CANONICA + 2 EXCEPCION_ABIERTA; test que resuelve ('Paris','2026-05-01')->LFPB y ('Paris','2026-03-01')->LFPG pasa; tz definida para las 55."
+  },
+  {
+   "id": "R8",
+   "titulo": "Implementar el ancla 2E: T = endDate − lead_hours y target_date por día civil de estación (cerrar P1)",
+   "descripcion": "OBSERVADO: PHASE_2E_LEAD_HOURS_ANCHOR.md RATIFIED sin código (:5, :131); endDate solo en markets.source_timestamps JSON (discovery.py:129-131,158); strategy_a/features reciben prediction_time y target_date del caller (2D §C); Wellington endDate 12:00Z = medianoche civil (2E:135-137). Trabajo: helper prediction_time_for(market, lead_hours) y target_date_for(market, station_registry) con test de Wellington; sonda P1 sobre CATALOG_V2 (distribución de endDate por ciudad) documentada; columna derivada o vista sin borrar datos.",
+   "depende_de": [
+    "R7"
+   ],
+   "owner_sugerido": "Codex",
+   "tamano": "M",
+   "criterio_de_hecho": "tests/test_lead_hours_anchor.py pasa incluyendo caso Wellington (endDate 12:00Z -> target_date local correcto); PHASE_2E_LEAD_HOURS_ANCHOR.md P1 marcada CERRADA con cifras del catálogo."
+  },
+  {
+   "id": "R9",
+   "titulo": "Orquestador de ingestión de precios CLOB + política 429 + sonda P3 + un-skip test_market_asof",
+   "descripcion": "OBSERVADO: prices.py (worktree) implementa ventanas <=48h, fidelity=1, upsert transaccional, 429 -> RATE_LIMITED sin escribir, sin backoff ni planificación (:69-70, :97-98); no hay orquestación por token ni registro en dataset_versions/data_quality; test_market_asof.py sigue skip en main; P3 (cotización disponible en T) abierta (2E:106-112). Trabajo: run_prices(dataset_version) que recorre tokens YES/NO del catálogo, ventana open_time->endDate, checkpoint resumible como discovery, backoff exponencial/Retry-After, escritura price_semantics MIDPOINT_ESTIMATED documentada; ejecutar sobre una muestra real y luego el catálogo; sonda P3 medida sobre price_history real.",
+   "depende_de": [
+    "R0",
+    "R8",
+    "R10"
+   ],
+   "owner_sugerido": "Codex",
+   "tamano": "L",
+   "criterio_de_hecho": "`SELECT count(DISTINCT token_id) FROM price_history` cubre >=95% de tokens de mercados resueltos del catálogo; test_market_asof.py sin skip y verde; PHASE_2E P3 cerrada con % de mercados con cotización en T por lead; informe de ingestión con tasa de 429 y reintentos.",
+   "bloqueo": "Rate limits de CLOB desconocidos (no documentados); no sortear."
+  },
+  {
+   "id": "R10",
+   "titulo": "Poblar la DuckDB operativa con el catálogo real y re-validar 2B con evidencia versionada",
+   "descripcion": "OBSERVADO: no existe data/processed/weather_agent.duckdb; CATALOG_V2.duckdb (93221 mercados) es investigación sin ingerir en markets/outcomes; el único run real de validate_2b (Actions 2026-08-23) crasheó, corregido en bbf9f1e sin evidencia de re-run; results/ está en .gitignore:51; CATALOG_V2 se obtuvo desde el Mac en 80 s. Trabajo: ejecutar discover() completo (o import auditado de CATALOG_V2 con dataset_version propia) desde el Mac o Actions (decisión Hetzner en decisiones abiertas), re-ejecutar validate_2b/2c con --gamma, y decidir/crear docs/validation/ versionado para informes.",
+   "depende_de": [
+    "R0"
+   ],
+   "owner_sugerido": "Codex",
+   "tamano": "M",
+   "criterio_de_hecho": "`SELECT count(*) FROM markets` ≈ 93k y `outcomes` ≈ 186k en weather_agent.duckdb; docs/validation/PHASE_2B_VALIDATION_REPORT.md y PHASE_2C_VALIDATION_REPORT.md con veredicto VALIDATED y hash, commiteados vía PR."
+  },
+  {
+   "id": "R11",
+   "titulo": "Resolver semántica de fees y modelo de coste efectivo (edge_net)",
+   "descripcion": "OBSERVADO: 84451 mercados con feeSchedule {rate 0.05, takerOnly, rebateRate 0.25} y makerBaseFee/takerBaseFee=1000 (CATALOG_V2); fees.py:23-27 declara la semántica no documentada; effective_from/to siempre None; config.FEE_CONFIG.effective_cost_components no se consume; strategy_a.py:251,265 net BLOCKED. Trabajo (Claude): documentar con fuentes públicas de Polymarket la fórmula de fee taker en función del precio y confirmar unidades; derivar épocas de fees desde el catálogo. Trabajo (Codex): módulo costs.py que calcule taker_fee, spread_cost estimado y produzca edge_net; poblar effective_from/to.",
+   "depende_de": [
+    "R10"
+   ],
+   "owner_sugerido": "ambos",
+   "tamano": "M",
+   "criterio_de_hecho": "DECISIONS.md entrada 'FEES' ADOPTADA con fórmula y fuente; tests/test_costs.py verde; predictions.edge_net no NULL para mercados KNOWN; fees_disabled -> edge_net = edge_gross."
+  },
+  {
+   "id": "R12",
+   "titulo": "SettlementOperator: protocolo, migración de probability/features y operadores por fuente",
+   "descripcion": "OBSERVADO: PHASE_2E_SETTLEMENT_OPERATOR_DESIGN.md (untracked) declara unsafe el redondeo implícito de probability.py:89-94 y exige operador obligatorio (:5-17, :43-50); HKO floor 164/166 con 2 excepciones (HKO_OPERATOR_TEST.json); WU/NOAA (85.6% del catálogo) sin operador establecido; CWA inaccesible; 2D fija p_weather LOCKED (2D:82-93) lo que colisiona. Trabajo (Claude): auditoría empírica del operador WU/NOAA usando bandas ganadoras de CATALOG_V2 vs Tmax IEM (datos ya en disco, sin Open-Meteo), preregistrada; decisión ambos sobre desbloquear LOCKED. Trabajo (Codex): clase SettlementOperator, distribución continua, argumento obligatorio en build_feature y generate_event_signals, operador de prueba en tests, exclusión fail-closed sin operador.",
+   "depende_de": [
+    "R0",
+    "R10",
+    "R13"
+   ],
+   "owner_sugerido": "ambos",
+   "tamano": "L",
+   "criterio_de_hecho": "`grep -rn SettlementOperator src` muestra uso en features.py y strategy_a.py; tests verdes con operador de prueba; docs/research/SETTLEMENT_OPERATOR_AUDIT.md con tasa de compatibilidad por fuente y hash; DECISIONS.md registra operadores adoptados (al menos WU, NOAA, HKO) y los eventos sin operador se excluyen con reason 'no_settlement_operator'."
+  },
+  {
+   "id": "R13",
+   "titulo": "Ingestión de observaciones (weather_observations) desde IEM y decisión Y_final vs Y_asof_T",
+   "descripcion": "OBSERVADO: sin escritor de weather_observations; Y_final definido como max(METAR cuerpo, °C entero) por día civil local vía IEM (PREREG_MODELSEL.md:22-24); Y_asof_T no reconstruible (RECORD_VERSION_ASOF_AUDIT.md:68-71); alternativas A/B/C de REVISION_IMPACT_AUDIT.md:74-85 sin registrar; MTARCH_COVERAGE 25/52. Trabajo (Claude): registrar decisión Y para entrenamiento/evaluación y política available_at de observaciones (fail-closed: available_at = fin del día civil + latencia documentada), preregistrada. Trabajo (Codex): ingest/observations.py sobre IEM asos.py con dataset_version, provenance, sin usar en features (solo labels/errores); no depende de Open-Meteo.",
+   "depende_de": [
+    "R7",
+    "R8"
+   ],
+   "owner_sugerido": "ambos",
+   "tamano": "M",
+   "criterio_de_hecho": "DECISIONS.md entrada 'Y_LABEL' ADOPTADA; `SELECT count(*) FROM weather_observations` cubre los station-days del catálogo con METAR (>=50 estaciones, 2026-03..2026-09); test que verifica available_at > target_date fin de día local pasa."
+  },
+  {
+   "id": "R14",
+   "titulo": "Pipeline de labels: generación masiva y persistencia con join features<->labels",
+   "descripcion": "OBSERVADO: labeling.build_label es pura sin pipeline ni tabla (labeling.py:31-63); único consumidor tests; label es 'Yes'/'No' por market, no banda ganadora por evento; 47 'proposed' + 33 sin umaResolutionStatus en el catálogo. Trabajo: labels por market y por evento (winning band vía event_winning_band) desde markets.winning_outcome/resolution_timestamp, cotejados con weather_observations cuando exista operador; tabla labels o columnas en features; exclusión explícita de no resueltos.",
+   "depende_de": [
+    "R10",
+    "R13"
+   ],
+   "owner_sugerido": "Codex",
+   "tamano": "S",
+   "criterio_de_hecho": "Tabla/vista labels con una fila por (market_id, dataset_version) para todos los mercados resolved; test que comprueba que ningún label tiene resolution_timestamp <= prediction_time cuando se une a features."
+  },
+  {
+   "id": "R15",
+   "titulo": "Ingestión de forecasts Open-Meteo (weather_forecasts) con available_at fail-closed y plan de cuota",
+   "descripcion": "OBSERVADO: no existe cliente Open-Meteo en el repo (solo config.py:42,99-107); tests/test_weather_asof.py skip; F3: available_at PARTIAL desde 2026-06-03 y UNKNOWN 2026-04-02..06-02, L_max icon 4.76h/gfs 6.93/ukmo 10.48/ecmwf 8.78 (F3-CLOSURE-REPORT.md:51-59); cuota diaria compartida agotada (429); cell_selection=land no preregistrado (ARCH:446). Trabajo (Claude): spec preregistrada: modelos según M1, issue_time explícito (Single Runs), available_at = issue_time + L_max_modelo (fail-closed), cell_selection/elevation fijados, presupuesto de peticiones (55 estaciones × días × runs) y periodo utilizable (>=2026-06-03). Trabajo (Codex): ingest/weather.py con backoff, reanudable, dataset_version/provenance, sin sortear 429; un-skip test_weather_asof.",
+   "depende_de": [
+    "R5",
+    "R7",
+    "R8",
+    "R0"
+   ],
+   "owner_sugerido": "ambos",
+   "tamano": "L",
+   "criterio_de_hecho": "docs/research/PREREG_FORECAST_INGEST.md con hash; `SELECT count(*) FROM weather_forecasts WHERE available_at IS NOT NULL` > 0 para las 53 estaciones canónicas en el periodo declarado; test_weather_asof.py sin skip y verde; log de ingestión con 0 elusiones de 429.",
+   "bloqueo": "HTTP 429 Open-Meteo; presupuesto diario insuficiente para escala completa sin plan de cuota (decisión abierta)."
+  },
+  {
+   "id": "R16",
+   "titulo": "M2: weather_errors y derivación de cuantiles p10..p90 (preregistrado)",
+   "descripcion": "OBSERVADO: la tabla weather_errors (station/model/lead_hours/month, q05..q95) no tiene escritor ni lector; features.py consume forecast_p10..p90 pero Open-Meteo entrega temperature_2m determinista (INFERIDO: hace falta modelo de error); M2/M3 prohibidos hasta cerrar M1 (PREREG V5:275); semántica de weather_errors.lead_hours pendiente (2E:132-133). Trabajo (Claude): PREREG_M2 (walk-forward por tiempo, error = obs − forecast con operador de settlement, cuantiles por station/model/lead/mes con mínimos de muestra, fallback jerárquico). Trabajo (Codex): errors.py que escribe weather_errors y forecast_p10..p90 en weather_forecasts como filas derivadas (record_version nuevo, sin borrar).",
+   "depende_de": [
+    "R5",
+    "R13",
+    "R15",
+    "R12"
+   ],
+   "owner_sugerido": "ambos",
+   "tamano": "L",
+   "criterio_de_hecho": "PREREG_M2.md hasheado antes de la primera ejecución; `SELECT count(*) FROM weather_errors` > 0; test que verifica que los cuantiles usan solo observaciones con available_at < fecha de cálculo; informe M2 con cobertura por estación/lead."
+  },
+  {
+   "id": "R17",
+   "titulo": "Persistir features y corregir filtros (dataset_version, token YES) + validar no-look-ahead sobre datos reales",
+   "descripcion": "OBSERVADO: build_feature devuelve dict sin insertar en features (features.py); consulta de precio por market_id toma prices[0] sin token_id (l.74-87) y no filtra dataset_version (l.74-82, l.97-105); strategy_a lo compensa con guard (l.203-217). Trabajo: build_feature(token_id YES explícito, dataset_version obligatorio, operador), upsert en features con no_lookahead_verified, y ejecución de validate_2c --gamma más un harness sobre price_history/weather_forecasts reales (cierre real de Blocker 2 de 2C).",
+   "depende_de": [
+    "R9",
+    "R15",
+    "R12"
+   ],
+   "owner_sugerido": "Codex",
+   "tamano": "M",
+   "criterio_de_hecho": "`SELECT count(*) FROM features WHERE no_lookahead_verified` > 0 sobre datos reales; tests adversariales pasan con dataset_version múltiple en la misma DB; docs/validation/PHASE_2C_B2_VALIDATION_REPORT.md VALIDATED."
+  },
+  {
+   "id": "R18",
+   "titulo": "Preregistro del backtest y de parámetros Strategy A (tau, tolerancias, segmentación)",
+   "descripcion": "OBSERVADO: tau, weather_sum_tolerance, market_sum_min/max OPEN (2D:393-394); segmentación epoch/template OPEN (:395); metodología/ventanas/métricas OPEN (:396); 2D §P/W.10 fijan unidad=evento, walk-forward temporal, Brier/log-loss. Trabajo: PREREG_BACKTEST_A.md: universo (mercados resueltos con operador, cotización en T, forecast as-of), leads, grid de tau OOS, ventanas walk-forward, métricas brutas y netas, criterios de éxito/fracaso, política de exclusión y de HK/Taipei.",
+   "depende_de": [
+    "R11",
+    "R14",
+    "R17"
+   ],
+   "owner_sugerido": "Claude",
+   "tamano": "S",
+   "criterio_de_hecho": "PREREG_BACKTEST_A.md con .sha256 commiteado antes de cualquier ejecución del motor; DECISIONS.md registra el hash."
+  },
+  {
+   "id": "R19",
+   "titulo": "Motor de backtest walk-forward que escribe backtest_results",
+   "descripcion": "OBSERVADO: backtest_results solo aparece en database.py; no hay productor; Strategy A no hace PnL ni backtest (strategy_a.py:3-6). Trabajo: backtest.py que itera eventos por T=endDate−lead (R8), llama generate_event_signals con operador y tau del preregistro, une con labels, calcula Brier/log-loss/PnL bruto y neto (fill hipotético a precio INDICATIVE con spread modelado de R11), segmenta por epoch/template/estación, y escribe backtest_results con walk_forward_config y parameters.",
+   "depende_de": [
+    "R18"
+   ],
+   "owner_sugerido": "Codex",
+   "tamano": "L",
+   "criterio_de_hecho": "tests/test_backtest.py verde con datos sintéticos y determinismo; `SELECT count(*) FROM backtest_results` > 0 tras un run real; cada fila referencia el hash del preregistro."
+  },
+  {
+   "id": "R20",
+   "titulo": "Sizing y edge_net en la señal (desbloquear 'DO NOT IMPLEMENT YET' de 2D)",
+   "descripcion": "OBSERVADO: 2D §V (:228-235) pospone net_edge y sizing; DEFAULTS bankroll/sizing en config.py:202-211 sin consumidor; signals.net_edge NULL. Trabajo: sizing fraccional preregistrado (p.ej. Kelly fraccional acotado) sobre edge_net, escribir signals.net_edge y size, con tests; no ejecuta nada.",
+   "depende_de": [
+    "R11",
+    "R19"
+   ],
+   "owner_sugerido": "Codex",
+   "tamano": "M",
+   "criterio_de_hecho": "signals.net_edge y size no NULL para señales BUY/FADE en un run real; test que verifica size=0 cuando edge_net<=0; documento de sizing preregistrado."
+  },
+  {
+   "id": "R21",
+   "titulo": "Ejecutar backtest real, calibrar tau OOS y publicar informe de validación de Strategy A",
+   "descripcion": "OBSERVADO: validate_2d.py:286 validated=False por diseño; ningún PHASE_*_VALIDATION_REPORT existe en el repo. Trabajo: correr R19 según R18 sobre el catálogo real, seleccionar tau en ventana de calibración y evaluar en ventanas posteriores, reportar por epoch/template/estación, declarar Strategy A VALIDATED o NOT VALIDATED, y especificar M3 (Claude) en función del resultado.",
+   "depende_de": [
+    "R19",
+    "R20"
+   ],
+   "owner_sugerido": "ambos",
+   "tamano": "M",
+   "criterio_de_hecho": "docs/validation/PHASE_2F_STRATEGY_A_BACKTEST_REPORT.md con hash, veredicto explícito, tau adoptado registrado en DECISIONS.md y tabla de métricas OOS; el veredicto no se declara VALIDATED si falla algún criterio del preregistro."
+  },
+  {
+   "id": "R22",
+   "titulo": "Colector forward-only (orderbook/trades) y verificación de CLOB_WS_URL",
+   "descripcion": "OBSERVADO: CLOB_WS_URL=None UNVERIFIED (config.py:46,90-98); orderbook_snapshots/trades sin escritor; 2A decisión 5 y 2B decisión 6 lo difieren al 'live collector'; collector_session_id previsto (2A:316-320). Trabajo: verificar endpoint websocket o usar polling REST del book; collector.py con sesiones, persistencia append-only, reconexión; ejecutar en máquina decidida (ver decisiones abiertas).",
+   "depende_de": [
+    "R9",
+    "R10"
+   ],
+   "owner_sugerido": "Codex",
+   "tamano": "L",
+   "criterio_de_hecho": "config.CLOB_WS_URL documentado como VERIFIED o política polling adoptada; `SELECT count(*) FROM orderbook_snapshots` y `trades` > 0 tras 24h de colector; test de reanudación de sesión verde.",
+   "bloqueo": "URL websocket sin verificar; requiere host con proceso persistente."
+  },
+  {
+   "id": "R23",
+   "titulo": "Motor paper: paper_trades con SIMULATED_EXECUTABLE y comparación paper vs backtest",
+   "descripcion": "OBSERVADO: paper_trades y seq_paper_trades existen sin escritor; price_layer SIMULATED_EXECUTABLE previsto (2A:77,324-325); 2D pospone motor paper. Trabajo: paper.py que consume signals en tiempo real (T según R8, forecasts as-of reales, cotización del colector), simula fill contra el book observado con fees de R11, registra paper_trades y liquida con labels; sin wallet ni órdenes reales.",
+   "depende_de": [
+    "R20",
+    "R22",
+    "R21"
+   ],
+   "owner_sugerido": "Codex",
+   "tamano": "L",
+   "criterio_de_hecho": "tests/test_paper.py verde; en un run real `SELECT count(*) FROM paper_trades` > 0 con price_layer='SIMULATED_EXECUTABLE'; ninguna dependencia de claves/wallet (grep API_KEY/SECRET vacío)."
+  },
+  {
+   "id": "R24",
+   "titulo": "Corrida paper preregistrada de N días y veredicto COMPLETO",
+   "descripcion": "Trabajo: preregistrar (Claude) duración, universo, tau, criterios de éxito y de parada; ejecutar (Codex) el pipeline completo diario (catálogo incremental -> precios -> forecasts as-of -> señales -> paper) durante N días sin intervención; informe final comparando PnL paper vs backtest esperado, calibración, exclusiones y tasas de 429/fallos; decisión conjunta de COMPLETO. INFERIDO: N>=14 días para cubrir varias ventanas de forecast.",
+   "depende_de": [
+    "R23",
+    "R16"
+   ],
+   "owner_sugerido": "ambos",
+   "tamano": "M",
+   "criterio_de_hecho": "PREREG_PAPER_RUN.md hasheado antes del inicio; docs/validation/PAPER_RUN_REPORT.md con N días completos, sin días perdidos no justificados, y DECISIONS.md con entrada 'COMPLETO' (ADOPTADA o NO, con causas) firmada por Claude y Codex; pytest sin skips.",
+   "bloqueo": "Requiere cuota Open-Meteo diaria sostenida y host persistente."
+  }
+ ],
+ "decisiones_abiertas": [
+  "M1 (modelo de forecast): no seleccionado; V5 solo puede rebajar o mostrar homogeneidad (PREREG V5 §1); posible resultado 'dependiente de componente/lead' u 'opción 5 continuar', que exigiría otra ronda confirmatoria y retrasa R15/R16.",
+  "Plan de cuota Open-Meteo: la cuota diaria compartida está agotada (429) y la ingestión a escala (55 estaciones × meses × runs) no cabe en la cuota gratuita observada; decidir entre reducir universo/periodo, espaciar en días, o contratar plan de API (gasto, no 'dinero real' de trading, pero requiere aprobación del usuario). Nunca sortear el 429.",
+  "SettlementOperator vs p_weather LOCKED: adoptar el diseño untracked invalida el p_weather de 2D (LOCKED en 2D:82-93) hasta disponer de operadores auditados; decidir si se desbloquea y qué fuentes (WU/NOAA ~85.6%, HKO con 2 excepciones, CWA inaccesible) quedan dentro del universo.",
+  "Y para entrenamiento/evaluación: Y_final (retrospectivo, IEM) vs Y_asof_T (no reconstruible); alternativas A/B/C de REVISION_IMPACT_AUDIT.md:74-85 sin registrar; afecta a R13/R16 y a la interpretación as-of del backtest.",
+  "Periodo utilizable as-of: available_at UNKNOWN 2026-04-02..06-02 (F3); si se exige as-of estricto, entrenamiento/backtest se restringe a >=2026-06-03 (INFERIDO: ~3 meses de datos).",
+  "Semántica de fees: makerBaseFee/takerBaseFee=1000 vs feeSchedule rate 0.05/rebate 0.25; sin confirmación no hay edge_net, sizing ni PnL neto (R11).",
+  "Coordenadas D1: premisa 'NOAA = sensor' no verificada; OPKC (1551 mercados, ΔT 2.8 °C) y WSSS abiertas; 40/55 sin ARP; cell_selection (land por defecto) y política de elevation sin preregistrar.",
+  "Universo: incluir o excluir Hong Kong (1859 mercados, HKO, sin METAR) y Taipei (77, sin ICAO/operador); mercados 'proposed' (47) y sin umaResolutionStatus (33).",
+  "Infraestructura de ejecución: Hetzner (trader@..., pertenece a cmle-bot, SSH puerto 443, ningún uso PMW evidenciado) vs Mac local (CATALOG_V2 en 80 s) vs GitHub Actions (único run real, sin proceso persistente); necesaria para colector forward-only y paper run.",
+  "Dónde vive la evidencia de validación: results/ está en .gitignore:51 y ningún informe está versionado; propuesta docs/validation/ con hashes (requiere decisión ambos).",
+  "Acceso a Wunderground: fuente contractual de 79757 mercados sin acceso programático; decidir si IEM/METAR se acepta como proxy con auditoría de compatibilidad (R12) o si se busca otra vía.",
+  "CLOB_WS_URL: sin verificar (config.py:46); decidir websocket vs polling REST para el colector (R22).",
+  "Nomenclatura de fases: '2E' designa hoy dos documentos no relacionados (lead_hours RATIFIED y SettlementOperator untracked) y 'D1' colisiona entre PHASE_2E y DECISIONS.md; fijar numeración 2E/2F/2G alineada con este roadmap.",
+  "Rate limits de CLOB /prices-history: no documentados en el repo; el orquestador R9 necesita una política de cuota antes del backfill completo (~186k tokens × ventanas 48h).",
+  "Valores de tau y tolerancias de Strategy A y metodología de calibración OOS: OPEN en 2D:393-396; deben preregistrarse (R18) antes de cualquier backtest real."
+ ]
+}

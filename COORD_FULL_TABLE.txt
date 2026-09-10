@@ -1,0 +1,56 @@
+ICAO  ciudad               IEM_lat     IEM_lon      OA_lat      OA_lon    d_km  decnombre_IEM            
+ZSQD  Qingdao             36.06667   120.33333    36.36195   120.08817   39.52    5  Qingdao               
+ZGSZ  Shenzhen            22.55000   114.10000    22.63947   113.80326   32.05    2  Shenzhen              
+ZHCC  Zhengzhou           34.71667   113.65000    34.52650   113.84916   27.92   10  Zhengzhou             
+ZUCK  Chongqing           29.52000   106.48000    29.71225   106.65189   27.08    2  Chongqing             
+ZHHH  Wuhan               30.62000   114.13000    30.77480   114.21372   18.98    2  Wuhan                 
+ZUUU  Chengdu             30.66667   104.01667    30.55826   103.94597   13.82   10  Chengdu               
+OPKC  Karachi             24.84558    67.16137    24.90650    67.16080    6.77    5  Karachi               
+ZSPD  Shanghai            31.11667   121.76667    31.14340   121.80500    4.71   10  Shanghai              
+MPMG  Panama City          8.98333   -79.51667     8.97334   -79.55560    4.42   10  Panama                
+OEJN  Jeddah              21.65983    39.12221    21.68024    39.15744    4.29    8  Jeddah                
+WMKK  Kuala Lumpur         2.71667   101.70000     2.74558   101.71000    3.40    5  Kuala Lumpur          
+LEMD  Madrid              40.46667    -3.55556    40.49341    -3.57225    3.29    5  Madrid                
+KORD  Chicago             41.96020   -87.93160    41.97860   -87.90480    3.02    4  Chicago OHare         
+KMIA  Miami               25.78805   -80.31693    25.79601   -80.28975    2.86    5  MIAMI INTL AIRPORT    
+KAUS  Austin              30.18304   -97.67987    30.19753   -97.66201    2.35    5  Austin Bergstrom Int  
+WSSS  Singapore            1.36667   103.98333     1.35019   103.99400    2.18    5  Singapore             
+KLAX  Los Angeles         33.93816  -118.38653    33.94250  -118.40800    2.04    5  LOS ANGELES INTL      
+EHAM  Amsterdam           52.31541     4.79016    52.30860     4.76389    1.94    5  Amsterdam             
+EDDM  Munich              48.35833    11.80917    48.35380    11.78610    1.78    5  Munich                
+RPLL  Manila              14.50690   121.00420    14.50860   121.02000    1.71    4  Manila                
+LFPG  Paris               49.01528     2.53444    49.00896     2.55412    1.60    5  Paris                 
+LTFM  Istanbul            41.26290    28.74130    41.27487    28.73214    1.54    4  Istanbul              
+KATL  Atlanta             33.63010   -84.44180    33.63670   -84.42810    1.47    4  ATLANTA INTL ARPT     
+KHOU  Houston             29.63747   -95.28245    29.64534   -95.27681    1.03    5  HOUSTON/WILL HOBBY    
+FACT  Cape Town          -33.96667    18.60000   -33.97403    18.60433    0.91   10  Cape Town             
+ZSJN  Jinan               36.85550   117.20600    36.85720   117.21600    0.91    4  Jinan                 
+ZBAA  Beijing             40.07413   116.58700    40.07735   116.59670    0.90    5  Beijing               
+LFPB  Paris               48.96722     2.42722    48.96228     2.43654    0.87    5  Paris                 
+VHHH  Hong Kong           22.30944   113.92194    22.31184   113.91486    0.78    5  Hong Kong             
+KLGA  NYC                 40.77945   -73.88028    40.77720   -73.87260    0.69    5  New York/LaGuardia    
+RJTT  Tokyo               35.55333   139.78111    35.54968   139.78696    0.67    5  Tokyo                 
+EPWA  Warsaw              52.16278    20.96111    52.16570    20.96710    0.52    5  Warsaw                
+ZGGG  Guangzhou           23.39639   113.30083    23.39240   113.29900    0.48    5  Guangzhou             
+KSEA  Seattle             47.44469  -122.31437    47.44794  -122.31028    0.47    5  SEATTLE-TACOMA INTL   
+KDAL  Dallas              32.84711   -96.85178    32.84478   -96.84765    0.46    5  DALLAS/LOVE FIELD     
+LIMC  Milan               45.63000     8.72306    45.63060     8.72811    0.40    2  Milano                
+RKSI  Seoul               37.46667   126.45000    37.46910   126.45100    0.28   10  Seoul                 
+RCSS  Taipei              25.06944   121.55167    25.06724   121.55282    0.27    5  Taipei                
+MMMX  Mexico City         19.43630   -99.07210    19.43582   -99.07033    0.19    4  Mexico City           
+CYYZ  Toronto             43.67722   -79.63056    43.67594   -79.62942    0.17    5  LESTER B PEARSON INT  
+NZWN  Wellington         -41.32720   174.80530   -41.32684   174.80686    0.14    4  Wellington            
+EFHK  Helsinki            60.31722    24.96333    60.31836    24.96334    0.13    5  Helsinki              
+SBGR  Sao Paulo          -23.43208   -46.46951   -23.43127   -46.46995    0.10    5  Sao Paulo             
+WIHH  Jakarta             -6.26661   106.89112    -6.26699   106.89032    0.10    5  Jakarta               
+KSFO  San Francisco       37.61897  -122.37489    37.61981  -122.37482    0.09    5  SAN FRANCISCO INTL    
+KBKF  Denver              39.70167  -104.75167    39.70170  -104.75200    0.03    5  BUCKLEY ANGB/DENVER   
+RKPK  Busan               35.17953   128.93822    35.17950   128.93800    0.02    5  Busan                 
+RCTP  Taipei              25.07773   121.23282    25.07770   121.23300    0.02    5  Taipei                
+VILK  Lucknow             26.76059    80.88934    26.76060    80.88930    0.00    5  Lucknow               
+SAEZ  Buenos Aires       -34.82222   -58.53583   -34.82220   -58.53580    0.00    5  Buenos Aires          
+LLBG  Tel Aviv            32.01139    34.88667    32.01140    34.88670    0.00    5  Tel-aviv              
+LTAC  Ankara              40.12808    32.99508    40.12810    32.99510    0.00    5  Ankara                
+EGLC  London              51.50528     0.05528    51.50530     0.05528    0.00    5  London City           
+UUWW  Moscow              55.59150    37.26150    55.59150    37.26150    0.00    4  Moscow                
+DNMM  Lagos                6.57737     3.32116     6.57737     3.32116    0.00    5  Lagos                 

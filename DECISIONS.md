@@ -5365,3 +5365,46 @@ las de **v1 §10**.
 yo encontré su sha equivocado, B encontró sus dos citas rotas, y yo la contradicción entre v2 y v3.
 **Ninguno de los cuatro lo encontró quien lo escribió**, y los cuatro son de la capa de referencias —
 no del contenido — que es la que llevábamos el día entero sin auditar.
+
+## B-25 — La cadena de preregistros de M2 mentía, y el eslabón que faltaba ya existe · 2026-09-10 · Claude (sesión B)
+**Hallazgo de A (A-105), verificado por mí línea a línea, y el defecto es mío:**
+```
+PREREG_M2_ERROR_v3.md cabecera : «Sustituye a v2 (b2b168d4…), que queda RETIRADO por NO APTO»
+fit_quantile_artifact.py:152   : prereg_sha256 = m2.PREREG_SHA_V2 = b2b168d4…
+```
+Un auditor verifica el artefacto, abre la cadena, y concluye —**con toda la razón dada la
+cadena**— que producción corre sobre un preregistro retirado. **La decisión es correcta** —v3
+falló su propio criterio, 6 de 46 estaciones— **pero eso vive en `M2_V3_REPORT.md` y en un
+comentario de `error_model.py:231`, no en la cadena.** La afirmación de v3 sobre v2 **era cierta
+al escribirse y dejó de serlo**, y un documento congelado no puede enterarse.
+
+**Es B-24 subida un nivel:** allí una referencia resolvía a algo que ya no era cierto **dentro**
+de un documento; aquí es **entre** documentos, y es peor, porque **cada documento por separado es
+correcto y sólo la cadena miente**.
+
+**Arreglado sin tocar un byte hasheado:** `M2_PREREG_CHAIN.md`, sha
+`882206ad08f6212dca7922082187312769fa1ec48869254bc648f52479506582`. Estado de v1/v2/v3 con sus
+sha y su porqué; que **v2 GOBIERNA** y la frase de v3 sobre ella **no está operativa**; que las
+prohibiciones vigentes son las de **v1 §10** (B-24); que el repo sólo lleva v2, así que desde él
+no se resuelve ninguna cita; y un punto que importa por sí solo:
+
+> **Una versión retirada puede dejar un resultado válido.** De v3 se retiró **el método**, no la
+> **medición que lo tumbó**: el sesgo por estación no es persistente (correlación entre mitades
+> **+0,080**), y de ahí que la probabilidad de v2 para un mercado concreto esté peor calibrada
+> que su cifra agregada y **no sea corregible con este sustrato**. Esa limitación sigue en pie.
+
+**Regla general:** **un preregistro retirado necesita un puntero HACIA ADELANTE a lo que lo
+retiró.** Sin él gana la última afirmación de la cadena, y ésa puede venir de un documento que
+fue retirado a su vez. **No se arregla editando** —editar v3 rompería el sha que prueba que se
+congeló antes de calcular nada— sino con un índice fechado que se actualiza.
+
+### Balance de la auditoría de la capa de referencias (B-23, B-24, B-25 · A-103, A-105)
+```
+sha que apunta a contenido que no está    lo encontró A   era de B
+número que apunta a dos sitios            lo encontró B   era de A
+cita que resuelve al sitio equivocado     lo encontró B   era de B
+cadena que afirma lo contrario del estado lo encontró A   era de B
+```
+**Ninguno de los cuatro lo encontró quien lo escribió, y los cuatro son de la capa de
+referencias, no del contenido.** Llevábamos dos días auditando lo que los documentos **dicen** sin
+auditar **si se puede llegar a ellos**.
