@@ -6174,3 +6174,49 @@ segundo es preferible porque **devuelve la comprobación a un solo objeto** en v
 Hoy lo hice **después** de fusionar, que es lo que se puede hacer una vez ocurrido; en adelante el
 rebase va antes. La tarea del #22 ya comprobaba `mergeable` y se rebasaba si hacía falta — **pero
 `mergeable` sólo mira el conflicto textual**, y ésa es exactamente la señal que no sirve para esto.
+
+## A-120
+
+**Fecha:** 2026-09-10 09:25Z
+**Autor:** A
+**Asunto:** el par de lead 9 — 456 contra 456, y la premisa de §6bis.4septies queda medida en vez de supuesta
+
+Primera ranura tras fusionar el #22 (`763c4bd`, 08:31:09Z). Verificado **sobre el shard**, no sobre la
+línea del log:
+
+    objetivo 2026-09-10, lead 9, t_asof 03:00Z
+
+    corte       row_kind      is_final  bands  bands_priced  events_complete
+    02:49:13    (sin campo)   False     561    456           10/51
+    03:00:00    other_lead    True      561    456           10/51
+
+**`bands_priced` = 456 en las dos.** También coinciden `events_complete` (10/51) y `bands` (561),
+aunque el aserto congelado sólo iba sobre el primero —los denominadores pueden crecer por
+redescubrimiento y exigir igualdad de todo habría hecho perseguir un fantasma—.
+
+**La premisa se sostiene para el 2026-09-10:** ninguna recogida cayó en `(02:49:13, 03:00:00]`, luego la
+fila temprana **estaba completa**. Y eso es lo que la fila tardía existe para decir: **la temprana
+apostaba, y sólo un corte en el ancla podía resolver la apuesta.**
+
+**Es además la primera fila `is_final: True` de lead 9 de la historia del proyecto.** Hasta el #19 la
+serie era estructuralmente ciega a ese lead; hasta el #22 la etapa reventaba con un `NameError`.
+
+**Dos límites, escritos para que no se pierdan al citar el resultado:**
+
+1. **Vale para ese día.** La propiedad depende del cron **y de la duración del ciclo**, y el margen real
+   eran **10 min 47 s** entre el corte y el ancla. Es una comprobación **a repetir**, no un teorema — y
+   con la consecuencia contraintuitiva ya escrita en el código: **un `decide 9` más rápido está más
+   expuesto**, porque adelanta el corte y ensancha la ventana.
+2. **La igualdad no es sorprendente y no debe leerse como confirmación fuerte.** El calendario ya decía
+   que la siguiente pasada era a las 03:16, posterior al ancla. **Lo que la fila añade no es la
+   coincidencia: es que ahora está medida.** Si algún día difieren, sabremos el día exacto en que la
+   serie dejó de medir lo que dice — y eso, que es el valor real, sólo existe porque la comprobación se
+   hace **siempre** y no sólo cuando se sospecha.
+
+**Y la acumulación de §6bis.4septies.1 sigue subiendo como predice**, con la fila `own` del mismo ciclo
+(objetivo 2026-09-11, lead 24): eventos completos **4/49 → 7/49 → 10/51 → 21/51**, y bandas cotizadas
+423 → 437 → 456 → **494 de 561**. El calentamiento es real y medible, que era justo lo que la regla
+afirmaba sin haberlo visto todavía.
+
+Pendiente: la comprobación de A-92 a las **15:07Z**, que es otra pregunta —primera fila final del
+objetivo 2026-09-11 con lead 24— y no debe juntarse con ésta en el informe.
