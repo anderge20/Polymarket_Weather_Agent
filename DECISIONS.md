@@ -5408,3 +5408,53 @@ cadena que afirma lo contrario del estado lo encontró A   era de B
 **Ninguno de los cuatro lo encontró quien lo escribió, y los cuatro son de la capa de
 referencias, no del contenido.** Llevábamos dos días auditando lo que los documentos **dicen** sin
 auditar **si se puede llegar a ellos**.
+
+## A-106
+
+**Fecha:** 2026-09-10 02:12Z
+**Autor:** A
+**Asunto:** el corpus de investigación vivía en un portátil — 236 de 248 ficheros no estaban espejados
+
+B propuso que mi nota del repo apuntara a su nuevo `M2_PREREG_CHAIN.md` en vez de duplicarlo, y tiene
+razón: *un puntero que se actualiza es mejor que dos textos que divergen*. Antes de apuntar comprobé
+que el destino fuera alcanzable. **No lo era.**
+
+**Y la comprobación con la que lo establecí falló por el motivo equivocado.** Hice
+`git show origin/...:M2_PREREG_CHAIN.md | shasum` y salió `e3b0c44298fc1c14…` — que es **el sha256 de
+la cadena vacía**: `git show` no encontró nada y `shasum` hasheó nada. Habría podido leerlo como «hay
+un fichero y su sha no coincide» en vez de «no hay fichero». Una hora después de escribir la regla, y
+esta vez el que la incumplió fui yo con la regla delante.
+
+**Comprobado bien, el hueco era mucho mayor que un fichero:**
+
+    research/modelsel-artifacts    19 entradas
+    ~/pmw-e2                      248 ficheros
+
+Estaban espejados `DECISIONS.md`, `PREREG_PAPER_RUN.md`, `ROADMAP.md` y algunos `PHASE_*`. **Todo lo
+demás no**: cada artefacto e informe `M2_*`, cada auditoría `COORDINATE_*` con su `sha256`, la cadena
+de preregistros de M2, los extractos de selección de modelo V5, los resultados crudos de R21 y R22.
+**La evidencia detrás de casi todo lo que DECISIONS.md afirma existía en un solo sitio, y ese sitio
+era un portátil.**
+
+Es el principio del colector —nada vive sólo en la máquina— aplicado al corpus en vez de a un shard, y
+es además **instrucción explícita del usuario**: todos los documentos y scripts, siempre actualizados
+en GitHub. Y es la versión a nivel de corpus de lo que B y yo llevábamos la noche auditando:
+comprobamos si una referencia resuelve **dentro** de un documento y **entre** documentos, y **nunca
+preguntamos si los documentos son alcanzables**.
+
+**236 ficheros, 33 MB, empujados.** Nada excluido, para que nada falte en silencio. Barrido de
+credenciales antes de subir: el único acierto es `password=demo` dentro de una URL de Wikipedia en el
+dataset público de aeropuertos, y `git check-ignore` confirma que nada de lo que `.gitignore` cubre se
+coló. Declarado también que algunos son salidas de conveniencia (`c.out`, `e.out`, `m.out`) y no
+artefactos curados — **incluidos en vez de filtrados porque decidir qué cuenta como «el trabajo» es
+justo el juicio que no debe hacerse en silencio.**
+
+**El primer intento de empuje falló a mitad** (`send-pack: unexpected disconnect`) y **la verificación
+lo cazó**: la rama seguía con 19 entradas. Reintentado con más búfer. Verificado después: 248 entradas,
+y `M2_PREREG_CHAIN.md` con **exactamente** el sha que B declaró, `882206ad…`. El puntero ya resuelve, y
+ahora sí puedo escribir la nota de `prereg/` apuntando a él.
+
+**Cómo se apuntará, que es la lección de la noche aplicada hacia adelante:** la nota **direcciona por
+nombre y rama** —que siempre resuelve al estado actual— y **anota el sha como testigo, no como
+dirección**. Un puntero clavado a un sha se queda obsoleto en cuanto el índice se actualice, que es
+exactamente el defecto que este índice existe para arreglar.
