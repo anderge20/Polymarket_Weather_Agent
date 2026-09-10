@@ -277,11 +277,26 @@ def stage_guard_dataset_version(cy: Cycle, con, *, dataset_version: str) -> dict
                 f"superseded row"
             )
     if problems:
-        cy.stage("guard:dataset_version", STOPPED, problems=json.dumps(problems))
-        raise SystemExit(
-            "paper_cycle: refusing to decide on a database whose unfiltered reads "
-            "are ambiguous:\n  - " + "\n  - ".join(problems)
-        )
+        # IT REFUSES THE DECISION, NOT THE CYCLE — which is what it always said
+        # it did. Its own message reads "refusing to DECIDE" and the call site
+        # says "a cycle that only collects is harmless"; the implementation
+        # raised SystemExit and took the whole run down with it.
+        #
+        # That matters because of WHERE it sits: between `stage_collect` — the
+        # order-book capture, the one thing here that cannot be re-fetched — and
+        # `stage_dump`, the only place that capture is persisted, with
+        # `stage_dump` inside the `try`. So a guard that exists to protect a
+        # decision was also discarding the collection, and the asymmetry runs
+        # the wrong way: tomorrow's cycle can decide again, tomorrow's book is
+        # gone. Found by session B while approving PR #19, as the instance of the
+        # span rule that PR fixed only where it had been touched.
+        #
+        # STOPPED is kept as the status: the refusal is real and must stay
+        # visible. What changes is that the caller degrades to collect-only
+        # instead of the process dying.
+        cy.stage("guard:dataset_version", STOPPED, problems=json.dumps(problems),
+                 effect="degraded_to_collect_only")
+        return {"ok": False, "problems": problems}
     cy.stage("guard:dataset_version", OK, tables=len(UNFILTERED_READS),
              dataset_version=dataset_version)
     return {"ok": True}
@@ -1629,9 +1644,18 @@ def main(argv: list[str] | None = None) -> int:
         # Guard BEFORE any decision, and after the tables are populated: a cycle
         # that only collects is harmless, one that decides on an ambiguous
         # database is not.
-        if not args.collect_only:
-            stage_guard_dataset_version(cy, con,
-                                        dataset_version=args.dataset_version)
+        # A REFUSED GUARD DEGRADES THE CYCLE, it does not kill it. `deciding`
+        # replaces `not args.collect_only` from here on, so a cycle whose
+        # database is ambiguous still collects, still measures and still dumps —
+        # and decides nothing, which is the only thing the guard ever claimed to
+        # forbid.
+        deciding, guard_refused = not args.collect_only, False
+        if deciding:
+            guard = stage_guard_dataset_version(
+                cy, con, dataset_version=args.dataset_version)
+            if not guard.get("ok"):
+                deciding = False
+                guard_refused = True
 
         # RUNG 1 ON EVERY CYCLE, deciding or not. It needs only prices, and the
         # collect-only cycles are the ones that actually run in Actions — so this
@@ -1695,11 +1719,13 @@ def main(argv: list[str] | None = None) -> int:
                     root=args.store_root, session_id=session_id,
                     target_date=d, lead_h=l, row_kind="other_lead")))
 
-        if args.collect_only:
-            cy.stage("forecasts", SKIPPED, reason="collect_only")
-            cy.stage("signals", SKIPPED, reason="collect_only")
-            cy.stage("paper", SKIPPED, reason="collect_only")
-            cy.stage("observations", SKIPPED, reason="collect_only")
+        if not deciding:
+            why = ("guard_refused_dataset_version" if guard_refused
+                   else "collect_only")
+            cy.stage("forecasts", SKIPPED, reason=why)
+            cy.stage("signals", SKIPPED, reason=why)
+            cy.stage("paper", SKIPPED, reason=why)
+            cy.stage("observations", SKIPPED, reason=why)
         elif args.tau_signal is None or args.tau_exec is None:
             missing = "tau_signal" if args.tau_signal is None else "tau_exec"
             cy.stage("signals", SKIPPED, reason=f"{missing}_not_provided_fail_closed")
@@ -1748,7 +1774,10 @@ def main(argv: list[str] | None = None) -> int:
                    # replay reproduces it against the universe it actually
                    # decided on. `--dump-catalogue` survives as an override for a
                    # collect-only run someone wants snapshotted anyway.
-                   dump_catalogue=(not args.collect_only) or bool(args.dump_catalogue))
+                   # `deciding`, not `not collect_only`: a cycle the guard
+                   # refused decided nothing, so there is no decision for a
+                   # replay to reproduce and no catalogue to pin it against.
+                   dump_catalogue=deciding or bool(args.dump_catalogue))
     finally:
         con.close()
 
