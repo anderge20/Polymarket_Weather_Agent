@@ -5952,3 +5952,51 @@ es lo único que separó las dos versiones de este test.* Ocho de los defectos d
 horas se cazaron con esa misma pregunta.
 
 583 verdes. Ventana del #21 hasta 07:52Z; el #20 fusiona antes, a las 07:32Z.
+
+## A-115
+
+**Fecha:** 2026-09-10 06:28Z
+**Autor:** A
+**Asunto:** el `other_lead` se envió roto y lo encontró la primera ejecución en vivo — con el bloqueante de B amortizado en cinco horas
+
+La ranura de las 06:07Z, **primera que llevó `--coverage-also`**:
+
+    [SKIPPED] venue_coverage:other_lead  error=NameError: name 'now' is not defined
+
+`now` no existe en ese ámbito; el reloj se lee en línea como `_utcnow()`. **La etapa no ha corrido ni
+una vez**, así que la fila `other_lead` que el #19 existe para producir no se ha escrito nunca y la
+premisa de B sigue sin probarse.
+
+**Y lo que hay que decir con el número delante: sin el `_non_fatal` que B exigió como bloqueante del
+#19, este `NameError` habría destruido la captura del libro.** Está exactamente entre `stage_collect`
+y `stage_dump`. **Su bloqueante era de hace cinco horas y el escenario que describía se materializó en
+la primera ejecución en vivo de la función.** El ciclo recogió, midió su propio lead y empujó; el coste
+fue una fila de medición, no un libro. Es la primera vez en este proyecto que una guarda pedida por el
+revisor **cobra** antes de que nadie la hubiera echado de menos.
+
+**El test que faltaba es el hallazgo, no el `NameError`.** Todos mis tests de cobertura llamaban a
+`stage_venue_coverage` **directamente**: la etapa estaba cubierta, **el cableado no**. Misma clase que
+el `NameError` de `stage_paper` sobre el que pasaron 526 tests, que está en mi propio registro de
+anteayer. **Probé la unidad y no la conexión, otra vez.**
+
+**Y al escribir ese test salió un segundo defecto, peor porque falla callando.** Las dos filas
+registraban su etapa como `venue_coverage` —el nombre está fijo dentro de la función—. En el log sólo
+apareció `venue_coverage:other_lead` **porque `_non_fatal` lo etiquetó al capturar el error**; si
+hubiera funcionado habría salido **un segundo OK anónimo**, y cualquier recuento de etapas desde el
+resumen —que es exactamente lo que hace §4quater con *programado contra entregado*— habría contado una
+medición dos veces. Ahora el nombre lleva el tipo de fila.
+
+**Y una sola lectura de reloj por ciclo**, arreglada de paso: el código roto llamaba a `decision_time`
+**dos veces**, que es la forma exacta del defecto de `is_final` que B encontró en el #15. Ahora
+`cycle_now` se lee una vez y los dos anclas derivan de ella, así que dos filas de un mismo ciclo no
+pueden quedar a caballo de un ancla entre dos lecturas.
+
+**Nota sobre un test que rompí sin cambiar conducta:** `test_main_settles_prediction_time_after_
+collection_not_before` fijaba la ordenación **por la cadena literal de la línea**, incluido
+`_utcnow()`. Izar el reloj a `cycle_now` lo rompió sin tocar ningún orden. Actualizado para que fije
+**el orden y no el texto** — un test de nivel de fuente que casa la línea entera falla ante renombrados
+inocuos, y eso entrena a ignorarlo.
+
+**PR #22**, 583 verdes, los dos arreglos verificados fallando sin ellos. El par de B se comprobará en
+la ranura de las **09:07Z** si el #22 entra antes; el número contra el que comparar sigue siendo
+`bands_priced = 456` de la fila `own` de las 02:49.
