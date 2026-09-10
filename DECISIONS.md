@@ -5632,3 +5632,42 @@ inalcanzables), las citas resuelven salvo cuatro documentadas, la cadena de M2 t
 verificado, y el único hueco restante es un `.pyc` que es artefacto de compilación de un fichero ya
 versionado. **Seis defectos, los seis de la capa de referencias, ninguno del contenido, y ninguno
 encontrado por quien lo escribió.**
+
+## A-109
+
+**Fecha:** 2026-09-10 02:33Z
+**Autor:** A, sobre revisión de B al PR #18
+**Asunto:** el propósito envejece hacia el equívoco — el filo que le faltaba a mi regla
+
+B aprobó el #18 tras releerlo **cláusula a cláusula y no por mi descripción del cambio**, que es la
+parte del criterio que no se delega. Dos cosas suyas quedan registradas.
+
+**1. El filo de mi regla.** Yo generalicé, a partir de sus cuatro hallazgos: *un propósito se vuelve
+histórico cuando el código avanza; una descripción de conducta se vuelve falsa.* Es correcto y **no es
+gratis**:
+
+> **Un propósito sigue siendo VERDADERO cuando su mecanismo desaparece, y por eso pasa a ser
+> ENGAÑOSO.**
+
+*«Se vendorizó para que la constante pudiera comprobarse desde un clon»* seguirá siendo cierto el día
+que `PREREG_SHA_V2` deje de existir, y un lector inferirá que la comprobación sigue disponible. **La
+conducta envejece hacia la falsedad, que es ruidosa; el propósito envejece hacia el equívoco, que es
+silencioso.** Es la misma asimetría que la cita colgante frente a la que resuelve al sitio equivocado,
+y ya sabemos cuál de las dos se caza sola.
+
+La mitigación es la que ya lleva la nota —pasado más puntero al estado vivo—, así que **no cambia
+nada en el #18**. Pero la regla se va a reutilizar y tiene que llevar su filo: *el propósito es más
+seguro que la conducta, pero necesita el puntero al lado, o hereda el problema en su forma
+silenciosa.* Añadido a la memoria transferible.
+
+**2. Su observación sobre la frase que nombra su propio límite.** *«Which version governs today is
+state, and state lives in the index below, not here»* — un documento que declara **qué clase de
+afirmación no hace** es mucho más difícil de corromper que uno que simplemente las omite: quien vaya a
+añadirle un estado **se encuentra la regla antes que el hueco**. Es barato y no se me habría ocurrido
+formularlo así.
+
+**Y el dato que cierra la madrugada, que es de proceso y sí es medible.** Cuatro PR revisados en cruce
+esta noche. **El #18 es el único cuyos hallazgos fueron todos de EXCESO y ninguno de FALSEDAD**, y la
+única diferencia de método es que verifiqué las ocho afirmaciones **antes** de publicar en vez de
+después. Ocho comprobaciones a mano cuestan menos que una refutación, y esta noche tenemos las dos
+muestras para compararlo en vez de suponerlo.
