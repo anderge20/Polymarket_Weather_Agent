@@ -616,7 +616,29 @@ alguien lo leerá como «no se encontró beneficio». Por tanto:
 > programadas frente a entregadas**, separando `schedule` de `workflow_dispatch`. `NO EVALUABLE` no
 > es un resultado sobre la estrategia y no se reporta como tal.
 
-**4sexies. ADMISIBILIDAD DE LAS FILAS DE COBERTURA — congelado el 2026-09-10, ANTES de que la serie
+**4quinquies. LA DURACIÓN SE DECIDE AHORA, no cuando se vea que no llega.** Una corrida de duración
+fija con un mínimo que puede no alcanzarse es un diseño que se resuelve solo en la dirección
+equivocada. Se declara:
+- **N = 21 días naturales** (§5) como duración base.
+- Si al cerrar el día 21 los **eventos distintos liquidados** están por debajo del mínimo, la corrida
+  **se extiende en días enteros hasta un máximo de 35 días naturales**, y termina en lo que ocurra
+  primero: alcanzar el mínimo, o el día 35.
+- **La regla de parada es SOBRE EL RECUENTO DE EVENTOS Y NADA MÁS.** El PnL **no se mira** hasta que
+  la corrida cierra. Parar cuando el resultado gusta es lo que este documento existe para impedir, y
+  una regla de parada sobre `n` declarada de antemano no es eso.
+
+**4sexies. EL `tau` DE COBERTURA SE FIJA ANTES, CON UNA VENTANA DE CALIBRACIÓN EXCLUIDA.** La sesión B
+lo está midiendo sobre el sustrato retrospectivo y **declara por adelantado su limitación**: allí el
+precio es `MIDPOINT_ESTIMATED` y la puerta de ejecución usa un `x_exec` supuesto, así que **en vivo la
+fracción de ciclos que abren puede ser distinta**. Recalcularlo a mitad de corrida sería un cambio de
+parámetro (§8.3). En su lugar:
+
+> Los **primeros 4 ciclos con `PAPER_TAU` puesta son una VENTANA DE CALIBRACIÓN**, declarada como tal,
+> **excluida de la corrida** y de todo agregado. Si su cobertura observada obliga a corregir el tau,
+> se corrige **ahí**, se hashea el nuevo valor en `DECISIONS.md`, y **la corrida empieza después**.
+> Pasada esa ventana el tau no se toca: si se cambia, §8.3 anula o §4ter parte, pero no se recalibra.
+
+**4septies. ADMISIBILIDAD DE LAS FILAS DE COBERTURA — congelado el 2026-09-10, ANTES de que la serie
 sea lo bastante larga para fijar nada.** §6bis.2 dejó dicho que la regla se formularía sobre la puerta
 de ejecución y que el umbral se fijaría con elegibilidad medida **en vivo**. Falta decir **qué filas
 son admisibles**, y eso es un criterio: si se decide después de ver la serie, se elige el criterio que
@@ -666,28 +688,6 @@ si nuestro colector la fotografió antes del corte** — no es una propiedad del
    bajo. **No es evidencia de que la regla del umbral carezca de solución**, y leerlo así sería el
    cuarto denominador equivocado de este proyecto. La cobertura real no se conoce hasta pasado el
    calentamiento.
-
-**4quinquies. LA DURACIÓN SE DECIDE AHORA, no cuando se vea que no llega.** Una corrida de duración
-fija con un mínimo que puede no alcanzarse es un diseño que se resuelve solo en la dirección
-equivocada. Se declara:
-- **N = 21 días naturales** (§5) como duración base.
-- Si al cerrar el día 21 los **eventos distintos liquidados** están por debajo del mínimo, la corrida
-  **se extiende en días enteros hasta un máximo de 35 días naturales**, y termina en lo que ocurra
-  primero: alcanzar el mínimo, o el día 35.
-- **La regla de parada es SOBRE EL RECUENTO DE EVENTOS Y NADA MÁS.** El PnL **no se mira** hasta que
-  la corrida cierra. Parar cuando el resultado gusta es lo que este documento existe para impedir, y
-  una regla de parada sobre `n` declarada de antemano no es eso.
-
-**4sexies. EL `tau` DE COBERTURA SE FIJA ANTES, CON UNA VENTANA DE CALIBRACIÓN EXCLUIDA.** La sesión B
-lo está midiendo sobre el sustrato retrospectivo y **declara por adelantado su limitación**: allí el
-precio es `MIDPOINT_ESTIMATED` y la puerta de ejecución usa un `x_exec` supuesto, así que **en vivo la
-fracción de ciclos que abren puede ser distinta**. Recalcularlo a mitad de corrida sería un cambio de
-parámetro (§8.3). En su lugar:
-
-> Los **primeros 4 ciclos con `PAPER_TAU` puesta son una VENTANA DE CALIBRACIÓN**, declarada como tal,
-> **excluida de la corrida** y de todo agregado. Si su cobertura observada obliga a corregir el tau,
-> se corrige **ahí**, se hashea el nuevo valor en `DECISIONS.md`, y **la corrida empieza después**.
-> Pasada esa ventana el tau no se toca: si se cambia, §8.3 anula o §4ter parte, pero no se recalibra.
 
 **5. Lo que esta sección NO autoriza:** ni ampliar la rejilla de tau, ni cambiar la regla de
 selección, ni reajustar el constructor de colas, ni volver a correr con otra tau si la primera no
