@@ -250,38 +250,71 @@ def stage_guard_dataset_version(cy: Cycle, con, *, dataset_version: str) -> dict
     So rather than edit a file another session has open, this asserts the
     precondition under which the omission is harmless, and stops the cycle when it
     stops holding. Fixing `features.py` is delivered to B as a patch (A-37)."""
+    # A GUARD THAT CANNOT LOOK MUST REFUSE, NOT SKIP. Session B's residual on
+    # PR #21, and the distinction is the whole point: `_non_fatal` records
+    # SKIPPED and CONTINUES, and for a guard continuing is exactly what must not
+    # happen — "I could not check whether the substrate is ambiguous" is not
+    # "the substrate is fine". A missing table, a locked database, any DuckDB
+    # error: the verdict is a REFUSAL with the error inside it, so the cycle
+    # degrades to collect-only and still reaches the dump.
+    #
+    # It now fails closed in BOTH directions: when it finds ambiguity, and when
+    # it cannot look.
     problems = []
-    for table in UNFILTERED_READS:
-        rows = db.query(
-            con,
-            f"SELECT dataset_version, count(*) AS n FROM {db._q(table)} "
-            "GROUP BY 1 ORDER BY 2 DESC",
-        )
-        versions = [r["dataset_version"] for r in rows]
-        if len(versions) > 1:
-            problems.append(
-                f"{table}: {len(versions)} dataset_versions present "
-                f"({', '.join(str(v) for v in versions[:4])}) — build_feature does "
-                f"not filter by it and would mix them silently"
+    try:
+        for table in UNFILTERED_READS:
+            rows = db.query(
+                con,
+                f"SELECT dataset_version, count(*) AS n FROM {db._q(table)} "
+                "GROUP BY 1 ORDER BY 2 DESC",
             )
-        elif versions and versions[0] != dataset_version:
-            problems.append(
-                f"{table}: holds {versions[0]!r}, cycle runs as {dataset_version!r}"
+            versions = [r["dataset_version"] for r in rows]
+            if len(versions) > 1:
+                problems.append(
+                    f"{table}: {len(versions)} dataset_versions present "
+                    f"({', '.join(str(v) for v in versions[:4])}) — build_feature does "
+                    f"not filter by it and would mix them silently"
+                )
+            elif versions and versions[0] != dataset_version:
+                problems.append(
+                    f"{table}: holds {versions[0]!r}, cycle runs as {dataset_version!r}"
+                )
+            rv = db.query(
+                con, f"SELECT DISTINCT record_version FROM {db._q(table)}"
             )
-        rv = db.query(
-            con, f"SELECT DISTINCT record_version FROM {db._q(table)}"
-        )
-        if len([r["record_version"] for r in rv if r["record_version"] is not None]) > 1:
-            problems.append(
-                f"{table}: more than one record_version — latest_asof may return a "
-                f"superseded row"
-            )
+            if len([r["record_version"] for r in rv if r["record_version"] is not None]) > 1:
+                problems.append(
+                    f"{table}: more than one record_version — latest_asof may return a "
+                    f"superseded row"
+                )
+    except Exception as exc:                 # noqa: BLE001 — deliberate, above
+        detail = f"guard could not run: {type(exc).__name__}: {exc}"[:300]
+        cy.stage("guard:dataset_version", STOPPED,
+                 problems=json.dumps([detail]),
+                 effect="degraded_to_collect_only")
+        return {"ok": False, "problems": [detail]}
+
     if problems:
-        cy.stage("guard:dataset_version", STOPPED, problems=json.dumps(problems))
-        raise SystemExit(
-            "paper_cycle: refusing to decide on a database whose unfiltered reads "
-            "are ambiguous:\n  - " + "\n  - ".join(problems)
-        )
+        # IT REFUSES THE DECISION, NOT THE CYCLE — which is what it always said
+        # it did. Its own message reads "refusing to DECIDE" and the call site
+        # says "a cycle that only collects is harmless"; the implementation
+        # raised SystemExit and took the whole run down with it.
+        #
+        # That matters because of WHERE it sits: between `stage_collect` — the
+        # order-book capture, the one thing here that cannot be re-fetched — and
+        # `stage_dump`, the only place that capture is persisted, with
+        # `stage_dump` inside the `try`. So a guard that exists to protect a
+        # decision was also discarding the collection, and the asymmetry runs
+        # the wrong way: tomorrow's cycle can decide again, tomorrow's book is
+        # gone. Found by session B while approving PR #19, as the instance of the
+        # span rule that PR fixed only where it had been touched.
+        #
+        # STOPPED is kept as the status: the refusal is real and must stay
+        # visible. What changes is that the caller degrades to collect-only
+        # instead of the process dying.
+        cy.stage("guard:dataset_version", STOPPED, problems=json.dumps(problems),
+                 effect="degraded_to_collect_only")
+        return {"ok": False, "problems": problems}
     cy.stage("guard:dataset_version", OK, tables=len(UNFILTERED_READS),
              dataset_version=dataset_version)
     return {"ok": True}
@@ -1629,9 +1662,18 @@ def main(argv: list[str] | None = None) -> int:
         # Guard BEFORE any decision, and after the tables are populated: a cycle
         # that only collects is harmless, one that decides on an ambiguous
         # database is not.
-        if not args.collect_only:
-            stage_guard_dataset_version(cy, con,
-                                        dataset_version=args.dataset_version)
+        # A REFUSED GUARD DEGRADES THE CYCLE, it does not kill it. `deciding`
+        # replaces `not args.collect_only` from here on, so a cycle whose
+        # database is ambiguous still collects, still measures and still dumps —
+        # and decides nothing, which is the only thing the guard ever claimed to
+        # forbid.
+        deciding, guard_refused = not args.collect_only, False
+        if deciding:
+            guard = stage_guard_dataset_version(
+                cy, con, dataset_version=args.dataset_version)
+            if not guard.get("ok"):
+                deciding = False
+                guard_refused = True
 
         # RUNG 1 ON EVERY CYCLE, deciding or not. It needs only prices, and the
         # collect-only cycles are the ones that actually run in Actions — so this
@@ -1695,11 +1737,13 @@ def main(argv: list[str] | None = None) -> int:
                     root=args.store_root, session_id=session_id,
                     target_date=d, lead_h=l, row_kind="other_lead")))
 
-        if args.collect_only:
-            cy.stage("forecasts", SKIPPED, reason="collect_only")
-            cy.stage("signals", SKIPPED, reason="collect_only")
-            cy.stage("paper", SKIPPED, reason="collect_only")
-            cy.stage("observations", SKIPPED, reason="collect_only")
+        if not deciding:
+            why = ("guard_refused_dataset_version" if guard_refused
+                   else "collect_only")
+            cy.stage("forecasts", SKIPPED, reason=why)
+            cy.stage("signals", SKIPPED, reason=why)
+            cy.stage("paper", SKIPPED, reason=why)
+            cy.stage("observations", SKIPPED, reason=why)
         elif args.tau_signal is None or args.tau_exec is None:
             missing = "tau_signal" if args.tau_signal is None else "tau_exec"
             cy.stage("signals", SKIPPED, reason=f"{missing}_not_provided_fail_closed")
@@ -1748,7 +1792,10 @@ def main(argv: list[str] | None = None) -> int:
                    # replay reproduces it against the universe it actually
                    # decided on. `--dump-catalogue` survives as an override for a
                    # collect-only run someone wants snapshotted anyway.
-                   dump_catalogue=(not args.collect_only) or bool(args.dump_catalogue))
+                   # `deciding`, not `not collect_only`: a cycle the guard
+                   # refused decided nothing, so there is no decision for a
+                   # replay to reproduce and no catalogue to pin it against.
+                   dump_catalogue=deciding or bool(args.dump_catalogue))
     finally:
         con.close()
 

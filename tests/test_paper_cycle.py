@@ -295,31 +295,107 @@ def test_the_guard_passes_on_a_single_version_database(con):
     assert out["ok"] is True
 
 
-def test_the_guard_stops_the_cycle_when_two_versions_coexist(con):
+def test_the_guard_refuses_the_decision_when_two_versions_coexist(con):
     """build_feature takes dataset_version and never uses it. With one version
     that is harmless; with two it silently mixes a backfilled price with a
     prospectively-collected one. Paper mode is what introduces the second."""
     _price(con, token="t1", dsv="backfill_2b_v1")
     _price(con, token="t2", dsv="ds_paper_v1")
-    with pytest.raises(SystemExit, match="ambiguous"):
-        paper_cycle.stage_guard_dataset_version(_cycle(), con,
-                                                dataset_version="ds_paper_v1")
+    cy = _cycle()
+    out = paper_cycle.stage_guard_dataset_version(cy, con,
+                                                  dataset_version="ds_paper_v1")
+    assert out["ok"] is False
+    assert any("dataset_versions present" in p for p in out["problems"])
 
 
-def test_the_guard_stops_when_the_database_is_a_different_version(con):
+def test_the_guard_refuses_when_the_database_is_a_different_version(con):
     _price(con, dsv="someone_elses_backfill")
-    with pytest.raises(SystemExit):
-        paper_cycle.stage_guard_dataset_version(_cycle(), con,
-                                                dataset_version="ds_paper_v1")
+    out = paper_cycle.stage_guard_dataset_version(_cycle(), con,
+                                                  dataset_version="ds_paper_v1")
+    assert out["ok"] is False
 
 
-def test_the_guard_stops_on_a_superseded_record_version(con):
+def test_the_guard_refuses_on_a_superseded_record_version(con):
     """latest_asof partitions by token only, so a record_version 2 row that
     supersedes a 1 could be missed or mixed."""
     _price(con, token="t1", dsv="ds1", rv=1)
     _price(con, token="t1", dsv="ds1", rv=2, when=T0 + timedelta(minutes=1))
-    with pytest.raises(SystemExit, match="record_version"):
-        paper_cycle.stage_guard_dataset_version(_cycle(), con, dataset_version="ds1")
+    out = paper_cycle.stage_guard_dataset_version(_cycle(), con,
+                                                  dataset_version="ds1")
+    assert out["ok"] is False
+    assert any("record_version" in p for p in out["problems"])
+
+
+def test_a_refused_guard_still_reaches_the_dump_and_decides_nothing(con, tmp_path,
+                                                                    monkeypatch):
+    """The guard refuses the DECISION, not the cycle — which is what it always said.
+
+    Its own message reads "refusing to DECIDE" and the call site says a cycle
+    that only collects is harmless; the implementation raised SystemExit and took
+    the whole run down. Session B found it while approving PR #19: the guard sits
+    between `stage_collect` — the order-book capture, which cannot be re-fetched —
+    and `stage_dump`, the only place that capture is persisted, with the dump
+    inside the `try`. So a guard protecting a decision was discarding the
+    collection, and the asymmetry runs the wrong way: tomorrow's cycle can decide
+    again, tomorrow's book is gone.
+    """
+    monkeypatch.setattr(paper_cycle, "stage_discover",
+                        lambda cy, *a, **k: cy.stage("discover", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_collect",
+                        lambda cy, *a, **k: cy.stage("collect:books", paper_cycle.OK))
+    # THE REAL GUARD RUNS. An earlier version of this test monkeypatched it to
+    # return {"ok": False}, and then PASSED with the `raise SystemExit` put back:
+    # it exercised the caller's branch and could not fail on the thing it names.
+    # Same shape as the WAL test discarded for passing with and without its fix.
+    # So the database is made genuinely ambiguous instead, and the guard decides.
+    from weather_agent import database as _db
+    dbpath = tmp_path / "t.duckdb"
+    seed = _db.init_db(_db.connect(str(dbpath)))
+    _price(seed, token="t1", dsv="ds1")
+    _price(seed, token="t2", dsv="someone_elses_backfill")
+    seed.close()
+
+    rc = paper_cycle.main([
+        "--target-date", "2026-09-10", "--dataset-version", "ds1",
+        "--store-root", str(tmp_path / "store"), "--db", str(dbpath),
+        "--tau-signal", "0.02", "--tau-exec", "0.02",
+        "--summary-json", str(tmp_path / "s.json")])
+
+    import json as _json
+    stages = {s["stage"]: s for s in
+              _json.loads((tmp_path / "s.json").read_text())["stages"]}
+    assert stages["guard:dataset_version"]["status"] == "STOPPED"
+    for st in ("forecasts", "signals", "paper", "observations"):
+        assert stages[st]["status"] == "SKIPPED"
+        assert stages[st]["reason"] == "guard_refused_dataset_version", (
+            "and the reason must name the guard, not say collect_only — the two "
+            "are different facts about the run")
+    assert "dump" in stages, "the capture must still be persisted"
+    assert rc == 0
+
+
+def test_a_guard_that_cannot_look_REFUSES_rather_than_skipping(con, monkeypatch):
+    """"I could not check" is not "it is fine", and the difference is the guard.
+
+    Session B's residual on PR #21. Removing the deliberate `raise` left the
+    incidental one: the two `db.query` probes were unwrapped, still sitting
+    between the capture and the dump. The tempting remedy is `_non_fatal` — and
+    it is the wrong one, because it records SKIPPED and CONTINUES, which for a
+    guard means deciding on a substrate nobody managed to inspect.
+
+    So an exception is a REFUSAL: same STOPPED status, the error carried in
+    `problems`, the cycle degraded to collect-only and still reaching the dump.
+    Fails closed in both directions — when it finds ambiguity, and when it cannot
+    look.
+    """
+    def _boom(*a, **k):
+        raise RuntimeError("database is locked")
+    monkeypatch.setattr(paper_cycle.db, "query", _boom)
+
+    cy = _cycle()
+    out = paper_cycle.stage_guard_dataset_version(cy, con, dataset_version="ds1")
+    assert out["ok"] is False, "a guard that cannot look must not report ok"
+    assert any("database is locked" in p for p in out["problems"])
 
 
 def test_an_empty_database_does_not_trip_the_guard(con):
