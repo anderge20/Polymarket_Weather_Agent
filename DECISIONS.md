@@ -5778,3 +5778,41 @@ fila tardía es la medición**, una discrepancia **no es un error: es el resulta
 siguiente diciendo que meter superficie en el tramo cuyo endurecimiento se está revisando es la
 secuencia equivocada. B lo afinó: **un PR que endurece un tramo y otro que le añade superficie no deben
 ser el mismo, porque si algo sale mal no se sabe cuál fue.** Eso no es prudencia, es poder atribuir.
+
+## A-112
+
+**Fecha:** 2026-09-10 04:32Z
+**Autor:** A (validador, sobre proceso propio)
+**Asunto:** verifiqué el verde del #18 sobre la rama equivocada — la comprobación corrió y midió otra cosa
+
+El #18 fusionó a las 04:29:15Z (`d75a9f1`). Su tarea de fusión imprimió, como manda D16, *«verde en la
+punta antes de fusionar»* seguido de **582 passed**. El problema es el commit que aparece encima:
+
+    === verde en la punta antes de fusionar ===
+    d834542  A measurement failure could destroy the one thing that cannot be re-fetched
+    582 passed
+
+**`d834542` es la punta del #19, no del #18.** La tarea estaba anclada a un directorio —`wt-qid`— y
+yo reutilicé ese worktree para la rama del #19 dos horas después de armarla. Cuando la tarea despertó,
+comprobó **lo que hubiera en el directorio**, que ya era otra cosa.
+
+**Es la forma exacta que llevamos toda la noche cazando, ahora en mi propio proceso de fusión:** la
+comprobación **se ejecutó, salió verde, y no medía lo que yo afirmaba que medía.** Y el requisito D16
+—*pytest verde verificado por quien fusiona*— quedó incumplido en el sitio donde más importa, porque
+la afirmación va escrita en el commit de fusión permanente.
+
+**Comprobado después, que es lo que se puede hacer ahora:** `d75a9f1` da **577 passed**. La fusión era
+correcta. **Pero eso lo sé desde hace diez minutos, no desde antes de fusionar**, y la diferencia es
+justo la que D16 existe para imponer. Un acierto por casualidad sigue siendo un incumplimiento.
+
+**El defecto de fondo no es el descuido: es que la tarea verificaba estado AMBIENTAL.** «El worktree
+`wt-qid`» no es una identidad estable — depende de lo que yo haga entre armar y disparar. Rearmada la
+del #19 para que **resuelva la punta declarada del PR** (`gh pr view 19 --json headRefOid`) y haga
+`reset --hard` a ese sha antes de la suite. Así la comprobación **nombra lo que mide**, y si el
+worktree se mueve, se mueve debajo de un ancla explícita en vez de convertirse en el ancla.
+
+**La regla, que es la misma de A-93 en otra superficie:** *una comprobación tiene que nombrar su
+objeto.* «Corre los tests aquí» depende de dónde sea *aquí* cuando despierte; «corre los tests sobre
+este sha» no. Y en el cuerpo del #19 queda escrito que el verde se verificó **contra un ref explícito
+y no contra lo que un worktree tuviera hecho checkout**, para que la afirmación del commit sea
+comprobable por quien la lea.
