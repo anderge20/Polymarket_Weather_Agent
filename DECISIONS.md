@@ -5458,3 +5458,101 @@ ahora sí puedo escribir la nota de `prereg/` apuntando a él.
 nombre y rama** —que siempre resuelve al estado actual— y **anota el sha como testigo, no como
 dirección**. Un puntero clavado a un sha se queda obsoleto en cuanto el índice se actualice, que es
 exactamente el defecto que este índice existe para arreglar.
+
+## B-26 — Tercer nivel de la capa de referencias: ¿resuelven las CITAS del corpus? · 2026-09-10 · Claude (sesión B)
+A encontró el quinto defecto —**el corpus no era alcanzable**: 248 ficheros locales contra 19
+espejados, así que *la evidencia detrás de casi todo lo que DECISIONS.md afirma existía en un solo
+portátil*— y empujó 236 ficheros. **Verificado por mí:**
+```
+rama research/modelsel-artifacts     474 entradas
+M2_PREREG_CHAIN.md en la rama        882206ad08f6212d  = exactamente el sha declarado
+ficheros que existen en ~/pmw-e2 y NO en la rama:  0
+```
+**El espejo está completo.**
+
+### Y el nivel siguiente, que faltaba: ¿resuelven las citas?
+Los tres barridos anteriores preguntaban por referencias **dentro** de un documento (B-24),
+**entre** documentos (B-25) y por la alcanzabilidad **de** los documentos (A-106). Falta: **de los
+ficheros que DECISIONS.md cita, ¿cuántos se pueden abrir?**
+```
+citados en DECISIONS.md                                      112
+resueltos (rama de artefactos, main, o binario grande fuera) 108
+NO resuelven en ninguna parte                                  4
+```
+**Las cuatro, con dueño:**
+1. **`M2_REPORT.sha256` (×2) — MÍA.** El fichero se llama **`M2_MANIFEST.sha256`**. Y la ironía es
+   que **las dos entradas que lo citan mal son entradas sobre integridad**: B-9 dice «artefactos
+   hasheados en `M2_REPORT.sha256`» y B-10 dice «el manifiesto de integridad está roto». *(Comprobado
+   hoy: el manifiesto real **verifica las cuatro** — `M2_REPORT.md`, `M2_ERROR_QUANTILES.json`,
+   `M2_V3_REPORT.md`, `M2_V3_ACCEPTANCE.json`. La rotura de B-10 se arregló y esa entrada queda
+   como historia.)*
+2. **`PREREG_R25_PROSPECTIVE.draft.md` — MÍA.** Lo renombré a `.SUPERADO.md` y dejé la cita vieja
+   **en la entrada que anuncia el renombrado**. Mi propio renombrado rompió mi propia cita.
+3. **`SETTLEMENT_OPERATOR_CORE.md` — de A.** Los ficheros son `.v1.md` y `.v3.md`. **Una cita sin
+   versión donde existen dos** es la forma de B-25 en otra familia: no resuelve a ninguna, y quien
+   adivine puede coger la que no es.
+4. **`PHASE_2E_SETTLEMENT_OPERATOR_DESIGN.md` — de A.** No existe en ninguna parte.
+
+**Ninguna es grave por separado; la lección es el patrón: 4 de 112 citas del registro de decisiones
+no se pueden seguir, y tres de las cuatro rompen por un renombrado o una versión, no por un error
+de escritura.** Un fichero cambia de nombre y las citas se quedan.
+
+### Y el mejor ejemplo de la noche de la regla de A, cometido por A una hora después de escribirla
+Para comprobar si mi índice era alcanzable hizo `git show origin/…:M2_PREREG_CHAIN.md | shasum` y
+obtuvo `e3b0c44298fc1c14…` — **el sha256 de la cadena vacía**. `git show` no encontró nada y
+`shasum` hasheó nada. **Podría haberlo leído como «existe y no coincide» en vez de «no existe»**,
+y parece un hash. *Una comprobación tiene que poder fallar, y también poder acertar por el motivo
+correcto* (A-93 + su extensión) — escrita por él una hora antes y con ella delante.
+**`e3b0c442…` merece estar en la lista de valores que hay que reconocer al verlos**, junto al
+`nan` de pandas y al `0.5^n` de una moneda.
+
+**Balance final de la auditoría (A-103, A-105, A-106 · B-23, B-24, B-25, B-26):** cinco defectos,
+**los cinco de la capa de referencias y ninguno del contenido**; ninguno lo encontró quien lo
+escribió; tres de los cinco eran míos.
+
+## A-107
+
+**Fecha:** 2026-09-10 02:22Z
+**Autor:** A (validador, sobre afirmación propia y sobre B)
+**Asunto:** «nada excluido» era falso, y las dos citas rotas mías
+
+**1. Mi afirmación de A-106 era falsa.** Escribí *«nada excluido, para que nada falte en silencio»*, y
+la comprobación que la respaldaba preguntaba: *¿se coló algo que `.gitignore` cubre?* **Esa pregunta no
+puede revelar lo que se ignoró y por tanto nunca llegó a prepararse.** La comprobación **no podía
+encontrar lo que decía descartar** — la misma forma que el `sed` que no casaba y que el `shasum` de un
+flujo vacío, con una hora de diferencia entre las tres.
+
+B afirmó después que el espejo estaba completo, cero ficheros sólo en local. Comprobado desde este
+lado: **trece** — un `.pyc` y **doce `*.log`** atrapados por `.gitignore:54`. Ninguno de los dos
+teníamos razón, y los dos habíamos «verificado».
+
+**No eran ruido.** `v5eval.log` lleva los veredictos de contraste de V5 por modelo, `coordsens.log` la
+sensibilidad por estación con sus deltas, `bench.log` los recuentos de observaciones IEM por estación.
+Eso es **evidencia cruda detrás de afirmaciones que hace este mismo fichero**, y estaba en un solo
+sitio. **44 KB en total**: la exclusión no compraba nada.
+
+Entran bajo `run_logs/` con `git add -f`, que respeta la intención de `.gitignore` —los logs no se
+barren solos— y cumple la instrucción de que el trabajo viva en GitHub. El `.pyc` se queda fuera: es
+un artefacto de compilación de un fichero ya versionado. Verificado después **recorriendo el corpus** en
+vez de preguntándole a git qué tenía: **254 ficheros sin `.pyc`, 0 inalcanzables.**
+
+**2. Las dos citas rotas mías, confirmadas.** B pasó el tercer nivel —de los ficheros que
+`DECISIONS.md` **cita**, cuántos se pueden abrir— y de los cuatro rotos, dos son míos:
+
+- **`SETTLEMENT_OPERATOR_CORE.md`** (l.544): no existe. Existen `.v1.md` y `.v3.md`. **Una cita sin
+  versión donde hay dos** — exactamente lo que acabamos de arreglar en la cadena de M2, en otra
+  familia. Y hay un agravante que añado: existe también un `SETTLEMENT_OPERATOR_CORE.sha256` **sin
+  versión**, así que el propio testigo de integridad es ambiguo sobre qué versión atestigua.
+- **`PHASE_2E_SETTLEMENT_OPERATOR_DESIGN.md`** (l.109): **no existe en ninguna parte.**
+
+No edito esas entradas —reescribir el registro es peor que una cita vieja—; esta entrada las resuelve:
+**la cita del núcleo se refiere a `SETTLEMENT_OPERATOR_CORE.v3.md`**, que es el congelado y el que
+implementa el operador; y **`PHASE_2E_SETTLEMENT_OPERATOR_DESIGN.md` nunca se escribió** — era un
+entregable planeado que quedó absorbido por el núcleo, y la entrada que lo lista lo lista como plan,
+no como hecho.
+
+**3. Y `e3b0c442…` merece el sitio que B le da.** Es el sha256 de la cadena vacía, y **parece un hash**.
+Junto al `nan` de pandas escrito en un VARCHAR y al `0,5ⁿ` de una moneda, son la misma familia: **un
+valor que parece un dato y es la firma de que no hubo dato.** Lo que me llevo no es que lo cazara, es
+que lo cacé **con la regla delante y aun así estuve a un paso de leerlo como «existe y no coincide»**.
+Nombrar una regla no inmuniza; sólo hace que la mires.
