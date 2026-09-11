@@ -1434,9 +1434,26 @@ def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
         #
         # `cycle_params` is written on EVERY cycle including collect-only, so
         # this is ten points a day rather than two.
+        #
+        # AND THE PROFILE CANNOT CONTAIN THE STAGE THAT WRITES IT. Session B, on
+        # the merged version: the snapshot is taken INSIDE `stage_params`, so
+        # whatever runs after it is absent — and the danger is not the absence,
+        # it is that the parts would still SUM to a plausible whole with nothing
+        # saying a stage is missing. We would attribute its cost to no one, on
+        # the day we finally read the profile to find out where the time goes.
+        # `stage_params` now runs AFTER `stage_dump` so the dump is measured;
+        # what remains outside is this stage itself, which is irreducible and is
+        # therefore DECLARED rather than left to be inferred.
         "stage_profile": json.dumps(
             [{"stage": e["stage"], "at_s": e.get("at_s"),
               "elapsed_s": e.get("elapsed_s")} for e in cy.stages]),
+        "stage_profile_excludes": "params",
+        # `at_s` is relative to the start of the cycle, so without this the
+        # series has no absolute anchor. On Hetzner it can be recovered from the
+        # `session_id`; on Actions the id carries the run id instead and it
+        # cannot. One field, and it matters the day the box falls over and we go
+        # back to `workflow_dispatch`.
+        "cycle_started_at": _iso(cy.started_at),
         "t_end": _iso(timing["t_end"]),
         "t_asof": _iso(timing["t_asof"]),
         "prediction_time": _iso(timing["prediction_time"]),
@@ -1654,14 +1671,17 @@ def main(argv: list[str] | None = None) -> int:
             stage_observations(cy, con, dataset_version=args.dataset_version,
                                now=_utcnow())
             stage_settle(cy, con, dataset_version=args.dataset_version)
+            # DUMP FIRST, PARAMS LAST — see `stage_params`. The profile is
+            # snapshotted inside `stage_params`, so anything after it is
+            # invisible; running it last is what puts `dump` in the series.
+            stage_dump(cy, con, root=args.store_root, session_id=session_id,
+                       dataset_version=args.dataset_version, since=cy.started_at,
+                       dump_catalogue=False)
             stage_params(cy, root=args.store_root, session_id=session_id, args=args,
                          quantile_provenance={}, timing=plan | {
                              "prediction_time": plan["t_asof"], "drift_h": 0.0,
                              "lead_effective_h": plan["lead_nominal_h"]},
                          dataset_version=args.dataset_version)
-            stage_dump(cy, con, root=args.store_root, session_id=session_id,
-                       dataset_version=args.dataset_version, since=cy.started_at,
-                       dump_catalogue=False)
             con.close()
             return _finish(cy, args)
 
@@ -1843,9 +1863,22 @@ def main(argv: list[str] | None = None) -> int:
                                now=_utcnow())
             stage_settle(cy, con, dataset_version=args.dataset_version)
 
-        stage_params(cy, root=args.store_root, session_id=session_id, args=args,
-                     quantile_provenance=quantile_provenance,
-                     timing=timing, dataset_version=args.dataset_version)
+        # DUMP FIRST, PARAMS LAST, and the order buys two things.
+        #
+        # (1) The profile covers the dump. It is snapshotted inside
+        #     `stage_params`, so a stage that runs after it is simply not in the
+        #     series — and `dump` is the stage whose cost most plausibly grows
+        #     with the store.
+        # (2) `stage_params` leaves the protected span. B's rule is that nothing
+        #     between `stage_collect` and `stage_dump` may throw, because that is
+        #     the only span where an exception destroys a capture that cannot be
+        #     re-fetched. Writing the params shard after the dump takes it out of
+        #     that span entirely, instead of arguing case by case that its
+        #     `json.dumps` cannot raise.
+        #
+        # WHAT IT COSTS, said plainly: a cycle whose dump raises no longer leaves
+        # a `cycle_params` row. That cycle has already lost its collection, which
+        # is the loss that matters; knowing which tau it would have used is not.
         stage_dump(cy, con, root=args.store_root, session_id=session_id,
                    dataset_version=args.dataset_version, since=cy.started_at,
                    # Every DECIDING cycle carries its own catalogue, so the
@@ -1856,6 +1889,9 @@ def main(argv: list[str] | None = None) -> int:
                    # refused decided nothing, so there is no decision for a
                    # replay to reproduce and no catalogue to pin it against.
                    dump_catalogue=deciding or bool(args.dump_catalogue))
+        stage_params(cy, root=args.store_root, session_id=session_id, args=args,
+                     quantile_provenance=quantile_provenance,
+                     timing=timing, dataset_version=args.dataset_version)
     finally:
         con.close()
 
