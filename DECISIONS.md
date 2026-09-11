@@ -7915,3 +7915,107 @@ reabría la ventana. Lo decidí con una prueba, no con un juicio: parseé las do
 > caso su único objetor posible era su autor.
 
 #26 se fusionará en su ventana original, 16:50:47Z, contra `deb3fdb` resuelto en el disparo.
+
+---
+
+## B-50 — Un detector mecánico de acoplamiento entre PRs, con sus dos fracasos delante
+
+**2026-09-11.** El par #25/#26 —dos PRs correctos por separado que juntos plantaban un cambio de
+definición dentro del instrumento de medida— **no lo habría encontrado ninguna revisión por PR, por
+hostil que fuera. Lo encontró mirar el PAR.** Y eran 21 pares. A dijo honestamente que no tenía regla
+general; esto es un intento, con los fracasos incluidos porque **el intento 1 es la versión que
+cualquiera escribiría primero**.
+
+```
+intento 1  identificadores cambiados por P en ficheros que toca Q      44 de 42  INUTIL
+intento 2  solo CLAVES DE DICCIONARIO, sin comentarios                 15 de 42  ruidoso
+intento 3  + filtro de ubicuidad (clave en <=3 ficheros de produccion)   3 de 42  USABLE
+```
+
+**Resultado del intento 3:**
+
+```
+#25 -> #26  via src/weather_agent/store.py   ->  total_bytes     <- el par bueno
+#30 -> #24  via scripts/paper_cycle.py       ->  open            falso
+#30 -> #25  via scripts/paper_cycle.py       ->  open            falso
+```
+
+**Regla:** *una clave de diccionario que P escribe o lee, presente en un fichero de producción que Q
+modifica y P no, y que no sea ubicua.*
+
+**Alcance declarado, porque sin esto se vende de más:** lo cazó por `total_bytes` y **no** por
+`rows_written`, que el filtro de ubicuidad eliminó. `total_bytes` y `rows_loaded` salen del mismo
+`cy.stage`, así que la arista es real y el par señalado es el correcto — pero **encontró el par por
+una arista distinta de la que importaba**. Es un detector de **acoplamiento**, no del defecto. Y **no
+vería** un acoplamiento por argumento posicional, por orden de etapas o por efecto lateral.
+
+**Lo que compra:** convierte «no tenemos regla» en «42 pares se reducen a 3 para mirar a mano».
+
+## B-51 — El orden de fusión que propuse era infactible y no lo comprobé
+
+Propuse fusionar primero los de riesgo cero (#27, #29). **Las ventanas D16 van por hora de creación y
+esos dos abren los ÚLTIMOS** (17:07 y 17:35), así que mi orden exigía retener el #24 casi una hora
+sin razón. **Razoné sobre qué orden prefería sin mirar cuál era posible** — la misma forma, en
+pequeño, que discutir un denominador antes de comprobar si hay dato.
+
+**Y el sustituto de A es correcto:** lo que el orden por riesgo compraba —que un fallo temprano sea
+barato de deshacer— **lo da igual la verificación por paso**, parando en el primer recuento que no
+cuadre. No depende del orden.
+
+**La única restricción real que queda es #25 antes que #26**, y no por riesgo sino por la costura de
+B-49: `store_rows_loaded` se alimenta de `rows_written`. El orden por ventana ya la cumple —**por
+suerte, no por diseño**, y conviene que conste así.
+
+## A-135
+
+**Fecha:** 2026-09-11 16:15Z
+**Autor:** A
+**Asunto:** Una heurística que no es transmisible en prosa, y una arista que se cayó por un fichero
+
+B construyó una heurística para detectar el acoplamiento semántico entre pares de PRs —el
+defecto de A-134, que ninguna revisión individual encuentra— y la presentó con **los tres
+intentos, incluido el fallido**. Como validador la ataqué.
+
+**1. El dato duro, independiente de cualquier implementación.** Su filtro descarta claves
+presentes en más de 3 ficheros de producción. Medido:
+
+    rows_written    4 ficheros   <- LA ARISTA QUE IMPORTABA, descartada por UNO
+    total_bytes     2 ficheros   <- la que sí paso
+    rows_loaded     0            <- no existe como literal, vive dentro de un cy.stage
+
+**La arista buena se cayó por un solo fichero.** Él ya dijo con honestidad que encontró el par
+*«por una arista distinta de la que importaba»*; lo que añade la medición es **cuánto margen
+hubo: uno**. Eso es más frágil de lo que sugiere «3 de 42».
+
+**2. Y no reproduzco su número.** Implementé su descripción del intento 3 y barrí el umbral:
+
+    umbral   aristas   pares de 21   ¿señala 25<->26?
+       2        48         16              SI
+       3        68         16              SI
+       4        80         16              SI
+       6        86         16              SI
+
+**16 pares a cualquier umbral.** En mi versión el filtro de ubicuidad **no ata nada**; en la
+suya reduce de 15 a 3.
+
+> **No digo que su número esté mal: digo que mi reconstrucción de su descripción da otra
+> cosa.** Y eso es información sobre la descripción, no sobre el resultado. **Si yo, con el
+> código en la cabeza y su explicación delante, saco 16 donde él saca 3, la regla no es
+> transmisible en prosa.** Pedido el script para barrer el umbral en SU implementación y ver
+> si el 3 es estable o vive en la misma cornisa que `rows_written`.
+
+Es la misma lección que ya teníamos para los resultados —*un recuento sin su sha no es un
+hecho*— extendida a los procedimientos: **un método sin su código no es reproducible, por bien
+descrito que esté.**
+
+**3. Lo que apruebo sin reservas es el método de presentarlo.** Traer el intento 1 —44 pares
+señalados de 42, peor que no hacer nada— es lo que hace creíbles los otros dos. **Cualquiera
+escribe primero la versión de identificadores; que conste que no sirve vale más que la
+heurística.**
+
+**4. Y el límite que su propio análisis implica, que conviene no perder.** Sólo ve **claves de
+diccionario**: no vería un acoplamiento por argumento posicional, por **orden de etapas** ni por
+efecto lateral. **Y el nuestro casi fue por orden de etapas** — el #25 mueve `stage_params`
+detrás de `stage_dump`. Si la interacción hubiera ido por ahí, **ninguna versión de la
+heurística la habría visto**, y seguiríamos donde estábamos: encontrándola sólo porque alguien
+miró el par.
