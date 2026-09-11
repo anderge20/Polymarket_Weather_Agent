@@ -9022,3 +9022,150 @@ añadir la dependencia que `requirements-paper.txt` excluye a propósito.**
 **6. Y ninguna ranura se perdió.** El ciclo terminó y empujó a las 18:23:40. Mi alarma de
 «colgado» era del log obsoleto. **El `flock` queda libre mucho antes de las 21:07**, que es lo
 que importaba.
+
+---
+
+## B-62 — El #26 es un NO-OP en la caja, y un 4 % peor. Medí una rama que allí no existe
+
+**2026-09-11, ciclo de 18:07Z, primer ciclo con el #26 dentro.** Perfil, verificado por mi propio
+vigía además del informe de A:
+
+```
+                          18:07Z (con #26)   15:07Z (sin #26)
+load:orderbook_snapshots      551,66 s           532,33 s
+load:price_history            295,83 s           280,19 s
+load:*                        890,4 s (89,7%)    855,7 s (90,0%)
+ciclo total                   992,2 s            950,3 s
+                              16,54 min          15,84 min   -> 4 % PEOR
+```
+
+**Las dos predicciones refutadas.** La mía (`load:*` 18–30 s) y la de A (22–120 s). Mi propio falsador
+—`load:* > 100 s`— se cumple con holgura.
+
+### Causa 1: pandas. Medí una rama que la capa paper no puede tomar
+
+`requirements-paper.txt` **excluye pandas a propósito**; `requirements-pipeline.txt` lo lleva.
+`upsert_many` bifurca en `try: import pandas / except ImportError: pd = None`: **con** pandas registra
+un frame y hace `INSERT ... SELECT` (0,05 s); **sin** pandas cae a `executemany`. **Confirmado en la
+caja por A en dos segundos: `ModuleNotFoundError`.**
+
+**Y la advertencia estaba EN EL DOCSTRING DE LA FUNCIÓN QUE MEDÍ**, nombrando el fallo exacto: *«verde
+en la máquina de desarrollo donde pandas resulta existir»*. **No es que no lo leyera: lo cité en mi
+propio PR**, en la parte donde explico que `upsert_many` deduplica. **Leí el párrafo y no me apliqué la
+frase.**
+
+### Causa 2, medida por mí: `executemany` tampoco bate al bucle
+
+```
+un shard de price_history, 758 filas, base vacia, pandas BLOQUEADO, salida sin bufer
+  fila a fila       10,45 s
+  executemany        9,54 s   ->  1,10x
+```
+
+**El 1,52× del docstring (16,47 contra 24,99) NO transfiere a esta carga.** Así que el #26 sustituyó
+~25.700 upserts por 33 `executemany` del mismo coste por fila **más** el registro de tabla temporal:
+**el 4 % peor es exactamente lo que predice este número.** No hace falta ningún cuadrático.
+
+**Y eso invalida el arreglo que A proponía** —llenar una temporal con `executemany` y luego
+`INSERT ... SELECT`—: **paga el `executemany` igual.** El coste no está en el `ON CONFLICT`, está en
+**mover filas de Python a DuckDB una a una**. Mover el destino no quita el peaje.
+
+### La dirección que sí puede ganar
+
+`read_json_auto` sobre el shard **.gz tal cual**, para que **Python no toque las filas**. Es lo que
+hacía rápida a la vía de pandas: **no era pandas, era no pasar por Python** — el frame sólo era la
+forma de decírselo a DuckDB. Sin dependencia nueva y sin los 242 MB del agrupado por tabla.
+**Tres cosas a comprobar antes de escribir nada:** que `read_json_auto` acepte `.gz` en la versión de
+la caja; que los tipos inferidos coincidan con el esquema (**`TIMESTAMPTZ` y el JSON anidado de
+`book_snapshot`** son los sospechosos, porque una inferencia distinta sería un cambio de datos
+disfrazado de optimización); y que el `ON CONFLICT` funcione sobre un `SELECT` de fichero.
+
+### Y una corrección que firmábamos los dos
+
+**«La caja es 2,4× más rápida que el Mac» era otra vez dos contabilidades.** Comparación limpia, misma
+vía y mismo trabajo: mi replay completo **777,34 s / 64.707 filas** contra su `load:*` **855,7 s /
+~62.000**. **La caja es 1,10× MÁS LENTA.** El 2,4× salía de comparar mi `markets` sola (34,28 s /
+1.100 filas) contra su `load:*` entero — tablas distintas, coste por fila distinto.
+
+### Decisión
+
+**No se revierte.** No es regresión sino **no-op con un 4 % dentro del ruido entre ciclos**, revertir
+tiene riesgo propio y no gana nada esta noche. El #26 **sigue siendo correcto** —semánticas
+preservadas, tests no vacuos— y **su justificación de diseño (PR #32) sigue siendo válida**: lo que
+cae es la aceleración, no la corrección.
+
+
+### B-62 bis — RETIRADAS dos afirmaciones mías de B-62, las dos en mi contra
+
+**Ambas de la misma hora, ambas retiradas midiendo mejor.**
+
+**1. RETIRADO el «4 % peor».** El almacén **creció entre los dos ciclos** y no lo normalicé:
+
+```
+15:07Z  load:* 855,7 s   cargaba 32 shards de orderbook
+18:07Z  load:* 890,4 s   cargaba 33            -> +3,1 % de datos
+tiempo  +4,1 %           NORMALIZADO: +0,9 %   -> indistinguible de cero
+```
+
+Lo correcto es **«sin efecto detectable»**. Y la explicación que di —«el coste de registrar una tabla
+temporal»— **la inventé para justificar un 4 % que era crecimiento del almacén**. **Comparé dos ciclos
+con distinta cantidad de datos y atribuí la diferencia al código**: la forma que este mismo documento
+lleva el día entero persiguiendo, cometida **al cerrar el diagnóstico de ese mismo día**.
+
+**2. RETIRADO el «acuerdo al 6 %».** Salía de extrapolar un shard suelto (9,54 s × 33 = 315 s) contra
+los 295,83 s medidos. **El replay local completo da 175,2 s para esa misma tabla** — dos mediciones
+**mías** que difieren **1,8×**, porque el cronometraje por shard incluía `init_db` y el arranque en
+frío de DuckDB **una vez por shard en lugar de una por tabla**. **La concordancia era coincidencia de
+dos errores.**
+
+**3. Y queda algo SIN EXPLICAR, declarado en vez de rellenado.** En local con pandas bloqueado **todo
+mejora** —total 1,09×, `price_history` 1,35×, catálogo 1,9×— y **en la caja no mejora nada**. Misma
+rama, misma carga, **signos opuestos**. Candidatos: versión de DuckDB, otro backend de `executemany`,
+o algo en `load:*` que el bucle local no hace. **Ninguno medido, ninguno afirmado.**
+
+**Lo que SIGUE EN PIE y no depende de la aritmética retirada:** pandas ausente en la caja (verificado
+allí), `executemany` 1,10× sobre un shard y no 1,52×, **cuadrático refutado** (0,96× sobre tabla
+llena), y que **el perfil no muestra aceleración** — eso se ve sin ninguna suma mía.
+
+Corregido también en el PR #32 (`bab3bd1`), antes de que se fusione.
+
+### A-141 (corrección, 18:45Z) — retiro el «4 % peor»: comparé ciclos con distinta cantidad de datos
+
+**A-141 §1 dice «el ciclo empeoró un 4 %». RETIRADO.** El almacén creció entre los dos ciclos y
+no lo normalicé. Normalizando por **filas**, que es mejor que por shards:
+
+    orderbook_snapshots   15:07  14,90 ms/fila   18:07  14,97 ms/fila   +0,5 %
+    price_history         15:07  11,26 ms/fila   18:07  11,52 ms/fila   +2,3 %
+
+    tiempo de las dos etapas  +4,3 %
+    filas                     +3,2 %
+    NORMALIZADO               +1,1 %   = indistinguible de cero
+
+**Lo correcto es «sin efecto detectable», no «4 % peor».** Y con ello se cae también la
+explicación que le puse —el coste de registrar la tabla temporal—: **inventé un mecanismo para
+un 4 % que era crecimiento del almacén.**
+
+> **Comparé dos ciclos con distinta cantidad de datos y atribuí la diferencia al código.** Es la
+> forma que llevo el día persiguiendo —dos contabilidades haciéndose pasar por una— cometida
+> **al cerrar el diagnóstico de ese mismo día**, y en la entrada que lo cerraba.
+
+La levantó B retirando su propia versión del mismo número. **Ninguno de los dos lo vio al
+escribirlo; los dos lo teníamos delante en el propio perfil, que trae las filas al lado de los
+segundos.**
+
+**Lo que de A-141 SIGUE EN PIE, y no depende de esto:**
+
+- **pandas ausente en la caja** → rama `executemany`. Confirmado en dos segundos.
+- **`executemany` ≈ bucle fila a fila**: 1,10× sobre un shard. Medición directa.
+- **Cuadrático refutado**: 0,96× sobre tabla llena (B) y, en mi propia medición con el bloqueo
+  verificado, `orderbook_snapshots` **baja** de 19,6 a 14,9 s/shard al llenarse la tabla.
+- **El #26 no acelera en producción.** Eso se lee en el perfil sin ninguna aritmética mía.
+- **La decisión de no revertir**, que se apoya en que es un no-op y no en cuánto de no-op.
+
+**Y B retira además su «acuerdo al 6 %»** entre su extrapolación local y la caja: sus dos
+mediciones propias difieren 1,8×, probablemente por contar el arranque de DuckDB una vez por
+shard. **La concordancia salía de comparar un número inflado con otro.**
+
+**Queda algo SIN EXPLICAR y lo dejamos dicho en vez de rellenarlo:** en local, con pandas
+bloqueado, el replay completo mejora 1,09× con lotes; **en la caja no mejora nada**. Misma rama,
+misma carga. **No sabemos por qué, y ninguno va a proponer una causa sin medirla.**
