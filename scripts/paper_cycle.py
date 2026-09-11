@@ -1473,6 +1473,7 @@ def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
     _loaded = next((e for e in cy.stages if e["stage"] == "load:store_stats"), {})
     store_bytes = _loaded.get("total_bytes", 0)
     store_rows = _loaded.get("rows_loaded", 0)
+    _resident = _loaded.get("rows_resident", 0)
     params = {
         "session_id": session_id,
         "dataset_version": dataset_version,
@@ -1551,6 +1552,15 @@ def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
         # 27x too small.
         "store_total_bytes": int(store_bytes),
         "store_rows_loaded": int(store_rows),
+        # AND THE ONE THE PROJECTION ACTUALLY NEEDS, which stopped at the
+        # stage. `rows_resident` was computed, passed to `cy.stage()` and
+        # never written here — so the comment above pointed a reader at a
+        # field the row does not contain, which is worse than no pointer.
+        #
+        # It is PR #23's defect reappearing inside the fix for its own
+        # family: a value that reaches the stage and not the shard. And the
+        # test could not catch it, because the test read the STAGE too.
+        "store_rows_resident": int(_resident),
         # `at_s` is relative to the start of the cycle, so without this the
         # series has no absolute anchor. On Hetzner it can be recovered from the
         # `session_id`; on Actions the id carries the run id instead and it
