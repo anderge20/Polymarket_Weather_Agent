@@ -79,12 +79,46 @@ diferencia entre el bin 0 y el bin 7 es un factor de tres en la media.
 
 ## Lo que NO afirmo
 
-- **No digo que 0,0168 esté mal.** Digo que es la mitad de una media de una muestra anterior,
-  y que la media de hoy es 0,0193 sobre 25 736 libros. Si la muestra temprana daba 0,0336 de
-  media, o la población cambió o eran poblaciones distintas — **eso está sin resolver y no lo
-  resuelvo aquí.**
-- **No digo cuál usar.** Digo que la pregunta «¿cuál es el spread?» no tiene respuesta hasta
-  que se diga **sobre qué población** y **con qué peso**.
 - **No mido lo que se paga de verdad**, que es el spread de los libros donde una orden
   *rellena*. Eso requiere ejecución simulada contra el libro, que existe (`R23`) pero no se ha
   corrido sobre esta serie.
+- **No digo cuál usar.** Digo que la pregunta «¿cuál es el spread?» no tiene respuesta hasta
+  que se diga **sobre qué población** y **con qué peso**.
+
+
+---
+
+## ADENDA — de dónde salía el 0,0168, y el contraste que yo no hice
+
+*Añadido el mismo día, tras el rastreo de la sesión B.*
+
+**El 0,0168 era la mitad de un spread medio de 0,0336 que medí YO sobre los 27 tokens operados
+en UN ciclo.** Lo pasé sin su `n` y sin su población, B lo citó desde entonces como «el
+semidiferencial real medido», y acabó sosteniendo el desenlace *a priori* de §6.2 de R30. **El
+defecto nace en mi medición, no en su cita.**
+
+Y sobre la población entera el resultado invierte la conclusión que se sacó de él:
+
+    semidiferencial, media poblacional   0,0096     (n = 25.736)
+    x_exec supuesto por R21              0,0100
+    diferencia                           0,0004
+
+**El supuesto de R21 no era optimista: sobre la población era exacto.** El «68 % más caro» que
+se dijo comparaba un subconjunto de 27 contra un supuesto, presentándolo como hecho del mundo.
+
+**Pero B no se quedó en retirarlo, e hizo el contraste que a mí no se me ocurrió:** si 27
+extracciones de esta población pueden dar 0,0336 por azar. Bootstrap de 20 000 remuestreos:
+
+    media de 27:  p50 0,0177 · p75 0,0212 · p90 0,0273 · p95 0,0305 · p99 0,0407
+    P(media de 27 >= 0,0336) = 0,027      (B, con otra semilla: 0,026)
+
+**p ≈ 0,027, así que el subconjunto OPERADO es genuinamente más caro que la población.** No es
+ruido de muestra pequeña. **La dirección se sostiene; la magnitud no.**
+
+Lo cual, además, es coherente con la tabla por bin de más arriba y le da mecanismo: la regla
+opera en la zona de duda, y la zona de duda cotiza al doble.
+
+> **La lección, y es mía:** yo medí una distribución y me detuve en describirla; *«la
+> discrepancia queda sin resolver»* era una conclusión que no había intentado ganarme. El
+> contraste que la resuelve costaba veinte líneas. **«Sin resolver» hay que ganárselo
+> intentándolo, igual que «no verificable».**
