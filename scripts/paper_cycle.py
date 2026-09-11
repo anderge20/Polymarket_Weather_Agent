@@ -180,9 +180,22 @@ class Cycle:
         self.meta = meta
         self.stages: list[dict] = []
         self.started_at = _utcnow()
+        self._last_stage_at: datetime | None = None
 
     def stage(self, name: str, status: str, **detail) -> dict:
-        entry = {"stage": name, "status": status, **detail}
+        # WHEN EACH STAGE HAPPENED, because an aggregate localises nothing.
+        # The cycle's pre-collection time grew 8.23 → 11.38 min over five slots
+        # on 2026-09-10 with the token count flat, and no stage recorded a
+        # duration, so "something is slow" could not become "this is slow".
+        # `at_s` is from cycle start, `elapsed_s` from the previous stage — two
+        # fields, and the second is the one that points.
+        now = _utcnow()
+        prev = self._last_stage_at or self.started_at
+        entry = {"stage": name, "status": status,
+                 "at_s": round((now - self.started_at).total_seconds(), 2),
+                 "elapsed_s": round((now - prev).total_seconds(), 2),
+                 **detail}
+        self._last_stage_at = now
         self.stages.append(entry)
         line = f"[{status:7}] {name}"
         extras = " ".join(f"{k}={v}" for k, v in detail.items() if k != "traceback")
@@ -1411,6 +1424,19 @@ def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
         "dataset_version": dataset_version,
         "target_date": str(args.target_date),
         "recorded_at": _iso(_utcnow()),
+        # THE PER-STAGE PROFILE GOES IN THE SHARD, not only in the summary.
+        # Session B's blocking finding on PR #23: `cy.stage()` reaches
+        # `$ROOT/last_summary.json`, which is OUTSIDE `paper_state`, overwritten
+        # every cycle and never committed — `run_cycle.sh:115` adds only
+        # `paper_state`. So the timings would have been one point, the last one,
+        # not a series. It is the defect documented at line 722 of this file
+        # three hours earlier, committed again by the person who wrote it down.
+        #
+        # `cycle_params` is written on EVERY cycle including collect-only, so
+        # this is ten points a day rather than two.
+        "stage_profile": json.dumps(
+            [{"stage": e["stage"], "at_s": e.get("at_s"),
+              "elapsed_s": e.get("elapsed_s")} for e in cy.stages]),
         "t_end": _iso(timing["t_end"]),
         "t_asof": _iso(timing["t_asof"]),
         "prediction_time": _iso(timing["prediction_time"]),

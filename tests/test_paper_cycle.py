@@ -1607,6 +1607,42 @@ def test_coverage_also_actually_writes_a_row_through_main(con, tmp_path, monkeyp
     assert names == ["venue_coverage", "venue_coverage:other_lead"], names
 
 
+def test_the_stage_profile_reaches_the_committed_shard_not_only_the_summary(
+        con, tmp_path, monkeypatch):
+    """Session B's blocking finding on PR #23, and it is A-106 committed again.
+
+    `cy.stage()` reaches `$ROOT/last_summary.json` — OUTSIDE `paper_state`,
+    overwritten every cycle, never committed, because `run_cycle.sh:115` adds
+    only `paper_state`. So per-stage timings written there would be ONE point,
+    the last one, not a series. The same defect this file documents at the
+    `venue_coverage` stage, committed again by the person who wrote it down.
+
+    `cycle_params` is written on every cycle including collect-only, so the
+    profile lands there: ten points a day rather than two.
+    """
+    monkeypatch.setattr(paper_cycle, "stage_discover",
+                        lambda cy, *a, **k: cy.stage("discover", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_collect",
+                        lambda cy, *a, **k: cy.stage("collect:books", paper_cycle.OK))
+    store_root = tmp_path / "store"
+    rc = paper_cycle.main([
+        "--target-date", "2026-09-11", "--dataset-version", "ds1",
+        "--store-root", str(store_root), "--db", str(tmp_path / "t.duckdb"),
+        "--collect-only", "--summary-json", str(tmp_path / "s.json")])
+    assert rc == 0
+
+    import gzip as _gz
+    shards = store.iter_shards(store_root, "cycle_params")
+    assert shards, "no cycle_params shard was written"
+    row = json.loads(_gz.open(shards[0], "rt").readline())
+    prof = json.loads(row["stage_profile"])
+    assert prof, "the shard carries no stage profile"
+    names = [p["stage"] for p in prof]
+    assert "collect:books" in names
+    assert all(p["at_s"] is not None and p["elapsed_s"] is not None for p in prof), \
+        "every stage must carry both its offset and its own duration"
+
+
 def test_the_collect_stage_reports_how_long_the_pass_took(con, tmp_path, monkeypatch):
     """The lag from cycle start to the books landing, recorded per cycle.
 
