@@ -346,10 +346,29 @@ def load_shards(
         # ONE BATCH PER SHARD, not one statement per row — and PER SHARD rather
         # than per table, which is a choice with a measured price on both sides.
         #
-        # Per table would be one statement instead of 32 and would approach the
-        # ceiling: decompressing and parsing the whole store costs 1.64 s against
-        # the 19.86 s this path takes, so if the upsert were free the speedup
-        # would be 474x rather than the 39x measured here. (That 474 lands within
+        # THE 39x IS NOT PRODUCTION'S NUMBER, and this is written before the
+        # rest so nobody reads the rest as an operational claim. It was measured
+        # on a machine where pandas exists, and `upsert_many` takes a fast
+        # `INSERT ... SELECT` path only when it can import pandas — which
+        # `requirements-paper.txt` deliberately excludes. On the host that runs
+        # the cycle this batching is a NO-OP: measured 2026-09-11, `load:*` went
+        # 855.7 s -> 890.4 s across the merge, 4% worse, the cost of registering
+        # a temp table per shard. `executemany`, the fallback, beats the
+        # row-at-a-time loop by 1.10x and not by the 1.52x its own docstring
+        # records for a different workload. Blocking pandas locally reproduces
+        # the host to within 6% (315 s predicted against 295.83 s measured),
+        # which is what makes that diagnosis a measurement and not a story.
+        #
+        # WHAT SURVIVES IS THE CORRECTNESS, NOT THE SPEED: identical conflict
+        # semantics, tests verified able to fail, and the column-set grouping
+        # below. The speed needs a path where Python never touches the rows —
+        # DuckDB reading the .gz shard itself — which is what the pandas branch
+        # was really buying: not pandas, but staying out of Python.
+        #
+        # Per table would be one statement instead of 32 and, WHERE THE FAST PATH
+        # EXISTS, would approach the ceiling: decompressing and parsing the whole
+        # store costs 1.64 s against the 19.86 s that path takes, so if the upsert
+        # were free the speedup would be 474x rather than 39x. (That 474 lands within
         # 1% of the 478x `upsert_many`'s own docstring measured for the pure
         # INSERT ... SELECT path, on a different workload years apart.) So there
         # is a factor of 12 left on the table and it is left there deliberately.
