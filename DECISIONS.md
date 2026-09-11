@@ -8156,3 +8156,268 @@ y **es anterior a la aprobación de B**: su mensaje discute explícitamente la d
 `store_stats` de la etapa que ya midió, que es el contenido de ese commit. Lo verifico por su
 contenido y no por la hora, porque los sellos de `git log` salen en hora local y ya me
 equivoqué hoy con un sello escrito a mano (A-124).
+
+---
+
+## B-53 — Comprobación diaria 2026-09-11: FALLA. Una fila marcada `is_final=True` cambió
+
+**2026-09-11.** B-29 instituyó repetir esta comparación cada día. **Ayer pasó y hoy no** — que es
+exactamente por lo que se instituyó.
+
+**El síntoma.** Filas `other_lead` de lead-9, objetivo 2026-09-11, **todas con
+`prediction_time = 03:00:00Z` y todas `is_final=True`**:
+
+```
+03:21 · 06:22 · 09:22 · 11:55    bands=561  priced=519  ev=51
+12:22 · 15:22                    bands=539  priced=503  ev=49   <- cambio, justo tras t_end
+```
+
+**Dos filas FINAL para el mismo (objetivo, lead, t_asof) que se contradicen.**
+
+**Mi primer mecanismo era falso y lo descarté midiendo.** Supuse «los mercados se cierran y salen del
+feed `closed=false`». **El objetivo 09-10 NO se movió** en cuatro ciclos tras su `t_end` (561 a las
+12:18, 15:20, 18:19 y 21:20). Y la secuencia del 09-11 es **539 → 561 → 539**, no una caída.
+
+**El mecanismo que sí encaja con ambas, establecido:**
+
+```
+UNICO shard de markets, volcado 2026-09-09:
+   objetivo 2026-09-10   51 eventos  -> 561 bandas   (todas persistidas)
+   objetivo 2026-09-11   49 eventos  -> 539 bandas   (2 eventos aun no existian)
+```
+
+`dump_catalogue = (not collect_only) or args.dump_catalogue`, y **todos los ciclos desde el 09-09 han
+sido collect-only** por el fail-closed de `PAPER_TAU` (A-122). Así que `markets` se reconstruye cada
+ciclo **desde un único shard congelado el 09-09** más lo que el descubrimiento añada **en RAM**. Los 2
+eventos de 09-11 descubiertos después **nunca se persistieron**: viven mientras el feed los devuelve y
+desaparecen al cerrarse. El 09-10 no se mueve porque sus 51 ya estaban en el shard.
+
+**Y la consecuencia es peor que el síntoma: el hueco CRECE.** Cuanto más lejos del 09-09 esté un
+objetivo, mayor proporción de sus mercados existe sólo en vivo. **La serie tiende a medir el snapshot
+del 09-09**, no el universo.
+
+### Y corrige B-31, que es mío
+
+En B-31 di por verificada la maquinaria as-of con el 09-10 —456 estable siete horas— y lo llamé
+*«primer test empírico de no-lookahead con hueco real de siete horas»*. **Sigue siendo cierto para los
+PRECIOS**, que filtran por `observation_time <= prediction_time`. **Pero el universo no es as-of**: lo
+calcula el llamante en vivo, y `stage_venue_coverage` recibe la lista ya hecha. **Mi verificación
+cubría una mitad y la presenté como si cubriera el todo.** Que el 09-10 aguantara fue **suerte de que
+sus 51 eventos estuvieran en el shard**, no una propiedad del código.
+
+**Remedios propuestos a A** (`paper_cycle` es su pista), de menos a más: (1) `is_final` no debe
+afirmarse mientras el universo pueda cambiar — hoy sólo mira `prediction_time >= t_asof`, correcto
+**para los precios** y mudo sobre el universo; (2) que la fila registre **de dónde sale su universo**
+(cuántos eventos del shard, cuántos en vivo), sin lo cual la serie no es comparable consigo misma y
+nadie puede saberlo leyéndola; (3) persistir el catálogo también en ciclos collect-only.
+
+### B-53 bis — El remedio 3 no cuesta RAM, y `data_end` es falsa alarma
+
+**A iba a descartar «persistir el catálogo en ciclos collect-only» por su coste en memoria.** El
+cálculo estaba mal en la magnitud que decide:
+
+```
+record_version en las 1.100 filas de markets:  {1: 1100}
+claves de conflicto DISTINTAS:                 1100
+```
+
+`CONFLICT_COLS["markets"] = (market_id, dataset_version, record_version)` y el descubrimiento escribe
+`record_version: 1` literalmente siempre. **Volcar el catálogo diez veces al día produce diez copias
+en shards que COLAPSAN a las mismas 1.100 filas al cargar.** La RAM la fijan las **filas distintas en
+la base**, no las de shard: mi pendiente de 1,433 KB/fila se mide sobre lo que entra en DuckDB.
+**El catálogo añade ~1.100 filas distintas UNA VEZ. El cruce de diciembre no se mueve.**
+
+Lo que sí crece: **almacén** +0,1 MB gz por volcado (~1 MB/día a 10 ciclos) y **tiempo de replay**
+(~330.000 upserts redundantes a 30 días ≈ 2 min con la vía por lotes del #26). **RAM: cero.**
+
+**Así que la disyuntiva «reproducibilidad contra meses de vida del colector» no existía.** La real es
+reproducibilidad contra tiempo de replay — justo lo que el #26 acaba de bajar 39×. Variante propuesta:
+**volcar el catálogo una vez al día**, que acota la ventana de pérdida a 24 h por +0,1 MB y +1.100
+filas de replay diarias.
+
+**Y `data_end` vacío en las 1.100 filas: FALSA ALARMA, por diseño declarado.** Está en
+`discovery.py:109` dentro de una constante llamada literalmente **`UNKNOWN_FIELDS`** —campos que
+gamma no entrega—, y **aparece en sólo dos sitios del árbol**: esa lista y la definición de columna en
+`database.py:173`. **Ningún lector.** Cerrar una falsa alarma vale lo mismo que levantar una buena: si
+se deja en el aire vuelve en dos semanas como «hay un campo vacío que nadie sabe si se usa».
+
+## B-54 — El objetivo 2026-09-12 no pierde 2 eventos: los pierde TODOS. Predicción con fecha
+
+**2026-09-11.** Reconstruyendo el origen del universo de las 40 filas de cobertura ya escritas:
+
+```
+eventos en el shard congelado del 09-09:  {2026-09-10: 51,  2026-09-11: 49}
+
+objetivo 09-10   51 eventos   51 del shard    0 en vivo   -> aguanto siempre
+objetivo 09-11   51 eventos   49 del shard    2 en vivo   -> cayo a 49 tras t_end
+objetivo 09-12   51 eventos    SIN SHARD     51 en vivo   <-- TODOS
+```
+
+**El objetivo 2026-09-12 no está en el shard.** Sus 51 eventos viven **sólo en RAM**, recreados cada
+ciclo por el descubrimiento.
+
+**PREDICCIÓN FALSABLE:** el **2026-09-12 después de las 12:00Z** esos mercados cierran y salen del feed
+`closed=false` —y además `stage_discover` pasa `end_date_min=now`, así que quedan fuera por partida
+doble—. La fila `other_lead` de lead-9 para el objetivo 09-12 se calculará sobre universo **vacío** y
+entrará por `if not events: SKIPPED reason="empty_universe"`.
+
+**El objetivo 09-12 no tendrá fila FINAL de cobertura. Ninguna, no una degradada.** Y lo mismo cada
+día siguiente: **ningún objetivo posterior al 09-09 está en el shard.** Se comprueba mañana a las
+12:22Z.
+
+**Consecuencia para el remedio:** persistir el catálogo deja de ser «reproducibilidad» y pasa a ser
+**lo único que impide perder la fila final de mañana**. El feed `closed=false` no devuelve lo cerrado
+— igual que el libro, **no se recupera a posteriori**.
+
+**Y la reconstrucción histórica funciona sin tocar nada congelado:** `del_shard = min(events,
+shard[target])`, `en_vivo = events − del_shard`. Mismo patrón que la unión de `lead_h` en B-31:
+**recuperar por derivación, nunca reescribir.** Para 09-12 en adelante no hace falta derivar: es 100 %
+en vivo por construcción.
+
+**Concedido a A contra mi propia propuesta:** el volcado DIARIO que yo proponía es insuficiente, y por
+la razón exacta que él dio — *«ésos ya estarán en el shard»* **es el razonamiento que ha fallado hoy**.
+Volcado por ciclo.
+
+---
+
+## B-55 — Revisión del #31: corrompe `store_rows_loaded`, y es la TERCERA interacción del mismo campo
+
+**2026-09-11.** El #31 —volcar el catálogo en todos los ciclos, que es el arreglo correcto y urgente—
+tiene un efecto colateral que su propio comentario niega sin querer.
+
+Dice **«RAM cost: zero»**, y es **cierto para la memoria**. Pero el campo que el #25 añade **para
+fechar el techo de RAM** no cuenta filas residentes: cuenta filas **aplicadas**.
+
+```
+database.py    upsert_many(...) -> return len(rows)    <- sin distinguir insert de update
+store.py       rows_written += db.upsert_many(...)
+paper_cycle    total += rows_written -> rows_loaded -> store_rows_loaded (#25)
+```
+
+Cada copia del catálogo es su propio lote y **vuelve a contar sus 1.100 filas**:
+
+```
+filas distintas nuevas/dia   ~19.200   <- lo que ocupa memoria
+filas CONTADAS/dia           ~30.200   <- lo que registraria store_rows_loaded
+de ellas SIN memoria         ~11.000
+```
+
+**Inflación ~57 %, hacia el lado alarmista:** aplicar mi pendiente de 1,433 KB por fila **distinta** a
+un recuento hinchado adelanta el cruce de ~97 días a ~62. **Un generador de falsas alarmas dentro del
+instrumento.**
+
+**Tercera interacción del MISMO campo** entre PRs correctos por separado: #25↔#26 (la costura
+ofrecidas/aplicadas) y ahora #25↔#31. Un campo que persiste una serie es un imán de acoplamientos.
+
+**Arreglo propuesto:** añadir `rows_resident` —doce `COUNT(*)` sobre la base en memoria, una vez por
+ciclo— y dejar `rows_loaded` como está. `rows_loaded` es un hecho sobre el trabajo hecho;
+`rows_resident` es el que se diferencia para la RAM.
+
+**Y un choque no visto:** `#31` sobre `main+#25` **CHOCA** en `tests/test_paper_cycle.py`; sobre
+`main+#26` limpio. Trivial, pero **contar los tests, no mirar el color** — yo resolví ese mismo choque
+con `checkout --theirs`, la suite dio verde y faltaban dos.
+
+**Aprobado sin reservas:** que el comentario explique **por qué la regla anterior era correcta y qué se
+le escapó**, en vez de presentarla como error. Y que el coste vaya dentro del código con sus tres
+magnitudes separadas.
+
+**Nota de práctica, de A:** un mensaje de commit con backticks dentro de `-m "…"` **se ejecutó como
+comando** y se comió una frase; `git` lo aceptó. **Un mensaje de commit con un agujero es una
+referencia rota**, y estaba en el registro del arreglo de una referencia rota. Regla: mensajes largos
+por `-F fichero`, nunca `-m` con backticks.
+
+## B-55 bis — Queda `store_total_bytes` con el mismo defecto, y una alternativa que elimina la cadena
+
+**A arregló `rows_loaded` con `rows_resident`. Pero el #25 persiste DOS campos para fechar el techo y
+sólo se corrigió uno.**
+
+```
+store_stats() suma  path.stat().st_size  sobre iter_shards(base)
+```
+
+`store_total_bytes` son **bytes de fichero GZIPADO en disco, sumando TODAS las copias**. Tras el #31
+crece ~1 MB/día de pura redundancia — **el mismo defecto recién arreglado en el lado de las filas**. Y
+arrastra otro **anterior al #31**: es el almacén comprimido, no la base residente.
+
+```
+almacen gzipado      8,8 MB
+sin comprimir       60,5 MB    (x6,9)
+RSS del proceso    239   MB    (x27 sobre el gzipado)
+```
+
+**Quien feche el techo con `store_total_bytes` usa un número comprimido, inflado por redundancia, y
+con un factor de 27 que no está escrito en ningún sitio.** Vale para lo que su docstring dice
+—vigilar el disco contra los 31 GB libres— y no para la RAM.
+
+### La alternativa: dejar de proyectar desde proxies y medir la cosa
+
+```python
+"peak_rss_mb": round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024, 1)
+```
+
+Hoy la cadena es **filas → pendiente medida en un Mac → MB → comparar con 3.819 MB**: tres saltos, y
+**los dos primeros ya han fallado una vez cada uno**. Con el RSS por ciclo es **MB → comparar**. Y
+resuelve de paso lo que quedaba abierto de `k`: dos ciclos consecutivos dan la pendiente real **de la
+caja** por resta, sin pasar por ninguna estimación mía.
+
+*(Unidad: en Linux `ru_maxrss` viene en KB y en macOS en bytes; la caja es Linux. La unidad debe ir en
+el nombre del campo, como `elapsed_s` y `at_s`.)*
+
+### Y el patrón de las tres interacciones, afinado
+
+A observa que las tres son sobre el mismo campo porque **es el único que AGREGA algo que otros PRs
+producen**. Añado la otra mitad: **es también el único que forma una SERIE**, así que un cambio de
+definición **no se ve como un error sino como una tendencia**. **Agregar y persistir, juntas, son la
+receta** — y explican por qué tres PRs correctos por separado se encontraron ahí y no en otro sitio.
+
+## A-136
+
+**Fecha:** 2026-09-11 17:05Z
+**Autor:** A
+**Asunto:** Tres fusiones con su número exacto; y mi regla de resolución era específica de los tests
+
+**1. Fusionados, cada uno con las dos verificaciones y el recuento contra el pre-vuelo.**
+
+    #24 -> 1846186   591 contra head declarado · 591 sobre el arbol   esperado 591
+    #25 -> bbed469   593 sobre la resolucion    · 593 sobre el arbol   esperado 593
+    #26 -> e094079   591 contra deb3fdb         · 595 sobre el arbol   esperado 595
+
+**Y un aviso del #25 que casi se me escapa:** tras empujar la resolución del choque,
+`gh pr view --json headRefOid` devolvió el head **obsoleto**. Lo comprobé por **los padres del
+merge** —`1846186 + 0b7ff0e`— y sí había entrado. **Fiarse del API en vez de los padres habría
+dejado la duda sin resolver.**
+
+**2. LA REGLA DE RESOLUCIÓN QUE DEFENDÍ TODA LA TARDE ERA ESPECÍFICA DE LOS TESTS.**
+
+Al fusionar `main` dentro del #31 el choque cayó en `scripts/paper_cycle.py`. Quitar sólo los
+marcadores dejó:
+
+    dump_catalogue=True)
+    ...
+    dump_catalogue=deciding or bool(args.dump_catalogue))
+
+**`IndentationError`.** Los dos lados eran **ALTERNATIVAS, no adiciones**.
+
+> **Habíamos generalizado desde el único caso que habíamos visto:** un fichero de tests, donde
+> los conflictos son **anexos independientes** y conservar ambos lados es exactamente lo
+> correcto. En código de producción los dos lados suelen ser **la misma decisión tomada de dos
+> maneras**, y conservar los dos no es conservador: es incoherente.
+
+**Y la rotura fue ruidosa POR SUERTE.** Dos entradas de diccionario, o dos asignaciones al
+mismo nombre, habrían **parseado sin quejarse** y una habría ganado en silencio — y el recuento
+de tests no distingue un caso del otro. Así que sobre código añadí tres comprobaciones:
+**el fichero parsea**, **ningún diccionario tiene claves duplicadas**, **ninguna función está
+definida dos veces**. Las tres pasan.
+
+**Regla corregida:** *quitar sólo los marcadores vale cuando los dos lados son ADICIONES
+independientes; cuando son alternativas hay que elegir, y ninguna suite lo detecta.*
+
+**3. `store_total_bytes` documentado con las tres magnitudes de B.** 8,8 MB gzipado · 60,5 sin
+comprimir · **239 de RSS** — factor **27** entre la primera y la última, y no estaba escrito en
+ningún sitio. Queda dicho para qué sirve —vigilar el disco contra 31 GB libres, que es lo que
+su docstring promete— y para qué no: el techo de RAM, que es `rows_resident`.
+
+**4. Su propuesta de medir el RSS directamente, aceptada y en PR aparte.** Es **mejor
+instrumento, no corrección**, así que va sola por reversibilidad. Su argumento es el bueno:
+hoy la cadena es *filas → pendiente medida en un Mac → MB → comparar con 3.819 MB*, y **dos de
+esos tres saltos ya han fallado una vez cada uno**. Con `ru_maxrss` es *MB → comparar*.
