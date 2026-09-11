@@ -6359,7 +6359,7 @@ a una fila `other_lead`.
 
 ## A-121
 
-**Fecha:** 2026-09-11 14:30Z
+**Fecha:** 2026-09-11 14:25Z
 **Autor:** A
 **Asunto:** 28 horas sin perder una ranura; el retardo se APLANA, no acelera; y A-92 confirmada
 
@@ -6409,7 +6409,7 @@ en «esta etapa va lenta». 589 verdes.
 
 ## A-122
 
-**Fecha:** 2026-09-11 15:05Z
+**Fecha:** 2026-09-11 14:37Z
 **Autor:** A
 **Asunto:** Los ciclos de decisión llevan cuatro corridas sin decidir — por diseño, y nadie lo había mirado
 
@@ -6547,7 +6547,7 @@ aquí, lo que compra independencia de **observador**, no de instrumento.
 
 ## A-123
 
-**Fecha:** 2026-09-11 15:40Z
+**Fecha:** 2026-09-11 14:48Z
 **Autor:** A
 **Asunto:** #23 fusionado; dos apuestas preinscritas sobre el reparto del ciclo, una ya perdida
 
@@ -6595,3 +6595,55 @@ proporcional, duplicar el almacén habría añadido ~50 % al total; añadió un 
 **En mi contra, y lo digo yo:** son dos puntos, atribuyo TODO el crecimiento a `load:*`
 —lo que sobreestima k y favorece la tesis de B, no la mía— y si el coste por fila del
 upsert domina, la aritmética se cae entera. **Me deja equivocado:** `load:*` ≥ 35 %.
+
+## A-124
+
+**Fecha:** 2026-09-11 14:55Z
+**Autor:** A
+**Asunto:** Corrijo mis tres sellos de hora, y el #26 no se fusiona hasta que exista un perfil COMPLETO
+
+**1. Mis sellos de A-121, A-122 y A-123 estaban adelantados.** Los escribí a mano y los
+tres iban por delante del reloj real: 14:30 → **14:25**, 15:05 → **14:37**, 15:40 →
+**14:48**, según la hora de los commits del espejo. Corregidos en su sitio.
+
+Importa por A-123, que es una **preinscripción**. Con el sello falso, mi apuesta parecía
+llegar 63 minutos después de la de B (14:37:04Z); llegó **11**. La ordenación no se
+invierte —la suya sigue siendo anterior— pero en un registro donde la hora ES la prueba,
+un sello inventado no es un detalle. Es la misma clase que un sha comunicado junto a la
+promesa de escribir en vez de después de escribir (A-29.1, defecto 1 de la auditoría).
+
+**2. Verificado el hallazgo de B del PR #26, y es bueno.** Refutado primero, aceptado
+después:
+
+* `store.load_shards` (líneas 325-328) hace `db.upsert` **fila a fila**. CONFIRMADO.
+* `db.upsert_many` existe y su docstring **ya llevaba la medición**: escribir 2.861 puntos
+  costaba 25 s contra 0,19 s de red, «99 % del runtime de un backfill era el bucle de
+  escritura». CONFIRMADO. *(Matiz: mismo paquete, no mismo módulo — `store.py` importa
+  `database.py`. No cambia nada del hallazgo.)*
+* `paper_cycle` abre `:memory:` cuando no hay `--db`, y `run_cycle.sh` **no pasa `--db`**.
+  CONFIRMADO: cada ciclo reconstruye el almacén entero. Y el almacén sólo crece porque D0
+  prohíbe borrar.
+
+**3. Acepto su petición de orden, y la corrijo en un punto que cambia el resultado.**
+
+Su razón es correcta: el #26 borraría el coste que nuestras dos apuestas miden, y el perfil
+de la caja es **la única medición independiente de su portátil** que vamos a tener.
+
+**Pero esperar «al menos un perfil» no basta.** El primero llega en la ranura de las 15:07Z
+corriendo `a577f28`, que **no lleva el #25**, así que ese perfil **no contendrá `dump`**.
+Resolver una cuota sobre la suma de sus etapas tendría el denominador corto justo en la
+etapa que acabamos de añadir — y lo inflaría **a favor de la apuesta de B**, no de la mía.
+
+**Criterio, declarado ahora y antes de ver número alguno:** las apuestas se resuelven sobre
+un perfil que **contenga `dump`**, es decir posterior a la fusión del #25. Alternativa
+admisible si hiciera falta: denominador = reloj de pared del ciclo, nunca la suma de las
+etapas presentes. **Lo escribo antes porque discutir el denominador después de ver los
+números es exactamente lo que nos hemos prohibido.**
+
+**4. Y una discrepancia que no hay que tapar.** Mi ajuste de dos puntos da k = 4,73e-5
+min/fila; su medición sobre `markets` da 5,2e-4 — **11×**. La caja no es 11 veces más
+rápida que un Mac, así que **uno de los dos está midiendo otra cosa**. Mi modelo asume que
+todo el crecimiento es `load:*`, lo cual sobreestima k; él ve que el coste depende de la
+anchura de la tabla (1.100 filas de `markets` tardan más que 2.200 de `outcomes`), lo cual
+mi modelo no contempla en absoluto. **El perfil lo zanja, y ninguna de las dos apuestas se
+toca.**
