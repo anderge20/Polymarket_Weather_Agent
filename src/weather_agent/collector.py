@@ -547,6 +547,16 @@ def collect_books(
         "requests": 0,
         "stopped": False,
         "error": None,
+        # THE INSTANT THE BOOKS WERE FETCHED, reported by the function that
+        # fetches them. `observation_time` IS this instant, so the gap between a
+        # cycle starting and this value decides whether a pass lands inside
+        # somebody's cutoff window — and R24 §6bis.4septies's warm-up premise
+        # depends on no pass landing between a cycle's cutoff and its anchor.
+        # Reported here rather than re-queried by the caller because
+        # `paper_cycle` is forbidden from touching `orderbook_snapshots`: two
+        # different predicates over that table once made the replay report NOT
+        # REPRODUCIBLE for cycles that were correct.
+        "collected_at": None,
     }
     if not pending:
         return summary
@@ -563,6 +573,7 @@ def collect_books(
     summary["books_received"] = len(res["books"])
 
     collected_at = _utcnow()
+    summary["collected_at"] = collected_at
     for book in res["books"]:
         token = str(book.get("asset_id") or "")
         if not token:

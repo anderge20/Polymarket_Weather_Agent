@@ -227,6 +227,48 @@ def test_collect_books_persists_rows(con):
     assert rows[0][3] == "cyc1"
 
 
+def test_collect_books_reports_the_instant_it_fetched(con):
+    """The collector reports `collected_at`, and the CALLER cannot fake it.
+
+    Written after the stage-side test for this passed with the collector's line
+    removed: it monkeypatched `collect_books` and supplied the field itself, so
+    it pinned the caller's handling and not the contract. The third time in one
+    day that a test could not fail on the thing it named — and this one was
+    written while documenting a change that had shipped vacuous for the same
+    reason.
+
+    So this exercises the real function with a stubbed HTTP session and asserts
+    the summary carries the instant, and that it matches the rows actually
+    written.
+    """
+    s = FakeSession([FakeResp(200, [_book("A")])])
+    out = collector.collect_books(
+        con, ["A"], dataset_version="ds1", collector_session_id="cyc1",
+        session=s, delay_s=0,
+    )
+    assert out["collected_at"] is not None, \
+        "the function that fetches must report when it fetched"
+    stored = con.execute(
+        "SELECT collected_at FROM orderbook_snapshots WHERE token_id = 'A'"
+    ).fetchone()[0]
+    assert out["collected_at"] == stored, \
+        "the reported instant must be the one written to the rows"
+
+
+def test_collect_books_reports_no_instant_when_it_fetched_nothing(con):
+    """No pass, no instant — `None`, not the clock read at entry.
+
+    A cycle with an empty pending list returns before fetching. Reporting a
+    timestamp there would make a lag computed against it meaningless, and the
+    caller's reporting block is guarded on exactly this being None.
+    """
+    out = collector.collect_books(
+        con, [], dataset_version="ds1", collector_session_id="cyc0",
+        session=FakeSession([]), delay_s=0,
+    )
+    assert out["collected_at"] is None
+
+
 def test_cycle_resumes_where_it_stopped(con):
     """R22's resumption criterion: a cancelled cycle finishes on the next run and
     does NOT re-collect what it already has."""
