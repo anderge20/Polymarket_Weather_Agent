@@ -323,7 +323,18 @@ def load_shards(
     the whole store: zero repeats in any replayed table) — but the two numbers
     are different claims and this one is a fact about the table rather than about
     what the caller sent. `rows_read` remains the offered count, so a divergence
-    between the two is visible rather than silent."""
+    between the two is visible rather than silent.
+
+    AND IT FEEDS A SERIES, which is why the change of meaning is written down
+    rather than left to be inferred. `stage_load_state` sums this field across
+    tables into `rows_loaded`, and that number is what a cycle reports as the
+    size of the store it just rebuilt — the quantity the RAM projection is
+    differenced from. So the series has a SEAM at this commit: points before it
+    are rows OFFERED, points after are rows APPLIED. They are equal on every
+    shard written so far (measured: zero repeated conflict keys anywhere in the
+    store), and `applied` is the better quantity for that purpose — what occupies
+    memory is what lands in the database, not what was read off disk. But a
+    series must never be differenced ACROSS the seam."""
     cols = tuple(conflict_cols) if conflict_cols else CONFLICT_COLS.get(table)
     if not cols:
         raise ValueError(
