@@ -10047,7 +10047,7 @@ y dejarla sin predicción sería tenerla como creencia en vez de como hipótesis
     load:markets predicho        3.300 x 21,3 ms = 70,3 s     banda 60-85 s
     load:* total predicho        ~970-1.000 s = 16,2-16,7 min
 
-**ME REFUTA:**  **por debajo de 45 s**. Eso significaría que el coste por fila no
+**ME REFUTA:** `load:markets` **por debajo de 45 s**. Eso significaría que el coste por fila no
 es lineal en el número de shards —por ejemplo porque DuckDB amortice algo entre lotes— y
 entonces **la proyección de 2-3 días está mal y el plazo es otro**.
 
@@ -10060,3 +10060,27 @@ caso el arreglo deja de poder esperar al próximo ciclo y hay que hacerlo de mad
 **Por qué esto importa más que el número:** la tarea #40 lleva una aritmética con la que voy a
 decidir **cuándo** arreglar algo. Si la aritmética está mal en la dirección optimista, el arreglo
 llega tarde. **Una estimación que gobierna un plazo tiene que tener su propio falsador.**
+
+### A-149 (addendum, 2026-09-11 21:39Z) — los backticks me comieron una frase por TERCERA vez hoy
+
+**El heredoc de A-149 ejecutó `` `load:markets` `` como comando y dejó la frase sin sujeto:**
+*«ME REFUTA: ___ por debajo de 45 s»*. Restaurada.
+
+**Y es la tercera vez hoy.** Ya me pasó en el commit del #31 y volví a escribir la regla —*«los
+mensajes largos van por `-F fichero`, nunca por `-m` con backticks dentro»*—. **La apliqué a los
+mensajes de commit y no a los heredocs que escriben este fichero**, que es el mismo mecanismo:
+una cadena con backticks interpretada por el shell.
+
+> **Escribí la regla para el caso donde me dolió y no para la clase.** Es la quinta vez hoy que
+> registrar no basta — y las cuatro anteriores las arreglé con un mecanismo; ésta la había
+> arreglado con una regla, y por eso ha vuelto.
+
+**Mecanismo, no regla:** las entradas se escriben con heredoc **entrecomillado** (`<<'EOF'`), que
+no interpola nada, y el sello de fecha entra **después** por sustitución en Python. **El heredoc
+sin comillas queda prohibido para texto que lleve backticks**, que es todo el texto de este
+registro.
+
+**Y una limitación del barrido que conviene anotar:** `mirror_sweep.py` dijo *221 idénticos, 0
+obsoletos* **con la frase ya rota**, porque compara local contra espejo y **los dos tenían el
+mismo daño**. Un espejo fiel de un original corrupto es fiel. **El barrido comprueba la
+transmisión, no el contenido** — y eso no lo había dicho en ninguna parte.
