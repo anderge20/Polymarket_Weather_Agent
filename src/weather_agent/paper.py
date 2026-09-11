@@ -456,6 +456,14 @@ def decide_and_fill(
     # wrong at any frequency. That is why this is a REFUSAL and not a warning.
     if params.exit_mode == "taker_close" and not _levels_from_snapshot(
             book_snapshot, "bid"):
+        # A NEW REASON NEEDS NO CHANGE AT THE CONSUMER, and that is worth
+        # stating because nothing said it. `stage_paper` counts refusals with
+        # `reasons[reason] = reasons.get(reason, 0) + 1` — an OPEN-SET counter,
+        # with no enumeration and no whitelist anywhere in the tree. A reason
+        # that has never been seen takes its own bucket and nothing else
+        # happens. Found by session B while auditing whether this PR's new
+        # string could break a downstream reader; it cannot, and the next person
+        # adding a refusal should not have to re-derive that.
         out["reason"] = "no_exit_liquidity"
         return out
 
