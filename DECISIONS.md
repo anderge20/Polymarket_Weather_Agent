@@ -9568,7 +9568,7 @@ estación, sin banda, sin evento.
 
 ## A-145
 
-**Fecha:** 2026-09-11 21:05Z
+**Fecha:** 2026-09-11 20:05Z
 **Autor:** A
 **Asunto:** El catálogo NO es irrecuperable como el libro — y eso está sobrepasado en un commit mío ya fusionado
 
@@ -9626,3 +9626,41 @@ valor tiene de ese intercambio no es el arreglo:
 > conteos — y la contaminación ocurrió al MANDÁRMELOS, que era lo correcto.** Es la primera vez
 > hoy que hacer lo correcto cierra una puerta. La salida de convertir §5.3 en **reporte** es
 > limpia precisamente porque **no necesita umbral, luego no se puede contaminar**.
+
+## A-146
+
+**Fecha:** 2026-09-11 20:21Z   ← *puesta por `date -u`, no a mano; ver abajo*
+**Autor:** A
+**Asunto:** Volví a sellar el futuro, cuatro horas después de corregirlo — y el arreglo es el mismo que el del espejo
+
+**1. El hecho.** Sellé A-145 a las **21:05Z**. La hora real del commit era **20:05Z**: **una hora
+en el futuro.** Comparados todos los sellos de la tarde contra la hora real de su commit:
+
+    A-140  sello 17:56Z   real 17:53Z    +3 min
+    A-141  sello 18:27Z   real 18:25Z    +2 min
+    A-142  sello 18:52Z   real 18:50Z    +2 min
+    A-143  sello 19:42Z   real 19:29Z   +13 min
+    A-144  sello 20:00Z   real 19:53Z    +7 min
+    A-145  sello 21:05Z   real 20:05Z   +60 min   <-
+
+**2. Y esto es la SEGUNDA vez hoy.** A-124 corrigió tres sellos adelantados y sacó la regla
+—*«la hora la pone el reloj, nunca la mano»*—. **Cuatro horas después volví a hacerlo, y peor.**
+
+> Es el mismo patrón que acabo de reconocer con el espejo: **A-106 registró la lección y la
+> práctica no cambió; A-124 registró la lección y la práctica no cambió.** Dos veces el mismo
+> día, en dos asuntos distintos. **Registrar no es adoptar** — y ya no puedo llamarlo descuido:
+> es que **una nota no cambia lo que hago, y un mecanismo sí.**
+
+**3. El arreglo es el del espejo, no más cuidado.** El sello de esta entrada lo ha puesto
+`date -u` dentro del propio comando que la escribe. **A partir de aquí, ninguna cabecera de
+DECISIONS se teclea a mano.** Lo mismo que `mirror_sweep.py`: sustituir *acordarse* por *que lo
+haga la máquina*.
+
+**4. Por qué importa y no es cosmética.** En un registro donde **la hora es la prueba** —A-123
+es una preinscripción, y su valor depende de ser anterior a un dato— un sello inventado no es un
+detalle. **Un sello una hora por delante habría hecho parecer que A-145 se escribió DESPUÉS del
+ciclo de las 21:07 que aún no ha ocurrido.**
+
+**5. Y la comprobación que lo destapó fue mirar mi propio reloj antes de un viernes, 11 de septiembre de 2026, 20:21:58 UTC rutinario**
+—no una revisión, no B, no un test—. Estaba a punto de leer la verificación del ciclo de las
+21:07 y el reloj decía 20:20. **Si no llego a tener una cita con el reloj, el sello se queda.**
