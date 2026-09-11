@@ -9408,3 +9408,221 @@ comprobado **después** de empujar y no antes.
 tests fijando **los valores publicados** y no la mera existencia de la rama — *«conservar una vía
 que no reproduce de verdad es peor que no conservarla»*. Su ventana se reinicia por el commit
 nuevo; lo verifico y fusiono cuando venza.
+
+---
+
+## B-65 — Ejecución del contraste de R30, declarada ANTES de ver ningún número
+
+**2026-09-11 ~20:05Z.** La puerta está pasada: **H** libera §4.1 para esta candidata (no necesita
+libro), **I** fija el criterio §5.5(a)–(e) y **J** el estadístico de coste. Todo congelado, hasheado
+**y ahora espejado y verificado por contenido**.
+
+**Sustrato:** `data/pmw.duckdb`. Se usa `backtest.candidates()` **exactamente como R22**, para que la
+población sea la misma a la que se refieren los conteos de §4.2 — no una reconstrucción propia.
+
+**El contraste NO usa `p_model`:** sólo `p_mid`, el desenlace y el evento. **Es inmune al cambio de
+colas del #33**, así que la discusión de reproducibilidad de B-64 no lo toca.
+
+### Orden, que la preinscripción impone
+
+1. **POTENCIA primero** (§5.5(e)): eventos por `precio_bin` del §0, **antes y después** de los dos
+   borrados de §5.3 (fuera la estación de mayor peso, fuera el mes de mayor peso).
+2. **Sólo después**, la curva `d_b = f_b − media(p_mid)_b` con IC bootstrap por bloques **sobre
+   eventos**.
+
+### Qué se hará con cada desenlace, escrito antes de verlo
+
+- **Intervalo con <150 eventos post-borrado** → **NO EVALUABLE POR POTENCIA, con su n a la vista.**
+  **Nunca** se agrega con el vecino ni se descarta en silencio. **Previsible que le pase al intervalo
+  4**: R22 le daba 188 eventos **antes** del borrado.
+- **IC de `d_b` excluye 0 en algún intervalo y el signo sobrevive los dos borrados** → el mercado está
+  **mal calibrado** en ese régimen. **Y eso todavía no es explotable**: hace falta §5.5(d) enmendado
+  por J — `|d_b| > media del semidiferencial de la población operada` + fees de D19.
+- **Mal calibrado pero por debajo del coste** → **§6.2**, se publica como tal.
+- **Bien calibrado en todos los intervalos evaluables** → **confirma la explicación de R21 y MATA la
+  vía**. Se publica igual: es el desenlace que cierra el mapa de edge.
+
+**Los cuatro son resultados y ninguno es un fracaso.** Y el segundo tiene una consecuencia que la
+Enmienda I ya declaró: si el mercado **no** está bien calibrado, **R21 acertó en el veredicto por una
+razón distinta de la que dio** — el veredicto no se mueve, su explicación sí.
+
+## B-66 — Enmienda K: §5.5(c) tenía un suelo de falso positivo del 22,6 %, y la permutación de §5.4 no servía
+
+**2026-09-11 ~20:10Z.** `PREREG_R30_ENMIENDA_K.md`
+sha256 `149e66955afd6581f1e511850baff9d6f153d6a425a21250d7b35cce79ae282e`
+
+**Escrita con el sustrato construyéndose y CERO números calculados** — ni `d_b`, ni curva, ni conteos
+de potencia. Defecto encontrado por A.
+
+**El defecto:** §5.5(c) declaraba «mal calibrado» si **el IC excluye 0 en al menos un intervalo de la
+familia de §5.4**. **Cita la familia y deja fuera la corrección del máximo.** Suelo de falso positivo
+bajo la nula: **18,5 % con k=4, 22,6 % con k=5** —el mínimo garantizado por §4.2 más el bin 0—, **40 %
+con k=10**. Un positivo no habría distinguido señal de familia, **en el criterio que decide si la única
+vía superviviente se declara viva**.
+
+**Enmendado a la salida 1 de A —enrutar por §5.4— porque §5.5(c) no era un criterio alternativo
+defendible: era incoherente con el propio documento.**
+
+### Y al escribirlo apareció algo que esa salida no cubría
+
+**La permutación de §5.4 NO sirve aquí.** Permutar desenlaces contrasta *«no hay asociación entre
+`p_mid` y el resultado»*, **y un mercado calibrado SÍ tiene asociación** — eso es **resolución**, no
+fiabilidad. Habría contrastado la nula equivocada y la habría rechazado por una razón ajena a la
+calibración.
+
+**Nula correcta:** por cada **evento**, sortear **una banda ganadora con probabilidades ∝ `p_mid`** de
+sus bandas. Es literalmente *«los precios son las probabilidades verdaderas»* **y respeta la partición
+con un solo ganador** — la dependencia intra-evento que una Bernoulli por banda destruiría.
+
+`T = max_b |d_b|` sobre los intervalos **evaluables**, p familiar sobre ≥10.000 réplicas, **mal
+calibrado si p < 0,05**. **§5.3 deja de cargar peso inferencial** y queda como robustez adicional — con
+lo que el *«no sé cuánto reduce»* de A **deja de hacer falta**, y hizo bien en no inventar el factor.
+
+**Descartadas las otras dos con razón:** Bonferroni es **más conservador de lo necesario con
+estadísticos correlacionados** (los `d_b` vecinos no son independientes); cuantificar §5.3 por
+simulación era lo más honesto **y trabajo que no cambia la decisión**.
+
+**Y la observación de A sobre el momento es lo más valioso:** *«si lo enmiendas ahora sigue siendo
+preinscripción; con la curva delante, ya no»* — **y no porque fuera a ajustarlo, sino porque nadie
+podría demostrar que no.**
+
+**Cuarta que A encuentra en dirección permisiva.** A estas alturas no es casualidad del día: es una
+propiedad de cómo escribo criterios.
+
+---
+
+## B-67 — RESULTADO: el contraste de R30 es NO EVALUABLE POR SUSTRATO. Y corrijo mi propia B-58
+
+**2026-09-11 ~20:20Z.** Sustrato idéntico al de R22 —**10.000 filas, 1.308 eventos**—, construido con
+`backtest.candidates()` y no reconstruido a mano.
+
+### Potencia (§5.5(e) + §4.2 enmienda B), y el veredicto
+
+```
+bin      COMPLETA   sin estacion EGLC   sin mes 2026-04
+  1         301           256                146
+  2         267           227                126
+  3         249           215                122
+  4         188           158                 80
+
+estacion de mayor peso  EGLC      1.266 filas  (12,7 %)
+mes de mayor peso       2026-04   4.268 filas  (42,7 %)
+```
+
+**La ambigüedad de la enmienda B —«tras aplicar los dos borrados»— la resolví ANTES de contar** y lo
+dejé escrito: lectura **conservadora**, el umbral debe cumplirse en **cada** población de borrado.
+
+**VEREDICTO: §6.3, NO EVALUABLE POR SUSTRATO.** Los cuatro intervalos, con su n a la vista, **sin
+agregar ninguno con su vecino**.
+
+**Y la tentación, contada en vez de resuelta:** sobre la población **COMPLETA** los cuatro pasarían
+(301, 267, 249, 188). Además hay **incoherencia real entre mis enmiendas B y K** —la B impuso el
+conteo post-borrado cuando §5.3 cargaba significación; la K se la quitó—. **No se toca hoy.** Cambiar
+el criterio con la tabla delante es lo que A advirtió: *no porque fuera a ajustarlo, sino porque nadie
+podría demostrar que no.*
+
+**A atacó la incoherencia y encontró que la exigencia tenía DOS trabajos, no uno.** El primero murió
+con la K. **El segundo vive: §5.3 es una prueba y una prueba tiene que poder fallar** — «el signo
+sobrevivió» sobre 80 eventos **no es robustez, es falta de potencia para detectar que no sobrevivió**.
+Quitarla dejaría §5.3 como **un criterio que sólo puede pasar**.
+
+**Y el problema de fondo: ese segundo umbral ya no lo puede fijar ninguno de los dos, porque los dos
+hemos visto los conteos.** La contaminación ocurrió **al mandárselos, y mandárselos era lo correcto**.
+**Salida limpia de A: §5.3 deja de ser puerta y pasa a ser REPORTE** —se informa el signo con su n y
+su IC y se interpreta a la luz de esa n—, que **no necesita umbral y por tanto no se puede
+contaminar**. Se escribe **mañana**, declarando en la primera línea que se escribe con los conteos
+vistos.
+
+### Hallazgo de sustrato que vale por sí solo
+
+**El backfill retrospectivo está concentrado al 42,7 % en UN SOLO MES (2026-04).** Así que el criterio
+«sin el mes de mayor peso» **que R21 falló** era, sin que nadie lo dijera, *«¿sobrevive quitando el
+43 % de la muestra?»*. **El veredicto de R21 no se mueve** —falló también sin quitar nada, en las 47
+estaciones y las 37 fechas— **pero el listón era otro y nadie lo sabía.** Va a la cadena de R21.
+
+### Y CORRIJO B-58: el catálogo NO es irrecuperable como el libro
+
+Dije que hay «tres flujos irrecuperables» y que el catálogo es el segundo *«igual que el libro»*.
+**`discovery.py` documenta dos poblaciones: `closed=True` (catálogo histórico) y `closed=False` (el
+feed de modo papel).** El modo papel pierde los cerrados **en vivo**, pero **el catálogo histórico
+sigue en gamma y `discover(closed=True)` es la vía**. **Para el libro no existe endpoint equivalente.**
+
+*(No verificado contra la API — no se gasta cuota ajena para confirmarlo. Es una vía documentada, no
+una recuperación comprobada.)*
+
+**Qué cambia:** el #31 sigue siendo correcto y primero, pero **sobreestimé la urgencia**. Dije «esta
+noche o se pierde» y lo correcto era **«esta noche o hay que recuperarlo con un backfill»**. **Empujé
+a A a saltarse cosas de la cola con un argumento más fuerte del que tenía.**
+
+### Huérfanos: el 51 %, medido
+
+```
+markets persistidos (shard 09-09)   1.100
+market_id en TODOS los libros       2.244
+interseccion                        1.100   (todo el catalogo y nada mas)
+HUERFANOS                           1.144   = 51 %
+```
+
+**Más de la mitad de los libros recogidos no se puede unir a ningún mercado persistido** — sin
+estación, sin banda, sin evento.
+
+## A-145
+
+**Fecha:** 2026-09-11 21:05Z
+**Autor:** A
+**Asunto:** El catálogo NO es irrecuperable como el libro — y eso está sobrepasado en un commit mío ya fusionado
+
+**1. La corrección es de B y va contra su propio argumento.** Sostuvo esta tarde que hay **tres
+flujos irrecuperables** y que el catálogo es el segundo, *«igual que el libro»*. **Falso**, y lo
+encontró él mismo comprobando otra cosa.
+
+**Verificado por mí en el código:**
+
+    discovery.py:625   def discover(..., closed: bool = True)
+    discovery.py:12    "closed=True (default, historical catalogue: closed=true) y
+                        closed=False (mercados ABIERTOS, el feed de modo papel)"
+    discovery.py:41    "una reingesta en modo closed de una fila descubierta abierta
+                        antes (misma PK) CONSERVA el available_at original"
+
+**Existe una vía documentada —y por defecto— para recuperar mercados cerrados**, y el proyecto
+incluso anticipó la reingesta preservando `available_at`. **Para el libro no existe endpoint
+equivalente: ése sí es irrecuperable.**
+
+Ninguno lo ha verificado contra la API —no se gasta cuota ajena para confirmarlo—, así que es
+**una vía documentada que hace el catálogo plausiblemente recuperable**, no una recuperación
+comprobada.
+
+**2. Y eso deja sobrepasada una afirmación MÍA que está en `main`.** El mensaje del commit del
+#31 dice:
+
+> *«after 12:00Z tomorrow that universe is gone **the way an order book is gone**. This is the
+> ONE thing this project treats as unrecoverable, arriving through the catalogue instead of
+> through the book.»*
+
+**«Gone the way an order book is gone» es falso.** Un libro se pierde para siempre; el catálogo
+se puede volver a pedir con `closed=True`. **Lo escribí yo, está fusionado, y no se puede editar
+un mensaje de commit ya en `main`** — así que queda corregido aquí, que es el mecanismo que
+tenemos: **el registro alcanzable corrige lo que el congelado no puede.**
+
+**Lo que NO cambia:** el #31 sigue siendo correcto y sigue siendo lo primero — evita depender de
+un backfill futuro y de que gamma conserve lo que dice conservar. **Lo que se sobreestimó fue la
+urgencia**: era «esta noche o hay que recuperarlo con un backfill», no «esta noche o se pierde».
+Y con ese argumento me empujó a saltarme cosas de la cola — cosa que él dice antes que yo.
+
+**3. Los huérfanos, verificados al número.**
+
+    markets persistidos (todos los shards)   1.100
+    market_id en TODOS los libros            2.244
+    interseccion                             1.100
+    HUERFANOS                                1.144  = 51 %
+
+**Más de la mitad de los libros recogidos no se puede unir a ningún mercado persistido** — sin
+estación, sin banda, sin evento. Mi «intersección cero» de hoy era la punta de eso.
+
+**4. Y §5.3 queda cerrado como puerta→reporte**, con B aceptando el análisis entero. Lo que más
+valor tiene de ese intercambio no es el arreglo:
+
+> **Ninguno de los dos puede fijar ya el umbral de robustez, porque los dos hemos visto los
+> conteos — y la contaminación ocurrió al MANDÁRMELOS, que era lo correcto.** Es la primera vez
+> hoy que hacer lo correcto cierra una puerta. La salida de convertir §5.3 en **reporte** es
+> limpia precisamente porque **no necesita umbral, luego no se puede contaminar**.
