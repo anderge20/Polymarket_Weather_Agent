@@ -1949,3 +1949,45 @@ def test_a_collect_only_cycle_persists_the_catalogue(con, tmp_path, monkeypatch)
     summary = json.loads((tmp_path / "s.json").read_text())
     dump = next(s for s in summary["stages"] if s["stage"] == "dump")
     assert dump["catalogue"] == "dumped"
+
+
+def test_rows_resident_does_not_count_a_duplicate_shard_twice(con, tmp_path,
+                                                              monkeypatch):
+    """`rows_loaded` and `rows_resident` must diverge, and by the copy.
+
+    Dumping the catalogue every cycle (this PR) means the store holds many
+    copies of the same market rows. Each copy loads as its OWN batch, so
+    `upsert_many` — which deduplicates only WITHIN a batch — returns its full
+    size again, and `rows_loaded` counts it again. That number is correct about
+    the work done and wrong for the RAM projection, which needs DISTINCT rows.
+
+    Session B caught it on review of this PR. Without this test the two fields
+    would be equal in every fixture and nothing would show the difference.
+    """
+    monkeypatch.setattr(paper_cycle, "stage_discover",
+                        lambda cy, *a, **k: cy.stage("discover", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_collect",
+                        lambda cy, *a, **k: cy.stage("collect:books", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_venue_coverage",
+                        lambda cy, *a, **k: cy.stage("venue_coverage", paper_cycle.OK))
+
+    store_root = tmp_path / "store"
+    fila = [{"market_id": "m1", "dataset_version": "ds1", "record_version": 1,
+             "event_id": "e1", "question": "q"}]
+    # THE SAME row in three separate shards — exactly what a per-cycle catalogue
+    # dump produces.
+    for run in ("a", "b", "c"):
+        store.write_shard(fila, table="markets", run_id=run, root=str(store_root))
+
+    assert paper_cycle.main([
+        "--target-date", "2026-09-10", "--dataset-version", "ds1",
+        "--store-root", str(store_root), "--db", str(tmp_path / "t.duckdb"),
+        "--collect-only", "--summary-json", str(tmp_path / "s.json")]) == 0
+
+    summary = json.loads((tmp_path / "s.json").read_text())
+    st = next(s for s in summary["stages"] if s["stage"] == "load:store_stats")
+
+    assert st["rows_loaded"] == 3, "three shards, three batches, three counted"
+    assert st["rows_resident"] == 1, (
+        "one distinct market row occupies memory once — if this reads 3 the "
+        "ceiling projection is inflated by every duplicate copy")

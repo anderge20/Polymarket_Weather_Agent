@@ -228,8 +228,35 @@ def stage_load_state(cy: Cycle, con, *, root: str) -> None:
         total += out["rows_written"]
         cy.stage(f"load:{table}", OK, shards=out["shards"], rows=out["rows_written"])
     stats = store.store_stats(root)
+    # TWO COUNTS, BECAUSE THEY STOPPED BEING THE SAME NUMBER IN THIS PR.
+    #
+    # `rows_loaded` sums what `upsert_many` returns, which is the batch's size
+    # AFTER deduplicating within that batch — a fact about the work this cycle
+    # did. Dumping the catalogue every cycle means the store now holds many
+    # copies of the same 1 100 market rows, each loaded as its OWN batch, so each
+    # returns its own 1 100. Nothing is wrong with that number; it is just not
+    # the one the RAM projection needs.
+    #
+    # `rows_resident` is. What occupies memory is DISTINCT rows in the database,
+    # and after this PR the two diverge by about 11 000 rows a day — roughly
+    # +57 % on the count, which applied to a per-row slope would move the
+    # projected ceiling from ~97 days to ~62. A false alarm planted inside the
+    # instrument built to raise real ones.
+    #
+    # Session B caught it on review, and it is the THIRD time this one field has
+    # turned up in an interaction between two PRs that are each correct alone
+    # (#25 with #26, now #25 with this one). Twelve `COUNT(*)` against an
+    # in-memory database, once per cycle.
+    #
+    # No `try/except` around the count: `init_db` creates every `STATE_TABLES`
+    # entry, this runs BEFORE `stage_collect` so nothing captured can be lost by
+    # raising here, and a swallowed exception would under-report residency —
+    # which is the alarmist direction for a ceiling projection, and silent.
+    resident = sum(int(db.query(con, f"SELECT count(*) AS n FROM {t}")[0]["n"])
+                   for t in STATE_TABLES)
     cy.stage("load:store_stats", OK, tables=len(stats.get("tables", {})),
-             total_bytes=stats.get("total_bytes", 0), rows_loaded=total)
+             total_bytes=stats.get("total_bytes", 0), rows_loaded=total,
+             rows_resident=resident)
 
 
 #: Tables `features.build_feature` and `strategy_a` read WITHOUT filtering by
