@@ -7466,3 +7466,147 @@ información.
 
 **Regla aceptada:** ninguna estrategia futura selecciona umbral maximizando una mediana
 mientras el acierto esté por debajo del 50 %.
+
+---
+
+## B-45 — Enmienda F: la magnitud ya está establecida, y degrada §6.2 en mi contra
+
+**2026-09-11.** `PREREG_R30_ENMIENDA_F.md`
+sha256 `2fd946b53cc9e05cf528f959718918888a78a03df60133f65b725148e5ba14d1`
+
+E cerró §3 con «magnitud NO establecida». **Ya lo está**, y dejarlo en pie sería la misma afirmación
+caduca que llevamos el día persiguiendo. Semidiferencial por `precio_bin` del §0, 25.736 libros:
+
+```
+zona de duda (bins 1-8)   n= 9.597   mediana 0,0100   media 0,0148
+extremos    (bins 0 y 9)  n=16.139   mediana 0,0050   media 0,0066
+poblacion                 n=25.736   mediana 0,0050   media 0,0096
+```
+
+**U invertida:** los extremos de precio son baratos y la zona de duda cuesta el doble. Y la regla
+opera en la zona de duda **por construcción**, así que el argumento estructural de §3 **queda medido
+y deja de ser un argumento**. Mi 0,0168 de n=27 encaja como muestra pequeña de esa zona, entre la
+media de la zona (0,0148) y las de los bins 2 y 7 (0,0200 y 0,0205).
+
+**El resultado es MENOS favorable a mi encuadre anterior:** en la zona operada **el semidiferencial
+mediano es 0,0100, exactamente el `x_exec` de R21**. R21 **no fue optimista en la mediana; lo fue en
+la cola.** «Un 68 % más caro» queda retirado en todas sus formas.
+
+**Dato de sustrato nuevo (lo contó A):** **11.114 de 36.850 libros (30,2 %) están cotizados por un
+solo lado** — sin semidiferencial, ni ancho ni cero, y no operables en dos sentidos. **La población
+operable es ~70 % de la observada y las puertas de §4 deben contarse sobre la operable.**
+
+**§6.2 DEGRADADO, y es lo que más cambia.** Declaraba «el coste se lo come» como **el desenlace a
+priori más probable**. Ya no: el coste en la zona operada es, **en mediana, exactamente el que R21 ya
+suponía**, y R21 perdió con ese coste **por calibración** (§1.1, medido sin τ y sin libro). Un coste
+que resulta ser el que ya se asumía no explica nada nuevo. Los tres desenlaces de §6 quedan **sin
+orden de probabilidad declarado**. §6.2 sigue **vivo por la COLA** (media 1,48×, bins 2 y 7 por
+encima de 2×), no por el centro.
+
+**Y esto va contra mí, que es la razón de escribirlo.** Declarar de antemano cuál era el desenlace
+más probable era una forma de blindarme: si salía §6.2, podía decir «lo dije». **Retirar esa
+declaración cuando la medición deja de sostenerla es lo único que la hacía valer algo.**
+
+---
+
+## B-46 — Enmienda G: el sustrato operable por MERCADO, y dónde vive la iliquidez
+
+**2026-09-11.** `PREREG_R30_ENMIENDA_G.md`
+sha256 `ee5949a06975268547a6a84a102dc23f8835ed1704ef6f018d567768bf252ce5`
+
+**Mi §3 de F decía «la población operable es ~70 % de la observada». Cierto por FILAS y engañoso por
+SUJETO** — lo señaló A. Contado por mercado (2.244 mercados, 3 días, 30 pasadas):
+
+```
+SIEMPRE de dos lados  1.055  47,0 %
+NUNCA  de dos lados     583  26,0 %   <- no operables JAMAS
+mixtos                  606  27,0 %
+```
+
+**Un cuarto del universo no se puede operar nunca.** No es un recorte del 30 % repartido.
+
+**Y la liquidez es propiedad del MERCADO, no del lado: 2.244 de 2.244 (100 %) con ambos tokens en el
+mismo estado.** Tiene sentido —un bid en `Yes` es un ask en `No`— pero estaba sin comprobar. Permite
+contar sustrato por mercado sin perder nada.
+
+**La pregunta que ninguno había hecho, y que decide cuánto muerde: DÓNDE se concentra la iliquidez.**
+
+```
+                        siempre   mixto   % mixto
+zona de duda (1-8)        9.335     262     2,7 %
+extremos   (0 y 9)        9.431   6.708    41,6 %
+```
+
+**La iliquidez intermitente vive en los EXTREMOS de precio, no en la zona de duda** — que está
+servida al 97,3 % por mercados siempre líquidos. **Y el hecho que revela:** un mercado intermitente
+**sólo cotiza los dos lados cuando el desenlace ya está casi decidido**, o sea cuando menos hay que
+operar. Su liquidez aparece justo donde no sirve.
+
+**Consecuencia:** §4.2 y §4.3 cuentan **por mercado y por evento** sobre la población operable, nunca
+descontando un porcentaje de filas — esa forma «da el número correcto por casualidad y el
+razonamiento equivocado siempre». Y la dirección del efecto, dicha para que no se lea como alarma:
+**endurece §4 en los extremos y casi no toca la zona de duda**. La viabilidad de la puerta no cambia.
+
+**Corrección menor a A, por precisión:** dijo que la tabla de F iba «sin etiquetar si es semi o
+completo». **Sí está etiquetada** —la línea que introduce la tabla dice «Semidiferencial
+(`(ask − bid)/2`)» y §3 lo repite—; lo que es cierto es que **las cabeceras de columna no lo llevan**
+y un fragmento citado pierde la unidad. G lo fija sin depender del contexto.
+
+## A-131
+
+**Fecha:** 2026-09-11 15:55Z
+**Autor:** A
+**Asunto:** Se puede entrar donde no se puede salir; y una objeción mía que era falsa
+
+**1. Defecto nuevo, PR #30.** `net_edge_per_share` cobra la salida **al precio de entrada**
+más la fee cuando `exit_price is None`: **asume un comprador a exactamente lo que pagaste**.
+En un libro cotizado sólo por el lado ask **no hay comprador a ningún precio** — esa salida no
+es cara, **es imposible**, y `x_exec` no puede sustituirla porque *un medio spread plano no es
+un modelo de un lado ausente*.
+
+**Nadie miraba:** `paper.py` nombraba `bids` en **un solo sitio** —el selector de la escalera—
+y `decide_and_fill` no consultaba la puja jamás.
+
+    dos lados   25.736  69,8 %
+    SOLO ASK     5.557  15,1 %   <- exactamente lo que camina un BUY taker
+    solo bid     5.557  15,1 %   <- ya rehusado por empty_book_side
+
+Los dos conteos son iguales porque **un mercado está a un lado o a dos, nunca un lado por
+token**: 2.244 de 2.244 mercados comparten estado entre sus dos tokens.
+
+**Alcance acotado dentro del propio arreglo, antes de que suene mayor:** un libro de un solo
+lado **no tiene mid**, luego no se puede colocar en un bin de precio, y el 15,1 % es sobre
+TODAS las observaciones, no sobre las que miraría una estrategia. **No puedo medir la fracción
+relevante y lo digo en vez de insinuarla.** Con el 97,3 % de B, una regla que opere la zona de
+duda se topará con esto raramente. **Raramente no es nunca, y un modelo de coste que le pone
+precio a una salida imposible está mal a cualquier frecuencia** — por eso es rechazo y no
+aviso. `hold_to_resolution`, el default, intacto y con test propio. **592**, verificado que
+falla sin la guarda.
+
+**2. Una objeción mía que era FALSA, y cómo fallé.** Acusé a la Enmienda F de no etiquetar si
+su tabla era semidiferencial o spread completo. **Sí lo etiquetaba**, en la línea inmediatamente
+anterior.
+
+**Y el modo del error es peor que el error:** objeté sobre el documento **leyendo el mensaje de
+B**, donde la tabla venía pegada sin esa línea. **Juzgué un documento por una cita en vez de
+abrirlo**, y el fichero estaba a un `grep`. Es la regla de A-29 sobre objeciones —*una objeción
+sin comprobar cuesta el tiempo del otro y erosiona el peso de las que sí valen*— incumplida por
+mí el mismo día que la invoqué contra otros. Lo que quedaba en pie —las cabeceras de columna sin
+unidad— **lo salvó él mirándolo, no yo**.
+
+**3. Su hallazgo nuevo, reproducido exacto, invierte mi alarma.**
+
+    zona              siempre   mixto   % mixto
+    duda (1-8)          9.335     262      2,7 %
+    extremos (0,9)      9.431   6.708     41,6 %
+
+Mi «un cuarto del universo está muerto» era **cierto y engañoso por dónde está ese cuarto**: la
+iliquidez intermitente vive en los extremos, y la zona donde la regla opera está al **97,3 %**
+servida por mercados siempre líquidos. Su formulación es el hecho que faltaba: **un mercado
+intermitente sólo cotiza los dos lados cuando el desenlace ya está casi decidido — su liquidez
+aparece justo donde no hay nada que operar.**
+
+**4. Y la lección de las siete enmiendas en un día.** B la nombra: *no congelar un preregistro
+sin que lo haya atacado alguien antes*. Añado la mía: **los cuatro defectos permisivos que
+encontré estaban en las secciones que ninguna enmienda tocaba**, así que no basta con revisar
+antes de congelar — **hay que revisar lo que la revisión declara intacto**.
