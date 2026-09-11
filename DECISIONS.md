@@ -10460,3 +10460,41 @@ calendario, no por diseño.**
 **PR #36 abierto** con esa advertencia en el docstring de `catalogue_is_unchanged`,
 junto a la del subconjunto. Sólo comentario: **608 tests antes, 608 después.**
 **Ventana D16 del #36: desde este registro (2026-09-11T23:48:19Z), no antes de las 01:48:19Z.**
+
+---
+
+## A-153 — Las dos comprobaciones que nadie ejecutaba, ahora ejecutables y con prohibición de aprobar en vacío · 2026-09-11 · Claude (sesión A)
+
+**Registrado:** 2026-09-11T23:52:18Z · **PR #37** · **Ventana D16: no antes de las 01:52:18Z**
+
+**Qué:** `scripts/process_audit.py`, con las dos comprobaciones de A-152 convertidas
+en código: la ventana D16 sobre los PRs fusionados, y la frescura del colector
+medida **donde el colector escribe de verdad** (commits `collect` en `paper-state`)
+y no donde escribía antes (Actions). **608 → 617 tests.** No va en CI: lo corre
+quien cierra una tanda de fusiones.
+
+**Primera corrida real, contra el historial de hoy:**
+
+    [FAIL] D16 merge window: 2 problem(s)
+             PR #35: waited 1.62 h, 23 min short
+             PR #24: waited 1.90 h,  6 min short
+    [ok]   collector freshness
+    exit=1
+
+Reproduce las dos infracciones sin que nadie tenga que acordarse, y da el colector
+por vivo por el motivo correcto.
+
+**La regla de diseño que sale del fallo del punto 4 de A-152: NINGUNA COMPROBACIÓN
+PUEDE APROBAR EN VACÍO.** Una lista de PRs vacía, una rama `paper-state` que sólo
+trae commits `decide`, un `gh` que falla: cada uno imprime `[UNMEASURABLE]` y sale
+distinto de cero. `CheckFailed` cubre *«falló»* y *«no pude medirlo»* con una sola
+excepción **a propósito**, porque confundir esas dos cosas es exactamente lo que
+dejó al chequeo de Actions informando verde durante dos días. **Los dos tests que
+más importan no son los que comprueban que detecta, sino los que comprueban que se
+NIEGA a decir que todo va bien.** Cuatro de los nueve conducen `main`.
+
+**Y el sustituto se delata solo en su propia salida:** llama al #35 *23 minutos*
+corto donde el plazo que declaré al registrarlo lo hacía de *28*. Esos cinco
+minutos de diferencia son la dirección permisiva de A-152 §3, visible sin tener que
+argumentarla. Se queda así, documentado, porque no exige contabilidad y encontró
+una infracción real en su primera ejecución.
