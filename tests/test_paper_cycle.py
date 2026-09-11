@@ -1814,3 +1814,85 @@ def test_host_events_without_a_queue_is_a_skip_not_a_crash(tmp_path):
                                         queue_path=str(tmp_path / "absent.ndjson"),
                                         root=str(tmp_path), session_id="cyc")
     assert out["rows"] == 0
+
+
+# --------------------------------------------------------------------------- #
+# THE ONE THING THAT MAKES `stage_settle`'S OBSERVATION QUERY SAFE, PINNED HERE
+#
+# That query asks for a station's WHOLE history — every row for (station,
+# dataset_version), with no predicate on the day — and hands it to the frozen
+# core. That is correct for a LOCAL_CIVIL_DAY operator, which windows the rows
+# itself against `ctx.target_date`. It is WRONG for a SOURCE_DAILY_ROW operator:
+# the core applies no temporal predicate there ("the row the caller hands over IS
+# the source's row for target_date") and then aggregates with `max`. Handing it
+# several days of history would settle a position against the maximum of the run
+# so far — a plausible number, no refusal, and biased upward by construction,
+# growing worse the longer the run lasts.
+#
+# Today that cannot happen, and NOT because of anything at the call site: the only
+# SOURCE_DAILY_ROW operator requires `SERIES_HKO`, and `SERIES_CORRESPONDENCE` is
+# structurally incapable of emitting that name. The safety lives three modules
+# away from the query it protects, which is precisely why it is pinned here
+# instead of merely argued in a comment: the day someone adds a daily-summary
+# operator over a METAR series — the natural unblock for strata 5, 7 and 8 — this
+# test fails and names it, instead of the run quietly settling against the wrong
+# day.
+# --------------------------------------------------------------------------- #
+def _wide_history_offenders(operators, core_series_names):
+    """Operators that would receive a multi-day history and not window it."""
+    from weather_agent import settlement as _s
+    return sorted(op.operator_id for op in operators
+                  if op.required_series in core_series_names
+                  and op.window_kind != _s.WINDOW_LOCAL_CIVIL_DAY)
+
+
+def test_no_declared_series_reaches_a_source_daily_row_operator():
+    from weather_agent import settlement
+
+    declared = set(paper_cycle.SERIES_CORRESPONDENCE.values())
+    assert declared, "the correspondence map is empty — the premise is gone"
+
+    # THE SAME THESIS ONE LEVEL UP, and session B caught it on review: the check
+    # below passes over an EMPTY operator registry, and so does the test written
+    # to prove it can fail. That test shows the predicate FIRES; it says nothing
+    # about the population being non-empty. Demonstrated by running: with
+    # `OPERATORS = ()` all three assertions still held.
+    #
+    # The sharp form is not `len(OPERATORS) > 0` — the filter is equally vacuous
+    # if the table is full of operators and NONE of them uses a series this
+    # boundary can emit. So the population asserted here is the one the check is
+    # actually about.
+    reachable = [op.operator_id for op in settlement.OPERATORS
+                 if op.required_series in declared]
+    assert reachable, (
+        "no operator requires a series `SERIES_CORRESPONDENCE` can emit, so the "
+        "check below filters an empty set and would pass on anything")
+
+    assert _wide_history_offenders(settlement.OPERATORS, declared) == [], (
+        "stage_settle hands the station's whole history to the core. An operator "
+        "that does not window by target_date would settle against the max of "
+        "every day ingested so far. Either window the query in stage_settle or "
+        "refuse this terna at the call site."
+    )
+
+
+def test_the_offender_check_can_actually_fail():
+    """The check above is worthless if it cannot see the case it denies.
+
+    A test that passes because it looks at nothing passes forever. This one
+    builds the hypothetical operator — a daily-summary product over the METAR
+    series the cycle really does emit — and requires the check to name it."""
+    from dataclasses import replace
+
+    from weather_agent import settlement
+
+    declared = set(paper_cycle.SERIES_CORRESPONDENCE.values())
+    hazardous = replace(
+        settlement.OP_HKO_ABSMAX,
+        operator_id="HYPOTHETICAL_DAILY_SUMMARY_OVER_METAR",
+        required_series=next(iter(declared)),
+    )
+    assert hazardous.window_kind == settlement.WINDOW_SOURCE_DAILY_ROW
+    assert _wide_history_offenders(
+        settlement.OPERATORS + (hazardous,), declared
+    ) == ["HYPOTHETICAL_DAILY_SUMMARY_OVER_METAR"]

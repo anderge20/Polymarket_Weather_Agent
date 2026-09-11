@@ -1366,6 +1366,24 @@ def stage_settle(cy: Cycle, con, *, dataset_version: str) -> dict:
             rounding_rule=m.get("rounding_rule"), target_date=target,
             station_icao=icao, station_tz=_station_tz(icao),
         )
+        # NO PREDICATE ON THE DAY, AND THAT IS DELIBERATE: the window belongs to
+        # the operator, not to this query. A LOCAL_CIVIL_DAY operator needs the
+        # station-local day of `target_date`, whose UTC bounds depend on a
+        # timezone the core resolves — computing them here would be a second,
+        # divergent implementation of the core's own §4.
+        #
+        # The cost of that choice is that a SOURCE_DAILY_ROW operator, which
+        # applies NO temporal predicate and then aggregates with `max`, would
+        # settle against the maximum of every day ingested so far: a plausible
+        # number, no refusal, biased upward, and worse the longer the run lasts.
+        # That cannot happen today — the only such operator requires SERIES_HKO
+        # and `SERIES_CORRESPONDENCE` cannot emit that name — but the protection
+        # lives in `settlement.OPERATORS`, three modules from the query it
+        # guards, and would vanish silently the day a daily-summary operator over
+        # a METAR series is added. So it is pinned as an executable claim rather
+        # than left as an argument: `test_no_declared_series_reaches_a_source_
+        # daily_row_operator` fails, by name, before the wrong day is ever
+        # settled against.
         raw_obs = db.query(
             con,
             "SELECT observation_time, observed_value, observed_unit, series, "
