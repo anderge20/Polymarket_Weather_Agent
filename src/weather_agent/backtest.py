@@ -37,6 +37,7 @@ from statistics import median
 
 from . import costs, database as db, error_model as em, features, stations, weather
 from .m2 import DATASET_VERSION, LEADS, label_available_at
+from . import probability
 from .probability import band_probability, quantiles_to_distribution
 
 #: PREREG_R21 §2 / B-11. Dispersion of the per-station bias, in Celsius. It is a
@@ -114,7 +115,8 @@ def band_position(q_market: dict, lo, hi) -> str:
 
 
 def calibration_margin(quantiles_c: dict[int, float], *, unit: str,
-                       lo: float | None, hi: float | None) -> float:
+                       lo: float | None, hi: float | None,
+                       tail_model: str = probability.TAIL_EXPONENTIAL) -> float:
     """§2/§A.4: how much this band's probability moves when the distribution is
     displaced by the measured between-station dispersion.
 
@@ -122,10 +124,17 @@ def calibration_margin(quantiles_c: dict[int, float], *, unit: str,
     tau moves a narrow band near the centre a great deal and a wide band in the
     tail very little, so one constant would be a threshold with two operands —
     the defect that made M2 v1's `n>=30` wrong.
+
+    `tail_model` is threaded through because a reproduction path that stops half
+    way is not one: this function builds its own distributions, so pinning the
+    tail model only at the caller would mix an old `p_model` with a new margin and
+    reproduce neither. Found by re-running this session's own published
+    decomposition under both models and getting a third number.
     """
     q = em.to_market_unit(quantiles_c, unit)
     base = band_probability(
-        quantiles_to_distribution(p10=q[10], p25=q[25], p50=q[50], p75=q[75], p90=q[90]),
+        quantiles_to_distribution(p10=q[10], p25=q[25], p50=q[50], p75=q[75],
+                                  p90=q[90], tail_model=tail_model),
         lo=lo, hi=hi)
     tau = tau_in_unit(unit)
     worst = 0.0
@@ -134,7 +143,7 @@ def calibration_margin(quantiles_c: dict[int, float], *, unit: str,
         p = band_probability(
             quantiles_to_distribution(
                 p10=shifted[10], p25=shifted[25], p50=shifted[50],
-                p75=shifted[75], p90=shifted[90]),
+                p75=shifted[75], p90=shifted[90], tail_model=tail_model),
             lo=lo, hi=hi)
         worst = max(worst, abs(p - base))
     return worst

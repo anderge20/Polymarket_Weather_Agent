@@ -285,3 +285,47 @@ def test_trimmed_mean_actually_cuts_the_tail_it_exists_for():
     from weather_agent.backtest import _trimmed_mean
     base = [1.0] * 20
     assert _trimmed_mean(base + [10_000.0]) == pytest.approx(1.0)
+
+
+def test_calibration_margin_honours_the_tail_model_end_to_end():
+    """A reproduction path that stops half way is not one.
+
+    `calibration_margin` builds its OWN distributions, so pinning the tail model
+    only where `p_model` is computed mixes an old p_model with a new margin and
+    reproduces neither. Found by re-running this session's own published
+    cost decomposition under both models and getting a THIRD number (71 %) that
+    matched neither the published 74 % nor a clean exponential run.
+
+    With the model threaded through, the published decomposition comes back
+    exactly: margin 74 % / slippage 17 % / fees 9 %.
+    """
+    import json
+    from weather_agent import error_model as em
+    from weather_agent.probability import (quantiles_to_distribution,
+                                           band_probability, TAIL_LINEAR_R21)
+    art = json.load(open("artifacts/m2_quantiles.json"))
+    qc = {int(k): v for k, v in art["strata"]["24"]["values"].items()}
+    lev = {l: 25.0 + qc[l] for l in (10, 25, 50, 75, 90)}
+    qF = em.to_market_unit(lev, "F")
+
+    def share(**kw):
+        d = quantiles_to_distribution(**{f"p{k}": qF[k] for k in qF}, **kw)
+        tot = {"margin": 0.0, "x": 0.0, "fee": 0.0}
+        for t_ in sorted(d):
+            pm = band_probability(d, lo=float(t_), hi=float(t_))
+            mg = backtest.calibration_margin(lev, unit="F", lo=float(t_),
+                                             hi=float(t_), **kw)
+            tot["margin"] += mg * pm
+            tot["x"] += 0.01 * pm
+            tot["fee"] += 0.05 * pm * (1 - pm) * pm
+        s = sum(tot.values())
+        return {k: v / s for k, v in tot.items()}
+
+    published = share(tail_model=TAIL_LINEAR_R21)
+    assert published["margin"] == pytest.approx(0.74, abs=0.005)
+    assert published["x"] == pytest.approx(0.17, abs=0.005)
+
+    # and the CONCLUSION — that the model's own imprecision binds, not the costs —
+    # survives the fix rather than depending on it
+    fixed = share()
+    assert fixed["margin"] > 0.65, "the margin stopped dominating under the new tails"
