@@ -1437,6 +1437,15 @@ def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
     which tau a given cycle used. Writing the effective values into the shard store
     makes every cycle carry its own parameters, so a change shows up as a diff in
     an append-only, commit-timestamped record."""
+    # Read back from the stage that already measured it rather than measuring
+    # again: `store_stats` walks the store, and calling it a second time HERE
+    # would report the store AFTER this cycle's dump — a different quantity from
+    # the one that was loaded into memory, which is the one the RAM projection
+    # needs. Zero when the stage did not run (the settle-only tail), which is
+    # honest: nothing was loaded.
+    _loaded = next((e for e in cy.stages if e["stage"] == "load:store_stats"), {})
+    store_bytes = _loaded.get("total_bytes", 0)
+    store_rows = _loaded.get("rows_loaded", 0)
     params = {
         "session_id": session_id,
         "dataset_version": dataset_version,
@@ -1452,9 +1461,62 @@ def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
         #
         # `cycle_params` is written on EVERY cycle including collect-only, so
         # this is ten points a day rather than two.
+        #
+        # AND THE PROFILE CANNOT CONTAIN THE STAGE THAT WRITES IT. Session B, on
+        # the merged version: the snapshot is taken INSIDE `stage_params`, so
+        # whatever runs after it is absent — and the danger is not the absence,
+        # it is that the parts would still SUM to a plausible whole with nothing
+        # saying a stage is missing. We would attribute its cost to no one, on
+        # the day we finally read the profile to find out where the time goes.
+        # `stage_params` now runs AFTER `stage_dump` so the dump is measured;
+        # what remains outside is this stage itself, which is irreducible and is
+        # therefore DECLARED rather than left to be inferred.
         "stage_profile": json.dumps(
             [{"stage": e["stage"], "at_s": e.get("at_s"),
               "elapsed_s": e.get("elapsed_s")} for e in cy.stages]),
+        "stage_profile_excludes": "params",
+        # THE SIZE OF THE STORE WAS COMPUTED EVERY CYCLE AND THROWN AWAY. Session
+        # B's third finding of this family: `store_stats` reaches `cy.stage()`
+        # and stops there, so it lands in `last_summary.json` — outside
+        # `paper_state`, overwritten every cycle, never committed — and
+        # `stage_profile` keeps three keys per stage, so it does not pick the
+        # detail up either. Its own docstring says it exists "so the store's
+        # growth is visible in the run log before it becomes a problem": visible
+        # in a log nobody keeps.
+        #
+        # WHAT THE SERIES IS FOR, and it is not curiosity. The store only grows —
+        # D0 forbids deleting — the cycle rebuilds it in memory every run, and
+        # the host has 3.8 GB and NO SWAP. Without swap, exhausting RAM does not
+        # raise: the kernel kills the process. `_non_fatal`, the try/except
+        # ladder and B's span rule are all built on exceptions and CANNOT SEE IT.
+        # So the one failure the span rule exists to prevent — losing a capture
+        # between `stage_collect` and `stage_dump` — can arrive by the one route
+        # the span rule cannot intercept. These two fields are what lets the
+        # crossing be dated from the repository itself instead of reconstructed
+        # from the shards by hand.
+        #
+        # THIS SERIES HAS A SEAM AT PR #26 and must not be differenced across
+        # it: that PR changes `rows_written` from rows OFFERED to rows APPLIED,
+        # and this field sums it. Offered and applied are equal on every shard
+        # written so far, and applied is the better quantity here — what occupies
+        # memory is what lands in the database, not what was read off disk.
+        #
+        # The full account lives in `store.load_shards`'s docstring, where the
+        # meaning is CHANGED, and is deliberately not repeated here: two copies
+        # of an explanation drift, and the one at the consumer would be the one
+        # nobody updates. What belongs here is that a reader of this field must
+        # go look. The rule the pair taught us: when you change what a number
+        # MEANS, hunt for who CONSUMES it, not who produces it — the change was
+        # declared at the producer and the consumer was two modules and one PR
+        # away.
+        "store_total_bytes": int(store_bytes),
+        "store_rows_loaded": int(store_rows),
+        # `at_s` is relative to the start of the cycle, so without this the
+        # series has no absolute anchor. On Hetzner it can be recovered from the
+        # `session_id`; on Actions the id carries the run id instead and it
+        # cannot. One field, and it matters the day the box falls over and we go
+        # back to `workflow_dispatch`.
+        "cycle_started_at": _iso(cy.started_at),
         "t_end": _iso(timing["t_end"]),
         "t_asof": _iso(timing["t_asof"]),
         "prediction_time": _iso(timing["prediction_time"]),
@@ -1672,14 +1734,17 @@ def main(argv: list[str] | None = None) -> int:
             stage_observations(cy, con, dataset_version=args.dataset_version,
                                now=_utcnow())
             stage_settle(cy, con, dataset_version=args.dataset_version)
+            # DUMP FIRST, PARAMS LAST — see `stage_params`. The profile is
+            # snapshotted inside `stage_params`, so anything after it is
+            # invisible; running it last is what puts `dump` in the series.
+            stage_dump(cy, con, root=args.store_root, session_id=session_id,
+                       dataset_version=args.dataset_version, since=cy.started_at,
+                       dump_catalogue=False)
             stage_params(cy, root=args.store_root, session_id=session_id, args=args,
                          quantile_provenance={}, timing=plan | {
                              "prediction_time": plan["t_asof"], "drift_h": 0.0,
                              "lead_effective_h": plan["lead_nominal_h"]},
                          dataset_version=args.dataset_version)
-            stage_dump(cy, con, root=args.store_root, session_id=session_id,
-                       dataset_version=args.dataset_version, since=cy.started_at,
-                       dump_catalogue=False)
             con.close()
             return _finish(cy, args)
 
@@ -1861,9 +1926,22 @@ def main(argv: list[str] | None = None) -> int:
                                now=_utcnow())
             stage_settle(cy, con, dataset_version=args.dataset_version)
 
-        stage_params(cy, root=args.store_root, session_id=session_id, args=args,
-                     quantile_provenance=quantile_provenance,
-                     timing=timing, dataset_version=args.dataset_version)
+        # DUMP FIRST, PARAMS LAST, and the order buys two things.
+        #
+        # (1) The profile covers the dump. It is snapshotted inside
+        #     `stage_params`, so a stage that runs after it is simply not in the
+        #     series — and `dump` is the stage whose cost most plausibly grows
+        #     with the store.
+        # (2) `stage_params` leaves the protected span. B's rule is that nothing
+        #     between `stage_collect` and `stage_dump` may throw, because that is
+        #     the only span where an exception destroys a capture that cannot be
+        #     re-fetched. Writing the params shard after the dump takes it out of
+        #     that span entirely, instead of arguing case by case that its
+        #     `json.dumps` cannot raise.
+        #
+        # WHAT IT COSTS, said plainly: a cycle whose dump raises no longer leaves
+        # a `cycle_params` row. That cycle has already lost its collection, which
+        # is the loss that matters; knowing which tau it would have used is not.
         stage_dump(cy, con, root=args.store_root, session_id=session_id,
                    dataset_version=args.dataset_version, since=cy.started_at,
                    # Every DECIDING cycle carries its own catalogue, so the
@@ -1874,6 +1952,9 @@ def main(argv: list[str] | None = None) -> int:
                    # refused decided nothing, so there is no decision for a
                    # replay to reproduce and no catalogue to pin it against.
                    dump_catalogue=deciding or bool(args.dump_catalogue))
+        stage_params(cy, root=args.store_root, session_id=session_id, args=args,
+                     quantile_provenance=quantile_provenance,
+                     timing=timing, dataset_version=args.dataset_version)
     finally:
         con.close()
 
