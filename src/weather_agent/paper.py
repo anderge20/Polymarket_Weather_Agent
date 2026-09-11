@@ -406,6 +406,67 @@ def decide_and_fill(
         out["reason"] = fill.reason or "not_executable"
         return out
 
+    # YOU CAN FILL A BUY AGAINST A BOOK THAT HAS NO BID AT ALL, and under
+    # `taker_close` the cost model prices the exit as if you could sell back.
+    #
+    # `net_edge_per_share` charges the exit at `fill_price` plus a fee when
+    # `exit_price` is None, which assumes a buyer at exactly what you paid. On a
+    # book quoted on the ask side only there is no buyer at ANY price, so that
+    # exit is not expensive — it is impossible, and `x_exec` cannot stand in for
+    # it because a flat half-spread is not a model of an absent side.
+    #
+    # This is not hypothetical arithmetic. Measured over the 36 850 books
+    # collected 2026-09-09..11: 25 736 two-sided (69.8 %), **5 557 ask-only
+    # (15.1 %)** and 5 557 bid-only. The ask-only ones are exactly the ones a BUY
+    # fills against.
+    #
+    # THE TWO COUNTS ARE EQUAL BECAUSE IT IS EXACTLY ONE SIDE PER TOKEN, and the
+    # first version of this comment asserted the opposite. A one-sided market
+    # contributes one ask-only token AND its complement bid-only, because
+    # `bid(Yes, p)` IS `ask(No, 1-p)` — the same resting order seen from the two
+    # tokens. Measured on the 583 markets that never quote both sides: in 583 of
+    # 583 each token stays on ONE side across every pass and the two sit on
+    # OPPOSITE sides; not one alternates. That is why the mirror is exact and not
+    # approximate. (What IS shared per market is the two-sided/one-sided STATE —
+    # 2 244 of 2 244 — a different statement, and the one that got garbled into a
+    # wrong cause.)
+    #
+    # AND THE MIRROR CLOSES THE OTHER DIRECTION BY ITSELF, which is why no guard
+    # appears for it: a FADE buys the COMPLEMENT, and if this token is ask-only
+    # its complement is bid-only, always. So a FADE finds no ask ladder and is
+    # already refused `empty_book_side` inside `simulate_taker_buy`, at entry,
+    # before reaching here. Both directions are shut — by two different
+    # mechanisms, and only one of them is code written for the purpose.
+    #
+    # `hold_to_resolution` — the default — is untouched: redemption needs no
+    # counterparty, so a missing bid costs nothing there. The refusal applies
+    # only to the mode that plans to sell.
+    #
+    # HOW OFTEN THIS BITES IS SMALLER THAN 15 %, AND THE HONEST ANSWER IS THAT
+    # NOBODY CAN SAY BY HOW MUCH. A one-sided book has no mid, so it cannot be
+    # placed in a price bin at all; the 15.1 % is over ALL observations, not over
+    # the ones a strategy would look at. What IS measured (session B, same
+    # corpus) is that intermittently-quoted markets sit at the price EXTREMES:
+    # among two-sided observations, the doubt zone (bins 1-8) is 97.3 % served by
+    # always-liquid markets while the extremes are 41.6 % intermittent. So these
+    # markets are liquid mostly where the outcome is already decided — and a rule
+    # that trades the zone of doubt will meet this case rarely.
+    #
+    # Rarely is not never, and a cost model that prices an impossible exit is
+    # wrong at any frequency. That is why this is a REFUSAL and not a warning.
+    if params.exit_mode == "taker_close" and not _levels_from_snapshot(
+            book_snapshot, "bid"):
+        # A NEW REASON NEEDS NO CHANGE AT THE CONSUMER, and that is worth
+        # stating because nothing said it. `stage_paper` counts refusals with
+        # `reasons[reason] = reasons.get(reason, 0) + 1` — an OPEN-SET counter,
+        # with no enumeration and no whitelist anywhere in the tree. A reason
+        # that has never been seen takes its own bucket and nothing else
+        # happens. Found by session B while auditing whether this PR's new
+        # string could break a downstream reader; it cannot, and the next person
+        # adding a refusal should not have to re-derive that.
+        out["reason"] = "no_exit_liquidity"
+        return out
+
     edge = net_edge_per_share(p_model=p_target, fill_price=fill.vwap, fee=fee,
                               params=params)
     out["net_edge"] = edge
