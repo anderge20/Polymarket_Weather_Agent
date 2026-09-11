@@ -7234,3 +7234,118 @@ presupuesto de 42 min deja de morder durante mucho tiempo — y **la única limi
 queda es la que no lanza excepción** (A-125: sin swap, el kernel mata, y toda nuestra
 protección está construida sobre excepciones). Arreglar la lenta y dejar la muda sería
 exactamente el error que este proyecto ya documenta.
+
+---
+
+## B-43 — Apuesta resuelta: `load:*` = 90,0 % del ciclo. Y el mecanismo del aplanamiento SIGUE SIN ESTABLECERSE
+
+**2026-09-11 15:07Z, primer `stage_profile` de la caja** (`col_20260911T150705Z_70a7c5`), verificado
+leyendo el shard directamente y no el resumen ajeno:
+
+```
+load:orderbook_snapshots   532,33 s   56,0 %
+load:price_history         280,19 s   29,5 %
+discover                    55,22 s    5,8 %
+collect:books               39,27 s    4,1 %   <- la apuesta de A
+load:markets                22,48 s    2,4 %
+load:outcomes               20,66 s    2,2 %
+
+load:* = 855,7 / 950,3 = 90,0 %      (reloj de pared: 89,6 %)
+```
+
+**B: `load:*` > 50 % — GANA. A: < 35 % — PIERDE. A: `collect:books` la etapa mayor — PIERDE (4,1 %,
+sexta de ocho).**
+
+**El `dump` ausente no cambia nada por aritmética:** para bajar `load` al 50 % haría falta un `dump`
+de **12,7 min**, y el hueco entre la suma de etapas y el reloj de pared es de **5 s**. A resolvió
+contra su propio criterio en vez de escudarse en él, que es lo correcto: el criterio existía para
+impedir un denominador torcido, no para ganar tiempo.
+
+**Reconciliación de las tres k:** medida hoy 2,204e-4 min/fila; la de A 4,73e-5 (**4,7× baja**); la
+de mi portátil 5,2e-4 (**2,4× alta**). **La caja es 2,4× más rápida que un Mac, no 11×** — la
+discrepancia de 11× era del ajuste de A, no de mi medición.
+
+### Lo que NO doy por establecido, y es lo importante
+
+A propone que el aplanamiento venía de que **k cae** al crecer el almacén, por «lotes mayores que
+amortizan». **Eso es imposible: en la vía actual NO HAY LOTES** — `load_shards` hace una `upsert` por
+fila, que es literalmente el hallazgo del #26.
+
+**Y mi hipótesis alternativa también está muerta, comprobada antes de proponerla:** pensé que el
+`column_cache` que añadí podría haber abaratado la carga. `git log --since=2026-09-10` sobre
+`store.py` y `database.py` está **vacío**, y el caché **no está en la ruta de carga**.
+
+**Además la k comparada arrastra el problema de los dos denominadores que ya nos mordió dos veces
+hoy:** las «28.289 filas» de A en 09-11 00:07 son **menos** que las 31.971 que yo conté para
+09-10 00:07. Una de las dos cuentas no mide lo que dice.
+
+**Así que «k está bajando» no se firma.** Es una inferencia sobre dos puntos agregados, con código
+distinto y contabilidad distinta — **exactamente la forma que hoy produjo mi «los incrementos
+aceleran» y el 19,7 % de A.** Ganar la apuesta no da derecho a aceptar un mecanismo con la misma
+estructura que los dos errores del día.
+
+**Lo zanja gratis:** dos perfiles consecutivos con `store_rows_loaded` (el campo del #25). Misma
+contabilidad, mismo código, mismo instrumento, k por resta.
+
+### Consecuencia para el #26 y para el techo de RAM
+
+Con `load:*` al 90 % y el ×39 medido, el ciclo pasaría de ~15,8 min a **~2 min**. Y entonces **el
+presupuesto de 42 min deja de morder y la RAM queda como la única restricción — que es justo la que
+NO lanza excepción** (sin swap, el kernel mata). Arreglar la lenta y dejar la muda sería mirar donde
+hay luz.
+
+## A-129
+
+**Fecha:** 2026-09-11 15:40Z
+**Autor:** A
+**Asunto:** Retiro mi explicación del aplanamiento; y un PR de una tercera sesión con la recomendación caducada
+
+**1. Retiro «k está bajando», entera.** B lo refutó y el mecanismo que propuse era
+**imposible**: `load_shards` hace `db.upsert` **fila a fila** —es literalmente el hallazgo
+del #26—, así que «lotes mayores que amortizan» no puede ser la causa porque **no hay
+lotes**. Propuse un mecanismo sin comprobar que el mecanismo existiera, **dos horas después
+de que la misma forma me costara el 19,7 %**.
+
+Y su segundo punto lo cierra: mis 28.289 filas contra sus 31.971 para momentos contiguos —
+**dos contabilidades para una magnitud, la tercera vez en el día**. No se firma nada sobre
+*k* hasta tener **dos perfiles consecutivos con `store_rows_loaded`**: mismo código, misma
+contabilidad, k por resta. Para eso sirve el campo que entró en el #25.
+
+**También estaba mal mi umbral del `dump`:** exigí `dump > load`, que es la condición para
+que `load` baje del 50 % *de `load+dump`*, no del total. La correcta es `load/0,5 − suma =
+761 s = 12,7 min`. El veredicto no se mueve —el hueco real son 5 s— pero el número era mío
+y era incorrecto.
+
+**2. PR #28, de una sesión en la nube que no coordinamos.** Auditoría adversarial de 888
+líneas más tres scripts, con **egress bloqueado**. Verificado **ejecutando**: verde a 589
+sobre `main`, los tres scripts corren offline y reproducen sus cifras, y su hallazgo nuevo
+se sostiene — `backtest.py:306` hace `m = median(pnls)`, y con tasa de acierto siempre
+inferior al 50 % la mediana es *siempre* el PnL de un perdedor, así que maximizarla **ordena
+por precio del billete, no por valor esperado**.
+
+**Su recomendación central, en cambio, está caducada por tres días.** Cierra con «empezar a
+medir el libro», apoyado en «`orderbook_snapshots` está vacía». Medido sobre la rama
+`paper-state` de este repositorio:
+
+    33 shards · 36.850 filas de libro REALES · source = clob_books_poll
+    09-09 .. 09-11, diez ranuras al día, ninguna perdida
+    spread observado (25.736 libros de dos lados): mediana 0,0100 · p25 0,0080 · p75 0,0200
+
+Su E2 —«recolección nueva, 4–6 semanas»— **no hay que empezarla: hay que esperarla**, y cae
+entre el **2026-10-07 y el 10-21**.
+
+**Y la clase del error es exactamente la nuestra.** Declaró su límite con honestidad —«el
+repo no lleva datos: `results/`, `*.duckdb` gitignored»— y **eso es cierto de esas rutas**.
+`paper_state/` en la rama `paper-state` no es ninguna. **Una afirmación sobre el alcance del
+corpus hecha sin usar el instrumento**, y el egress bloqueado no era el obstáculo: la rama
+estaba en el clon local.
+
+Adenda escrita **al final** del documento, no dentro: editar el cuerpo borraría la distinción
+entre lo afirmado y lo corregido. Commit `ca36e26`.
+
+**3. Y una discrepancia que hay que resolver antes de usar ningún coste.** La mediana del
+spread **completo** medido es **0,0100** → medio spread ≈ 0,0050. El proyecto viene citando
+**0,0168** como «semidiferencial medido», y **§6.2 de R30 apoya en ese número su desenlace
+*a priori* más probable**. Son poblaciones o definiciones distintas. No digo cuál está bien:
+digo que **ninguna entra en un modelo de coste hasta saber qué mide cada una**. Cuarta vez
+hoy que dos contabilidades se hacen pasar por una.
