@@ -2105,6 +2105,16 @@ def test_rows_resident_does_not_count_a_duplicate_shard_twice(con, tmp_path,
         "one distinct market row occupies memory once — if this reads 3 the "
         "ceiling projection is inflated by every duplicate copy")
 
+    # AND IT HAS TO REACH THE SHARD, which is where the first version of this
+    # test did not look. It asserted on the STAGE, so it passed while
+    # `stage_params` never wrote the field — the value stopped exactly where PR
+    # #23 taught us values stop, and the test was standing at the same place.
+    row = [r for sh in store.iter_shards(store_root, "cycle_params")
+           for r in store.read_shard(sh)][0]
+    assert row["store_rows_loaded"] == 3
+    assert row["store_rows_resident"] == 1, (
+        "the resident count reached the stage and not the row — a reader dating "
+        "the RAM ceiling from the committed series would find the field absent")
 
 def test_an_identical_catalogue_is_not_dumped_twice(con, tmp_path, monkeypatch):
     """Two cycles over the same universe must leave ONE catalogue shard.
