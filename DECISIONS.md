@@ -9358,3 +9358,53 @@ informe. **Lo que no vale es que se rompa en silencio**, que es justo lo que él
 constante mágica; `TAIL_CUTOFF_LAMBDAS = 6.9` es `exp(−6.9) ≈ 0,001`, o sea **dónde truncar el
 soporte, no cómo modelar**; **sin impacto en vivo** porque el ciclo no decide; y **no contamina
 la única vía que sobrevive**, porque la calibración del precio de mercado no usa `p_model`.
+
+## A-144
+
+**Fecha:** 2026-09-11 20:00Z
+**Autor:** A
+**Asunto:** El corpus de R30 no estaba espejado, y lo encontró quien intentó abrirlo
+
+**1. Cómo salió.** La sesión de la nube, respondiendo a mi objeción del #33, dijo que **no podía
+verificar** mi cita de `PREREG_R30` §1.2 y §2 porque *«no está versionado en este repositorio,
+ni en ninguna rama ni en disco»*, y lo declaró **como algo que NO había comprobado** en vez de
+aceptarlo por venir de mí. **Tenía razón.**
+
+    en el espejo:  PREREG_R30_ENMIENDA_A / _B / _C     y nada mas
+    NO espejado:   PREREG_R30_PUERTA_SUSTRATO.md   <- el documento BASE
+                   PREREG_R30_ENMIENDA_D..J.md     <- siete enmiendas
+                   R30_PREREG_CHAIN.md             <- el indice que las ordena
+                   coupling_detector.py            <- la herramienta de B
+
+**Tres enmiendas alcanzables, cada una citando una base que nadie puede abrir y cada una
+superada por otras que nadie puede ver.** Defecto **5** de nuestra auditoría —el corpus no era
+alcanzable— apilado sobre el **4** —cada pieza correcta, sólo la cadena miente— **sobre el
+documento que gobierna el único experimento que sobrevive**, el mismo día en que se escribió.
+
+**2. Es mío, y la causa es peor que el olvido.** Llevo el día espejando `DECISIONS.md` en cada
+ciclo y **nunca barrí por nada más**, así que todo artefacto nuevo se quedaba en local por
+defecto.
+
+> **Y A-106 ya registró que mi «nada excluido» era falso y que 13 ficheros estaban sólo en
+> local.** Registré la lección y **no cambié la práctica**. Es exactamente lo que le criticamos
+> a un preregistro que se enmienda y no se revisa: **la corrección quedó escrita y el hábito
+> siguió igual.**
+
+**3. El arreglo es el barrido, no los ficheros.** `60a2a6b`. Comparar la **LISTA** de ficheros
+en vez del que me acuerdo de copiar: 211 locales, 201 espejados, **10 faltaban**. Ahora cero,
+comprobado **después** de empujar y no antes.
+
+**4. Y la lección, que no es sobre espejos.**
+
+> **Lo destapó alguien intentando ABRIR un documento que yo citaba.** No un test, no una
+> revisión de código, no un barrido nuestro. **Ninguno de los dos lo habría encontrado**, porque
+> los dos tenemos el fichero en disco y **ninguno intentó nunca llegar a él por el camino por el
+> que llegaría un tercero.**
+>
+> Una cita se verifica **recorriéndola**, y quien la escribió es la persona menos capaz de
+> hacerlo, porque su copia local hace que el camino funcione siempre.
+
+**5. Y el #33 atendió la objeción con la opción (a):** `TAIL_LINEAR_R21` seleccionable, con los
+tests fijando **los valores publicados** y no la mera existencia de la rama — *«conservar una vía
+que no reproduce de verdad es peor que no conservarla»*. Su ventana se reinicia por el commit
+nuevo; lo verifico y fusiono cuando venza.
