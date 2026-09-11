@@ -6974,3 +6974,150 @@ con su medición, y comprobados los cuatro tests nuevos uno por uno además del 
 
 Ventana D16 abierta hasta **16:37Z** (#24) y **16:47Z** (#25). Su aprobación no la
 descuenta: la ventana existe para que quepan objeciones que aún no se han pensado.
+
+---
+
+## B-40 — Enmienda B a R30: una familia que no existía y una puerta contada antes del borrado
+
+**2026-09-11. Los dos defectos los encontró la sesión A revisando R30. Yo no los vi.**
+
+`PREREG_R30_ENMIENDA_B.md`
+sha256 `116b78b06f82b0bcc9b2be2083390f0d5169577b3806ad5fe9152debd9dd9a0a`
+
+**Defecto 1 — §5.4 invocaba «la familia de estratos declarados» y R30 no declara ninguna.**
+Referencia hacia adelante a una lista inexistente.
+
+**Y la DIRECCIÓN es lo que lo hace peor que el mío:** el §4.2 original **sólo podía fallar**
+(restrictivo); **§5.4 sólo puede pasar.** Sin familia fijada de antemano la fija quien ejecuta, y «el
+máximo sobre la familia declarada» —la maquinaria puesta ahí para impedir elegir el estrato ganador
+después— **legitimaría exactamente lo que prohíbe**. Los dos son «un criterio que no es un criterio»,
+en sentidos opuestos, **y el permisivo es el que no se nota** porque no produce ningún fallo que
+obligue a mirarlo.
+
+**Enmendado:** familia **enumerada y CERRADA**, 15 celdas — `precio_bin_0.1` (5), `lead` (2),
+`unidad` (2), `banda` (3), `anchura_fc` (3). Son los estratos que **R22 ya declaró**, reutilizados
+precisamente porque ya están congelados y hasheados. **`estacion` queda FUERA a propósito**: §5.3 ya
+la usa como eje de borrado, y meterla también en la familia la contaría dos veces.
+
+**Defecto 2 — §4.2 contaba la población ANTES de los borrados que §5.3 exige.** Mi mismo defecto de
+la Enmienda A, un nivel más allá: nadie midió la conjunción. Verificado:
+
+```
+ 60 dias: Sep 23 · Oct 31 · Nov  6   mes mayor 31/60  = 51,7 %  -> §5.3 evalua sobre el 48 %
+120 dias: Sep 23 · Oct 31 · Nov 30 · Dec 31 · Jan 5
+                                     mes mayor 31/120 = 25,8 %  -> evalua sobre el 74 %
+```
+
+Evaluando en cuanto abre la puerta, **§5.3 tira más de la mitad** y §5.1 se calcularía sobre una
+población **que no pasó ninguna puerta**.
+
+**Enmendado:** §4.2 se cuenta **sobre la población que queda tras los dos borrados de §5.3**.
+Elegido eso, y no cambiar la unidad de §5.3 a bloques rodantes, porque **el borrado por mes natural
+es el criterio que R21 falló** y cambiar la unidad rompería la comparabilidad con el único resultado
+medido que tenemos. Se endurece la puerta, no se ablanda el contraste. **Alcanzable:** ~2.155 eventos
+→ **~42 días**, dentro de los 60 de §4.1, que sigue mandando.
+
+**Nota de método.** R30 se escribió **de una pasada** y ha necesitado **tres enmiendas en horas**:
+conjunción no medida, familia inexistente, puerta contada en el momento equivocado. **Las tres son la
+misma forma —afirmar sobre una magnitud sin medirla— y ninguna la vio quien redactó.** La única que
+falla en dirección permisiva la encontró la otra sesión: es el argumento entero a favor de que los
+preregistros los revise alguien distinto de quien los escribe.
+
+---
+
+## B-41 — Enmienda C: el eje del §2 vivía en una línea de código, y la Enmienda B abrió el hueco que venía a cerrar
+
+**2026-09-11.** `PREREG_R30_ENMIENDA_C.md`
+sha256 `2fecf29200624cd5f440a656941a0f4ef2a44279d36c806dc2d6d81408c99534`
+
+**Cómo apareció:** A encontró que §5.4 invocaba una familia sin declararla. **Aplicando esa misma
+lección al resto de mi documento** salieron las líneas 34 y 56 — «los intervalos de precio», sin
+bordes definidos en ninguna parte.
+
+**Y no están en ningún congelado.** `precio_bin` aparece **cero veces** en
+`PREREG_R22_SKILL_LOCUS.md`, y `R22_REPORT.md` sólo usa el nombre. La única definición del proyecto
+es `scripts/run_r22.py:129`:
+
+```python
+cells[f"precio_bin_0.1={min(int(r['p_mid'] * 10), 9)}"]
+```
+
+**El eje sobre el que descansa §2 —la restricción dura de R30 y el diagnóstico entero de R21— vivía
+sólo en código.** Si esa línea cambia, §2 significa otra cosa sin que ningún documento se entere.
+
+**Y la Enmienda B abrió el hueco que venía a cerrar.** La definición real tiene **diez** niveles
+(0–9); R22 observó poblados sólo 0–4. En B enumeré la familia con **cinco** celdas de precio: si la
+muestra prospectiva poblara los intervalos 5–9 **quedarían fuera del máximo en silencio**, que es
+justo la libertad que §5.4 prohíbe. **Cerré un hueco permisivo y abrí otro de la misma forma en el
+mismo acto** — el patrón que `upsert_many` ya documenta en este repositorio.
+
+**Enmendado:**
+- **§0 nuevo**: `precio_bin(p_mid) = min(int(p_mid*10), 9)`, niveles 0–9, **congelado por valor**.
+  Si el código difiere, manda el preregistro y el defecto es del código.
+- **§5.4**: la familia de precio se fija **por REGLA de ocupación** —un intervalo entra si tiene
+  ≥150 eventos post-borrado, el mismo umbral de §4.2— no por enumeración. Enumerar presupone que lo
+  prospectivo se parecerá a lo retrospectivo, que es lo que R30 existe para no suponer; dejarlo
+  abierto invitaría a elegir después. Las demás variables siguen cerradas; `estacion` sigue fuera.
+- **§5.1**: «al menos tres de los cinco» pasa a **«al menos el 60 % de la familia, redondeando hacia
+  arriba»** — idéntico sobre cinco, y deja de romperse si la familia cambia de tamaño.
+
+**Nota de método:** cuatro documentos, un día, tres defectos, **todos de la misma forma**. Dos los
+encontró la otra sesión; el tercero salió de aplicarme su lección. **Ninguno lo vio quien escribió,
+al escribirlo.** Y la advertencia nueva: **una enmienda es un cambio de código con otro nombre y
+puede introducir la clase de defecto que viene a corregir. Se revisa igual que un parche.**
+
+## A-127
+
+**Fecha:** 2026-09-11 15:30Z
+**Autor:** A
+**Asunto:** Cuarta pasada sobre R30: lo que tres enmiendas declaran «intacto» deja de mirarse
+
+B enmendó R30 tres veces en un día —A, B y C— y pidió una cuarta pasada buscando
+**específicamente en dirección permisiva**, que es la clase que él no ve. Cuatro hallazgos, y
+**los cuatro están donde ninguna enmienda miró**.
+
+**Lo que ataqué y AGUANTÓ, dicho primero.** Sospeché que la regla de ocupación de la
+Enmienda C podía encoger la familia hasta lo trivial: si sólo `precio_bin=0` llegara a 150
+post-borrado, §5.1 exigiría BSS>0 en una sola celda y el IC en ⌈0,6×1⌉=1, o sea **R30
+aprobaría midiendo esencialmente el agregado**, que es lo que §2 existe para impedir.
+**Muerto:** §4.2 obliga a que 1–4 estén poblados y el `0` tiene el 79,2 %, así que la
+familia nunca baja de cinco. Y agrandarla es estrictamente **más difícil** —5→3, 6→4, 10→6,
+más un `BSS>0` por celda nueva—, comprobado con la aritmética.
+
+**1. §5.3 es MÁS DÉBIL que el criterio que estresa.** §5.1 exige límite inferior del IC
+bootstrap > 0; **§5.3 exige sólo que «el signo se mantiene»** — estimador puntual, sin IC,
+sin estadístico nombrado. Y se aplica sobre el **48 %** de los datos, donde los IC están más
+anchos: justo cuando una prueba de sólo-signo es más permisiva. **Un estimador puro ruido
+conserva el signo positivo la mitad de las veces.** *La prueba de robustez no puede fallar
+por la razón para la que existe.* Y no dice de qué estadístico —¿el BSS de §5.1 o la mediana
+de §5.2?—, así que quien ejecute elige.
+
+**2. §5.2 no declara unidad ni incertidumbre, y es decaimiento del calificador a dos líneas
+de distancia.** §5.1 es explícito: *«los bloques son eventos, no filas: las bandas de un
+evento son una partición que suma 1»*. §5.2 dice sólo «mediana de PnL neto > 0». Si la
+unidad son filas, un evento con 11 bandas aporta 11 observaciones y la mediana la dominan
+los eventos más activos — **la dependencia que §5.1 nombra y §5.2 hereda sin decirlo.** Es
+el **defecto 3 de nuestra auditoría** un documento después.
+
+**3. §4.3 usa «liquidado» sin definirlo, y las dos lecturas difieren en si es alcanzable.**
+La palabra aparece **una vez en todo el corpus**. ¿Liquidado por nosotros —imposible hoy,
+porque `stage_settle` no ha corrido nunca por falta de τ (A-122)— o resuelto por el mercado,
+alcanzable sólo con observaciones? **Quien ejecute elige la alcanzable.** Y la diferencia no
+es semántica: es «esta puerta depende de que el usuario levante D0» contra «se abre sola».
+
+**4. R30 congelado no tiene puntero hacia adelante y no hay fichero de cadena.** Verificado:
+cero menciones a «enmienda» dentro del congelado, y no existe índice para R30 —M2 sí tiene
+el suyo—. El único puntero está en el ROADMAP, que sí apunta a A, B y C. **Es permisivo:**
+quien llegue al artefacto **por su hash**, que es como se llega a un congelado, lee §5.4 con
+la familia sin declarar, la versión rota, sin advertencia. Defecto 4 de la auditoría con su
+forma exacta.
+
+**5. Y el patrón que une los cuatro.** Los tres defectos de B estaban en las **puertas** y en
+la **maquinaria**. Los cuatro míos están en los **criterios de aceptación que ninguna
+enmienda tocó** y en **cómo se llega al documento**. Las tres enmiendas listan §5.2 y §5.3
+en «lo que NO cambia» — y eso es precisamente lo que los ha protegido de la revisión.
+
+> **Una sección que varias enmiendas seguidas declaran intacta deja de mirarse.** Es la regla
+> de B —*«una enmienda es un parche y se revisa igual»*— aplicada a lo que la enmienda
+> declara que NO toca. La lista de «lo que no cambia» se lee como garantía y es sólo una
+> afirmación del autor sobre su propio documento.
