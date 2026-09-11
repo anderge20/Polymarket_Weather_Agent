@@ -7951,6 +7951,49 @@ vería** un acoplamiento por argumento posicional, por orden de etapas o por efe
 
 **Lo que compra:** convierte «no tenemos regla» en «42 pares se reducen a 3 para mirar a mano».
 
+
+### B-50 bis — El barrido deja la heurística peor de lo que la presenté
+
+**A no pudo reproducir el «3 de 42» desde la descripción en prosa, y eso ya es el hallazgo: la regla
+no es transmisible en texto.** Script ejecutable en `~/pmw-e2/coupling_detector.py`.
+
+**Dato duro de A, confirmado al fichero:**
+
+```
+rows_written   4 ficheros de produccion   <- MI UMBRAL ERA <=3
+total_bytes    2
+rows_loaded    0   (solo existe como kwarg de cy.stage, nunca como literal)
+```
+
+**La arista que importaba se cayó por UN fichero.**
+
+**Barrido sobre mi implementación:**
+
+```
+umbral  aristas  pares/21   25<->26?
+     1        0         0       no
+     2        1         1       SI
+     3        3         3       SI
+     4       11         6       SI
+     6+      17         9       SI   (satura)
+```
+
+**Y esto me deja peor, no mejor.** En umbral 2 sale **un solo par y es el correcto** — lo cual **no
+vale nada**: yo ya sé cuál es el par bueno, así que elegir el umbral que lo aísla es **ajuste a
+posteriori sobre un único positivo conocido**. **Un verdadero positivo no es un conjunto de
+validación.** El ≤3 original al menos era arbitrario.
+
+Honesto: **la heurística señala el par correcto en un rango amplio (2–8) y no sé justificar qué
+umbral elegir sin más casos.** Bastante más flojo que «3 de 42».
+
+**Y la crítica que la hunde no es de implementación, es de A:** nuestro acoplamiento **casi** fue por
+**orden de etapas** —el #25 mueve `stage_params` detrás de `stage_dump`— y **ninguna versión de esto
+lo habría visto**, con cualquier umbral y cualquier corpus. Declarado en la cabecera del script: *un
+detector que se vende sin decir qué no ve es peor que no tenerlo.*
+
+**Lo que queda en pie:** el intento 1 documentado como fracaso (44 de 42, peor que no hacer nada), y
+que el par sólo apareció **porque alguien miró el par**.
+
 ## B-51 — El orden de fusión que propuse era infactible y no lo comprobé
 
 Propuse fusionar primero los de riesgo cero (#27, #29). **Las ventanas D16 van por hora de creación y
@@ -8019,3 +8062,31 @@ efecto lateral. **Y el nuestro casi fue por orden de etapas** — el #25 mueve `
 detrás de `stage_dump`. Si la interacción hubiera ido por ahí, **ninguna versión de la
 heurística la habría visto**, y seguiríamos donde estábamos: encontrándola sólo porque alguien
 miró el par.
+
+### A-135 (addendum, 16:22Z) — localizada la divergencia: la condición de arista
+
+Séptima hipótesis y la buena. **Mi condición de arista era una subcadena desnuda**
+(`k in contenido`) donde la suya exige **el literal entrecomillado** (`["']k["']`). Así que
+mi `k = "open"` casaba dentro de `gzip.open`, `open(`, `reopen`… y generaba aristas en todos
+los pares a cualquier umbral.
+
+    arista por SUBCADENA desnuda (mia)        pares(u=2,3,6) = [14, 14, 14]
+    arista por LITERAL entrecomillado (suya)  pares(u=2,3,6) = [ 1,  3,  7]
+    B mide                                                     [ 1,  3,  9]
+
+Coincide en los umbrales que importan; el residuo de u=6 es mi extracción de claves, que
+difiere en detalles menores.
+
+**Hipótesis descartadas por el camino, en orden: seis.** Corpus con `tests/` (suya), claves de
+los `.md` (mía), longitud mínima de clave, limpieza de comentarios en línea, restricción del
+diff a `.py` (las tres suyas), ficheros nuevos de la rama en el corpus (mía — explicaba 2 de 7
+pares, contribuía pero no era la causa), comillas simples frente a dobles (mía).
+
+> **Y lo que vale de esto no es el defecto, es cómo se localizó.** Yo probé seis hipótesis
+> mirando **mi propio código** y fallé las seis. B acertó **sin leer mi implementación**,
+> razonando sobre la **firma** de la discrepancia: *«mi filtro satura en 9 y el tuyo está plano
+> en 16, luego no está en el filtro ni en la extracción: está en la condición de arista»*.
+>
+> **Diagnosticar por la forma del desacuerdo en vez de por el código es más barato y aquí fue
+> lo único que funcionó.** El que tiene el código delante mira detalles; el que sólo tiene los
+> números mira la estructura.
