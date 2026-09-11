@@ -8421,3 +8421,74 @@ su docstring promete— y para qué no: el techo de RAM, que es `rows_resident`.
 instrumento, no corrección**, así que va sola por reversibilidad. Su argumento es el bueno:
 hoy la cadena es *filas → pendiente medida en un Mac → MB → comparar con 3.819 MB*, y **dos de
 esos tres saltos ya han fallado una vez cada uno**. Con `ru_maxrss` es *MB → comparar*.
+
+---
+
+## B-56 — Tres PRs dentro. Y la regla de resolución que rompió un fichero era MÍA, deducida de un solo caso
+
+**2026-09-11.** Fusionados con el número esperado exacto en los tres, cada uno con doble verificación
+(head declarado y árbol de la fusión):
+
+```
+#24 -> 1846186   591   esperado 591
+#25 -> bbed469   593   esperado 593
+#26 -> e094079   595   esperado 595      padres: bbed469 + deb3fdb
+```
+
+**Verificado por mí y no por el informe:** los padres de `e094079` son `bbed469 + deb3fdb`, o sea que
+el #26 entró contra el head **con la nota de la costura**, no contra `70cbd5d`.
+
+### La regla que rompió `paper_cycle.py` era mía
+
+Tras borrar dos tests ajenos con `git checkout --theirs`, escribí *«resolver quitando SÓLO los
+marcadores»*. **La deduje de UN choque, en UN fichero de tests, y la enuncié como regla general.**
+Aplicada al conflicto del #31 sobre código dejó:
+
+```
+dump_catalogue=True)
+...
+dump_catalogue=deciding or bool(args.dump_catalogue))     -> IndentationError
+```
+
+**Los dos lados eran ALTERNATIVAS, no adiciones** — que es lo que un fichero de tests casi nunca
+produce. **Mi regla no distinguía los dos casos porque sólo había visto uno**: la misma forma que
+llevamos el día cazando, cometida al escribir la regla que iba a protegernos.
+
+**Corregida:** *quitar sólo los marcadores vale cuando los dos lados son adiciones independientes;
+cuando son alternativas hay que elegir, y el recuento de tests no distingue un caso del otro.*
+
+**Y la rotura fue ruidosa POR SUERTE**, que es la mitad importante: un `IndentationError` la delató.
+**Dos entradas de diccionario o dos asignaciones al mismo nombre habrían parseado perfectamente y una
+habría ganado en silencio.** De ahí lo que A añadió: comprobar que **el fichero parsea**, que **ningún
+diccionario repite clave** y que **ninguna función se define dos veces**. *El recuento verifica
+cantidad, nunca identidad* — misma familia que «una suite verde no demuestra que la resolución
+conservara ambos lados».
+
+### Y un hallazgo operativo de A que va al procedimiento
+
+Tras empujar la resolución, `gh pr view --json headRefOid` devolvió el head **obsoleto**. Lo cazó
+mirando **los padres del merge**. **Los padres son el hecho; la API es un informe sobre el hecho.**
+A-112 debe decir: resolver el head en el disparo **y confirmar después contra los padres del merge
+resultante**.
+
+### A-112 (enmienda, 17:00Z) — los padres del merge son el hecho; el API es un informe
+
+El procedimiento de A-112 decía: **resolver `headRefOid` en el momento del disparo** y verificar
+contra ese sha. Le falta un paso, descubierto hoy fusionando el #25.
+
+Tras empujar la resolución del choque, `gh pr view 25 --json headRefOid` devolvió **`cb71f23`**,
+el head **anterior**. Si lo hubiera creído, no sabría si GitHub fusionó mi resolución o la
+versión sin resolver. Lo resolví mirando **los padres del commit de fusión**:
+
+    bbed469  padres: 1846186 0b7ff0e     <- 0b7ff0e ES mi resolucion
+
+**Enmienda:** *resolver el head en el disparo, verificar la suite contra ese sha, y DESPUÉS de
+fusionar confirmar contra los PADRES del commit de fusión que el segundo padre es el sha que se
+verificó.*
+
+> **Los padres son el hecho; la respuesta del API es un informe sobre el hecho, y puede ir
+> retrasada.** Es la misma distinción que ya teníamos entre «la entrada está en el crontab» y
+> «cron la ejecuta»: una es una afirmación sobre un fichero, la otra sobre lo que pasó.
+
+Confirmado también por B sobre el #26: `e094079` tiene padres `bbed469 + deb3fdb`, o sea entró
+contra el head con la nota de la costura y no contra `70cbd5d`.
