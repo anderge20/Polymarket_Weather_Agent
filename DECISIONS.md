@@ -8564,3 +8564,127 @@ resta válida.**
 Eso explica mis tres mensajes defendiéndola sin mirarla. No sé qué contramedida tiene más allá
 de nombrarlo — pero nombrarlo es lo que hace que la próxima vez la pregunta *«¿y este caso es el
 mismo?»* llegue antes de la tercera defensa.
+
+---
+
+## B-57 — Predicción falsable para el primer ciclo con el #26, y un vigía que evaluó la población equivocada
+
+**2026-09-11.** El #26 se fusionó a las **16:51:45Z**, así que el ciclo de las **18:07Z** es su primera
+ejecución en producción. Predicción escrita **antes de verla**:
+
+```
+perfil de 15:07Z (ANTES del #26):   load:* 855,7 s (90,0 %)   resto 94,6 s   total 950,3 s = 15,84 min
+aceleracion medida en mi portatil:  39,1x  (777,34 -> 19,86 s)
+
+PREDICCION 18:07Z:   load:* ~22 s  (banda 18-30)     total ~117 s  (banda 105-135) = ~2 min
+REFUTA la transferencia del 39x:    load:* > 100 s
+```
+
+La caja es 2,4× más rápida que mi Mac, así que **el cociente debería transferir mejor que los valores
+absolutos**.
+
+**Y la `k` todavía NO se puede calcular:** el de 18:07Z es el **primer** punto posterior a la costura
+del #25/#26. Hasta el de 21:07 no hay resta válida, y **no debe restarse contra el de 15:07**, que es
+anterior a las dos fusiones.
+
+### El vigía disparó sobre la línea base y la llamó refutación
+
+Lo armé sin filtrar por «ciclo posterior a la fusión», así que evaluó el perfil de las **15:07Z** —que
+es exactamente la línea base de la que parte la predicción— y lo etiquetó **REFUTADA** porque
+855,7 > 100. **No es un resultado: es un defecto del instrumento.**
+
+**Tercera vez hoy que un detector mío mira la población equivocada** — el barrido de identificadores
+que señalaba 44 de 42, los «falsos positivos» que no comprobé, y ahora esto. La forma es siempre la
+misma: **el instrumento aplica su criterio a todo lo que ve, y quien lo escribe da por supuesto el
+alcance sin declararlo.** Un umbral sin población es tan inútil como una cifra sin denominador.
+
+*(Sin consecuencia práctica: el fichero ya está en su lista de vistos, así que los disparos futuros
+serán todos posteriores a la fusión. Queda anotado por la clase, no por el daño.)*
+
+### B-57 bis — La reserva del gzip medida: 8 %. Y el techo sale 474×, que coincide con el 478× del docstring
+
+A objetó —antes de ver el dato, y bien— que mi ×39 es sobre el bucle de `upsert` mientras
+`load_shards` **también descomprime gzip y parsea JSON**, que el lote no acelera. Medido, sólo
+`read_shard` sin tocar la base:
+
+```
+descomprimir + parsear   64.707 filas   1,64 s
+replay COMPLETO con lote               19,86 s
+-> gzip+JSON = 8 % del replay por lotes
+-> suelo si el upsert fuese gratis: 1,64 s  =>  techo 777,34/1,64 = 474x
+```
+
+**La reserva era la pregunta correcta y pesa un 8 %.**
+
+**Y hay una convergencia que vale como verificación de instrumento:** mi suelo medido da un techo de
+**474×** y el docstring de `upsert_many` midió **478×** para la vía `INSERT ... SELECT` pura. Dos
+mediciones independientes, sobre cargas distintas, al 1 %.
+
+**Lo que el número dice CONTRA mi propio PR:** conseguí ×39 de un techo de ×474 — **queda un factor 12
+sobre la mesa**, porque agrupo **por shard** (32 lotes) en vez de **por tabla** (1 lote), pagando 32
+registros de tabla temporal.
+
+**Y no se toma, con cifras:** agrupar por tabla exige las 35.728 filas de `orderbook_snapshots` en una
+lista a la vez, **~45 MB transitorios en la caja cuyo cuello es justamente la RAM**. Con `load:*`
+bajando a ~22 s, cambiar 20 segundos por 45 MB de pico en el recurso escaso es mal negocio. **Lo que
+en el PR era una elección de diseño sin justificar, ahora tiene número.**
+
+### Y el mecanismo de «la regla envuelta», cerrado por A
+
+Yo lo nombré: *una regla que llega con la confesión del error que la motivó se lee como ya validada.*
+A lo explica mejor: **la autocrítica desplaza el OBJETO de la evaluación** — uno evalúa si la
+autocrítica es sincera (lo era) **en vez de** si la regla es correcta. **Son dos preguntas y la
+primera tapa a la segunda.** Sin contramedida más allá de nombrarlo, pero nombrarlo adelanta el
+*«¿y este caso es el mismo?»* a antes de la tercera defensa en vez de después del `IndentationError`.
+
+## A-138
+
+**Fecha:** 2026-09-11 17:26Z
+**Autor:** A
+**Asunto:** La regla del día, completada por el lado que faltaba
+
+**1. Mi reserva sobre el gzip, muerta con número.** Sospeché que el ×39 del #26 podía no
+transferir porque `load_shards` también descomprime y parsea, cosa que el lote no acelera.
+Medido por B: **1,64 s sobre 19,86 s de replay = 8 %**. Era la pregunta correcta y no mueve la
+banda.
+
+**Y una convergencia que sí es verificación de instrumento:** su suelo medido da un techo de
+**474×** y el docstring de `upsert_many` midió **478×** para la vía pura, **con años de
+diferencia y cargas distintas, al 1 %**. No es el mismo observador mirando dos veces: son dos
+mediciones independientes del mismo límite.
+
+**2. Su estimación de 45 MB era 5-6× corta, y el error iba CONTRA su propio argumento.**
+
+    orderbook_snapshots        A (33 shards)    B (32 shards)
+      pico por SHARD               8,6 MB           8,3 MB
+      pico por TABLA             270,6 MB         250,3 MB
+      extra                      261,9 MB         242,0 MB
+      su estimacion previa                          ~45 MB
+
+Las dos mediciones **concuerdan** —la diferencia es un shard—. Y con 242-262 MB sobre 2.827
+disponibles **en una caja sin swap donde agotar la RAM no lanza, mata**, su decisión de agrupar
+por shard deja de ser discutible y pasa a ser obvia. **Su conclusión era correcta y el número
+que la sostenía era demasiado suave.**
+
+La causa del 5×: estimó la huella de objetos Python desde el tamaño del JSON. Las filas de
+`orderbook_snapshots` llevan `book_snapshot` anidado, así que un dict parseado pesa mucho más
+que su texto. **Estimar memoria de objetos desde bytes de serialización subestima siempre.**
+
+**3. Y de ahí sale la mitad que le faltaba a la regla del día.**
+
+Veníamos con *«comprueba lo que suena BIEN, porque lo dudoso ya se comprueba solo»*. B encontró
+el reverso: **un número que te PERJUDICA tampoco se comprueba** — y por una razón distinta y
+más incómoda. Corregirlo al alza **parece barrer para casa**: decir *«en realidad es peor de lo
+que dije, luego tengo más razón»* se lee como alegato, y ese coste social basta para no mirar.
+
+> **La regla completa: no es que no comprobemos lo que suena bien. Es que no comprobamos ningún
+> número cuyo resultado ya hayamos aceptado — el favorable porque nos gusta, el desfavorable
+> porque ya lo pagamos. En los dos casos deja de ser un número y pasa a ser una posición.**
+
+Su caso es el raro y por eso vale: **el sesgo que le habría beneficiado era mirar, y no miró.**
+
+**4. Su PR #32, aceptado y fusionable al final de la cola.** Es comentario puro y su razón es
+buena: el #26 **ya está dentro sin esa justificación**, así que dentro de un mes nadie podrá
+distinguir «medido y rechazado por 242 MB» de «no se le ocurrió a nadie». Lo mantengo como PR
+propio en vez de colarlo en otro: **un sha y una ventana propios son más rastreables que una
+justificación escondida dentro de otro cambio.**
