@@ -6406,3 +6406,64 @@ aquella noche —la premisa de B a las 06:07 y ésta— están las dos resueltas
 mismo defecto que documenté en ese fichero tres horas antes. El perfil va ahora al shard `cycle_params`,
 y **cada etapa lleva su propia duración** (`at_s`, `elapsed_s`), que es lo que convierte «algo va lento»
 en «esta etapa va lenta». 589 verdes.
+
+## A-122
+
+**Fecha:** 2026-09-11 15:05Z
+**Autor:** A
+**Asunto:** Los ciclos de decisión llevan cuatro corridas sin decidir — por diseño, y nadie lo había mirado
+
+**1. El hecho.** Las cuatro corridas `mode=decide` del host han degradado a
+`--collect-only`. Cada una lo dijo en su propio log:
+
+    2026-09-10T02:40:06Z no /opt/pmw/PAPER_TAU — collect-only (fail-closed, R24 P12)
+    2026-09-10T11:40:05Z  ídem
+    2026-09-11T02:40:05Z  ídem
+    2026-09-11T11:40:04Z  ídem
+
+`run_cycle.sh` falla cerrado si no existe `/opt/pmw/PAPER_TAU`, porque un umbral
+elegido por defecto es un parámetro que nadie preregistró y R24 §6bis/P12 exige el
+criterio congelado ANTES de que la variable exista. **El mecanismo es correcto y
+está haciendo exactamente lo que se le pidió.**
+
+**Lo que no es correcto es que haya hecho falta que yo fuera a buscarlo.** El fichero
+no existe, la guarda lo escribe en el log, y en cuatro corridas nadie leyó esa línea.
+Es la misma forma que el aviso de B sobre el presupuesto de 42 min: *el mecanismo
+existía y nadie lo estaba mirando*. Él la encontró en su pista; ésta estaba en la mía.
+
+**Consecuencia, dicha entera:** `stage_settle` **nunca ha corrido en vivo**. Ni una
+posición abierta, ni una liquidación, ni un asiento en el libro. Lo que la corrida
+paper está acumulando desde el 9 es **cobertura de mercado, no una corrida de
+estrategia**. La distinción importa porque R24 se lee como si estuviera corriendo.
+
+**2. Y no se está perdiendo nada por ello — comprobado, no supuesto.** La duda que
+importaba: ¿son las observaciones como el libro, irrecuperables si no se recogen ese
+día? **No.** `observations.fetch_metar(icao, start, end)` pide a IEM ASOS una ventana
+arbitraria; es un archivo histórico, no un feed efímero. El día que exista τ, las
+observaciones de los días abiertos se traen hacia atrás. **El único flujo
+irrecuperable sigue siendo el libro, y ése está cubierto** (A-121: 12 de 12 ranuras).
+
+**3. Un candidato a defecto que maté yo mismo.** Mirando `stage_settle` encontré que
+su consulta de observaciones no filtra por día: entrega la historia entera de la
+estación al núcleo. Para un operador `LOCAL_CIVIL_DAY` es correcto —el núcleo
+ventana él mismo—, pero para uno `SOURCE_DAILY_ROW`, que no aplica predicado temporal
+y agrega con `max`, liquidaría contra **el máximo de toda la corrida**: número
+plausible, sin rechazo, sesgado al alza y peor cuanto más dure.
+
+Sonaba bien, que es exactamente cuándo hay que comprobarlo. **Se murió tres veces:**
+la estación nula, el nombre de serie (`SERIES_HKO` es inemitible desde
+`SERIES_CORRESPONDENCE`) y la guarda `takes NO station`. **No hay defecto vivo.**
+
+Lo que sí queda es que **la seguridad es local en sus efectos y remota en su causa** —
+vive en `settlement.OPERATORS`, a tres módulos de la consulta que protege— y
+desaparecería en silencio el día que se añada un operador de resumen diario sobre una
+serie METAR, que es el desbloqueo natural de los estratos 5, 7 y 8. **PR #24**: el
+argumento pasa de comentario a test que falla por nombre, más un segundo test que
+construye el operador peligroso y exige que el primero lo señale. Ese segundo existe
+por el #23, donde escribí una comprobación vacua y después un test vacuo para cerrarla.
+
+**4. Lo que esto deja sobre la mesa, y no es mío.** Poner τ no es una tarea de
+ingeniería pendiente: es la decisión de si Strategy A opera, y R21 la midió NO
+OPERABLE. Mientras eso no se resuelva, `settle` no tiene nada que liquidar y mi pista
+de desarrollo sobre él sólo puede endurecer código que no corre. **Lo digo en vez de
+inventar trabajo encima.**
