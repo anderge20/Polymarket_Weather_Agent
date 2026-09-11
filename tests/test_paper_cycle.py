@@ -1896,3 +1896,56 @@ def test_the_offender_check_can_actually_fail():
     assert _wide_history_offenders(
         settlement.OPERATORS + (hazardous,), declared
     ) == ["HYPOTHETICAL_DAILY_SUMMARY_OVER_METAR"]
+
+
+def test_a_collect_only_cycle_persists_the_catalogue(con, tmp_path, monkeypatch):
+    """The universe is not recoverable, so it cannot live only in RAM.
+
+    `dump_catalogue` used to be `deciding or args.dump_catalogue`, reasoned
+    entirely about REPLAY: a cycle that decided nothing has no decision to
+    reproduce, so it needs no catalogue pinned against it. That is correct, and
+    it missed what the catalogue also is — the only record of WHICH MARKETS
+    EXISTED.
+
+    Every cycle since 2026-09-09 has been collect-only, so `markets` was rebuilt
+    each run from one frozen shard plus live discovery IN RAM, and the live part
+    was never written. Two rows stamped `is_final: True` for the same target,
+    lead and cutoff disagreed — 561 bands, then 539 — because the two events
+    discovered after the freeze evaporated when their markets closed.
+
+    Gamma's `closed=false` feed does not return what has closed. So this is the
+    one thing this project treats as unrecoverable, arriving through the
+    catalogue instead of through the book.
+
+    Drives `main` with `--collect-only`, which is the path that was losing it.
+    """
+    monkeypatch.setattr(paper_cycle, "stage_collect",
+                        lambda cy, *a, **k: cy.stage("collect:books", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_venue_coverage",
+                        lambda cy, *a, **k: cy.stage("venue_coverage", paper_cycle.OK))
+
+    def _discover(cy, con, **kw):
+        db_mod.upsert(con, "markets",
+                      {"market_id": "m1", "dataset_version": "ds1",
+                       "record_version": 1, "event_id": "e1", "question": "q"},
+                      ("market_id", "dataset_version", "record_version"))
+        cy.stage("discover", paper_cycle.OK)
+    monkeypatch.setattr(paper_cycle, "stage_discover", _discover)
+
+    store_root = tmp_path / "store"
+    assert paper_cycle.main([
+        "--target-date", "2026-09-10", "--dataset-version", "ds1",
+        "--store-root", str(store_root), "--db", str(tmp_path / "t.duckdb"),
+        "--collect-only", "--summary-json", str(tmp_path / "s.json")]) == 0
+
+    rows = [r for sh in store.iter_shards(store_root, "markets")
+            for r in store.read_shard(sh)]
+    assert rows, (
+        "a collect-only cycle discovered a market and did not persist it — the "
+        "universe existed only in RAM and the feed will not return it once the "
+        "market closes")
+    assert rows[0]["market_id"] == "m1"
+
+    summary = json.loads((tmp_path / "s.json").read_text())
+    dump = next(s for s in summary["stages"] if s["stage"] == "dump")
+    assert dump["catalogue"] == "dumped"

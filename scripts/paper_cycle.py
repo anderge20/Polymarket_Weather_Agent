@@ -1868,12 +1868,50 @@ def main(argv: list[str] | None = None) -> int:
                    dataset_version=args.dataset_version, since=cy.started_at,
                    # Every DECIDING cycle carries its own catalogue, so the
                    # replay reproduces it against the universe it actually
-                   # decided on. `--dump-catalogue` survives as an override for a
-                   # collect-only run someone wants snapshotted anyway.
-                   # `deciding`, not `not collect_only`: a cycle the guard
-                   # refused decided nothing, so there is no decision for a
-                   # replay to reproduce and no catalogue to pin it against.
-                   dump_catalogue=deciding or bool(args.dump_catalogue))
+                   # decided on.
+                   #
+                   # AND NOW ON EVERY CYCLE, BECAUSE THE UNIVERSE IS NOT
+                   # RECOVERABLE. The previous rule was `deciding or
+                   # args.dump_catalogue`, reasoned entirely about REPLAY: a
+                   # cycle that decided nothing has no decision to reproduce, so
+                   # it needed no catalogue pinned against it. That reasoning is
+                   # correct and it missed what the catalogue also is — the only
+                   # record of WHICH MARKETS EXISTED.
+                   #
+                   # Every cycle since 2026-09-09 has been collect-only (the
+                   # fail-closed `PAPER_TAU` gate), so `markets` was rebuilt each
+                   # run from ONE frozen shard plus whatever live discovery added
+                   # IN RAM — and the live part was never persisted. Measured on
+                   # that shard: it holds target 2026-09-10 (51 events) and
+                   # 2026-09-11 (49), and NOTHING for 09-12 onward. So the two
+                   # 09-11 events discovered later evaporated when their markets
+                   # closed, and two rows stamped `is_final: True` for the same
+                   # (target, lead, cutoff) disagreed: 561 bands, then 539.
+                   #
+                   # For 09-12 it is not two events, it is all 51: none of them
+                   # are in the shard. Gamma's `closed=false` feed does not return
+                   # what has closed, so after 12:00Z that universe is gone the
+                   # way an order book is gone. This is the ONE thing this
+                   # project treats as unrecoverable, arriving through the
+                   # catalogue instead of through the book.
+                   #
+                   # THE COST WAS COMPUTED AND IS NOT WHAT IT LOOKS LIKE. Ten
+                   # dumps a day is ~11 000 shard rows, which sounds like it
+                   # accelerates the RAM ceiling. It does not: `record_version`
+                   # is 1 on all 1 100 rows and the conflict key is
+                   # (market_id, dataset_version, record_version), so every copy
+                   # COLLAPSES to the same 1 100 rows on load. RAM cost: zero.
+                   # What grows is the store (~1 MB/day gzipped, against 31 GB
+                   # free) and the replay (~1 100 redundant upserts per copy) —
+                   # and the replay is exactly what PR #26 just made 39x faster.
+                   #
+                   # A daily dump was considered and REJECTED. It bounds the loss
+                   # window to 24 h, and the argument for it — "an event closing
+                   # inside the window is one for the target already in the
+                   # shard" — is the very reasoning that failed today: 09-10 held
+                   # only because its 51 events happened to be in the shard, and
+                   # that was luck, not a property.
+                   dump_catalogue=True)
     finally:
         con.close()
 
