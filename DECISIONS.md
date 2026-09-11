@@ -8688,3 +8688,96 @@ buena: el #26 **ya está dentro sin esa justificación**, así que dentro de un 
 distinguir «medido y rechazado por 242 MB» de «no se le ocurrió a nadie». Lo mantengo como PR
 propio en vez de colarlo en otro: **un sha y una ventana propios son más rastreables que una
 justificación escondida dentro de otro cambio.**
+
+---
+
+## B-58 — La premisa operativa del proyecto era falsa: no hay UN flujo irrecuperable, hay TRES
+
+**2026-09-11.** El §8 del ROADMAP, escrito por mí esta misma mañana, dice en su punto 3: *«seguir la
+captura mientras se decide — es lo ÚNICO con coste de oportunidad asimétrico: el libro no se puede
+recoger a posteriori»*. **Es falso.**
+
+**Inventario corregido:**
+
+1. **El libro** — el único contemplado. Polymarket no publica L2 histórico.
+2. **El catálogo** — descubierto hoy (B-53, B-54). El feed pide `closed=false` y **no devuelve lo
+   cerrado**: un mercado descubierto en vivo y no persistido desaparece al cerrarse, exactamente como
+   una ranura de libro. **Con fecha:** si el #31 no entra antes del ciclo de las 21:07, el universo del
+   objetivo 09-12 —sus 51 eventos, el 100 %— se pierde.
+3. **La RAM** — hallazgo de A. La caja tiene 3.819 MB y **cero swap**: agotar memoria **no lanza**, el
+   kernel mata el proceso.
+
+**Y el punto 3 es el que más incomoda, porque la regla es mía.** *«Nada puede lanzar entre
+`stage_collect` y `stage_dump`»* cubría **una** vía de pérdida. Las otras dos **no llegan por una
+excepción**: una llega **por no escribir** y la otra **por que te maten**. `_non_fatal`, la escalera de
+`try/except` y mi regla están todas construidas sobre excepciones y **no pueden ver ninguna de las
+dos**.
+
+**La regla no estaba mal: estaba resolviendo el caso que habíamos visto** — exactamente igual que la
+de «quitar sólo los marcadores». **Dos reglas mías el mismo día, las dos correctas para su caso y las
+dos enunciadas como generales.**
+
+**Punto 3 del §8 reescrito en el ROADMAP:**
+
+> **3 (corregido).** Seguir la captura, y **persistir el catálogo con la misma urgencia que el libro**:
+> son **dos** flujos irrecuperables, no uno. Y vigilar la RAM como **tercer** modo de pérdida, porque
+> es el único que no produce **ni excepción ni registro**.
+
+**Por qué va al ROADMAP y no sólo aquí:** el §8 justificaba **seguir gastando ciclos en captura** con
+un argumento de asimetría. El argumento era correcto y **el inventario de lo asimétrico estaba
+incompleto** — y un inventario incompleto de lo irrecuperable es lo que hace que se pierda algo
+mientras todos miran a otro sitio.
+
+## A-139
+
+**Fecha:** 2026-09-11 17:33Z
+**Autor:** A
+**Asunto:** E2 REFUTADO contra umbral preinscrito — muere la segunda de las tres vías de edge
+
+**1. Qué ha pasado.** Una **tercera** sesión —la de la nube, `session_01ErHjhNZha7S3Dc53JBHyGL`,
+que no es la sesión B con la que coordino— ha empujado `a0eeb11` al PR #28 evaluando su propia
+condición de viabilidad de E2 **contra los libros reales**, y le sale **en contra**.
+
+**2. Lo que verifiqué antes de aceptarlo, que es lo único que hace válido el resultado.**
+
+**El umbral es ANTERIOR al dato.** Está en el commit original del informe, `b95564a`,
+**2026-09-11T15:24:18Z**, escrito literalmente como *«Condición de viabilidad, fijada aquí
+antes de ver el dato»*:
+
+> market making viable si `medio_spread_mediano > margen_fair_value`, y ese margen medido
+> sobre el artefacto real está en 0,010–0,100 con **mediana ≈ 0,036**. Por debajo, **#2 y #3
+> mueren y se publican como D/E**.
+
+La medición llegó en `a0eeb11`, **16:33:34Z**. **Una hora y nueve minutos después.** No es un
+umbral ajustado al resultado.
+
+**3. Y el dato coincide con el mío, medido por separado y antes de leer el suyo.** Yo medí en
+el PR #29, sobre los mismos 25.736 libros de dos lados:
+
+    spread COMPLETO   mediana 0,0100 global · 0,0200 en la zona de duda (bins 1-8)
+    SEMIdiferencial   mediana 0,0050 global · 0,0100 en la zona de duda
+
+    umbral preinscrito                        0,036
+    -> falla por 3,6x en la zona de duda y por 7,2x en el agregado
+
+**Su «falla por 4–7×» es mi medición.** Dos instrumentos, dos sesiones, el mismo número.
+
+**4. El razonamiento del umbral es sólido, y por eso el resultado muerde.** Para hacer mercado
+con beneficio hay que **cotizar más ancho que la propia incertidumbre**. Si el margen de
+`fair_value` del modelo es ~0,036 y el libro cotiza a 0,005–0,010 de semidiferencial, cotizar
+ahí es **cotizar dentro del propio error**: selección adversa garantizada, que es exactamente
+el mecanismo por el que ya murió Strategy A.
+
+**5. Consecuencia para la pregunta del usuario, que es lo que importa.** Las tres vías que
+sobrevivían al veredicto sobre Strategy A eran: **(1) sesgos de calibración del precio de
+mercado, (2) provisión de liquidez, (3) coherencia entre mercados**.
+
+    (2) provision de liquidez     MUERTA   por umbral preinscrito, medido hoy
+    (3) coherencia de particion   MUERTA   0 de 96 particiones completas rentables
+                                           (consistente con mi medida previa: 0 de 714)
+    (1) calibracion del precio    VIVA     y es la unica que queda
+
+**Y la (1) es la única que se puede correr HOY sobre datos que ya existen**, sin recoger nada
+nuevo — que es justo lo que el informe original recomendaba como primer experimento.
+
+**6. La ventana del #28 se reinicia a 18:33Z**, porque `a0eeb11` es sustancia y no comentario.
