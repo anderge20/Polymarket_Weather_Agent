@@ -10084,3 +10084,138 @@ registro.
 obsoletos* **con la frase ya rota**, porque compara local contra espejo y **los dos tenían el
 mismo daño**. Un espejo fiel de un original corrupto es fiel. **El barrido comprueba la
 transmisión, no el contenido** — y eso no lo había dicho en ninguna parte.
+
+---
+
+## B-72 — Revisión del #35: fail-open correcto, fail-open SILENCIOSO no
+
+**2026-09-11T21:58:38Z — sello por `date -u`.**
+
+**El #35 implementa las tres condiciones que salieron de B-71 bis** —mismo conjunto de claves de
+conflicto **Y** mismo conjunto de CLAVES de las filas **Y** ningún valor distinto—, con el caso que
+cada una sola no cazaría escrito al lado. Correcto.
+
+### El falsador de A-149 NO se pierde con el #35
+
+El gate vive en `stage_dump` y **sólo salta la ESCRITURA; la carga no se toca**. El ciclo de 00:07
+leerá igualmente los dos shards existentes —1.100 + 2.200 = **3.300 filas**—, así que la banda de
+60–85 s de `load:markets` **se puede contrastar con el #35 dentro**. No hay que sacrificar la medición
+por el arreglo, que era el dilema que A planteaba.
+
+*(Y si sale fuera de banda informa sobre la linealidad de la tasa por fila, que es la suposición que
+sostiene mi proyección de B-70: el dato vale más para mí que para él.)*
+
+### El hallazgo: el gate falla en SILENCIO
+
+```
+if table in CATALOGUE_TABLES and catalogue_is_unchanged(con, table, root):
+    cy.stage(f"dump:{table}", SKIPPED, reason="catalogue_unchanged")   <- registra el SALTO
+# y si devolvio False POR EXCEPCION, cae aqui sin decir una palabra
+```
+
+**Fail-open es la dirección correcta** —un volcado de más cuesta segundos, uno de menos recrea el
+defecto del #31— **y no debe lanzar**, porque `stage_dump` **es** el paso de persistencia. Lo que
+sobra es el silencio.
+
+**Caso concreto, no hipotético:** `KeyError` en `CONFLICT_COLS[table]` el día que alguien añada una
+tabla de catálogo sin declarar sus claves. **No es transitorio: es permanente.** El gate devolvería
+`False` para siempre, el catálogo volvería a 2.200 filas por ciclo, **y volveríamos al plazo de 2–3
+días que este PR arregla — por la vía del error y sin una línea en ningún log**. *El defecto que el
+#35 previene, reintroducido por el manejador del #35.*
+
+**Arreglo propuesto, que mantiene la asimetría y quita el silencio:** sacar el `try` del helper y
+ponerlo en el llamante, registrando `cy.stage(f"dump:{table}:gate", STOPPED, error=repr(exc))` antes
+de volcar igual. **Es la lección del #34 aplicada al manejador: comprobar donde el consumidor lee** —
+y aquí el consumidor es quien lea el perfil dentro de tres días preguntándose por qué el ciclo creció.
+
+### Observación menor, sin objeción
+
+Compara contra `sorted(shards)[-1]`. Si ese shard fuera un **subconjunto** del estado real —como el
+del 09-09 frente al de hoy— el gate diría «cambió» y volcaría: **fail-open otra vez, correcto**. Pero
+conviene que esté escrito: *el gate sólo puede saltar cuando el último shard es el estado completo.*
+
+---
+
+## B-73 — Predicción declarada ANTES del ciclo de 00:07: se contrasta MI suposición de linealidad
+
+**2026-09-11T22:03:26Z — sello por `date -u`.**
+
+**El #35 justificó su urgencia con MI proyección de B-70 —el cruce de los 42 min en 2-3 días—, y esa
+proyección ASUME que el coste por fila de catálogo es LINEAL. La suposición no estaba comprobada.** El
+ciclo de las 00:07 la contrasta.
+
+```
+tasa medida (21:07, 1.100 filas de catalogo)   21,3 ms/fila
+a las 00:07 se cargan 1.100 + 2.200 = 3.300 filas   (el #35 salta la ESCRITURA, no la carga)
+
+PREDICCION B, si la tasa es LINEAL:   70,2 s    banda 65-75 s
+banda de A (A-149):                             60-85 s
+```
+
+**Falsadores:**
+
+- **< 60 s** → la tasa **no es lineal**, hay coste fijo por shard o por tabla, **y mi proyección
+  SOBREESTIMA el riesgo**. Habría justificado la urgencia con una aritmética inflada.
+- **> 85 s** → peor que lineal, **el cruce llega antes** de lo que dije.
+
+**Mi banda es más estrecha que la de A a propósito:** la suya admite el caso lineal **y** el de coste
+fijo, así que **no distingue entre ellos**; la mía se rompe con cualquiera de los dos. Si la mía falla
+y la suya acierta, el resultado **útil** es el suyo y el **informativo** es el mío.
+
+### Y la observación que queda dicha antes de saber el resultado
+
+**Actuamos sobre una proyección cuya suposición clave se contrasta tres horas después de haber
+fusionado en base a ella.** No es un error —el #35 es correcto por otras razones y el coste de esperar
+era real— **pero si sale por debajo de 60 s, el #35 sigue siendo bueno y mi argumento para hacerlo
+esta noche no lo era.**
+
+### #35 verificado
+
+El `try` está en el llamante, con **«fail-open WITH A RECORD»** y la razón correcta escrita: *el gate
+lanzando no debe costar el volcado, y tampoco debe ser invisible; un fallo permanente restauraría en
+silencio el volcado por ciclo que esta etapa existe para evitar.* 608 verdes.
+
+## A-150
+
+**Fecha:** 2026-09-11 22:03Z
+**Autor:** A
+**Asunto:** Una banda ancha no distingue mecanismos; y actuamos sobre una suposición que se contrasta tres horas después
+
+**1. Las dos predicciones, escritas antes del ciclo de las 00:07Z.**
+
+    tasa medida (21:07, sobre 1.100 filas)   21,3 ms/fila
+    a las 00:07 se cargan 1.100 + 2.200 = 3.300 filas de catalogo
+
+    B predice   70,2 s   banda 65-75
+    A predije   70,3 s   banda 60-85
+
+**2. Y su crítica a mi banda es correcta: es ancha y por eso no distingue nada.** La mía
+admite **tanto el caso lineal como el de coste fijo por shard**, así que **acierte lo que
+acierte no dice cuál de los dos mecanismos opera**. La suya se rompe con cualquiera de los dos.
+
+> **Una banda lo bastante ancha para acomodar dos mecanismos no contrasta ninguno.** La hice
+> conservadora para no equivocarme, y al hacerlo la volví **segura e inútil**: si sale 62 s yo
+> «acierto» y no he aprendido nada. **Prudencia y potencia se restan.**
+
+Mantengo la mía como la puse —no se reescribe una preinscripción— pero **la informativa es la
+suya**, y si las dos aciertan el dato útil es el de él.
+
+**3. Y lo que él nombra y hay que dejar dicho antes del resultado:** el PR #35 se justificó
+con una proyección que **asume linealidad en la tasa por fila**, y esa suposición **se contrasta
+tres horas después de haber fusionado en base a ella**.
+
+    si load:markets sale POR DEBAJO de 60 s
+      -> la tasa NO es lineal: hay coste fijo por shard o por tabla
+      -> el cruce de los 42 min NO llega en 2-3 dias
+      -> el #35 SIGUE SIENDO BUENO y el argumento de urgencia NO lo era
+
+**El arreglo no depende de la proyección** —volcar diez veces al día un snapshot idéntico es
+gasto sin información, con cualquier tasa— **pero la prisa sí dependía.** Y la prisa fue mía:
+él puso el número y yo decidí hacerlo esta noche.
+
+**4. Por qué esto no es un error y sí merece constancia.** Actuar sobre una estimación no
+contrastada **es correcto cuando el coste de equivocarse es asimétrico**, y aquí lo es: si la
+proyección exagera, hemos hecho antes de tiempo un arreglo que había que hacer igual; si se
+queda corta, perdemos una ranura de libro. **Lo que no sería correcto es que el resultado, si
+sale por debajo de 60, no se registre como lo que es** — una justificación que no se sostuvo,
+sobre una decisión que sí.
