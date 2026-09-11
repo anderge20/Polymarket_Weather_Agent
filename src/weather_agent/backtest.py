@@ -289,27 +289,79 @@ def reprice(cands: list[Candidate], *, x_exec: float,
     return out
 
 
-def select_tau(train: list[Candidate], grid=TAU_SIGNAL_GRID) -> float | None:
-    """§3, frozen: the tau maximising the MEDIAN net PnL per trade on `train`.
+#: A1. The objective `select_tau` maximises. `"median"` is what PREREG_R21 §3 froze
+#: and what produced the published R21 numbers; it is KEPT so that result stays
+#: reproducible, exactly as `error_model`'s withdrawn v3 is kept. It is no longer
+#: the default, for the reason below.
+OBJ_TRIMMED_MEAN = "trimmed_mean"
+OBJ_MEDIAN_R21 = "median"
 
-    Median and not mean because with few trades the mean is fixed by one tail.
-    Ties within 1e-9 go to the LARGER tau: fewer trades, a stricter rule. A tau
-    with no trades in training is not a candidate — it would win by vacuity, the
-    same defect §4.1 exists to block downstream.
+#: Fraction dropped from EACH end before averaging. 10 % answers the concern the
+#: median was chosen for — "with few trades the mean is fixed by one tail" — without
+#: inheriting the defect that concern bought.
+TRIM_FRACTION = 0.10
+
+
+def _trimmed_mean(values, frac: float = TRIM_FRACTION) -> float:
+    """Mean after dropping `frac` of the sample from each end.
+
+    Never trims to nothing: with fewer than 1/frac points it degenerates to the
+    plain mean, which is the right answer when there is no tail to cut.
     """
-    best, best_med = None, None
+    v = sorted(values)
+    k = int(len(v) * frac)
+    core = v[k:len(v) - k] or v
+    return sum(core) / len(core)
+
+
+def select_tau(train: list[Candidate], grid=TAU_SIGNAL_GRID,
+               objective: str = OBJ_TRIMMED_MEAN) -> float | None:
+    """The tau maximising the objective over `train`.
+
+    WHY NOT THE MEDIAN (defect A1). PREREG_R21 §3 froze the MEDIAN net PnL per
+    trade, reasoning that with few trades the mean is fixed by one tail. The
+    reasoning is sound and the statistic is not, because of what this universe
+    looks like: every band here is 5-30 % likely, so the win rate is ALWAYS below
+    50 %, so the median is ALWAYS a losing trade's PnL, `-(p_exec + fee)`.
+
+    Maximising it therefore ranks candidate thresholds by TICKET PRICE rather than
+    by expected value: a 2-cent loser (-0.031) outranks a 16-cent loser (-0.167)
+    even when the 16-cent bucket earns five times more per trade. Demonstrated in
+    `scripts/research/tau_objective.py`, where the median picks tau=0.04 (mean
+    +0.0769/trade) over tau=0.15 (mean +0.1253/trade).
+
+    SCOPE, stated honestly: in the R21 run itself the optimiser pinned to the TOP
+    of the frozen grid (0.20 in 239 of 271 decisions), so this defect was NOT the
+    operating cause of that negative result — R21's verdict stands on adverse
+    selection, which no objective repairs. What the defect does is invalidate the
+    objective for any FUTURE use, which is why it is fixed here rather than in a
+    re-run.
+
+    Ties within 1e-9 go to the LARGER tau: fewer trades, a stricter rule. A tau
+    with no trades in training is not a candidate — it would win by vacuity.
+    """
+    if objective == OBJ_TRIMMED_MEAN:
+        score = _trimmed_mean
+    elif objective == OBJ_MEDIAN_R21:
+        score = median
+    else:
+        raise ValueError(f"unknown objective {objective!r}")
+
+    best, best_score = None, None
     for tau in grid:
         pnls = [c.pnl for c in train if c.edge_gross >= tau and c.passes_exec
                 and c.pnl is not None]
         if not pnls:
             continue
-        m = median(pnls)
-        if best_med is None or m > best_med + 1e-9 or (abs(m - best_med) <= 1e-9 and tau > best):
-            best, best_med = tau, m
+        m = score(pnls)
+        if (best_score is None or m > best_score + 1e-9
+                or (abs(m - best_score) <= 1e-9 and tau > best)):
+            best, best_score = tau, m
     return best
 
 
-def walk_forward(cands: list[Candidate], grid=TAU_SIGNAL_GRID) -> tuple[list[Candidate], dict]:
+def walk_forward(cands: list[Candidate], grid=TAU_SIGNAL_GRID,
+                 objective: str = OBJ_TRIMMED_MEAN) -> tuple[list[Candidate], dict]:
     """§3: expanding walk-forward by target date.
 
     At each decision instant only trades whose LABEL WAS ALREADY AVAILABLE may
@@ -326,7 +378,7 @@ def walk_forward(cands: list[Candidate], grid=TAU_SIGNAL_GRID) -> tuple[list[Can
                 continue
             t = decision_time(d, lead)
             train = [c for c in cands if c.label_available_at <= t]
-            tau = select_tau(train, grid)
+            tau = select_tau(train, grid, objective=objective)
             chosen[f"{d.isoformat()}|{lead}"] = {
                 "tau": tau, "n_entrenamiento": len(train)}
             if tau is None:

@@ -241,7 +241,12 @@ def test_negative_temperatures_are_supported():
 
     assert distribution
     assert math.isclose(sum(distribution.values()), 1.0, abs_tol=1e-9)
-    assert all(temperature < 0 for temperature in distribution)
+    # The support is no longer entirely negative, and that is CORRECT: a forecast
+    # whose p90 is -1 must hold some mass above zero. Asserting `all(t < 0)` only
+    # passed because the old tails stopped one degree past p90 — the assertion was
+    # testing the truncation, not the negative-temperature handling it names.
+    assert min(distribution) < 0
+    assert sum(m for t_, m in distribution.items() if t_ < 0) > 0.9
 
 
 def test_invalid_band_raises():
@@ -270,11 +275,13 @@ def test_weather_band_probability_from_forecast_quantiles():
         p90=28.0,
     )
 
-    assert math.isclose(
-        band_probability(distribution, lo=26.0, hi=27.0),
-        0.50,
-        abs_tol=1e-9,
-    )
+    # [p50, p75] held exactly 0.50 while the tails were truncated: every degree
+    # past p10/p90 was declared impossible, so the centre absorbed that mass. With
+    # tails that carry their 10 % out to where it belongs, the same band holds
+    # slightly LESS — which is the direction the fix has to move it.
+    p = band_probability(distribution, lo=26.0, hi=27.0)
+    assert math.isclose(p, 0.450024, abs_tol=1e-6)
+    assert p < 0.50
 
 
 
@@ -296,26 +303,64 @@ def test_a_genuinely_broken_probability_is_still_returned_unclamped():
     """The clamp must not become a silencer: only rounding is absorbed."""
     from weather_agent.probability import band_probability
     assert band_probability({20: 0.8, 21: 0.8}, lo=None, hi=None) == pytest.approx(1.6)
-def test_the_lower_tail_cdf_never_goes_negative(tmp_path):
-    """A CDF that returns a negative value is an arithmetic error, not a modelling
-    choice, and `max(0.0, upper - lower)` cannot repair it because the damage is in
-    the DIFFERENCE. Below `p10 - 1` the lower-tail expression went negative and its
-    magnitude was ADDED to the lowest integer bin.
+def test_the_lower_tail_is_neither_negative_nor_a_pile_on_one_degree(tmp_path):
+    """Two defects in one place, and the second outlived the fix for the first.
 
-    Measured on the real M2 artifact (lead 9, p10 = 18.83): the lowest bin came out
-    0.0968, of which 0.0333 — 34 % of the bin — was manufactured by the negative
-    branch, and the raw mass summed to 1.0333 before normalisation hid it.
+    (a) Below `p10 - 1` the old lower-tail expression went NEGATIVE and its
+        magnitude was ADDED to the lowest bin by `upper - lower`. A CDF that
+        returns a negative value is an arithmetic error, and `max(0.0, ...)` on
+        the way out cannot repair it because the damage is in the DIFFERENCE.
+
+    (b) Fixing (a) left the real misspecification: both tails ramped linearly over
+        exactly ONE degree and assigned zero beyond, so the whole lower 10 % was
+        crushed into a single degree.
+
+    The check is against R21's INDEPENDENTLY MEASURED empirical frequency, not
+    against whatever this implementation happens to return — a regression lock on
+    the model's own output would have passed happily all through the defect.
     """
     from weather_agent.probability import quantiles_to_distribution
     d = quantiles_to_distribution(p10=18.8333, p25=19.6, p50=20.4111,
                                   p75=21.2, p90=22.2)
-    # 18 is floor(p10); its half-open bin [17.5, 18.5) lies almost entirely below
-    # p10 - 1 = 17.83, so it must be SMALLER than the bin above it by a wide
-    # margin, not comparable to it.
-    assert d[18] == pytest.approx(0.0667, abs=1e-3), \
-        "the lowest bin is inflated by the unclamped negative tail"
+    # R21 measured the empirical mass at p50-2 (bin 18 here) as 0.0408, against a
+    # model value of 0.0968 — over-assigned by 2.37x. The exponential tail brings
+    # it to 0.0447, i.e. 1.10x. Still high, and not claimed to be exact.
+    assert d[18] == pytest.approx(0.0447, abs=1e-3)
+    assert d[18] / 0.0408 < 1.5, "the near tail is inflated again"
     assert d[18] < d[19] < d[20]
     assert sum(d.values()) == pytest.approx(1.0)
+
+
+def test_the_far_tail_is_not_declared_impossible():
+    """The old model returned EXACTLY ZERO more than one degree past p10/p90,
+    where R21 measured the empirical distribution holding 1.7-2.3 %. A band the
+    market prices at 3 cents and the model calls a strict zero is not a
+    disagreement — it is a misspecification, and it fed the adverse selection.
+
+    p = 0 is a claim no forecast can support, so no reachable outcome may carry it.
+    """
+    from weather_agent.probability import quantiles_to_distribution
+    d = quantiles_to_distribution(p10=18.8333, p25=19.6, p50=20.4111,
+                                  p75=21.2, p90=22.2)
+    assert min(d) < 17.0 and max(d) > 24.0, "the support is still truncated"
+    assert all(m > 0.0 for m in d.values()), "a reachable outcome was given p = 0"
+    far = sum(m for t_, m in d.items() if t_ <= 17 or t_ >= 24)
+    assert 0.005 < far < 0.06, f"far-tail mass {far} is not in a credible range"
+
+
+def test_the_tail_scale_comes_from_the_data_not_a_constant():
+    """The `1.0` degree was a magic constant with no relation to the distribution
+    it extended. A diffuse forecast must get wide tails and a sharp one narrow
+    tails; under the old model both got exactly one degree."""
+    from weather_agent.probability import quantiles_to_distribution
+    sharp = quantiles_to_distribution(p10=20.0, p25=20.2, p50=20.5, p75=20.8,
+                                      p90=21.0)
+    diffuse = quantiles_to_distribution(p10=10.0, p25=14.0, p50=20.0, p75=26.0,
+                                        p90=30.0)
+    sharp_reach = min(sharp.keys())
+    diffuse_reach = min(diffuse.keys())
+    assert (20.0 - sharp_reach) < (10.0 - diffuse_reach), \
+        "a sharp forecast got a tail as wide as a diffuse one"
 
 
 def test_the_two_tails_are_clamped_the_same_way():
