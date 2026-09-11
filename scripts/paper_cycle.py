@@ -1419,6 +1419,15 @@ def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
     which tau a given cycle used. Writing the effective values into the shard store
     makes every cycle carry its own parameters, so a change shows up as a diff in
     an append-only, commit-timestamped record."""
+    # Read back from the stage that already measured it rather than measuring
+    # again: `store_stats` walks the store, and calling it a second time HERE
+    # would report the store AFTER this cycle's dump — a different quantity from
+    # the one that was loaded into memory, which is the one the RAM projection
+    # needs. Zero when the stage did not run (the settle-only tail), which is
+    # honest: nothing was loaded.
+    _loaded = next((e for e in cy.stages if e["stage"] == "load:store_stats"), {})
+    store_bytes = _loaded.get("total_bytes", 0)
+    store_rows = _loaded.get("rows_loaded", 0)
     params = {
         "session_id": session_id,
         "dataset_version": dataset_version,
@@ -1448,6 +1457,27 @@ def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
             [{"stage": e["stage"], "at_s": e.get("at_s"),
               "elapsed_s": e.get("elapsed_s")} for e in cy.stages]),
         "stage_profile_excludes": "params",
+        # THE SIZE OF THE STORE WAS COMPUTED EVERY CYCLE AND THROWN AWAY. Session
+        # B's third finding of this family: `store_stats` reaches `cy.stage()`
+        # and stops there, so it lands in `last_summary.json` — outside
+        # `paper_state`, overwritten every cycle, never committed — and
+        # `stage_profile` keeps three keys per stage, so it does not pick the
+        # detail up either. Its own docstring says it exists "so the store's
+        # growth is visible in the run log before it becomes a problem": visible
+        # in a log nobody keeps.
+        #
+        # WHAT THE SERIES IS FOR, and it is not curiosity. The store only grows —
+        # D0 forbids deleting — the cycle rebuilds it in memory every run, and
+        # the host has 3.8 GB and NO SWAP. Without swap, exhausting RAM does not
+        # raise: the kernel kills the process. `_non_fatal`, the try/except
+        # ladder and B's span rule are all built on exceptions and CANNOT SEE IT.
+        # So the one failure the span rule exists to prevent — losing a capture
+        # between `stage_collect` and `stage_dump` — can arrive by the one route
+        # the span rule cannot intercept. These two fields are what lets the
+        # crossing be dated from the repository itself instead of reconstructed
+        # from the shards by hand.
+        "store_total_bytes": int(store_bytes),
+        "store_rows_loaded": int(store_rows),
         # `at_s` is relative to the start of the cycle, so without this the
         # series has no absolute anchor. On Hetzner it can be recovered from the
         # `session_id`; on Actions the id carries the run id instead and it

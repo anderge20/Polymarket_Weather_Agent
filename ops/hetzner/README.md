@@ -255,3 +255,45 @@ The box authenticates to GitHub with a **deploy key with write access**, added
 to the repository on 2026-09-09 as `hetzner-hel1-paper-runner (rw)`. It can push
 to this repository and nothing else. To revoke it: Settings → Deploy keys, or
 `gh api -X DELETE repos/anderge20/Polymarket_Weather_Agent/keys/162799493`.
+
+## The machine, and the one number that dates a limit
+
+Recorded 2026-09-11, read off the host itself (`free -m`, `nproc`, `df -h`):
+
+| | |
+|---|---|
+| RAM | **3 819 MB total**, ~2 827 MB available with the agent idle |
+| **Swap** | **0 MB — none** |
+| CPU | 2 cores, Intel Xeon (Skylake) |
+| Disk | 38 GB, 31 GB free |
+| Kind | vServer |
+
+None of this was written down anywhere before, which meant a risk that can be
+computed could not be DATED.
+
+### Why RAM is the one that matters, and why no swap changes its character
+
+`paper_cycle` opens `:memory:` when no `--db` is given, and `run_cycle.sh` does
+not give one. So **every cycle rebuilds the entire store in RAM**, and the store
+only grows: D0 forbids deleting, and roughly 20 000 rows arrive per day. Session
+B measured ~3.5 KB of RSS per row (222 MB peak at 64 707 rows), which puts the
+growth near **+70 MB/day** with nothing to flatten it.
+
+**Without swap, exhausting RAM does not raise an exception — the kernel kills the
+process.** That matters more than the slowdown, because every protection in this
+codebase is built on exceptions: `_non_fatal`, the `try/except` ladder, and the
+rule that nothing between `stage_collect` and `stage_dump` may throw. An OOM kill
+is not a throw. **So the one loss the span rule exists to prevent — a capture
+destroyed between collection and persistence — can arrive by the single route the
+span rule cannot intercept.** A cycle killed at that point loses order-book rows
+that no endpoint, paid or free, will sell back.
+
+### How to date it without guessing
+
+Since PR #25 every `cycle_params` row carries `store_total_bytes` and
+`store_rows_loaded`, so the slope comes from the repository itself rather than
+from reconstructing it out of the shards by hand. Two rows a few days apart give
+the rate; this table gives the ceiling. Until then the estimate above is B's
+laptop measurement carried over, which is **an estimate and not this machine**.
+
+Disk is not the constraint: 31 GB free against a store measured in tens of MB.

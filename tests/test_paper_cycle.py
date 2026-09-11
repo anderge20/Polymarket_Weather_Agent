@@ -1868,3 +1868,64 @@ def test_the_profile_contains_the_dump_it_used_to_end_before(con, tmp_path,
     # so without this field the point cannot be placed in time at all.
     assert row["cycle_started_at"], "at_s without an anchor is not a series"
     datetime.fromisoformat(row["cycle_started_at"])
+
+    # And the store's own size, which was computed every cycle and discarded.
+    # B's third finding of this family: `store_stats` reached `cy.stage()` and
+    # stopped there, so it lived in a file outside `paper_state` that nobody
+    # commits — while its docstring said it existed so the growth would be
+    # "visible in the run log before it becomes a problem".
+    #
+    # It is not curiosity. The store only grows, the cycle rebuilds it in memory
+    # every run, and the host has no swap: exhausting RAM does not raise, the
+    # kernel kills the process, and none of the exception machinery can see it.
+    assert "store_total_bytes" in row and "store_rows_loaded" in row
+
+
+
+def test_the_store_size_reaches_the_shard_and_is_not_always_zero(con, tmp_path,
+                                                                 monkeypatch):
+    """`>= 0` would have passed on a store that is always empty.
+
+    Asserting that the FIELDS EXIST is not asserting they carry the measurement.
+    So the store is seeded with real rows first and the cycle must report them:
+    if the field were decorative this reads 0 and the test says so.
+
+    The first draft of this test ran the cycle twice and expected the second to
+    load what the first left. It FAILED — with every stage mocked, the first
+    cycle dumps no state rows, so the store really was empty and the premise was
+    mine, not the code's. Written down because a test that fails on a false
+    premise looks exactly like a test that found a defect.
+    """
+    monkeypatch.setattr(paper_cycle, "stage_discover",
+                        lambda cy, *a, **k: cy.stage("discover", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_collect",
+                        lambda cy, *a, **k: cy.stage("collect:books", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_venue_coverage",
+                        lambda cy, *a, **k: cy.stage("venue_coverage", paper_cycle.OK))
+
+    store_root = tmp_path / "store"
+    seeded = [{"market_id": f"m{i}", "dataset_version": "ds1", "record_version": 1,
+               "event_id": "e1", "question": f"q{i}"} for i in range(3)]
+    store.write_shard(seeded, table="markets", run_id="seed", root=str(store_root))
+
+    assert paper_cycle.main([
+        "--target-date", "2026-09-10", "--dataset-version", "ds1",
+        "--store-root", str(store_root), "--db", str(tmp_path / "t.duckdb"),
+        "--collect-only", "--summary-json", str(tmp_path / "s.json")]) == 0
+
+    rows = [r for sh in store.iter_shards(store_root, "cycle_params")
+            for r in store.read_shard(sh)]
+    assert len(rows) == 1
+    row = rows[0]
+
+    assert row["store_rows_loaded"] == len(seeded), (
+        "the store size never reaches the shard, or counts something else")
+    assert row["store_total_bytes"] > 0
+
+    # It is the same number the load stages of this cycle reported, not a
+    # coincidence of magnitude.
+    summary = json.loads((tmp_path / "s.json").read_text())
+    loaded = sum(st.get("rows", 0) for st in summary["stages"]
+                 if st["stage"].startswith("load:")
+                 and st["stage"] != "load:store_stats")
+    assert row["store_rows_loaded"] == loaded
