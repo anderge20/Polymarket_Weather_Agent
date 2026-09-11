@@ -8,8 +8,9 @@
 > lleva tres días corriendo. El veredicto sobre Strategy A **no está afectado**.
 >
 > **Y ADENDA 2 (sesión B) resuelve E2 con esos datos, EN CONTRA:** el medio spread mediano
-> es **0.0050–0.0100** contra el umbral de **0.036** que §4 fijó antes de medir — falla por
-> 4–7× en todos los buckets de precio — y la coherencia de partición es rentable en
+> es **0.0050–0.0100** contra el umbral de **0.036** que §4 fijó antes de medir — falla en
+> todos los buckets de precio (**7,2×** en la mediana global; **1,8×** en el caso más adverso,
+> la media del bin 7 — ver ADENDA 3) — y la coherencia de partición es rentable en
 > **0 de 96** particiones completas. **Los edges #2 y #3 pasan de C a E.** Sobrevive uno
 > solo, el #1 (calibración del precio de mercado), y es el único experimento que queda.
 >
@@ -947,3 +948,80 @@ ahora con un caso propio dentro. Reescribir §4 para que dijera "el spread ya se
 falla" borraría que el umbral se fijó **antes** de medirlo — que es exactamente lo que le da
 valor. Un umbral preregistrado que se cumple vale poco; uno que **falla y se publica** es la
 única evidencia de que era falsable.
+
+---
+
+# ADENDA 3 — sesión B, 2026-09-11 18:45Z: **me equivoqué al resolver la discrepancia**
+
+`docs/research/SPREAD_DISTRIBUTION_2026-09-11.md` (sesión A, ya en `main`) mide la misma
+magnitud que mi §5 de la Adenda 2 y **mi explicación era incorrecta**. He reproducido sus
+números yo mismo sobre los shards antes de aceptarlos: salen idénticos.
+
+## 1. Lo que dije, y por qué está mal
+
+Escribí: *"son poblaciones distintas, **no** definiciones distintas"*. La segunda mitad de esa
+frase es falsa, y la dicotomía entera era un error.
+
+```
+media del spread    0,0193  -> semidiferencial 0,0096
+mediana del spread  0,0100  -> semidiferencial 0,0050
+media / mediana = 1,93x        p99 = 0,1200 = 12x la mediana
+```
+
+El 0,0168 es la mitad de una **media** de 0,0336; el 0,0100 es una **mediana**. Sobre una
+distribución cuya media es 1,93 veces su mediana, eso **sí** es una diferencia de estadístico,
+y es la principal. Mi efecto de población es real —la mediana pasa de 0,0100 en los extremos
+a 0,0200 en el centro— pero es el **segundo** factor, no el único. **Afirmé un "no" que los
+datos no sostienen.** Es la misma clase que vengo describiendo: un dato correcto (la mediana
+se duplica al restringir la población) prestado a una conclusión más fuerte que él.
+
+## 2. La U invertida, que yo no vi
+
+| bin de precio | n | mediana | media | semidif. de la media |
+|---|---|---|---|---|
+| 0 y 9 (extremos, **63 % de los libros**) | 16 139 | 0,0100 | 0,0130 | 0,0065 |
+| 1–8 (zona de duda) | 9 597 | 0,0200 | 0,0203–0,0410 | 0,0102–**0,0205** |
+
+El spread **depende del precio** y tiene forma de U invertida: los extremos cotizan a la mitad
+que el centro. Yo estratifiqué por `mid` y vi el efecto de los casi-resueltos, pero lo reporté
+como dos poblaciones ("negociable" / "no negociable") en vez de como **una función del
+precio**, que es lo que es.
+
+## 3. Qué le hace esto a mi veredicto de E2 — lo estrecha, no lo gira
+
+Dije "falla por 4–7×". Eso es cierto **en la mediana** y **subestima la cola**. El caso más
+adverso que admite el dato es la media del bin 7: semidiferencial **0,0205**.
+
+```
+umbral preregistrado                      0,0360
+mediana, todos los libros                 0,0050   falla 7,2x
+mediana, bandas negociables               0,0100   falla 3,6x
+MEDIA DEL PEOR BIN (7)                    0,0205   falla 1,8x   <- el caso más favorable posible
+libros individuales que superan 0,036:     1,4 %   (7,1 % en el bin 7)
+```
+
+**El veredicto se mantiene y la corrección es honesta: el margen es 1,8×, no 4–7×.** Sigue
+fallando en todos los bins y en los dos estadísticos, pero decir "4–7×" presentaba como
+holgado algo que en el peor bin es estrecho.
+
+## 4. Dos cosas más que debo corregir de la Adenda 2
+
+- **Descarté en silencio el 30,2 % de los libros.** 11 114 de 36 850 están cotizados por **un
+  solo lado**. Los excluí por necesitar bid y ask, y no lo dije. Para la conclusión de market
+  making eso la **refuerza** —no se puede cotizar dos lados donde no hay dos lados— pero
+  excluir un tercio de la muestra sin declararlo es exactamente lo que critiqué en §12.
+- **Matizo "la asunción `x_exec = 0,01` era exacta".** Lo es contra la *mediana* de las bandas
+  negociables (0,0100). Contra la **media del bin 7** (0,0205) la subestima por dos. Como R22
+  ya midió que el modelo pierde *dentro de cada bin*, el coste no es lo que mata a Strategy A
+  —así que esto no rescata nada—, pero mi frase era más rotunda que el dato.
+
+## 5. Lo que no cambia
+
+El veredicto sobre Strategy A, el mecanismo de adverse selection, A1, A2, A4, A5, el 0/96 de
+coherencia de partición, y que **#1 (calibración del precio de mercado) es la última hipótesis
+viva**. Ninguna de esas conclusiones pasa por el spread.
+
+**Y una consecuencia operativa que sesión A formula mejor que yo:** cualquier modelo de coste
+futuro —el de E1 incluido— **tiene que condicionar por bin de precio**, porque entre el bin 0
+y el bin 7 hay un factor de tres en la media. Un único número para "el spread" es la misma
+clase de defecto que un único número para "la probabilidad".
