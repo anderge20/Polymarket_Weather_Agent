@@ -7,6 +7,12 @@
 > reales** desde el 2026-09-09, así que la recolección que §4 (E2) propone *empezar*
 > lleva tres días corriendo. El veredicto sobre Strategy A **no está afectado**.
 >
+> **Y ADENDA 2 (sesión B) resuelve E2 con esos datos, EN CONTRA:** el medio spread mediano
+> es **0.0050–0.0100** contra el umbral de **0.036** que §4 fijó antes de medir — falla por
+> 4–7× en todos los buckets de precio — y la coherencia de partición es rentable en
+> **0 de 96** particiones completas. **Los edges #2 y #3 pasan de C a E.** Sobrevive uno
+> solo, el #1 (calibración del precio de mercado), y es el único experimento que queda.
+>
 > Este puntero está aquí y no dentro del texto **a propósito**: editar el cuerpo borraría
 > la distinción entre lo que se afirmó y lo que se corrigió, pero una corrección que vive
 > 700 líneas más abajo no la lee nadie que entre por el título.
@@ -811,3 +817,133 @@ corridas degradando a `--collect-only` porque falta `PAPER_TAU`, fail-closed por
 que lo que se acumula desde el día 9 es **cobertura de mercado, no una corrida de estrategia**
 — lo cual **refuerza** el veredicto del informe por una vía que no usó: no hay resultado nuevo
 de Strategy A que pudiera rescatarla, porque no se ha ejecutado ninguno.
+
+---
+
+# ADENDA 2 — sesión B, 2026-09-11 16:45Z: **E2 queda RESUELTO, y en contra**
+
+La adenda de sesión A tiene razón en todo lo que afirma, y la acepto sin reservas. Pero su
+conclusión operativa —"E2 no hay que empezarlo, hay que esperarlo, al 2026-10-07"— **se ha
+quedado corta por el otro lado.** Con 36 850 filas de libro reales ya no hace falta esperar
+nada: **la condición preregistrada se puede evaluar hoy, y la he evaluado.**
+
+Script reproducible: `scripts/research/book_measurements.py` (requiere
+`git fetch origin paper-state`). Todo lo que sigue lo he medido yo sobre los shards, no
+leído de la adenda.
+
+## 1. Mi error, nombrado con precisión
+
+Afirmé que el proyecto no tiene datos de libro. **Es falso**, y la causa no es la que
+sesión A supuso primero ni exactamente la que corrigió después. Fueron **dos** pasos:
+
+1. Corrí `git ls-remote --heads origin | head -20` sobre una lista de **36** ramas. Las 16
+   que no vi incluyen `paper-state` y `measure/spread-distribution`. **Truncé el
+   instrumento y luego generalicé desde lo truncado.**
+2. Leí `/paper_state/` en `.gitignore:59` y lo cité como prueba de que no hay datos. La cita
+   es literalmente cierta y la inferencia es inválida, exactamente como sesión A corrigió en
+   `ef02abb`: `.gitignore` describe qué haría un fichero **no rastreado** en el árbol de
+   trabajo, y no dice nada de 149 ficheros **ya rastreados** en otra rama.
+
+El egreso bloqueado **no fue el obstáculo**. Los datos estaban en el clon local, a un
+`git show` de distancia. Es la misma clase que este proyecto cataloga y que yo mismo
+describí en §12: *un dato correctamente medido prestado a una conclusión que no sostiene.*
+
+## 2. E2 — RESUELTO. Mi propio umbral falla por 4–7×
+
+El umbral lo fijé en §4 **antes de ver un solo libro**: *medio spread mediano > 0.036*, el
+margen de fair value medido. Medido ahora:
+
+| población | n | spread COMPLETO mediano | medio spread | veredicto |
+|---|---|---|---|---|
+| todos los libros a dos caras | 25 736 | 0.0100 | **0.0050** | **FALLA 7×** |
+| tokens YES de bandas meteorológicas | 9 735 | 0.0100 | **0.0050** | **FALLA 7×** |
+| …mid ∈ [.02,.98] (sin casi-resueltos) | 6 241 | 0.0200 | **0.0100** | **FALLA 4×** |
+| …mid ∈ [.05,.50] (lo que una regla compraría) | 4 246 | 0.0200 | **0.0100** | **FALLA 4×** |
+
+Sólo el **1.4 %** de los libros supera 0.036, y falla en **todos** los buckets de precio
+(el medio spread mediano es plano, 0.0050–0.0100, de 0.02 a 0.98). No es un fallo marginal
+que más datos puedan girar: el libro está **cuatro a siete veces más ajustado** que la
+incertidumbre de nuestro propio fair value.
+
+**Consecuencia, aplicando mi propio criterio:** cotizar dos lados en torno a un fair value
+que sólo conocemos a ±0.036, dentro de un libro cuyo medio spread es 0.010, es ofrecer una
+opción gratis a quien tenga un fair value mejor. **El edge #2 (market making) y el #3
+(coherencia por el lado maker) bajan de C a E — NO EDGE.**
+
+## 3. Coherencia de partición — medida, y también muerta
+
+Esto sí es nuevo: con libros reales a dos caras el test **model-free** ya no es una
+propuesta, es una medición. Sobre **96 particiones completas y válidas** con libro a dos
+caras en **todas** sus patas (mediana 11 bandas):
+
+```
+suma de mejores ASKS   mediana 1.1265   p05 1.0430   MÍNIMO 1.0200
+suma de mejores BIDS   mediana 0.9355   p95 0.9970   MÁXIMO 1.0110
+                       (una partición completa paga exactamente 1)
+
+comprar la cesta, rentable tras fees:  0 / 96
+vender la cesta, rentable tras fees:   0 / 96
+```
+
+La suma de asks **nunca** baja de 1 y la de bids **nunca** sube por encima de 1 lo bastante
+para pagar los fees. Los libros son **internamente coherentes justo en la dirección que el
+arbitraje necesitaría**. No es que el hurdle sea alto: es que la incoherencia no existe.
+**Edge #3 (lado taker) confirmado clase E, ahora con medición y no con aritmética.**
+
+## 4. Un hallazgo a favor del trabajo previo
+
+`PREREG_R21_ENMIENDA_A §A.2` supuso `x_exec = 0.01` y lo declaró honestamente como
+**asunción, no medición** (*"slippage es una ASUNCIÓN"*). El medio spread mediano medido
+sobre bandas meteorológicas negociables es **0.0100**.
+
+**La asunción era exacta.** Eso no debilita el negativo de R21: lo **refuerza**. El backtest
+que concluyó NO OPERABLE estaba cobrando el coste correcto.
+
+## 5. La discrepancia 0.0100 vs 0.0168, resuelta
+
+Sesión A pidió que nadie construyera un modelo de coste encima hasta resolverla. Resuelta:
+**son poblaciones distintas, no definiciones distintas.** El 0.0100 es el spread **completo**
+mediano sobre *todos* los libros, dominado por mercados casi resueltos que cotizan
+0.001–0.003 (los buckets [0,0.02) y [0.98,1] son 9 549 de 25 736 filas, el 37 %). Restringido
+a bandas negociables el spread completo **se duplica a 0.0200** — compatible con que 0.0168
+sea un spread **completo** sobre una población negociable, no un medio spread.
+
+Ninguna de las dos lecturas cambia nada: 0.0100 y 0.0168 son ambos spreads **completos**,
+o sea medios spreads de 0.0050 y 0.0084, y **los dos están muy por debajo de 0.036**.
+
+## 6. Ranking corregido
+
+| # | Estrategia | clase antes | **clase ahora** | por qué |
+|---|---|---|---|---|
+| 1 | **Calibración del PRECIO de mercado** | C | **C — intacta, y ahora la única viva** | no depende del spread; sigue sin medirse |
+| 2 | Market making | C | **E — NO EDGE** | medio spread 0.005–0.010 vs margen 0.036; falla 4–7× |
+| 3 | Coherencia de partición (maker) | C | **E — NO EDGE** | 0/96; asks nunca <1, bids nunca >1 |
+| 4 | **Nowcast intradía** | C | **C — intacta** | su coste ahora está *medido* (0.010) en vez de supuesto, y coincide |
+| 5 | Coherencia YES+NO | C | **C**, y ya recolectable | el colector guarda **ambos** tokens (4 488 tokens / 2 244 mercados = 2.0) |
+| 10 | Coherencia (taker) | E | **E, confirmada con datos** | — |
+
+**El hallazgo A3 del informe ("sólo se guardó el token YES") es cierto del backfill
+histórico y FALSO del colector prospectivo**, que guarda exactamente dos tokens por mercado.
+
+## 7. Qué queda en pie, y qué hay que hacer ahora
+
+**Sin tocar:** el veredicto sobre Strategy A, el mecanismo de adverse selection, el defecto
+A1 de `select_tau`, A2 (colas truncadas), A4 (ninguna decisión dentro del día local) y A5
+(la comprobación `endDate` vs ventana). Nada de eso dependía del libro.
+
+**El roadmap de §15 cambia de forma.** Sus semanas 2–6 —"lanzar el colector de libro"— ya
+están hechas, y su resultado es negativo. Lo que queda es más corto y más claro:
+
+1. **E1 sigue siendo el experimento decisivo, y ahora es el único que queda.** La curva de
+   calibración del precio de mercado sobre las 10 000 filas con `won` que ya existen. No lo
+   toca nada de esta adenda: no depende del spread. **Es la última hipótesis viva del
+   proyecto.** *(Los 3 días de `paper-state` no sirven para E1: aún no hay resoluciones.)*
+2. Si E1 falla, la conclusión honesta es la que §34 autoriza y hay que publicarla:
+   **los mercados meteorológicos de Polymarket no son explotables con este substrato**, y el
+   universo hay que buscarlo fuera del tiempo meteorológico.
+
+**Por qué esta adenda va al final y el cuerpo no se edita:** misma razón que dio sesión A, y
+ahora con un caso propio dentro. Reescribir §4 para que dijera "el spread ya se midió y
+falla" borraría que el umbral se fijó **antes** de medirlo — que es exactamente lo que le da
+valor. Un umbral preregistrado que se cumple vale poco; uno que **falla y se publica** es la
+única evidencia de que era falsable.
