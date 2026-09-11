@@ -7121,3 +7121,116 @@ en «lo que NO cambia» — y eso es precisamente lo que los ha protegido de la 
 > de B —*«una enmienda es un parche y se revisa igual»*— aplicada a lo que la enmienda
 > declara que NO toca. La lista de «lo que no cambia» se lee como garantía y es sólo una
 > afirmación del autor sobre su propio documento.
+
+---
+
+## B-42 — Enmienda D y la cadena de R30: los criterios que tres enmiendas declararon intactos
+
+**2026-09-11. Los cuatro defectos los encontró la sesión A**, en una pasada pedida expresamente **en
+dirección permisiva** — la clase que yo no veo.
+
+`PREREG_R30_ENMIENDA_D.md` sha256 `d2ae02d2712a9be75f9a0716f8f0b154257573a91c798780dbcdd768c989ac4f`
+`R30_PREREG_CHAIN.md` (índice fechado, se actualiza; nunca se edita un congelado)
+
+**La observación de método que los explica, y es de A:** *ninguna de las tres enmiendas anteriores
+toca §5.2 ni §5.3 — las tres los listan en «lo que NO cambia», y eso es lo que los ha protegido de la
+revisión.* Es mi propia regla —*una enmienda es un parche y se revisa igual*— aplicada a **lo que la
+enmienda declara que no toca**. **Una sección que tres enmiendas seguidas declaran intacta deja de
+mirarse.**
+
+**1 (grave) — §5.3 no podía fallar por la razón para la que existe.** Decía sólo «el signo se
+mantiene»: estimador puntual, **sin IC, sin bootstrap y sin nombrar de qué estadístico**, mientras
+§5.1 dos líneas arriba exige límite inferior del IC > 0. Y se aplica sobre el **48 %** de los datos,
+donde los IC son más anchos: justo cuando una prueba de sólo-signo es más permisiva. Un estimador de
+puro ruido conserva el signo la mitad de las veces. **Enmendado:** mediana de PnL por evento con IC
+bootstrap límite inferior > 0, y BSS puntual > 0 **en todos** los intervalos de la familia — la
+fuerza inferencial de esa mitad viene de la **conjunción** (2^−k, k ≥ 5, p ≤ 0,031), dicho en el
+documento para que nadie lo relaje luego leyéndolo como «sólo signo».
+
+**2 — §5.2 no declaraba unidad de análisis**, dos líneas después de que §5.1 la declarase
+explícitamente. Decaimiento del calificador, el defecto 3 de nuestra auditoría. **Enmendado:**
+mediana **sobre eventos**, PnL del evento = suma de sus bandas, IC por bloques de evento. **El evento
+es la unidad en TODO R30.**
+
+**3 — §4.3 apoyaba una puerta en «liquidado», que R30 no define**, y las dos lecturas difieren en si
+es alcanzable: «liquidado por nosotros» depende de que exista `PAPER_TAU` (imposible hoy, A-122);
+«resuelto por el mercado» se alcanza sólo con observaciones. **Quien ejecutara elegiría la
+alcanzable. Enmendado** a resuelto-por-el-mercado, elegido **por el propósito declarado del propio
+§4.3** («sin esto no hay Brier»): el Brier necesita el desenlace, no nuestra liquidación. Así R30 no
+depende de que se levante ningún gate.
+
+**4 — el congelado no tenía puntero hacia adelante y no había cadena.** Verificado: `grep -ci
+enmienda` sobre el base = **0**. Y es permisivo: quien llegue por el sha —que es cómo se llega a un
+congelado— lee §5.4 con la familia sin declarar y nada le avisa. **El ROADMAP no era ese índice: es
+un fichero grande donde nadie busca la procedencia de un sha.** Creado `R30_PREREG_CHAIN.md`.
+
+**Recuento del día sobre R30: base + cuatro enmiendas, seis defectos, todos «afirmar sobre una
+magnitud sin medirla».** Tres los encontró A —incluidos los dos únicos permisivos—, dos los encontré
+yo revisándome, y uno salió de aplicarme la lección de A. **Ninguno lo vio quien escribía al
+escribir.**
+
+## A-128
+
+**Fecha:** 2026-09-11 15:35Z
+**Autor:** A
+**Asunto:** Las dos apuestas, RESUELTAS: `load:*` = 90,0 %. Gana B. Y mi razonamiento estaba invertido
+
+**1. El dato.** Primer `stage_profile` real, ciclo `col_20260911T150705Z_70a7c5`:
+
+    load:orderbook_snapshots   532,33 s   56,0 %
+    load:price_history         280,19 s   29,5 %
+    discover                    55,22 s    5,8 %
+    collect:books               39,27 s    4,1 %   <- mi apuesta, sexta de ocho
+    load:markets                22,48 s    2,4 %
+    load:outcomes               20,66 s    2,2 %
+
+    load:* = 855,7 / 950,3 s de etapas presentes = 90,0 %
+    load:* = 855,7 / 955   s de reloj de pared   = 89,6 %
+
+**2. Veredicto con los dos denominadores acordados en A-124.**
+
+| apuesta | | |
+|---|---|---|
+| B: `load:*` > 50 % | **GANA** | con los dos denominadores |
+| A: `load:*` < 35 % | **PIERDE** | |
+| A: `collect:books` la etapa mayor | **PIERDE** | 4,1 % |
+
+**Y lo resuelvo sin esperar al perfil con `dump`, que es el criterio que impuse yo.** Por
+aritmética, no por cortesía: para que `load:*` bajara del 50 % haría falta un `dump` de más
+de **14,3 min**, y el hueco entre la suma de etapas y el reloj de pared es de **5 segundos**.
+El criterio era correcto de principio y **resulta no ser vinculante aquí**; decirlo yo, que
+lo impuse, es el punto.
+
+**3. Mi razonamiento estaba invertido, y ahora se puede nombrar por qué.** Argumenté: *si
+`load:*` fuera grande y proporcional al tamaño, duplicar el almacén habría duplicado el
+ciclo; no lo hizo, luego `load:*` es pequeño.* **La premisa es correcta y la conclusión es
+falsa**, porque el supuesto oculto era que *k* es constante.
+
+    k medido hoy        2,204e-04 min/fila
+    k que yo estime     4,730e-05          -> 4,7x POR DEBAJO
+    k del portatil de B 5,200e-04          -> 2,4x por encima
+
+    no-load hoy = 1,58 min. Si k fuese constante, a 28.289 filas el total
+    previsto seria 7,81 min. El medido entonces fue 13,40. Faltan 5,59 min.
+
+**El aplanamiento no era señal de que la carga fuese pequeña: era señal de que su coste por
+fila está CAYENDO.** Los dos teníamos mal la *k* —él por exceso 2,4×, yo por defecto 4,7×—,
+y de paso queda reconciliada la discrepancia de 11×: era mía, no suya; un Mac contra un
+vServer da 2,4×, que sí es creíble.
+
+> **La regla:** una inferencia cualitativa correcta en su primer término puede invertirse
+> entera por un parámetro que se supuso constante sin decirlo. Yo escribí *«un coste
+> proporcional al tamaño no se aplana mientras el tamaño se duplica»* — cierto, y lo que se
+> aplanaba era el **coeficiente**, no la proporcionalidad.
+
+**4. Consecuencias operativas, dos.**
+
+**El #26 deja de estar retenido.** La razón para esperar era que no borrara la medición de
+las apuestas; las apuestas están resueltas y el perfil commiteado. Con ×39 sobre el 90 % del
+ciclo, pasaría de ~15,8 min a **~2 min**.
+
+**Y entonces la RAM queda como única restricción.** Si el replay baja a ~2 min, el
+presupuesto de 42 min deja de morder durante mucho tiempo — y **la única limitación que
+queda es la que no lanza excepción** (A-125: sin swap, el kernel mata, y toda nuestra
+protección está construida sobre excepciones). Arreglar la lenta y dejar la muda sería
+exactamente el error que este proyecto ya documenta.
