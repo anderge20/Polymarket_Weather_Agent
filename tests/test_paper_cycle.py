@@ -1851,6 +1851,23 @@ def test_no_declared_series_reaches_a_source_daily_row_operator():
 
     declared = set(paper_cycle.SERIES_CORRESPONDENCE.values())
     assert declared, "the correspondence map is empty — the premise is gone"
+
+    # THE SAME THESIS ONE LEVEL UP, and session B caught it on review: the check
+    # below passes over an EMPTY operator registry, and so does the test written
+    # to prove it can fail. That test shows the predicate FIRES; it says nothing
+    # about the population being non-empty. Demonstrated by running: with
+    # `OPERATORS = ()` all three assertions still held.
+    #
+    # The sharp form is not `len(OPERATORS) > 0` — the filter is equally vacuous
+    # if the table is full of operators and NONE of them uses a series this
+    # boundary can emit. So the population asserted here is the one the check is
+    # actually about.
+    reachable = [op.operator_id for op in settlement.OPERATORS
+                 if op.required_series in declared]
+    assert reachable, (
+        "no operator requires a series `SERIES_CORRESPONDENCE` can emit, so the "
+        "check below filters an empty set and would pass on anything")
+
     assert _wide_history_offenders(settlement.OPERATORS, declared) == [], (
         "stage_settle hands the station's whole history to the core. An operator "
         "that does not window by target_date would settle against the max of "
