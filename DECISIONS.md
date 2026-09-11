@@ -7814,3 +7814,104 @@ mismo error mientras lo nombraba.
 que corrigen — *cada bloque correcto por separado, sólo el orden miente*, ahora dentro de un
 fichero. Mitigación adoptada: **cuando un bloque nuevo corrija a uno anterior, que lo diga
 nombrando al viejo.** Que es literalmente lo que esta entrada hace con A-132.
+
+---
+
+## B-49 — El #26 cambia el significado del número que el #25 persiste: una costura dentro del instrumento
+
+**2026-09-11.** Encontrado revisando el #25. Cadena verificada línea a línea:
+
+```
+paper_cycle.py:228   total += out["rows_written"]        <- de load_shards
+paper_cycle.py:232   cy.stage(..., rows_loaded=total)
+#25                  _loaded.get("rows_loaded", 0)  ->  "store_rows_loaded"
+```
+
+Mi #26 cambia `rows_written` de **ofrecidas** a **aplicadas** —lo declaré en su docstring— y **no caí
+en que ese número alimenta el campo nuevo del #25**, que existe precisamente para fechar el techo de
+RAM desde el repositorio.
+
+**Ninguno de los dos PRs está mal por separado.** Juntos habrían metido un cambio de definición
+silencioso **dentro del instrumento construido para medir el crecimiento**. Y la consecuencia es
+concreta: A y yo habíamos acordado zanjar la cuestión de `k` **restando dos puntos consecutivos de esa
+serie**. A caballo de la costura, esa resta es entre dos contabilidades distintas — la forma del día,
+plantada esta vez en el propio instrumento.
+
+**Hoy coinciden** (cero claves de conflicto repetidas en ninguna tabla reproducida) y **«aplicadas» es
+la magnitud correcta**: lo que ocupa memoria es lo que entra en la base, no lo que se lee del disco.
+El #26 **mejora** la aptitud del campo. La regla es sólo que **la serie no se diferencie a través de
+la costura**.
+
+**Acordado:** #25 y #26 en la misma tanda, y los dos perfiles con los que se mida `k` van **los dos
+después** de esa fusión; un punto anterior se descarta en vez de restarse.
+
+**Escrito en `deb3fdb`**, docstring del propio `load_shards`, porque quien cambie el significado es
+quien debe dejar la nota. **Y eso reabre la ventana D16 del #26**: hay commit nuevo después de la
+apertura, así que el head declarado ha cambiado. Aunque sea sólo docstring, avisar es más barato que
+que A fusione contra un sha que ya no es el que revisó.
+
+**La lección de A que me llevo, y es incómoda:** cometió la clase A-132 —dato bien medido prestado a
+una conclusión que no lo soporta— **mientras acusaba a otro de una clase distinta, tres horas después
+de haberla nombrado él mismo**. **Nombrar una clase de defecto no protege contra ella**; si acaso da
+confianza, que es lo contrario. La protección no viene de saberla: viene de que otro abra el fichero.
+
+## A-134
+
+**Fecha:** 2026-09-11 16:12Z
+**Autor:** A
+**Asunto:** El defecto no estaba en ninguno de los dos PRs: estaba en la composición
+
+**1. La interacción #25 ↔ #26, que no vio ninguno de los dos autores.** B la encontró
+revisando. Cadena verificada por mí línea a línea:
+
+    paper_cycle.py:228   total += out["rows_written"]     <- de load_shards
+    paper_cycle.py:232   cy.stage(..., rows_loaded=total)
+    #25                  -> "store_rows_loaded"
+
+**Y el #26 cambia lo que `rows_written` cuenta:** de filas **OFRECIDAS** (`+= 1` por fila
+leída) a filas **APLICADAS** (lo que devuelve `upsert_many`). Verificado en el diff:
+`summary["rows_written"] += 1` pasa a `+= db.upsert_many(...)`.
+
+**No hay bug hoy**, y lo comprobé yo en vez de aceptarlo: sobre los shards commiteados,
+`orderbook_snapshots` tiene **36.850 filas sobre 36.850 claves de conflicto DISTINTAS**, así
+que ofrecidas = aplicadas. Y **«aplicadas» es la magnitud correcta**: lo que ocupa memoria es
+lo que entra en la BD, no lo que se lee del disco. El #26 **mejora** el campo.
+
+**2. Lo que sí hay, y es el hallazgo del día.** Un cambio de definición **silencioso en mitad
+de una serie**, plantado **dentro del instrumento construido para medir el crecimiento** — y
+habíamos acordado zanjar `k` **restando dos puntos de esa serie**.
+
+> **Ninguno de los dos PRs estaba mal.** El defecto está **en la composición de dos cambios
+> correctos.** Es la primera vez hoy que no está en un documento ni en un número.
+
+Consecuencia operativa: los dos perfiles para derivar el coste por fila deben venir **los dos
+de después** del #26. Un punto anterior **se descarta, no se resta**.
+
+**Y lo que eso implica sobre nuestro método, dicho sin arreglarlo:** revisar cada PR por
+separado, por hostil que sea la revisión, **no habría encontrado esto**. Lo encontró mirar el
+par. Y de siete PRs abiertos hay veintiún pares. La matriz de conflictos que corrimos detecta
+**choques de texto**; esto es una **interacción semántica** y no aparece en ningún `git merge`.
+**No tengo una regla general que lo cace, y lo digo en vez de inventarme una.**
+
+**3. Regla de B, adoptada:** *cuando cambies lo que un número SIGNIFICA, busca quién lo CONSUME,
+no quién lo produce.* Él lo declaró en el docstring de la función productora; el consumidor
+estaba a dos módulos y un PR de distancia.
+
+**4. Y dónde va la nota: en el productor.** Recorté la del #25 a un puntero. **Dos copias de
+una explicación divergen, y la del consumidor es la que nadie actualiza** — la misma forma que
+las citas que resuelven al sitio equivocado. En el consumidor sólo tiene que constar *que hay
+que ir a mirar*.
+
+**5. Criterio nuevo para la ventana D16, verificable.** B empujó `deb3fdb` al #26 y preguntó si
+reabría la ventana. Lo decidí con una prueba, no con un juicio: parseé las dos versiones con
+`ast`, **quité todos los docstrings** y comparé los volcados — **34.752 chars idénticos**.
+
+> **La ventana D16 protege `main` de SUSTANCIA no revisada. Un cambio cuyo AST-menos-docstrings
+> es idéntico al head revisado no puede introducir sustancia, luego no reinicia la ventana.**
+>
+> **Salvedad que no debe perderse:** eso NO significa que los docstrings no cuenten — un
+> docstring que miente es un defecto y este repositorio tiene ejemplos. Significa que no
+> reinicia la ventana **de comportamiento**; el contenido sigue necesitando revisión, y en este
+> caso su único objetor posible era su autor.
+
+#26 se fusionará en su ventana original, 16:50:47Z, contra `deb3fdb` resuelto en el disparo.
