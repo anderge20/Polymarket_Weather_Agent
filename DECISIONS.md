@@ -7349,3 +7349,120 @@ spread **completo** medido es **0,0100** → medio spread ≈ 0,0050. El proyect
 *a priori* más probable**. Son poblaciones o definiciones distintas. No digo cuál está bien:
 digo que **ninguna entra en un modelo de coste hasta saber qué mide cada una**. Cuarta vez
 hoy que dos contabilidades se hacen pasar por una.
+
+---
+
+## B-44 — Mi «semidiferencial medido» era de n=27, y una regla de selección rota que NO reabre la Estrategia A
+
+**2026-09-11.** `PREREG_R30_ENMIENDA_E.md`
+sha256 `34906daa3117486b012f0a532775efed5d9eeb616a6e5f632f8808cd397bd00b`
+
+**1. El 0,0168 no era «el semidiferencial real».** Salía de un spread medio de 0,0336 medido **sobre
+los 27 tokens de UN ciclo**. Medido sobre **25.736 libros de dos lados** (3 días, 10 ranuras/día):
+
+```
+spread COMPLETO   media 0,0193  mediana 0,0100  p25 0,0080  p75 0,0200  p90 0,0400
+SEMIdiferencial   media 0,0096  mediana 0,0050  p25 0,0040  p75 0,0100  p90 0,0200
+```
+
+**La media poblacional del semidiferencial es 0,0096 — prácticamente idéntica al `x_exec` = 0,0100
+de R21.** Sobre la población, el supuesto de R21 no era optimista: era exacto. Mi «68 % más caro»
+comparaba un subconjunto contra un supuesto y lo presentaba como hecho del mundo. **Cuarta vez hoy
+que dos contabilidades se hacen pasar por una.**
+
+**2. Pero la dirección la medí en vez de suponerla.** Bootstrap de 27 extracciones sobre los 25.736
+spreads, 20.000 remuestreos: `P(media de 27 ≥ 0,0336) = 0,026`. **El subconjunto operado es
+genuinamente más caro que la población** — dirección sostenida, **magnitud NO establecida**. §3 pasa
+a declarar ambas cifras **con su población**, retira 0,0168 como número de referencia y conserva el
+argumento **estructural**: la regla opera donde el modelo más se aparta del mercado y esas bandas
+tienden a ser menos líquidas. §6.2 deja de apoyarse en una cifra y pasa a apoyarse en ese argumento.
+
+**3. PR #28 (sesión en la nube, no coordinada) encuentra un defecto de diseño mío en
+`backtest.py:306`.** `select_tau` maximiza `median(pnls)`. **Con acierto por debajo del 50 % —y R21
+midió mediana −0,0236, luego lo está— la mediana es SIEMPRE el PnL de un perdedor**, que para una
+apuesta binaria es esencialmente **menos el precio del billete**. Maximizarla **ordena por precio del
+billete, no por valor esperado**. Aceptado entero.
+
+**4. Y §1.1 SOBREVIVE, pero hay que decir por qué o se leerá al revés.** La lectura tentadora es «la
+selección estaba rota, luego NO OPERABLE es sobre un τ mal elegido». **No: la evidencia de §1.1 es
+independiente de τ** — calibración de `p_model` (1,0–1,4×), Brier (modelo 0,05191 · mercado 0,04215 ·
+base 0,06801) y **BSS negativo dentro de cada intervalo de precio**, todo calculado **sobre los
+10.000 candidatos y sin usar τ en ningún punto**. Ningún τ cambia que, condicionado al precio, el
+modelo no aporte información.
+
+**Lo que sí cambia:** R21 §3 congeló una regla de selección **mal diseñada**, y se registra como
+defecto conocido — no para revocar el veredicto, sino porque **una regla congelada mala sigue siendo
+mala aunque el veredicto no dependa de ella**. Regla que sale: **ninguna estrategia futura selecciona
+umbral maximizando una mediana mientras la tasa de acierto esté por debajo del 50 %.**
+
+## A-130
+
+**Fecha:** 2026-09-11 15:55Z
+**Autor:** A
+**Asunto:** El spread medido por bin; y «sin resolver» hay que ganárselo igual que «no verificable»
+
+**1. Medí la distribución del spread sobre los 36.850 libros reales commiteados.** PR #29, con
+script que lee los shards por `git show` — sin red, sin base de datos, sin copia de trabajo de
+`paper-state`.
+
+    36.850 libros:  25.736 de dos lados,  11.114 de UN SOLO LADO (30,2 %)
+
+    spread completo   media 0,0193   mediana 0,0100   p90 0,0400   p99 0,1200   max 0,8100
+    media/mediana = 1,93x
+
+**Y depende del precio, en U invertida:**
+
+    bins 0 y 9   16.139 libros (63 %)   mediana 0,0100   <- los BARATOS
+    bins 1-8      9.597 libros          mediana 0,0200   media hasta 0,0410 (bin 7)
+
+Las bandas «casi seguro que no» y «casi seguro que sí» son baratas; **la zona de duda genuina
+cuesta el doble**. Y la regla de Strategy A opera donde más se separan `p_model` y `p_mid`, que
+es exactamente la zona de duda: **la estrategia selecciona los bins caros**.
+
+El 30 % de libros a un solo lado va contado aparte: no tienen spread —ni cero ni ancho— y
+promediarlos en cualquier dirección inventa un número.
+
+**2. El 0,0168 era MÍO y estaba mal en su magnitud.** B lo rastreó: es la mitad de un spread
+medio de **0,0336 que medí yo sobre los 27 tokens operados en UN ciclo**, y se lo pasé **sin su
+`n` y sin su población**. Él lo citó desde entonces como «el semidiferencial real medido» y
+acabó sosteniendo el desenlace *a priori* de §6.2 de R30. **El defecto nace en mi medición, no
+en su cita.**
+
+    semidiferencial, media poblacional   0,0096   (n = 25.736)
+    x_exec supuesto por R21              0,0100
+    diferencia                           0,0004
+
+**Sobre la población, el supuesto de R21 no era optimista: era exacto.** El «68 % más caro»
+comparaba un subconjunto de 27 contra un supuesto, presentándolo como hecho del mundo.
+
+**3. Pero B hizo el contraste que a mí no se me ocurrió.** Bootstrap de 27 extracciones sobre
+los 25.736 spreads. **Reproducido por mí con otra semilla:**
+
+    media de 27:  p50 0,0177 · p75 0,0212 · p90 0,0273 · p95 0,0305 · p99 0,0407
+    P(media de 27 >= 0,0336) = 0,027      (B, otra semilla: 0,026)
+
+**p ≈ 0,027: el subconjunto OPERADO es genuinamente más caro que la población.** No es ruido de
+muestra pequeña. **La dirección se sostiene; la magnitud no.** Y mi tabla por bin le da el
+mecanismo que su argumento sólo tenía en palabras.
+
+**4. Y la lección es mía, no suya.**
+
+> Medí la distribución entera y escribí *«esa discrepancia queda sin resolver y no la resuelvo
+> aquí»*. **Era una conclusión que no me había ganado.** El contraste que la resuelve costaba
+> veinte líneas.
+>
+> **«Sin resolver» hay que ganárselo intentándolo, exactamente igual que «no verificable».** Es
+> la misma regla de A-29 con bata de laboratorio: describir una distribución y declarar el
+> conflicto irresoluble *parece* rigor y es la forma educada de no haber probado.
+
+**5. Vigilancia acordada sobre el defecto de `select_tau`.** El #28 encontró que
+`backtest.py:306` maximiza `median(pnls)`; con acierto bajo el 50 % la mediana es siempre el
+PnL de un perdedor, así que ordena **por precio del billete, no por esperanza**. Correcto y
+confirmado en el código. **La lectura que hay que cortar antes de que aparezca:** *«luego NO
+OPERABLE era por un τ mal elegido»*. **Falso** — la evidencia de §1.1 (calibración, Brier,
+BSS negativo dentro de cada bin) está medida sobre los 10.000 candidatos **sin usar τ en
+ningún punto**. Ningún umbral cambia que, condicionado al precio, el modelo no aporte
+información.
+
+**Regla aceptada:** ninguna estrategia futura selecciona umbral maximizando una mediana
+mientras el acierto esté por debajo del 50 %.
