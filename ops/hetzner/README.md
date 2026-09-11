@@ -275,9 +275,25 @@ computed could not be DATED.
 
 `paper_cycle` opens `:memory:` when no `--db` is given, and `run_cycle.sh` does
 not give one. So **every cycle rebuilds the entire store in RAM**, and the store
-only grows: D0 forbids deleting, and roughly 20 000 rows arrive per day. Session
-B measured ~3.5 KB of RSS per row (222 MB peak at 64 707 rows), which puts the
-growth near **+70 MB/day** with nothing to flatten it.
+only grows: D0 forbids deleting, and roughly 19 200 rows arrive per day.
+
+The cost per row is a SLOPE, not a total divided by a count, and the difference
+is a factor of 2.5. Measured by session B loading the store in increments:
+
+| | |
+|---|---|
+| Fixed footprint (Python + DuckDB, zero rows) | 84.6 MB |
+| Intercept of the fitted line | 137.6 MB |
+| **Slope** | **1.433 KB/row** |
+| Naive total ÷ rows | 3.625 KB/row — *wrong, and wrong upward* |
+
+The naive quotient charges every row a share of a footprint that exists before
+any row is loaded. Using it dated the ceiling at roughly five weeks; the slope
+dates it at **~1 922 000 rows**, which from 64 707 at ~19 200/day is **about 97
+days — mid-December 2026**.
+
+Two entries in this project have now been wrong in exactly that way — a total
+used where a slope was needed. It is worth recognising on sight.
 
 **Without swap, exhausting RAM does not raise an exception — the kernel kills the
 process.** That matters more than the slowdown, because every protection in this
@@ -291,9 +307,16 @@ that no endpoint, paid or free, will sell back.
 ### How to date it without guessing
 
 Since PR #25 every `cycle_params` row carries `store_total_bytes` and
-`store_rows_loaded`, so the slope comes from the repository itself rather than
-from reconstructing it out of the shards by hand. Two rows a few days apart give
-the rate; this table gives the ceiling. Until then the estimate above is B's
-laptop measurement carried over, which is **an estimate and not this machine**.
+`store_rows_loaded`, so the growth rate comes from the repository itself rather
+than from reconstructing it out of the shards by hand. Two rows a few days apart
+give the rate; the table above gives the ceiling.
+
+**What is still borrowed:** the 1.433 KB/row slope was measured on a laptop, and
+the RAM figures here are this machine's. A date built from both is only as good
+as the assumption that the slope carries across, which nothing has tested — a
+different CPU and a different DuckDB build can move it. Independence of
+instrument is what is missing, and it is missing knowingly. The way to close it
+is to measure RSS on the box itself across two cycles whose `store_rows_loaded`
+differ, which those two fields now make possible without touching the host.
 
 Disk is not the constraint: 31 GB free against a store measured in tens of MB.
