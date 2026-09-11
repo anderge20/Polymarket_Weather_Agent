@@ -2186,3 +2186,52 @@ def test_a_changed_catalogue_is_dumped_again(con, tmp_path, monkeypatch):
     assert len(store.iter_shards(store_root, "markets")) == 2, (
         "el universo crecio de 1 a 2 mercados y el segundo volcado NO se escribio: "
         "el salto se ha convertido en una prohibicion")
+
+
+def test_a_failing_catalogue_gate_dumps_anyway_AND_says_so(con, tmp_path,
+                                                           monkeypatch):
+    """Fail-open is half the requirement; the other half is not being silent.
+
+    Session B named the case: `CONFLICT_COLS[table]` raising `KeyError` the day a
+    catalogue table is added without declaring its keys is PERMANENT. A silent
+    fail-open would return False forever, the catalogue would go back to 2 200
+    rows a cycle, and the 2-3 day budget crossing this stage removes would come
+    back through the error path with nothing in any log.
+
+    So the dump must still happen AND the failure must reach the profile — which
+    is where someone looks in three days asking why the cycle grew again."""
+    monkeypatch.setattr(paper_cycle, "stage_collect",
+                        lambda cy, *a, **k: cy.stage("collect:books", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_venue_coverage",
+                        lambda cy, *a, **k: cy.stage("venue_coverage", paper_cycle.OK))
+
+    def _discover(cy, con, **kw):
+        db_mod.upsert(con, "markets",
+                      {"market_id": "m1", "dataset_version": "ds1",
+                       "record_version": 1, "event_id": "e1", "question": "q"},
+                      ("market_id", "dataset_version", "record_version"))
+        cy.stage("discover", paper_cycle.OK)
+    monkeypatch.setattr(paper_cycle, "stage_discover", _discover)
+
+    def _boom(*a, **k):
+        raise KeyError("no conflict cols for this table")
+    monkeypatch.setattr(paper_cycle, "catalogue_is_unchanged", _boom)
+
+    store_root = tmp_path / "store"
+    assert paper_cycle.main([
+        "--target-date", "2026-09-10", "--dataset-version", "ds1",
+        "--store-root", str(store_root), "--db", str(tmp_path / "t.duckdb"),
+        "--collect-only", "--summary-json", str(tmp_path / "s.json")]) == 0
+
+    assert store.iter_shards(store_root, "markets"), (
+        "the gate raised and the dump did not happen — fail-open is the whole "
+        "point: a spurious dump costs seconds, a skipped one loses the universe")
+
+    stages = {st["stage"]: st for st in
+              json.loads((tmp_path / "s.json").read_text())["stages"]}
+    gate = stages.get("dump:markets:gate")
+    assert gate is not None, (
+        "the gate failed and nothing recorded it — a permanent failure would "
+        "restore the per-cycle dump with no line anywhere")
+    assert gate["status"] == paper_cycle.STOPPED
+    assert "no conflict cols" in gate["error"]

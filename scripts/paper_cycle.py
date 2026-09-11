@@ -1618,30 +1618,38 @@ def catalogue_is_unchanged(con, table: str, root: str) -> bool:
     on the same two shards, `dict != dict` reported 1 100 differing rows and a
     field-by-field walk over the COMMON keys reported 0. Both are "content".
 
-    FAILS OPEN, ON PURPOSE. Any error here returns False and the dump happens. A
-    spurious dump costs seconds of replay; a skipped one re-creates the defect PR
-    #31 exists to fix, and this runs at the end of the span where a capture is
-    still unwritten. The asymmetry decides the direction, and it is declared
-    rather than swallowed: the caller records why."""
-    try:
-        shards = store.iter_shards(root, table)
-        if not shards:
-            return False                      # nothing to compare against
-        previous = list(store.read_shard(sorted(shards)[-1]))
-        current = db.query(con, f"SELECT * FROM {table}")
-        key = list(store.CONFLICT_COLS[table])
+    RAISES RATHER THAN SWALLOWING, and the CALLER fails open. The direction is
+    right -- a spurious dump costs seconds of replay, a skipped one re-creates the
+    defect PR #31 exists to fix, and this runs where a capture is still unwritten
+    -- but an `except` HERE would be silent, and session B named the case that
+    makes silence expensive: `CONFLICT_COLS[table]` raising `KeyError` the day a
+    catalogue table is added without declaring its keys is PERMANENT, not
+    transient. The gate would return False forever, the catalogue would go back to
+    2 200 rows a cycle, and the 2-3 day budget crossing this PR removes would come
+    back through the error path WITHOUT ONE LINE ANYWHERE. The defect prevented
+    here, reintroduced by the handler for it.
 
-        ident = lambda r: tuple(str(r.get(c)) for c in key)
-        if {ident(r) for r in previous} != {ident(r) for r in current}:
-            return False
-        if {k for r in previous for k in r} != {k for r in current for k in r}:
-            return False
-        prev_by = {ident(r): r for r in previous}
-        cols = {k for r in current for k in r}
-        return all(all(prev_by[ident(r)].get(c) == r.get(c) for c in cols)
-                   for r in current)
-    except Exception:
+    ONLY SKIPS AGAINST A COMPLETE SNAPSHOT. The comparison is against the most
+    recent shard; if that shard were a SUBSET of the real state -- as the frozen
+    2026-09-09 one was against tonight's -- the sets differ and the gate says
+    "changed". Fail-open again, and stated so nobody reads the skip as stronger
+    than it is."""
+    shards = store.iter_shards(root, table)
+    if not shards:
+        return False                          # nothing to compare against
+    previous = list(store.read_shard(sorted(shards)[-1]))
+    current = db.query(con, f"SELECT * FROM {table}")
+    key = list(store.CONFLICT_COLS[table])
+
+    ident = lambda r: tuple(str(r.get(c)) for c in key)
+    if {ident(r) for r in previous} != {ident(r) for r in current}:
         return False
+    if {k for r in previous for k in r} != {k for r in current for k in r}:
+        return False
+    prev_by = {ident(r): r for r in previous}
+    cols = {k for r in current for k in r}
+    return all(all(prev_by[ident(r)].get(c) == r.get(c) for c in cols)
+               for r in current)
 
 
 def stage_dump(cy: Cycle, con, *, root: str, session_id: str,
@@ -1687,10 +1695,19 @@ def stage_dump(cy: Cycle, con, *, root: str, session_id: str,
     total = 0
     saltados = 0
     for table in tables:
-        if table in CATALOGUE_TABLES and catalogue_is_unchanged(con, table, root):
-            saltados += 1
-            cy.stage(f"dump:{table}", SKIPPED, reason="catalogue_unchanged")
-            continue
+        if table in CATALOGUE_TABLES:
+            # Fail-open WITH A RECORD. The gate raising must not cost the dump,
+            # and it must not be invisible either: a permanent failure would
+            # silently restore the per-cycle dump this stage exists to avoid.
+            try:
+                unchanged = catalogue_is_unchanged(con, table, root)
+            except Exception as exc:
+                unchanged = False
+                cy.stage(f"dump:{table}:gate", STOPPED, error=repr(exc))
+            if unchanged:
+                saltados += 1
+                cy.stage(f"dump:{table}", SKIPPED, reason="catalogue_unchanged")
+                continue
         # The catalogue is a full snapshot (its rows are re-stamped every run, so a
         # `since` filter would either take everything or nothing); the ledger is
         # incremental.
