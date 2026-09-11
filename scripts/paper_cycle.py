@@ -228,8 +228,35 @@ def stage_load_state(cy: Cycle, con, *, root: str) -> None:
         total += out["rows_written"]
         cy.stage(f"load:{table}", OK, shards=out["shards"], rows=out["rows_written"])
     stats = store.store_stats(root)
+    # TWO COUNTS, BECAUSE THEY STOPPED BEING THE SAME NUMBER IN THIS PR.
+    #
+    # `rows_loaded` sums what `upsert_many` returns, which is the batch's size
+    # AFTER deduplicating within that batch — a fact about the work this cycle
+    # did. Dumping the catalogue every cycle means the store now holds many
+    # copies of the same 1 100 market rows, each loaded as its OWN batch, so each
+    # returns its own 1 100. Nothing is wrong with that number; it is just not
+    # the one the RAM projection needs.
+    #
+    # `rows_resident` is. What occupies memory is DISTINCT rows in the database,
+    # and after this PR the two diverge by about 11 000 rows a day — roughly
+    # +57 % on the count, which applied to a per-row slope would move the
+    # projected ceiling from ~97 days to ~62. A false alarm planted inside the
+    # instrument built to raise real ones.
+    #
+    # Session B caught it on review, and it is the THIRD time this one field has
+    # turned up in an interaction between two PRs that are each correct alone
+    # (#25 with #26, now #25 with this one). Twelve `COUNT(*)` against an
+    # in-memory database, once per cycle.
+    #
+    # No `try/except` around the count: `init_db` creates every `STATE_TABLES`
+    # entry, this runs BEFORE `stage_collect` so nothing captured can be lost by
+    # raising here, and a swallowed exception would under-report residency —
+    # which is the alarmist direction for a ceiling projection, and silent.
+    resident = sum(int(db.query(con, f"SELECT count(*) AS n FROM {t}")[0]["n"])
+                   for t in STATE_TABLES)
     cy.stage("load:store_stats", OK, tables=len(stats.get("tables", {})),
-             total_bytes=stats.get("total_bytes", 0), rows_loaded=total)
+             total_bytes=stats.get("total_bytes", 0), rows_loaded=total,
+             rows_resident=resident)
 
 
 #: Tables `features.build_feature` and `strategy_a` read WITHOUT filtering by
@@ -1509,6 +1536,19 @@ def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
         # MEANS, hunt for who CONSUMES it, not who produces it — the change was
         # declared at the producer and the consumer was two modules and one PR
         # away.
+        # `store_total_bytes` IS NOT A RAM NUMBER, and after this PR it is not
+        # even a clean disk number. `store_stats` sums `st_size` over the
+        # shards, so it is (a) GZIPPED bytes and (b) inclusive of every
+        # duplicate catalogue copy. Session B measured the three magnitudes
+        # on the same store: 8.8 MB gzipped, 60.5 MB uncompressed, 239 MB of
+        # process RSS — a factor of 27 between the first and the last, and
+        # nowhere written down until now.
+        #
+        # So: use this to watch the STORE grow against 31 GB of free disk,
+        # which is what its docstring claims and what it is good for. Use
+        # `rows_resident` for the RAM ceiling. Anyone dating the ceiling from
+        # this field gets a compressed number, inflated by redundancy, and
+        # 27x too small.
         "store_total_bytes": int(store_bytes),
         "store_rows_loaded": int(store_rows),
         # `at_s` is relative to the start of the cycle, so without this the
@@ -1946,12 +1986,50 @@ def main(argv: list[str] | None = None) -> int:
                    dataset_version=args.dataset_version, since=cy.started_at,
                    # Every DECIDING cycle carries its own catalogue, so the
                    # replay reproduces it against the universe it actually
-                   # decided on. `--dump-catalogue` survives as an override for a
-                   # collect-only run someone wants snapshotted anyway.
-                   # `deciding`, not `not collect_only`: a cycle the guard
-                   # refused decided nothing, so there is no decision for a
-                   # replay to reproduce and no catalogue to pin it against.
-                   dump_catalogue=deciding or bool(args.dump_catalogue))
+                   # decided on.
+                   #
+                   # AND NOW ON EVERY CYCLE, BECAUSE THE UNIVERSE IS NOT
+                   # RECOVERABLE. The previous rule was `deciding or
+                   # args.dump_catalogue`, reasoned entirely about REPLAY: a
+                   # cycle that decided nothing has no decision to reproduce, so
+                   # it needed no catalogue pinned against it. That reasoning is
+                   # correct and it missed what the catalogue also is — the only
+                   # record of WHICH MARKETS EXISTED.
+                   #
+                   # Every cycle since 2026-09-09 has been collect-only (the
+                   # fail-closed `PAPER_TAU` gate), so `markets` was rebuilt each
+                   # run from ONE frozen shard plus whatever live discovery added
+                   # IN RAM — and the live part was never persisted. Measured on
+                   # that shard: it holds target 2026-09-10 (51 events) and
+                   # 2026-09-11 (49), and NOTHING for 09-12 onward. So the two
+                   # 09-11 events discovered later evaporated when their markets
+                   # closed, and two rows stamped `is_final: True` for the same
+                   # (target, lead, cutoff) disagreed: 561 bands, then 539.
+                   #
+                   # For 09-12 it is not two events, it is all 51: none of them
+                   # are in the shard. Gamma's `closed=false` feed does not return
+                   # what has closed, so after 12:00Z that universe is gone the
+                   # way an order book is gone. This is the ONE thing this
+                   # project treats as unrecoverable, arriving through the
+                   # catalogue instead of through the book.
+                   #
+                   # THE COST WAS COMPUTED AND IS NOT WHAT IT LOOKS LIKE. Ten
+                   # dumps a day is ~11 000 shard rows, which sounds like it
+                   # accelerates the RAM ceiling. It does not: `record_version`
+                   # is 1 on all 1 100 rows and the conflict key is
+                   # (market_id, dataset_version, record_version), so every copy
+                   # COLLAPSES to the same 1 100 rows on load. RAM cost: zero.
+                   # What grows is the store (~1 MB/day gzipped, against 31 GB
+                   # free) and the replay (~1 100 redundant upserts per copy) —
+                   # and the replay is exactly what PR #26 just made 39x faster.
+                   #
+                   # A daily dump was considered and REJECTED. It bounds the loss
+                   # window to 24 h, and the argument for it — "an event closing
+                   # inside the window is one for the target already in the
+                   # shard" — is the very reasoning that failed today: 09-10 held
+                   # only because its 51 events happened to be in the shard, and
+                   # that was luck, not a property.
+                   dump_catalogue=True)
         stage_params(cy, root=args.store_root, session_id=session_id, args=args,
                      quantile_provenance=quantile_provenance,
                      timing=timing, dataset_version=args.dataset_version)
