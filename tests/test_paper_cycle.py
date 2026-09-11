@@ -2104,3 +2104,85 @@ def test_rows_resident_does_not_count_a_duplicate_shard_twice(con, tmp_path,
     assert st["rows_resident"] == 1, (
         "one distinct market row occupies memory once — if this reads 3 the "
         "ceiling projection is inflated by every duplicate copy")
+
+
+def test_an_identical_catalogue_is_not_dumped_twice(con, tmp_path, monkeypatch):
+    """Two cycles over the same universe must leave ONE catalogue shard.
+
+    Counted in the STORE, not asserted on the stage. That is the lesson PR #34
+    cost us: `rows_resident` reached `cy.stage()` and never the row, and the test
+    that should have caught it was reading the stage too — standing in the same
+    place as the error, so it confirmed it instead of detecting it.
+
+    The cost this prevents is dated: a catalogue row loads in 21.3 ms on the box,
+    the snapshot is 2 200 rows, and ten dumps a day put `load:*` past the
+    42-minute budget between day +2 and +3 — after which the `flock` makes the
+    next cycle skip, and what it skips is a book slot.
+    """
+    monkeypatch.setattr(paper_cycle, "stage_collect",
+                        lambda cy, *a, **k: cy.stage("collect:books", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_venue_coverage",
+                        lambda cy, *a, **k: cy.stage("venue_coverage", paper_cycle.OK))
+
+    def _discover(cy, con, **kw):
+        db_mod.upsert(con, "markets",
+                      {"market_id": "m1", "dataset_version": "ds1",
+                       "record_version": 1, "event_id": "e1", "question": "q"},
+                      ("market_id", "dataset_version", "record_version"))
+        cy.stage("discover", paper_cycle.OK)
+    monkeypatch.setattr(paper_cycle, "stage_discover", _discover)
+
+    store_root = tmp_path / "store"
+
+    def _run(tag):
+        assert paper_cycle.main([
+            "--target-date", "2026-09-10", "--dataset-version", "ds1",
+            "--store-root", str(store_root), "--db", str(tmp_path / f"{tag}.duckdb"),
+            "--collect-only", "--summary-json", str(tmp_path / f"{tag}.json")]) == 0
+
+    _run("first")
+    tras_uno = len(store.iter_shards(store_root, "markets"))
+    _run("second")
+    tras_dos = len(store.iter_shards(store_root, "markets"))
+
+    assert tras_uno == 1, "el primer ciclo debe escribir el catalogo"
+    assert tras_dos == 1, (
+        "el segundo ciclo vio el MISMO universo y volvio a volcarlo: cada copia "
+        "cuesta 21,3 ms por fila en todos los replays posteriores")
+
+
+def test_a_changed_catalogue_is_dumped_again(con, tmp_path, monkeypatch):
+    """And the skip must not be a ban: a universe that GREW has to be written.
+
+    Without this the previous test passes on a `stage_dump` that never dumps the
+    catalogue at all — which would re-create the defect PR #31 exists to fix, and
+    the shard count alone cannot tell the two apart."""
+    monkeypatch.setattr(paper_cycle, "stage_collect",
+                        lambda cy, *a, **k: cy.stage("collect:books", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_venue_coverage",
+                        lambda cy, *a, **k: cy.stage("venue_coverage", paper_cycle.OK))
+
+    store_root = tmp_path / "store"
+    vistos = {"n": 0}
+
+    def _discover(cy, con, **kw):
+        vistos["n"] += 1
+        for i in range(vistos["n"]):          # 1 mercado, luego 2
+            db_mod.upsert(con, "markets",
+                          {"market_id": f"m{i}", "dataset_version": "ds1",
+                           "record_version": 1, "event_id": "e1", "question": "q"},
+                          ("market_id", "dataset_version", "record_version"))
+        cy.stage("discover", paper_cycle.OK)
+    monkeypatch.setattr(paper_cycle, "stage_discover", _discover)
+
+    def _run(tag):
+        assert paper_cycle.main([
+            "--target-date", "2026-09-10", "--dataset-version", "ds1",
+            "--store-root", str(store_root), "--db", str(tmp_path / f"{tag}.duckdb"),
+            "--collect-only", "--summary-json", str(tmp_path / f"{tag}.json")]) == 0
+
+    _run("first")
+    _run("second")
+    assert len(store.iter_shards(store_root, "markets")) == 2, (
+        "el universo crecio de 1 a 2 mercados y el segundo volcado NO se escribio: "
+        "el salto se ha convertido en una prohibicion")
