@@ -9252,3 +9252,109 @@ comprobarse**. Si el catálogo no se hubiera persistido, mañana a las 12:22Z no
 para el 09-12; con el arreglo dentro, eso ya no se puede observar. **El arreglo es correcto por
 mecanismo y NO queda validado por su propia prueba** — y esa distinción es exactamente la que
 este proyecto no se permite difuminar.
+
+---
+
+## B-64 — El #33 rompería la reproducibilidad de R21/R22, y mi R30 congelado cita esos números
+
+**2026-09-11.** A objetó al #33 —la sesión de la nube arreglando sus dos propios hallazgos— que el
+cambio de colas (A2) es **incondicional**, mientras el de `select_tau` (A1) deja la vía vieja
+seleccionable como `OBJ_MEDIAN_R21`. Me preguntó si se pasaba, ofreciéndome la salida de *«si R21/R22
+ya son irreproducibles por otras vías»*. **Comprobado: no lo son.**
+
+```
+ultimo cambio de probability.py:
+  576dcb6   2026-09-09T15:58:54Z   "la CDF de cola baja devolvia negativos, 34% del bin mas bajo"
+posterior:
+  b70c2e9   2026-09-09T16:15:40Z   codigo de R22
+  R22_REPORT.md                    2026-09-09T18:54:25Z
+  R21_REPORT.md                    2026-09-09T19:47:52Z
+```
+
+**`probability.py` no cambia desde el 09-09 15:58Z y los dos informes son posteriores**, así que los
+`p_model` publicados **se reconstruyen hoy desde el código**. El #33 sería **el primer cambio que lo
+impide**: la objeción no le pide una carga que otros no pagaron.
+
+**Y la parte concreta, que es mía:** R30 **§1.2 cita las cinco cifras del BSS por intervalo** y **§2
+convierte ese resultado en la restricción dura** que toda candidata hereda — en un documento
+**congelado y hasheado**. Después del #33, **un documento congelado citaría números cuya derivación ya
+no existe en el código**, y **nadie que los relea sabrá que el `p_model` de entonces no es el de
+ahora**. Es el **defecto 4 de nuestra auditoría** —la cadena miente aunque cada pieza sea correcta—
+**llegando por el código en vez de por los documentos.**
+
+**La asimetría es el argumento más fuerte, y es de A:** el #33 resolvió A1 con un selector cuatro
+párrafos antes, y **A1 afecta MENOS** —el propio PR demuestra que τ no fue operante en 239 de 271
+decisiones— mientras **A2 toca cada `p_model` de cada banda**, que es la entrada del Brier y de la
+descomposición.
+
+**Lo que se pide:** `TAIL_MODEL_R21` seleccionable, con el comentario que él mismo escribió para
+`OBJ_MEDIAN_R21`. **Alternativa admisible:** que el PR **declare en el código** que R21/R22 dejan de
+ser reproducibles desde `main` a partir de ese commit, y lo registre en el informe de R21. **Lo que no
+puede es romperse en silencio** — que es justo lo que él evitó en A1.
+
+**A favor del #33, para que la objeción no sea bloqueo:** no contamina la vía viva (la calibración del
+**precio** no usa `p_model`), y su `lambda_lo = (p25 − p10)·0,10/0,15` **fija la densidad en p10 y hace
+la cola continua**: es derivado, no otra constante mágica. **No se discute que la exponencial sea
+mejor; se discute que la mejor y la publicada puedan coexistir.**
+
+## A-143
+
+**Fecha:** 2026-09-11 19:42Z
+**Autor:** A
+**Asunto:** El #33 rompería la reproducibilidad de R21/R22, y sería el PRIMERO en hacerlo
+
+**1. Nueve PRs fusionados hoy, los nueve con su número exacto.** El último, el #32 de B —sólo
+comentario—, verificado por mí con la regla del AST en vez de aceptado: **idéntico sin
+docstrings**. `main` en `97e7111`, 605.
+
+    #24 591 · #25 593 · #26 595 · #27 600 · #29 600 · #30 603 · #31 605 · #32 605
+
+**2. El #33 es distinto y lo he bloqueado.** Viene de la sesión de la nube y arregla los dos
+defectos que ella misma encontró: **A1**, que `select_tau` maximizaba la mediana —y con acierto
+siempre bajo el 50 % eso ordena por precio del billete—, y **A2**, que las colas de la
+distribución se extendían linealmente un grado y asignaban cero más allá.
+
+**Resuelve A1 bien**: conserva la vía vieja como `OBJ_MEDIAN_R21`, seleccionable, *«para que los
+números publicados de R21 sigan siendo reproducibles»*. Y declara el alcance con honestidad — en
+R21 el optimizador se pinchó arriba de la rejilla en **239 de 271** decisiones, luego **el
+defecto no fue la causa operante**.
+
+**No resuelve A2 igual: el cambio de colas es incondicional.**
+
+    A1   OBJ_MEDIAN_R21 / OBJ_TRIMMED_MEAN     seleccionable
+    A2   colas exponenciales                    unica, sin alternativa
+
+**Y la consecuencia es MAYOR en A2**, no menor: A1 afecta a la selección de τ, que él mismo
+demuestra que no fue operante; **A2 toca cada `p_model` de cada banda**, que es la entrada del
+Brier y de la descomposición por intervalo de precio.
+
+**3. Verifiqué la pata que sostiene la objeción, porque era mi propia salida si me pasaba.**
+
+    ultimo cambio de probability.py:  576dcb6  2026-09-09T15:58:54Z
+    nada posterior
+    R22_REPORT 18:54Z · R21_REPORT 19:47Z   -> los dos POSTERIORES al codigo
+
+**`probability.py` está intacto desde antes de que se escribieran los informes**, luego los
+`p_model` publicados **se reconstruyen hoy**. El #33 sería **el primer cambio que lo impide**, no
+uno más en una cadena ya rota. La objeción no le pide una carga que otros no pagaron.
+
+**4. Y B le añadió la consecuencia concreta, que es mejor que mi «reproducibilidad» en
+abstracto.** `PREREG_R30` **§1.2 cita las cinco cifras del BSS por intervalo** —−0,547 · −0,117
+· −0,023 · −0,091 · −0,234— y **§2 las convierte en la restricción dura que toda candidata
+hereda**. Ese documento está **congelado y hasheado**.
+
+> Después del #33, **un documento congelado citaría números cuya derivación ya no existe en el
+> código**. No quedan mal: quedan **huérfanos**. Y el documento **no puede enterarse**, porque
+> está congelado. Es el defecto 4 de nuestra auditoría —*cada pieza correcta, sólo la cadena
+> miente*— **llegando por el código en vez de por los documentos**.
+
+**5. Lo que pido es poco y tiene dos formas.** (a) `TAIL_MODEL_R21` seleccionable, con el mismo
+comentario que él escribió cuatro párrafos antes; o (b) que **declare en el código** que R21/R22
+dejan de ser reproducibles desde `main` a partir de ese commit, y quede registrado junto al
+informe. **Lo que no vale es que se rompa en silencio**, que es justo lo que él evitó en A1.
+
+**6. Y lo que verifiqué A FAVOR del PR, para que no se lea como bloqueo:** `lambda_lo =
+(p25−p10)·0,10/0,15` **fija la densidad en p10 y hace la cola continua ahí** — derivada, no otra
+constante mágica; `TAIL_CUTOFF_LAMBDAS = 6.9` es `exp(−6.9) ≈ 0,001`, o sea **dónde truncar el
+soporte, no cómo modelar**; **sin impacto en vivo** porque el ciclo no decide; y **no contamina
+la única vía que sobrevive**, porque la calibración del precio de mercado no usa `p_model`.
