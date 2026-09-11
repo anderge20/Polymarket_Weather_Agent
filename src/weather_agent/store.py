@@ -314,7 +314,16 @@ def load_shards(
     populated database changes nothing (upsert on the table's primary key).
 
     This is the recovery path — the reason the operational DuckDB never needs to
-    be committed or backed up."""
+    be committed or backed up. It is also the HOT path: `paper_cycle` opens
+    `:memory:`, so every cycle rebuilds the entire store from scratch before it
+    can do anything, and the store only grows.
+
+    `rows_written` IS THE APPLIED COUNT, NOT THE OFFERED ONE. They differ only
+    when a shard repeats a conflict key, which no shard does today (measured over
+    the whole store: zero repeats in any replayed table) — but the two numbers
+    are different claims and this one is a fact about the table rather than about
+    what the caller sent. `rows_read` remains the offered count, so a divergence
+    between the two is visible rather than silent."""
     cols = tuple(conflict_cols) if conflict_cols else CONFLICT_COLS.get(table)
     if not cols:
         raise ValueError(
@@ -323,10 +332,33 @@ def load_shards(
     shards = [Path(p) for p in paths] if paths is not None else iter_shards(root, table)
     summary = {"table": table, "shards": len(shards), "rows_read": 0, "rows_written": 0}
     for shard in shards:
+        # ONE BATCH PER SHARD, not one statement per row.
+        #
+        # `upsert_many`'s own docstring measured the three paths on this exact
+        # workload: one INSERT per row 24.99 s, executemany 16.47 s, and
+        # INSERT ... SELECT 0.05 s — 478x. The fast path has been in the same
+        # module all along and the replay was not using it, which is why the
+        # cycle's pre-collection time is dominated by rebuilding a store that
+        # only grows: `paper_cycle` opens `:memory:`, so EVERY cycle pays a full
+        # cold rebuild of every row ever written.
+        #
+        # Semantics are preserved rather than assumed: `upsert_many`
+        # deduplicates keeping the LAST occurrence, which is what row-by-row
+        # upserting does, and it does so BEFORE choosing its internal path.
+        #
+        # GROUPED BY COLUMN SET because `upsert_many` refuses a ragged batch —
+        # correctly, since it would bind values to the wrong parameters. No
+        # replayed table is ragged today (measured: the only two shard tables
+        # with more than one column set, `cycle_params` and `venue_coverage`,
+        # have no conflict columns and are never loaded). The grouping is here
+        # so that the day one of them gains a column, the replay keeps working
+        # instead of raising halfway through.
+        groups: dict[tuple, list] = {}
         for row in read_shard(shard):
             summary["rows_read"] += 1
-            db.upsert(con, table, row, cols)
-            summary["rows_written"] += 1
+            groups.setdefault(tuple(row.keys()), []).append(row)
+        for batch in groups.values():
+            summary["rows_written"] += db.upsert_many(con, table, batch, cols)
     seq_start = restore_sequences(con, table=table)
     if seq_start is not None:
         summary["sequence_restarted_at"] = seq_start
