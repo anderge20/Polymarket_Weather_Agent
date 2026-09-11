@@ -1643,7 +1643,27 @@ def catalogue_is_unchanged(con, table: str, root: str) -> bool:
     recent shard; if that shard were a SUBSET of the real state -- as the frozen
     2026-09-09 one was against tonight's -- the sets differ and the gate says
     "changed". Fail-open again, and stated so nobody reads the skip as stronger
-    than it is."""
+    than it is.
+
+    AND "THE MOST RECENT SHARD" MEANS MOST RECENT BY PATH, NOT BY TIME. `sorted()`
+    orders `<date>/<table>__<session_id>__NNNN.ndjson.gz` lexicographically: the
+    date leads, and the session id breaks ties WITHIN a day. The ids come from two
+    generators that do not sort in their own chronological order -- `col_<ISO>_<pid>`
+    (the Hetzner cron) and `cyc_<run_id>` (Actions) -- and `col_... < cyc_...` while
+    `cyc_` is the OLDER of the two, Actions schedules having been disabled
+    2026-09-09 when collection moved to the box. The gate therefore assumes
+    lexicographic path order IS temporal order, which holds only while every id in
+    a given day comes from one generator.
+
+    That assumption has already been violated, just not here: on 2026-09-09 both
+    generators wrote into the same date for THREE tables (`cycle_params`,
+    `orderbook_snapshots`, `price_history`). The catalogue tables escaped by
+    accident of scheduling, not by design -- `markets`, `outcomes` and
+    `market_fee_schedule` have `cyc` on 09-09 and `col` on 09-11, different dates,
+    where the date component decides and the ids never compete. Let a third
+    generator share a date with `cyc_` and this compares against the wrong shard,
+    the sets differ, and it dumps: fail-open a third time. Which is why it is
+    written here as a caveat and not fixed as a bug."""
     shards = store.iter_shards(root, table)
     if not shards:
         return False                          # nothing to compare against
