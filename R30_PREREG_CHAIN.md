@@ -9,7 +9,7 @@ calcular nada.
 con §4.2, §4.3, §5.2, §5.3 y §5.4 rotos y **nada se lo advertiría**. Es el defecto 4 de
 `reference-layer-audit`: *cada documento es correcto por separado; sólo la cadena miente.*
 
-> ## SI VAS A USAR R30, LÉELO CON LAS ENMIENDAS A, B, C, D, E, F, G, H, I Y J.
+> ## SI VAS A USAR R30, LÉELO CON LAS ENMIENDAS A, B, C, D, E, F, G, H, I, J Y K.
 > El documento base **por sí solo no describe ningún criterio vigente de §4.2, §4.3, §5.2, §5.3 ni
 > §5.4.**
 
@@ -28,6 +28,7 @@ con §4.2, §4.3, §5.2, §5.3 y §5.4 rotos y **nada se lo advertiría**. Es el
 | `PREREG_R30_ENMIENDA_H.md` | `42bead6798d79a248c6c55f55a897be4a8dd37550eb4ed8965c3911e41523f4c` | **VIGENTE** (su «obligación más dura» la RETIRA I) |
 | `PREREG_R30_ENMIENDA_I.md` | `03f0b5a292425d7f6c50c08feca6a4d6cc429b0e8d537183a7c3fc97e61e71fb` | **VIGENTE** (su §5.5(d) lo sustituye J) |
 | `PREREG_R30_ENMIENDA_J.md` | `bbac91ffecf0183711ab18ff020cbb0b819340ddc451aceefa8547d64c86ab31` | **VIGENTE** |
+| `PREREG_R30_ENMIENDA_K.md` | `149e66955afd6581f1e511850baff9d6f153d6a425a21250d7b35cce79ae282e` | **VIGENTE** |
 
 **Nada se ha calculado todavía contra R30.** Base y cuatro enmiendas son del mismo día,
 2026-09-11, todas anteriores a tocar un solo dato.
@@ -47,6 +48,7 @@ con §4.2, §4.3, §5.2, §5.3 y §5.4 rotos y **nada se lo advertiría**. Es el
 | §5.1 | base, ajustado por C | el umbral del IC pasa a «≥60 % de la familia» |
 | §5.2 | **D** | no declaraba unidad; **mediana SOBRE EVENTOS** + IC bootstrap por eventos |
 | §5.3 | **D** | decía sólo «el signo se mantiene»: sin estadístico ni incertidumbre. Ahora ambos nombrados |
+| §5.5(c) | **I, sustituido por K** | citaba la familia de §5.4 sin su corrección: suelo de falso positivo **22,6 %** con k=5. Ahora `T = max_b \|d_b\|` con nula generada sorteando **un ganador por evento con probabilidades ∝ `p_mid`** — la permutación de §5.4 contrastaría independencia, no calibración |
 | §5.5(d) | **I, sustituido por J** | el umbral de explotabilidad usaba la MEDIANA del intervalo; el coste de una serie es la MEDIA (hasta 2,05x dentro del bin). Ahora el estadístico se calcula **sobre la población que la candidata opera**, y el filtro —si lo hay— se declara antes |
 | §5.5 | **I** (nuevo) | contraste de calibración del mercado: estadístico, IC, criterio de mal calibrado, umbral de explotabilidad y regla de potencia — todo fijado ANTES de calcular la curva |
 | §5.4 | **B, luego C** | B: familia enumerada y cerrada. C: la parte de precio pasa a **regla de ocupación** |
@@ -69,6 +71,12 @@ con §4.2, §4.3, §5.2, §5.3 y §5.4 rotos y **nada se lo advertiría**. Es el
   `paper-state` y no coincidiendo con la cifra de B; y el **PR #28**, de una sesión en la nube que no
   coordinó ninguno de los dos, encontrando que `select_tau` maximiza una mediana que —con acierto
   bajo el 50 %— es siempre el PnL de un perdedor, o sea **el precio del billete**.
+- **§5.5(c) (K)** — **A**, atacando el criterio recién congelado **con el sustrato ya construyéndose**:
+  §5.5(c) tomaba prestada la familia de §5.4 **y dejaba fuera su corrección del máximo**, con suelo de
+  falso positivo del **22,6 %** garantizado por §4.2. Enrutado por §5.4, y con la nula correcta: no
+  permutación —que contrastaría *independencia*, y un mercado calibrado SÍ tiene asociación— sino
+  **sorteo de un ganador por evento con probabilidades ∝ `p_mid`**, que respeta la partición.
+  *Cuarta que A encuentra en dirección permisiva.*
 - **§5.5(d) (J)** — **A** encontró que el umbral de explotabilidad usaba la **mediana** del intervalo
   mientras el coste esperado de una serie es la **media**: dentro del bin el sesgo va de 1,02x a
   **2,05x**, así que una candidata pasaba en los intervalos 2 y 7 **con la mitad del sesgo necesario**.
