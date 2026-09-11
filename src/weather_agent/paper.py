@@ -406,6 +406,43 @@ def decide_and_fill(
         out["reason"] = fill.reason or "not_executable"
         return out
 
+    # YOU CAN FILL A BUY AGAINST A BOOK THAT HAS NO BID AT ALL, and under
+    # `taker_close` the cost model prices the exit as if you could sell back.
+    #
+    # `net_edge_per_share` charges the exit at `fill_price` plus a fee when
+    # `exit_price` is None, which assumes a buyer at exactly what you paid. On a
+    # book quoted on the ask side only there is no buyer at ANY price, so that
+    # exit is not expensive — it is impossible, and `x_exec` cannot stand in for
+    # it because a flat half-spread is not a model of an absent side.
+    #
+    # This is not hypothetical arithmetic. Measured over the 36 850 books
+    # collected 2026-09-09..11: 25 736 two-sided (69.8 %), **5 557 ask-only
+    # (15.1 %)** and 5 557 bid-only. The ask-only ones are exactly the ones a BUY
+    # fills against. (The two counts are equal because a market is quoted on one
+    # side or both, never one side per token: in 2 244 of 2 244 markets both
+    # tokens shared their liquidity state.)
+    #
+    # `hold_to_resolution` — the default — is untouched: redemption needs no
+    # counterparty, so a missing bid costs nothing there. The refusal applies
+    # only to the mode that plans to sell.
+    #
+    # HOW OFTEN THIS BITES IS SMALLER THAN 15 %, AND THE HONEST ANSWER IS THAT
+    # NOBODY CAN SAY BY HOW MUCH. A one-sided book has no mid, so it cannot be
+    # placed in a price bin at all; the 15.1 % is over ALL observations, not over
+    # the ones a strategy would look at. What IS measured (session B, same
+    # corpus) is that intermittently-quoted markets sit at the price EXTREMES:
+    # among two-sided observations, the doubt zone (bins 1-8) is 97.3 % served by
+    # always-liquid markets while the extremes are 41.6 % intermittent. So these
+    # markets are liquid mostly where the outcome is already decided — and a rule
+    # that trades the zone of doubt will meet this case rarely.
+    #
+    # Rarely is not never, and a cost model that prices an impossible exit is
+    # wrong at any frequency. That is why this is a REFUSAL and not a warning.
+    if params.exit_mode == "taker_close" and not _levels_from_snapshot(
+            book_snapshot, "bid"):
+        out["reason"] = "no_exit_liquidity"
+        return out
+
     edge = net_edge_per_share(p_model=p_target, fill_price=fill.vwap, fee=fee,
                               params=params)
     out["net_edge"] = edge
