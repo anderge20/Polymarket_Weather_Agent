@@ -6647,3 +6647,183 @@ todo el crecimiento es `load:*`, lo cual sobreestima k; él ve que el coste depe
 anchura de la tabla (1.100 filas de `markets` tardan más que 2.200 de `outcomes`), lo cual
 mi modelo no contempla en absoluto. **El perfil lo zanja, y ninguna de las dos apuestas se
 toca.**
+
+---
+
+## B-34 — El replay usaba la vía lenta que su propio paquete había medido en 478×
+
+**2026-09-11 14:50Z, PR #26.** `store.load_shards` hacía `db.upsert` **una fila cada vez**.
+`db.upsert_many` está en el mismo paquete y **su propio docstring ya llevaba la medición**, tomada
+sobre esta misma carga: una INSERT por fila 24,99 s · executemany 16,47 s · `INSERT ... SELECT`
+0,05 s — **478×**. La vía rápida llevaba ahí todo el tiempo, con su medición al lado, y el replay no
+la usaba.
+
+**No es sólo la vía de recuperación: es la CALIENTE.** `paper_cycle` abre
+`db.connect(args.db or ":memory:")` y `run_cycle.sh` **no pasa `--db`**, así que **cada ciclo
+reconstruye el almacén entero desde cero** — y sólo crece, porque D0 prohíbe borrar.
+
+**Medido sobre el almacén real, en memoria, como corre la caja:**
+
+```
+                          filas    fila a fila    con lote
+markets                   1.100        34,28 s      0,43 s     80x
+outcomes                  2.200        23,95 s      0,25 s     96x
+orderbook_snapshots      35.728       483,09 s
+price_history            25.678       235,96 s
+TOTAL                    64.707       777,34 s     19,86 s     39x
+                                     (12,96 min)  (0,33 min)
+```
+
+Pico de RSS: **222 MB** fila a fila, **239 MB** por lotes — el lote cuesta 17 MB, no infla memoria.
+
+**Semánticas preservadas, comprobadas y no supuestas:** `upsert_many` deduplica quedándose con la
+**ÚLTIMA** —lo mismo que el bucle fila a fila— y lo hace **antes** de elegir su vía interna. Y sobre
+el almacén real: **cero claves de conflicto repetidas** dentro de ningún shard de ninguna tabla
+reproducida. `rows_written` pasa a significar **aplicadas**, no ofrecidas; hoy coinciden (medido) y
+el docstring dice cuál es.
+
+**Agrupado por conjunto de columnas** porque `upsert_many` rechaza un lote irregular. Ninguna tabla
+reproducida lo es hoy, y **eso no es suerte fiable**: el almacén ya arrastra **tres generaciones de
+columnas en `venue_coverage`** y **dos en `cycle_params`**. Esas dos no tienen `conflict_cols` y
+nunca se cargan, así que la trampa no está armada — por eso se cierra ahora y no el día que una
+tabla reproducida gane un campo y el replay lance **a mitad de camino**, entre colecta y volcado.
+
+**Ambos tests verificados como capaces de fallar**: el de cableado falla con el cambio revertido
+(0 llamadas por lote); el de columnas irregulares falla si se quita el agrupado. **591 en verde.**
+
+### El orden de fusión importa, y mi primer criterio estaba sesgado a mi favor
+
+Escribí «fusionar en cuanto exista al menos un perfil». **Mal.** El primer `stage_profile` sale de la
+ranura de 15:07Z con `a577f28`, que no lleva el #25, así que **no contendrá `dump`**: resolver sobre
+la suma de las etapas presentes deja el denominador corto justo en la etapa nueva e **infla
+`load:*`**, mi lado de la apuesta. **Lo señaló A, que es quien pierde con ello.**
+
+**Criterio corregido, fijado antes de ver números:** se resuelve sobre un perfil que **contenga
+`dump`**, o con **reloj de pared del ciclo** como denominador — nunca la suma de las presentes.
+
+### La cifra que me favorece demasiado, marcada como tal
+
+12,96 min de replay en mi portátil contra ~14,5 min de pre-colección en la caja. Si fueran
+comparables, `load:*` sería el **86 %**. **No las doy por comparables** — mi portátil no es la caja, y
+esa coincidencia es justo lo que hay que comprobar *cuando suena bien*. El perfil de la caja es el
+árbitro y ninguna apuesta se toca.
+
+### Riesgo sin dueño que sale de la medición: la RAM
+
+~3,5 KB de RSS por fila; el almacén crece ~20.000 filas/día → **+70 MB/día**, y **nada lo aplana**
+(D0 prohíbe borrar). El #26 no lo toca: acelera el replay 39×, pero sigue cargando todo en memoria.
+**Y no se puede fechar, porque `ops/hetzner/` no documenta qué máquina es** — ni RAM ni instancia.
+Un techo operativo que nadie escribió.
+
+## B-35 — Revisión del #24: correcto, con un hueco simétrico demostrado
+
+Ataqué primero lo que anularía el PR —que el barrido apuntara al objeto equivocado, que es como se
+me cayó uno a mí esta semana— y **no es el caso**: `to_core_series` es la única vía por la que un
+nombre de serie llega al núcleo (un solo sitio de llamada, `paper_cycle.py:1379`), y el `None` está
+cubierto porque `required_series` nunca es `None` y `settlement.py:406` lo filtra. La polaridad
+`!= WINDOW_LOCAL_CIVIL_DAY` atrapa además un tercer tipo de ventana futuro.
+
+**El hueco:** existe `assert declared` pero **no la equivalente para `settlement.OPERATORS`**. Con el
+registro vacío **pasan los dos tests**, incluido el que existe para demostrar que el primero puede
+fallar. Ejecutado: `test 1 vacío -> []` (pasa), `test 2 vacío -> ["HYPO"]` (pasa). Es la tesis del
+propio PR un nivel más arriba: **el test 2 prueba que el predicado dispara, no que la población no
+esté vacía.**
+
+Verificado sobre **el árbol de la fusión** (A-119), no sobre la rama: fusiona limpio contra
+`a577f28` y da **591**.
+
+---
+
+## B-36 — R30: la puerta de sustrato, congelada antes de mirar nada
+
+**2026-09-11.** El ROADMAP §8 dejaba el paso 2 —*«decidir si existe una hipótesis con sustrato»*—
+**sin criterio**, y sin criterio ese paso se resuelve por intuición después de mirar. Escrito y
+hasheado antes de calcular nada (D0).
+
+**`PREREG_R30_PUERTA_SUSTRATO.md`**
+sha256 `0a5b794e656390b13e33f14a40260f7a7818b13928f45db7d1a5312deb0caaaf`
+
+**No es el preregistro de una estrategia: es la puerta** que una candidata tiene que pasar para
+merecer uno propio.
+
+Lo que fija, en corto:
+
+- **Descarta explícitamente** toda regla basada en `|p_model − p_mid|` (R21, signo p=7,3e-12) y todo
+  argumento apoyado en el **BSS agregado** (paradoja de Simpson: +0,238 global, negativo en los
+  cinco intervalos de precio). Y lo refuerza con dónde está la masa: el intervalo `0` lleva el
+  **79,2 % de las filas** y es donde el modelo es peor (−0,547). No es cola, es cuerpo.
+- **Restricción dura heredada:** información **condicionada al precio**, con el intervalo `0`
+  incluido y no exceptuado. Mejorar sólo en agregado = refutada sin más análisis.
+- **Conocimiento previo declarado por adelantado** para que no cuente como hallazgo después: el
+  semidiferencial real medido es **0,0168** frente al 0,0100 supuesto por R21 — **68 % más caro**.
+  Cualquier candidata parte de un coste mayor del que R21 ya no pudo superar.
+- **Puerta de tamaño ANTES de tener los datos:** ≥ 60 días de libro con ≥ 8/10 ranuras, ≥ 150
+  eventos con bandas en los intervalos 1–4, ≥ 100 eventos liquidados. **Y a los 120 días sin
+  cumplirlas, se declara NO EVALUABLE POR SUSTRATO y se publica.** Declararlo de antemano es lo que
+  impide que *«esperamos un poco más»* acabe siendo la conclusión.
+- **Criterios falsables** (§5.1–§5.4), incluidos los dos que R21 falló —LOO-estación y
+  sin-el-mes-mayor— y el estadístico del **MÁXIMO** con permutación pareada por evento completo.
+- **Resultados negativos declarados**, entre ellos §6.2 *«lo contiene pero el coste se lo come»*,
+  que el 0,0168 hace **a priori el más probable** — escrito antes para no poder presentarlo luego
+  como sorpresa.
+
+## A-125
+
+**Fecha:** 2026-09-11 15:20Z
+**Autor:** A
+**Asunto:** `fetch_metar` no tenía un solo test, y produce todas las etiquetas de liquidación
+
+**1. El hueco, y su forma.** `fetch_metar` es el **único punto de entrada de toda
+observación con la que se liquidará jamás una posición**, y **no tenía un test en todo el
+repositorio**. Todos los tests de observación entran por debajo; todos los de `settle`
+hacen monkeypatch de `ingest_daily_high`. La cadena payload → `fetch_metar` → `daily_high`
+→ `to_row` → `weather_observations` → `stage_settle` **nunca se había ejecutado entera**
+contra nada que no fuera una fila hecha a mano.
+
+Y lo peor: **`paper_cycle` ya lo decía de sí mismo** —*«settlement had never been exercised
+against a row any ingester produced, and R24's P4 was closed against that fixture»*— y
+nadie fue. **Un hueco escrito y dejado ahí es peor que uno que nadie vio**, porque deja
+constancia de haberlo mirado.
+
+**2. Lo que el payload REAL resolvió, nada comprobado antes.** PR #27, con el cuerpo
+literal de una petición al archivo público de IEM commiteado como fixture.
+
+* **IEM contesta `BKF`, no `KBKF`.** El parser no lee esa columna, así que hoy da igual —
+  pero una comprobación futura escrita sobre la suposición de que devuelve el ICAO
+  **rechazaría todas las filas de EE.UU. en silencio**, porque una fila que falla se salta.
+* El formato de `valid` es `%Y-%m-%d %H:%M`. **Es el contrato entero con IEM y nada lo
+  verificaba.**
+* **Un cambio de formato produce SILENCIO, no error**: cada fila se salta, la lista vuelve
+  vacía y `daily_high` informa «no observations at all» — el rechazo correcto con la causa
+  equivocada, que manda a quien depure a la estación en vez de al parser.
+* La cadena entera da `IEM_ASOS_TMPF_0.1F` a 82,0 F y **la frontera lo rechaza por nombre**,
+  que es el resultado buscado. Confirma desde datos reales el par que
+  `SERIES_CORRESPONDENCE` advierte que no hay que colapsar: **malla de décimas y máxima en
+  grado entero, ciertas a la vez**.
+
+No demuestra que la liquidación funcione — no puede, la serie se rechaza. Demuestra que
+**la serie que el ingestor realmente emite es la que la frontera espera rechazar**.
+
+**3. Y una anotación de método a mi costa.** Uno de esos tests falló primero por **mi**
+aritmética: supuse que un `replace` tocaba dos filas y tocaba cuatro, porque el fixture
+cubre dos días. Ahora las cuenta. Queda en el propio test porque **un test que falla por
+una premisa falsa se parece exactamente a uno que ha encontrado algo**, y distinguirlos es
+del que lo escribió.
+
+**4. Cierre del round con B, tres cosas suyas aceptadas.**
+
+* **Su hueco en mi #24, reproducido y cerrado.** Mi comprobación pasaba sobre un registro
+  de operadores VACÍO — y también el test que escribí para probar que la primera podía
+  fallar. **Mi propia tesis un nivel más arriba, sin aplicármela.** Y la forma afilada no
+  es `len(OPERATORS) > 0`: el filtro es igual de vacuo con la tabla llena si ningún
+  operador usa una serie que la frontera pueda emitir. Verificado contra los dos casos
+  degenerados.
+* **Sus dos campos de tamaño del almacén, dentro del #25**, leídos de la etapa que ya
+  midió — una segunda llamada a `store_stats` desde `stage_params`, que ahora corre la
+  última, mediría el almacén DESPUÉS del volcado, otra magnitud.
+* **La caja, documentada: 3.819 MB y CERO swap.** Eso **cambia el carácter del riesgo**,
+  no sólo su fecha: sin swap, agotar la RAM **no lanza**, el kernel mata el proceso, y
+  todo lo que protege este código —`_non_fatal`, la escalera de `try/except`, la regla del
+  tramo de B— está construido sobre excepciones. **La única pérdida que la regla del tramo
+  existe para evitar puede llegar por la única vía que la regla del tramo no puede
+  interceptar.**
