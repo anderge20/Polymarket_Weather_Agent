@@ -1476,6 +1476,21 @@ def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
         # the span rule cannot intercept. These two fields are what lets the
         # crossing be dated from the repository itself instead of reconstructed
         # from the shards by hand.
+        #
+        # THIS SERIES HAS A SEAM AT PR #26 and must not be differenced across
+        # it: that PR changes `rows_written` from rows OFFERED to rows APPLIED,
+        # and this field sums it. Offered and applied are equal on every shard
+        # written so far, and applied is the better quantity here — what occupies
+        # memory is what lands in the database, not what was read off disk.
+        #
+        # The full account lives in `store.load_shards`'s docstring, where the
+        # meaning is CHANGED, and is deliberately not repeated here: two copies
+        # of an explanation drift, and the one at the consumer would be the one
+        # nobody updates. What belongs here is that a reader of this field must
+        # go look. The rule the pair taught us: when you change what a number
+        # MEANS, hunt for who CONSUMES it, not who produces it — the change was
+        # declared at the producer and the consumer was two modules and one PR
+        # away.
         "store_total_bytes": int(store_bytes),
         "store_rows_loaded": int(store_rows),
         # `at_s` is relative to the start of the cycle, so without this the
