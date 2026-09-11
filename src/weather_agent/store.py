@@ -343,7 +343,32 @@ def load_shards(
     shards = [Path(p) for p in paths] if paths is not None else iter_shards(root, table)
     summary = {"table": table, "shards": len(shards), "rows_read": 0, "rows_written": 0}
     for shard in shards:
-        # ONE BATCH PER SHARD, not one statement per row.
+        # ONE BATCH PER SHARD, not one statement per row — and PER SHARD rather
+        # than per table, which is a choice with a measured price on both sides.
+        #
+        # Per table would be one statement instead of 32 and would approach the
+        # ceiling: decompressing and parsing the whole store costs 1.64 s against
+        # the 19.86 s this path takes, so if the upsert were free the speedup
+        # would be 474x rather than the 39x measured here. (That 474 lands within
+        # 1% of the 478x `upsert_many`'s own docstring measured for the pure
+        # INSERT ... SELECT path, on a different workload years apart.) So there
+        # is a factor of 12 left on the table and it is left there deliberately.
+        #
+        # WHY IT IS LEFT: holding one table's rows at once costs 242 MB of peak
+        # Python heap for `orderbook_snapshots` against 8.3 MB per shard
+        # (measured with `tracemalloc` over the real store, two sessions
+        # agreeing within the difference of one shard). That is 8.6% of the
+        # ~2 827 MB free on a host with NO SWAP, where exhausting memory does not
+        # raise — the kernel kills the process, and `_non_fatal`, the try/except
+        # ladder and the rule that nothing may throw between `stage_collect` and
+        # `stage_dump` are all built on exceptions and cannot see it. Trading 20
+        # seconds for 8.6% of the one resource that kills silently is not a
+        # trade worth making.
+        #
+        # The first estimate of that cost was ~45 MB, from rows x uncompressed
+        # JSON bytes. It was short by more than 5x: `book_snapshot` is nested, and
+        # a parsed Python dict is far heavier than the text it came from.
+        # ESTIMATING PYTHON OBJECT MEMORY FROM TEXT SIZE UNDERSTATES, ALWAYS.
         #
         # `upsert_many`'s own docstring measured the three paths on this exact
         # workload: one INSERT per row 24.99 s, executemany 16.47 s, and
