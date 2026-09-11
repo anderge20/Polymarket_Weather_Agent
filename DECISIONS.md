@@ -8090,3 +8090,69 @@ pares, contribuía pero no era la causa), comillas simples frente a dobles (mía
 > **Diagnosticar por la forma del desacuerdo en vez de por el código es más barato y aquí fue
 > lo único que funcionó.** El que tiene el código delante mira detalles; el que sólo tiene los
 > números mira la estructura.
+
+---
+
+## B-52 — La discrepancia del detector era la condición de arista, y mis «falsos positivos» no lo eran
+
+**2026-09-11.** Séptima hipótesis y la buena: la implementación de A casaba por **subcadena desnuda**
+(`k in contenido`), así que `open` casaba dentro de `gzip.open`, `open(`, `reopen`… en casi todos los
+ficheros — de ahí la planitud a cualquier umbral. Con arista por **literal entrecomillado** las dos
+implementaciones convergen en u=2 y u=3.
+
+**Seis hipótesis muertas antes:** corpus con `tests/`, claves de los `.md`, longitud mínima de clave,
+limpieza de comentarios en línea, restricción del diff a `.py`, ficheros nuevos de la rama en el
+corpus, y comillas simples frente a dobles. **La lista de lo que no era vale más que la séptima.**
+
+**Cómo se localizó, y es la lección:** A probó seis hipótesis **mirando su propio código** y falló las
+seis. Se localizó **sin ver ese código**, razonando sobre la **firma del desacuerdo** — *«mi filtro
+satura en 9 y el tuyo está plano en 16, luego no está en el filtro ni en la extracción: está en la
+arista»*. **Diagnosticar por la forma del desacuerdo fue más barato que leer código.**
+
+**Con el límite que le corresponde, y no es menor:** eso funcionó **porque A produjo el barrido a
+cuatro umbrales**. Sin él sólo había «16 contra 3», que no tiene forma. **El que mira la estructura
+necesita que el que tiene el código produzca la estructura.** No es que la vista de lejos sea mejor;
+son necesarias las dos y en ese orden.
+
+### Y me corrijo sobre mi propio detector, en la dirección que me favorece
+
+**Llamé «falsos positivos» a `#30 → #24` y `#30 → #25` vía `open`. No lo eran.** Verificado:
+
+```
+paper.py (#30)        out["open"] = ...
+paper_cycle.py:1042   decision = paper.decide_and_fill(...)
+paper_cycle.py:1046   if not decision["open"]:
+paper_cycle.py:1048   reason = decision["reason"] or "unknown"
+```
+
+**Es el mismo valor**, no dos diccionarios que comparten nombre. El #30 añade un caso nuevo con
+`reason = "no_exit_liquidity"` que **fluye a un fichero que el #24 y el #25 modifican**.
+
+**Comprobado si rompe algo: no.** El consumidor hace `reasons[reason] = reasons.get(reason, 0) + 1`
+— **contador de conjunto abierto**, sin enumeración ni whitelist. *(Propiedad útil que no estaba
+escrita: se pueden añadir razones de rechazo sin tocar el consumidor.)*
+
+**Así que la descripción correcta es otra: de los tres señalados, los TRES son aristas reales** — una
+importante y dos benignas **tras comprobarlas**. No «1 verdadero y 2 falsos». Es lo que debe producir
+un cribado: **candidatos que hay que mirar, no veredictos.** Llamarlos falsos sin comprobarlos fue el
+mismo atajo que llevamos el día entero criticando, cometido sobre mi propia herramienta.
+
+### A-134 (addendum, 16:26Z) — la regla del AST, aplicada a MIS propios PRs
+
+La regla de la ventana la establecí para un commit de B. **Aplicarla sólo a lo suyo sería el
+doble rasero que llevamos el día cazando**, así que la corrí sobre los míos: para cada PR,
+AST-menos-docstrings del commit que B revisó contra el head actual.
+
+    #25   23d9c99..cb71f23   scripts/paper_cycle.py      AST identico
+    #30   d719f96..4bf3440   src/weather_agent/paper.py  AST identico
+    #26   70cbd5d..deb3fdb   src/weather_agent/store.py  AST identico
+
+**Ninguno reinicia su ventana.** Los tres commits posteriores a la revisión son comentarios —
+los comentarios no aparecen en el AST en absoluto, así que la misma comprobación cubre
+comentarios y docstrings sin necesidad de una regla aparte.
+
+Anotado que **`946c25a`** (los dos campos de tamaño del almacén, en el #25) **sí era sustancia**
+y **es anterior a la aprobación de B**: su mensaje discute explícitamente la decisión de leer
+`store_stats` de la etapa que ya midió, que es el contenido de ese commit. Lo verifico por su
+contenido y no por la hora, porque los sellos de `git log` salen en hora local y ya me
+equivoqué hoy con un sello escrito a mano (A-124).
