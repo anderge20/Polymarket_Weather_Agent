@@ -418,9 +418,25 @@ def decide_and_fill(
     # This is not hypothetical arithmetic. Measured over the 36 850 books
     # collected 2026-09-09..11: 25 736 two-sided (69.8 %), **5 557 ask-only
     # (15.1 %)** and 5 557 bid-only. The ask-only ones are exactly the ones a BUY
-    # fills against. (The two counts are equal because a market is quoted on one
-    # side or both, never one side per token: in 2 244 of 2 244 markets both
-    # tokens shared their liquidity state.)
+    # fills against.
+    #
+    # THE TWO COUNTS ARE EQUAL BECAUSE IT IS EXACTLY ONE SIDE PER TOKEN, and the
+    # first version of this comment asserted the opposite. A one-sided market
+    # contributes one ask-only token AND its complement bid-only, because
+    # `bid(Yes, p)` IS `ask(No, 1-p)` — the same resting order seen from the two
+    # tokens. Measured on the 583 markets that never quote both sides: in 583 of
+    # 583 each token stays on ONE side across every pass and the two sit on
+    # OPPOSITE sides; not one alternates. That is why the mirror is exact and not
+    # approximate. (What IS shared per market is the two-sided/one-sided STATE —
+    # 2 244 of 2 244 — a different statement, and the one that got garbled into a
+    # wrong cause.)
+    #
+    # AND THE MIRROR CLOSES THE OTHER DIRECTION BY ITSELF, which is why no guard
+    # appears for it: a FADE buys the COMPLEMENT, and if this token is ask-only
+    # its complement is bid-only, always. So a FADE finds no ask ladder and is
+    # already refused `empty_book_side` inside `simulate_taker_buy`, at entry,
+    # before reaching here. Both directions are shut — by two different
+    # mechanisms, and only one of them is code written for the purpose.
     #
     # `hold_to_resolution` — the default — is untouched: redemption needs no
     # counterparty, so a missing bid costs nothing there. The refusal applies
