@@ -285,3 +285,65 @@ def test_restoring_an_empty_ledger_leaves_the_sequence_at_one(con):
 
 def test_a_table_without_a_sequence_reports_none(con):
     assert store.restore_sequences(con, table="orderbook_snapshots") is None
+
+
+def test_a_shard_whose_rows_carry_different_columns_still_loads(con, tmp_path):
+    """The replay must not raise halfway through when a schema generation changes.
+
+    `upsert_many` refuses a ragged batch — correctly, since binding a short row
+    to a wide statement would put values in the wrong parameters. So the replay
+    groups by column set before batching.
+
+    This is not hypothetical shape-guessing: the shard store already carries
+    THREE column generations in `venue_coverage` and TWO in `cycle_params`,
+    written across 2026-09-09/10 as fields were added. Those two tables happen to
+    have no conflict columns and are never replayed, so the trap is not armed
+    today — which is exactly why it has to be closed now rather than on the day a
+    replayed table gains a field and a cycle dies between collect and dump.
+    """
+    wide = {"token_id": "A", "timestamp": T0.isoformat(), "dataset_version": "ds1",
+            "record_version": 1, "best_bid": 0.4, "best_ask": 0.6}
+    narrow = {"token_id": "B", "timestamp": T0.isoformat(), "dataset_version": "ds1",
+              "record_version": 1}
+    store.write_shard([wide, narrow], table="orderbook_snapshots", run_id="r1",
+                      root=tmp_path, when=T0)
+
+    from weather_agent import database
+    fresh = database.init_db(database.connect(":memory:"))
+    try:
+        out = store.load_shards(fresh, table="orderbook_snapshots", root=tmp_path)
+        assert out["rows_read"] == 2
+        assert out["rows_written"] == 2, "both column generations must land"
+        got = fresh.execute("SELECT token_id, best_bid FROM orderbook_snapshots "
+                            "ORDER BY token_id").fetchall()
+        assert got == [("A", 0.4), ("B", None)]
+    finally:
+        fresh.close()
+
+
+def test_the_replay_applies_rows_in_one_statement_per_column_group(con, tmp_path, monkeypatch):
+    """The fast path is USED, not merely available.
+
+    `upsert_many`'s docstring measured this workload at 24.99 s row-by-row
+    against 0.05 s for the bulk path — 478x — and the replay was calling the slow
+    one. A speedup nobody can observe is a speedup that silently regresses, so
+    this pins the call shape rather than the wall clock.
+    """
+    from weather_agent import database
+    calls = {"many": 0, "one": 0}
+    real_many = database.upsert_many
+    monkeypatch.setattr(database, "upsert",
+                        lambda *a, **k: calls.__setitem__("one", calls["one"] + 1))
+    monkeypatch.setattr(database, "upsert_many",
+                        lambda *a, **k: (calls.__setitem__("many", calls["many"] + 1),
+                                         real_many(*a, **k))[1])
+    store.write_shard(_rows(5), table="orderbook_snapshots", run_id="r1",
+                      root=tmp_path, when=T0)
+    fresh = database.init_db(database.connect(":memory:"))
+    try:
+        out = store.load_shards(fresh, table="orderbook_snapshots", root=tmp_path)
+        assert out["rows_written"] == 5
+        assert calls["many"] == 1, "five rows, one column set: one batched call"
+        assert calls["one"] == 0, "the row-at-a-time path must not be used"
+    finally:
+        fresh.close()
