@@ -22,6 +22,16 @@ pass vacuously.** An empty PR list, a `paper-state` branch with no collect commi
 a `gh` that errors -- each of those is a FAILING result, never a quiet OK. The
 whole point is to catch the case where the thing being measured stopped existing.
 
+AND THE RULE HAS A SECOND HALF, which session B supplied and which this file
+cannot enforce: **`[UNMEASURABLE]` is only correct while it stays RARE.** Two of
+his watchdogs cried wolf on 2026-09-11 -- one evaluated the cycle before the merge
+it was checking, another the shard before the fix -- and neither broke anything
+except his willingness to believe them. A check that shouts often gets discounted,
+and a discounted check is worse than no check because it still LOOKS armed. So the
+rate of `[UNMEASURABLE]` is itself a number worth watching: when it climbs, the
+thing at fault is the instrument, not the system. It is not automated here because
+this script keeps no state across runs, and a frequency needs a memory.
+
 Not wired into CI. It is run by whoever closes a batch of merges, and by the daily
 routine in place of the Actions check it replaces.
 """
@@ -115,13 +125,52 @@ def check_collector(max_age: dt.timedelta = COLLECTOR_MAX_AGE, runner=_run,
     return []
 
 
+def check_mainline(since: str = "2026-09-11", runner=_run) -> list[str]:
+    """Every commit on main's first-parent line must be a merge carrying a PR.
+
+    THE POPULATION IS `main`, NOT THE PR LIST. Session B found this hole in
+    `check_d16`: a commit pushed straight to `main` never appears in `gh pr list`,
+    so the audit would report "every PR honoured D16" -- true, and empty. That is
+    this file's own rule turned on itself. Refusing to pass vacuously is not enough
+    if the thing counted is a PROXY for the thing that matters.
+
+    `--first-parent` IS LATCHED HERE BY A TEST, because dropping it is the natural
+    mistake and it fails loudly in the alarming direction: a plain `git log` lists
+    everything reachable, including the branch commits that arrived INSIDE merges,
+    and reports them all as direct pushes. B's first attempt at this measurement
+    returned "24 direct commits"; all 24 were branch commits. Walking the first
+    parent only visits the mainline.
+
+    Measured when written: 11 merges since 2026-09-11, zero direct commits. The
+    hole is real and does not bite today, which is the moment to close it.
+    """
+    runner(["git", "fetch", "-q", "origin", "main"])
+    out = runner(["git", "log", "origin/main", "--first-parent",
+                  "--format=%h|%p|%s", f"--since={since}"])
+    lines = [l for l in out.strip().splitlines() if "|" in l]
+    if not lines:
+        raise CheckFailed(f"no commits on main since {since} -- nothing to audit")
+
+    problems = []
+    for line in lines:
+        sha, parents, subject = line.split("|", 2)
+        if len(parents.split()) < 2:
+            problems.append(f"{sha}: pushed straight to main, no merge commit "
+                            f"({subject[:60]})")
+        elif "PR #" not in subject:
+            problems.append(f"{sha}: merge names no PR ({subject[:60]})")
+    return problems
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--limit", type=int, default=20, help="merged PRs to audit")
+    ap.add_argument("--since", default="2026-09-11", help="how far back to walk main")
     args = ap.parse_args(argv)
 
     failed = False
     for name, fn in (("D16 merge window", lambda: check_d16(args.limit)),
+                     ("mainline integrity", lambda: check_mainline(args.since)),
                      ("collector freshness", check_collector)):
         try:
             problems = fn()
