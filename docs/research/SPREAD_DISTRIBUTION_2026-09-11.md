@@ -122,3 +122,37 @@ opera en la zona de duda, y la zona de duda cotiza al doble.
 > discrepancia queda sin resolver»* era una conclusión que no había intentado ganarme. El
 > contraste que la resuelve costaba veinte líneas. **«Sin resolver» hay que ganárselo
 > intentándolo, igual que «no verificable».**
+
+
+---
+
+## ADENDA 2 — el 30 % de un solo lado está CONCENTRADO, y la liquidez es del mercado
+
+El 30,2 % de libros cotizados por un lado **no es un recorte uniforme repartido sobre todo el
+universo**, que es como se lee si se cuenta por filas. Contado por sujeto:
+
+    tokens 4.488          mercados 2.244
+      SIEMPRE de dos lados   47,0 %
+      NUNCA  de dos lados    26,0 %   <- en 3 dias y ~30 pasadas, ni una vez
+      mixtos                 27,0 %
+
+**Un cuarto del universo no se puede operar nunca.** No es «a veces está ilíquido»: son **583
+mercados** que en treinta pasadas no cotizaron los dos lados ni una sola vez.
+
+**Consecuencia para cualquier puerta de sustrato**, y es por lo que esto no es descriptivo:
+contar cobertura sobre la población **observada** cuenta mercados que **jamás podrán
+convertirse en una operación**. Una puerta que exige *N* eventos poblados se abre con hasta un
+cuarto de ese sustrato permanentemente muerto, más otro cuarto intermitente. El conteo tiene
+que ser **por mercado y por evento sobre la población operable**, no descontando un porcentaje
+de filas.
+
+### Y un hecho estructural que estaba sin comprobar
+
+**En 2 244 de 2 244 mercados (100 %) los dos tokens comparten estado de liquidez.** Si uno
+cotiza a un solo lado, el otro también, siempre; si uno cotiza a dos, el otro también.
+
+Tiene explicación —un bid en `Yes` es un ask en `No`, así que un libro de dos lados en un
+token lo es en el otro por construcción del venue— pero **nadie lo había verificado**, y la
+consecuencia práctica es que **la liquidez es propiedad del MERCADO, no del lado**: cualquier
+conteo de sustrato puede hacerse por mercado sin perder información, y un filtro que descarte
+tokens individualmente está haciendo trabajo de más.
