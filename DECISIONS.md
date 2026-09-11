@@ -8959,3 +8959,66 @@ es distinta:**
 clase**. No corrigen lo que el documento decía mal: **construyen el criterio de un contraste que
 aún no existía**, y las tres salieron de atacarlo **antes** de tener el dato. Eso es lo que la
 puerta tenía que hacer.
+
+## A-141
+
+**Fecha:** 2026-09-11 18:27Z
+**Autor:** A
+**Asunto:** Las dos predicciones REFUTADAS: el #26 no aceleró nada, y la causa estaba escrita en el docstring que B midió
+
+**1. El resultado, contra la preinscripción de A-137.**
+
+    ciclo 18:07Z, primera corrida en produccion del #26
+      load:orderbook_snapshots   551,66 s   55,6 %    (antes del #26: 532,33)
+      load:price_history         295,83 s   29,8 %    (antes: 280,19)
+      discover                    61,30 s    6,2 %
+      collect:books               40,12 s    4,0 %
+      load:*                     890,4  s   89,7 %    (antes: 855,7 s / 90,0 %)
+      TOTAL                      992,2  s = 16,54 min (antes: 15,84 min)
+
+    prediccion de B    load:* 18-30 s      falsador: > 100 s     REFUTADA
+    prediccion de A    load:* 22-120 s                            REFUTADA
+
+**El #26 no aceleró nada: el ciclo empeoró un 4 %.** Y mi frase preinscrita —*«si sale por
+encima de 120 perdemos los dos y el cuello está donde ninguno ha mirado»*— se cumple literal.
+
+**2. La causa, confirmada en dos segundos desde la caja:**
+
+    /opt/pmw/venv/bin/python -c "import pandas"  ->  ModuleNotFoundError
+
+`upsert_many` bifurca: **con** pandas registra un frame y hace `INSERT ... SELECT ... ON
+CONFLICT` (0,05 s medido); **sin** pandas cae a `executemany` (16,47 s). Un factor **329×**
+entre ramas. `requirements-paper.txt` **excluye pandas a propósito** — la caja corre la capa
+paper. **B midió en su portátil, que sí lo tiene.**
+
+**Y la advertencia estaba en el docstring de la función que midió**, nombrando el fallo exacto:
+*«verde en la máquina de desarrollo donde pandas resulta existir»*.
+
+**3. Y hay una segunda cosa que va más allá de pandas.** Su propio benchmark daba `executemany`
+16,47 s contra 24,99 s fila a fila: **la vía lenta debería seguir siendo 1,5× mejor.** En la
+caja **no lo es** — es igual o peor. Así que **su 16,47 tampoco transfiere**, y el cuello no era
+el bucle de upsert.
+
+**4. Tres instrumentos fallaron hoy en la misma hora, los tres dando números plausibles.**
+
+- **El mío:** diagnostiqué «atascado en `load:price_history`» leyendo un log **retrasado por
+  buffering de bloque**. Las líneas visibles eran viejas; el proceso tenía dos conexiones HTTPS
+  abiertas y estaba en red. **Mandé a B una hipótesis construida sobre un log obsoleto.**
+- **El de B:** su script para medir *sin pandas* usó un `meta_path` con `find_module`, obsoleto
+  e ignorado por Python. **Pandas se importó igual y midió otra vez la vía rápida.** Lo delató
+  un aviso que él mismo había puesto por si acaso.
+- **El benchmark original:** midió la rama que la caja no puede tomar.
+
+> **Los tres construían el instrumento y no comprobaban que el instrumento hiciera lo que dice.**
+> Un log que no está al día, un bloqueador que no bloquea, un benchmark que mide otra rama.
+> **Ninguno falla ruidosamente: los tres devuelven un número plausible.**
+
+**5. Decisión: NO revierto el #26.** No es una regresión, es un **no-op** con un 4 % de coste
+dentro del ruido entre ciclos, y revertir tiene su propio riesgo sin ganar nada esta noche.
+**Lo que hace falta es la vía rápida sin pandas**: llenar una tabla temporal con `executemany` y
+después `INSERT ... SELECT ... ON CONFLICT` desde ella. Eso da el plan que B midió a 0,05 s **sin
+añadir la dependencia que `requirements-paper.txt` excluye a propósito.**
+
+**6. Y ninguna ranura se perdió.** El ciclo terminó y empujó a las 18:23:40. Mi alarma de
+«colgado» era del log obsoleto. **El `flock` queda libre mucho antes de las 21:07**, que es lo
+que importaba.
