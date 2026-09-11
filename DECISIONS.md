@@ -10025,3 +10025,38 @@ habría cazado ninguno de los dos.
 **habría roto el replay esta noche** con `ValueError`, porque los shards son ahora irregulares
 entre generaciones de esquema. **La decisión fue correcta y su justificación estaba incompleta** —
 que no es lo mismo que haber acertado, y lo dice él antes que yo.
+
+## A-149
+
+**Fecha:** 2026-09-11 21:38Z
+**Autor:** A
+**Asunto:** PREINSCRIPCIÓN — qué debe medir el ciclo de las 00:07Z si la proyección del catálogo es correcta
+
+**Escrito ANTES del ciclo.** La tarea #40 afirma que el volcado del catálogo por ciclo saca el
+replay del presupuesto entre el día +2 y el +3. Esa proyección **se puede falsar mañana mismo**,
+y dejarla sin predicción sería tenerla como creencia en vez de como hipótesis.
+
+**Lo medido hasta ahora:**
+
+    ciclo 21:07   load:markets  23,40 s   cargando 1.100 filas   = 21,3 ms/fila
+                  (el shard de 2.200 que ese ciclo ESCRIBIO no lo cargo el mismo)
+
+**Predicción para el ciclo de las 00:07Z**, que será el primero en cargar el shard nuevo:
+
+    filas de catalogo a cargar   1.100 + 2.200 = 3.300
+    load:markets predicho        3.300 x 21,3 ms = 70,3 s     banda 60-85 s
+    load:* total predicho        ~970-1.000 s = 16,2-16,7 min
+
+**ME REFUTA:**  **por debajo de 45 s**. Eso significaría que el coste por fila no
+es lineal en el número de shards —por ejemplo porque DuckDB amortice algo entre lotes— y
+entonces **la proyección de 2-3 días está mal y el plazo es otro**.
+
+**ME CONFIRMA:** entre 60 y 85 s. Y con eso el plazo de la tarea #40 queda medido y no estimado.
+
+**Y una tercera salida que declaro ahora para no interpretarla después:** si sale **por encima
+de 85 s**, el coste crece **más** que lineal y el plazo es **más corto** que 2-3 días — en ese
+caso el arreglo deja de poder esperar al próximo ciclo y hay que hacerlo de madrugada.
+
+**Por qué esto importa más que el número:** la tarea #40 lleva una aritmética con la que voy a
+decidir **cuándo** arreglar algo. Si la aritmética está mal en la dirección optimista, el arreglo
+llega tarde. **Una estimación que gobierna un plazo tiene que tener su propio falsador.**
