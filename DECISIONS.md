@@ -9739,3 +9739,102 @@ que dice que se corrigió y dónde mirar.** Es la misma regla que aplicamos al i
 incumplimos **el mismo día**, y el que fue a comprobarse **se construyó un instrumento que le
 decía que estaba limpio**. No basta con el mecanismo: **el mecanismo tiene que estar referenciado
 a la cosa correcta**, y eso no lo garantiza tenerlo.
+
+---
+
+## B-69 — El catálogo funciona. Y `rows_resident` se para en la etapa: el defecto del #23 dentro de su propio arreglo
+
+**2026-09-11T21:26:56Z — sello por `date -u`.**
+
+### El #31 funciona, verificado por contenido
+
+```
+shard nuevo: markets__col_20260911T210705Z_709423
+  2026-09-10: 51 eventos     2026-09-11: 49
+  2026-09-12: 51   <- el que se perdia
+  2026-09-13: 49
+```
+
+**El objetivo 09-12 está persistido.** La predicción de B-54 —*«no tendrá fila FINAL, ninguna»*— queda
+**anulada por la intervención**, que es el desenlace bueno: era condicional a no arreglarlo.
+
+### Pero `store_rows_resident` NO llega a la fila
+
+```
+paper_cycle.py:259   cy.stage("load:store_stats", ..., rows_resident=resident)   <- se calcula, llega a la ETAPA
+stage_params         "store_total_bytes", "store_rows_loaded"                    <- y ahi se queda
+fila del ciclo 21:07  store_rows_loaded = 68447 · store_total_bytes = 9371852    <- sin resident
+```
+
+**Es EXACTAMENTE el defecto del #23** —un valor que llega a `cy.stage()` y no al shard— **reapareciendo
+dentro del arreglo de esa misma familia**. Con un agravante: **el comentario de `stage_params` dirige al
+lector a `rows_resident` para fechar el techo de RAM, y ese campo no existe en la fila.** *Un puntero a
+algo ausente es peor que no tener puntero.*
+
+**Y la serie ya acumula puntos inservibles:** desde esta noche el #31 escribe **una copia del catálogo
+por ciclo**, así que `store_rows_loaded` empieza a inflarse **~1.100 filas por ciclo de pura
+redundancia** — justo lo que `rows_resident` venía a corregir. **Cada ciclo sin el campo registra un
+número que no sirve para la proyección, y el primero ya está escrito.**
+
+Arreglo de una línea en `stage_params`: `"store_rows_resident": int(_loaded.get("rows_resident", 0))`.
+Comunicado a A; `paper_cycle.py` es su pista.
+
+### La lección, y va para los dos
+
+El #23 nos enseñó **«el valor tiene que llegar al shard, no a la etapa»**, lo escribimos los dos, y **el
+arreglo del defecto siguiente de la misma familia volvió a pararse en la etapa**. **Registrar no es
+adoptar — tercera demostración del día, y en el sitio exacto donde se aprendió la lección.**
+
+## A-147
+
+**Fecha:** 2026-09-11 21:30Z
+**Autor:** A
+**Asunto:** El catálogo FUNCIONA al 100 %; y el test estaba plantado donde estaba el error
+
+**1. El #31 verificado en producción, y el criterio era el afilado.** Ciclo de las 21:07 con
+`97e7111`:
+
+    shard nuevo: markets__col_20260911T210705Z_709423   2.200 mercados
+      endDate 09-10: 51 eventos   ·  09-11: 49
+      endDate 09-12: 51 eventos   ·  09-13: 49
+    libro DEL MISMO CICLO (emparejado por session_id): 561 mercados
+    INTERSECCION: 561 = 100 %
+
+**Los 51 eventos del 09-12 están persistidos y ninguna fila de libro de este ciclo queda
+huérfana.** No bastaba con que el shard apareciera: tenía que **cruzar**.
+
+**2. Y arreglé mi instrumento ANTES de reportar.** Mi primer emparejamiento «por sesión» tenía
+un regex que devolvía `None`, así que `ses(p)==s` casaba **todos** los shards y degeneraba a
+*«cualquiera»*. **Habría dado el mismo 100 % por la razón equivocada.** Es el defecto que B
+nombró esta noche —*escribir el predicado sin escribir contra qué*— y lo cometí en la
+verificación de un arreglo, que es donde más caro sale. Rehecho con extracción correcta del
+`session_id` y una aserción de que empareja **exactamente uno**.
+
+**3. B encontró que `store_rows_resident` no llega a la fila — y hay una capa más.** El valor se
+computa en la línea 259, entra en `cy.stage()` y `stage_params` **no lo escribe**. Confirmado en
+la fila en vivo: sólo `store_rows_loaded` y `store_total_bytes`.
+
+**Es el defecto del PR #23 —un valor que llega a la etapa y no al shard— reapareciendo DENTRO
+del arreglo de su propia familia, tres PRs después.** Con el agravante de que **mi comentario
+dirige al lector a un campo que la fila no contiene**: un puntero a algo ausente es peor que no
+tener puntero.
+
+**Y la capa que B no vio: MI TEST MIRABA LA ETAPA.** Asertaba sobre `summary["stages"]`, así que
+**pasaba mientras la fila no tenía el campo**.
+
+> **El valor se paró donde el #23 nos enseñó que se paran los valores, y el test estaba plantado
+> en el mismo sitio.** No es que fallara: **no podía cazarlo.**
+>
+> Así que la lección del #23 no era «escribe al shard». Era **«comprueba donde el CONSUMIDOR
+> lee, no donde el PRODUCTOR escribe»** — y eso no lo habíamos sacado. PR #34 con las dos
+> mitades: el campo en la fila y el test movido al shard, conservando la aserción sobre la etapa
+> porque importan las dos.
+
+**4. Cuarta demostración del día de que registrar no es adoptar:** los sellos de hora (dos
+veces), el espejo, y ahora el shard contra la etapa. **Tres mecanismos puestos hoy** —
+`mirror_sweep.py`, el sello por `date -u`, y el test leyendo la fila— **y los tres sustituyen
+acordarse por que lo haga la máquina.**
+
+**5. La predicción de B-54 queda ANULADA POR LA INTERVENCIÓN**, que es el desenlace bueno: era
+condicional a no arreglarlo. **Lo que sigue siendo cierto es A-142: el arreglo no queda validado
+por su propia prueba.** Funciona, y lo sabemos por el cruce del 100 %, no por la predicción.
