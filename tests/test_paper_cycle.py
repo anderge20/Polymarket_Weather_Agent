@@ -2115,3 +2115,133 @@ def test_rows_resident_does_not_count_a_duplicate_shard_twice(con, tmp_path,
     assert row["store_rows_resident"] == 1, (
         "the resident count reached the stage and not the row — a reader dating "
         "the RAM ceiling from the committed series would find the field absent")
+
+def test_an_identical_catalogue_is_not_dumped_twice(con, tmp_path, monkeypatch):
+    """Two cycles over the same universe must leave ONE catalogue shard.
+
+    Counted in the STORE, not asserted on the stage. That is the lesson PR #34
+    cost us: `rows_resident` reached `cy.stage()` and never the row, and the test
+    that should have caught it was reading the stage too — standing in the same
+    place as the error, so it confirmed it instead of detecting it.
+
+    The cost this prevents is dated: a catalogue row loads in 21.3 ms on the box,
+    the snapshot is 2 200 rows, and ten dumps a day put `load:*` past the
+    42-minute budget between day +2 and +3 — after which the `flock` makes the
+    next cycle skip, and what it skips is a book slot.
+    """
+    monkeypatch.setattr(paper_cycle, "stage_collect",
+                        lambda cy, *a, **k: cy.stage("collect:books", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_venue_coverage",
+                        lambda cy, *a, **k: cy.stage("venue_coverage", paper_cycle.OK))
+
+    def _discover(cy, con, **kw):
+        db_mod.upsert(con, "markets",
+                      {"market_id": "m1", "dataset_version": "ds1",
+                       "record_version": 1, "event_id": "e1", "question": "q"},
+                      ("market_id", "dataset_version", "record_version"))
+        cy.stage("discover", paper_cycle.OK)
+    monkeypatch.setattr(paper_cycle, "stage_discover", _discover)
+
+    store_root = tmp_path / "store"
+
+    def _run(tag):
+        assert paper_cycle.main([
+            "--target-date", "2026-09-10", "--dataset-version", "ds1",
+            "--store-root", str(store_root), "--db", str(tmp_path / f"{tag}.duckdb"),
+            "--collect-only", "--summary-json", str(tmp_path / f"{tag}.json")]) == 0
+
+    _run("first")
+    tras_uno = len(store.iter_shards(store_root, "markets"))
+    _run("second")
+    tras_dos = len(store.iter_shards(store_root, "markets"))
+
+    assert tras_uno == 1, "el primer ciclo debe escribir el catalogo"
+    assert tras_dos == 1, (
+        "el segundo ciclo vio el MISMO universo y volvio a volcarlo: cada copia "
+        "cuesta 21,3 ms por fila en todos los replays posteriores")
+
+
+def test_a_changed_catalogue_is_dumped_again(con, tmp_path, monkeypatch):
+    """And the skip must not be a ban: a universe that GREW has to be written.
+
+    Without this the previous test passes on a `stage_dump` that never dumps the
+    catalogue at all — which would re-create the defect PR #31 exists to fix, and
+    the shard count alone cannot tell the two apart."""
+    monkeypatch.setattr(paper_cycle, "stage_collect",
+                        lambda cy, *a, **k: cy.stage("collect:books", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_venue_coverage",
+                        lambda cy, *a, **k: cy.stage("venue_coverage", paper_cycle.OK))
+
+    store_root = tmp_path / "store"
+    vistos = {"n": 0}
+
+    def _discover(cy, con, **kw):
+        vistos["n"] += 1
+        for i in range(vistos["n"]):          # 1 mercado, luego 2
+            db_mod.upsert(con, "markets",
+                          {"market_id": f"m{i}", "dataset_version": "ds1",
+                           "record_version": 1, "event_id": "e1", "question": "q"},
+                          ("market_id", "dataset_version", "record_version"))
+        cy.stage("discover", paper_cycle.OK)
+    monkeypatch.setattr(paper_cycle, "stage_discover", _discover)
+
+    def _run(tag):
+        assert paper_cycle.main([
+            "--target-date", "2026-09-10", "--dataset-version", "ds1",
+            "--store-root", str(store_root), "--db", str(tmp_path / f"{tag}.duckdb"),
+            "--collect-only", "--summary-json", str(tmp_path / f"{tag}.json")]) == 0
+
+    _run("first")
+    _run("second")
+    assert len(store.iter_shards(store_root, "markets")) == 2, (
+        "el universo crecio de 1 a 2 mercados y el segundo volcado NO se escribio: "
+        "el salto se ha convertido en una prohibicion")
+
+
+def test_a_failing_catalogue_gate_dumps_anyway_AND_says_so(con, tmp_path,
+                                                           monkeypatch):
+    """Fail-open is half the requirement; the other half is not being silent.
+
+    Session B named the case: `CONFLICT_COLS[table]` raising `KeyError` the day a
+    catalogue table is added without declaring its keys is PERMANENT. A silent
+    fail-open would return False forever, the catalogue would go back to 2 200
+    rows a cycle, and the 2-3 day budget crossing this stage removes would come
+    back through the error path with nothing in any log.
+
+    So the dump must still happen AND the failure must reach the profile — which
+    is where someone looks in three days asking why the cycle grew again."""
+    monkeypatch.setattr(paper_cycle, "stage_collect",
+                        lambda cy, *a, **k: cy.stage("collect:books", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_venue_coverage",
+                        lambda cy, *a, **k: cy.stage("venue_coverage", paper_cycle.OK))
+
+    def _discover(cy, con, **kw):
+        db_mod.upsert(con, "markets",
+                      {"market_id": "m1", "dataset_version": "ds1",
+                       "record_version": 1, "event_id": "e1", "question": "q"},
+                      ("market_id", "dataset_version", "record_version"))
+        cy.stage("discover", paper_cycle.OK)
+    monkeypatch.setattr(paper_cycle, "stage_discover", _discover)
+
+    def _boom(*a, **k):
+        raise KeyError("no conflict cols for this table")
+    monkeypatch.setattr(paper_cycle, "catalogue_is_unchanged", _boom)
+
+    store_root = tmp_path / "store"
+    assert paper_cycle.main([
+        "--target-date", "2026-09-10", "--dataset-version", "ds1",
+        "--store-root", str(store_root), "--db", str(tmp_path / "t.duckdb"),
+        "--collect-only", "--summary-json", str(tmp_path / "s.json")]) == 0
+
+    assert store.iter_shards(store_root, "markets"), (
+        "the gate raised and the dump did not happen — fail-open is the whole "
+        "point: a spurious dump costs seconds, a skipped one loses the universe")
+
+    stages = {st["stage"]: st for st in
+              json.loads((tmp_path / "s.json").read_text())["stages"]}
+    gate = stages.get("dump:markets:gate")
+    assert gate is not None, (
+        "the gate failed and nothing recorded it — a permanent failure would "
+        "restore the per-cycle dump with no line anywhere")
+    assert gate["status"] == paper_cycle.STOPPED
+    assert "no conflict cols" in gate["error"]

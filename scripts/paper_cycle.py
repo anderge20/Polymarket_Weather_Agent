@@ -1604,6 +1604,64 @@ def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
     return params
 
 
+def catalogue_is_unchanged(con, table: str, root: str) -> bool:
+    """Would this catalogue dump be byte-for-byte the previous one?
+
+    THE CATALOGUE IS A SNAPSHOT, NOT A LEDGER. Dumping an identical snapshot ten
+    times a day adds no information and costs replay time on every later cycle,
+    because `load_shards` reloads every shard. Measured on the box: a catalogue
+    row costs 21.3 ms to load, the snapshot is 2 200 rows, and ten dumps a day put
+    `load:*` past the 42-minute budget between day +2 and +3 — at which point the
+    `flock` makes the next cycle skip, and what it skips is a book slot.
+
+    THREE CONDITIONS, AND EACH ONE ALONE MISSES A CASE SEEN ON 2026-09-11:
+
+      * the conflict-key SET is identical  — alone it misses a schema migration
+        that adds columns without adding rows. `SCHEMA_VERSION 6` added seven
+        (`end_date`, `fee_rate`, `fee_exponent`, `fee_taker_only`, `fees_enabled`,
+        `measurement_rule_code`, `uma_resolution_status`), and the last of those
+        is what R30 §4.3 counts resolved events with;
+      * the KEY set of the rows is identical — alone it misses a changed value;
+      * no VALUE differs over those keys — alone it misses both of the above.
+
+    "Compare the content" is NOT a specification until it says which comparison:
+    on the same two shards, `dict != dict` reported 1 100 differing rows and a
+    field-by-field walk over the COMMON keys reported 0. Both are "content".
+
+    RAISES RATHER THAN SWALLOWING, and the CALLER fails open. The direction is
+    right -- a spurious dump costs seconds of replay, a skipped one re-creates the
+    defect PR #31 exists to fix, and this runs where a capture is still unwritten
+    -- but an `except` HERE would be silent, and session B named the case that
+    makes silence expensive: `CONFLICT_COLS[table]` raising `KeyError` the day a
+    catalogue table is added without declaring its keys is PERMANENT, not
+    transient. The gate would return False forever, the catalogue would go back to
+    2 200 rows a cycle, and the 2-3 day budget crossing this PR removes would come
+    back through the error path WITHOUT ONE LINE ANYWHERE. The defect prevented
+    here, reintroduced by the handler for it.
+
+    ONLY SKIPS AGAINST A COMPLETE SNAPSHOT. The comparison is against the most
+    recent shard; if that shard were a SUBSET of the real state -- as the frozen
+    2026-09-09 one was against tonight's -- the sets differ and the gate says
+    "changed". Fail-open again, and stated so nobody reads the skip as stronger
+    than it is."""
+    shards = store.iter_shards(root, table)
+    if not shards:
+        return False                          # nothing to compare against
+    previous = list(store.read_shard(sorted(shards)[-1]))
+    current = db.query(con, f"SELECT * FROM {table}")
+    key = list(store.CONFLICT_COLS[table])
+
+    ident = lambda r: tuple(str(r.get(c)) for c in key)
+    if {ident(r) for r in previous} != {ident(r) for r in current}:
+        return False
+    if {k for r in previous for k in r} != {k for r in current for k in r}:
+        return False
+    prev_by = {ident(r): r for r in previous}
+    cols = {k for r in current for k in r}
+    return all(all(prev_by[ident(r)].get(c) == r.get(c) for c in cols)
+               for r in current)
+
+
 def stage_dump(cy: Cycle, con, *, root: str, session_id: str,
                dataset_version: str, since: datetime,
                dump_catalogue: bool = False) -> None:
@@ -1634,13 +1692,32 @@ def stage_dump(cy: Cycle, con, *, root: str, session_id: str,
     shard. A criterion that fails for half the run on an artefact of the dump
     schedule is not a criterion.
 
-    COLLECT-ONLY CYCLES STILL SKIP IT, and that is the whole saving: the collector
-    fires 8 times a day and decides nothing, so its cycles have nothing for the
-    replay to reproduce (`replay` returns "trivially reproducible" for them). The
-    catalogue is dumped where it is needed and nowhere else."""
+    AND SINCE PR #31 EVERY CYCLE DUMPS IT, collect-only included — this paragraph
+    used to say the opposite and PR #31 left it saying so. The reason is not
+    replay: it is that the universe is not recoverable from the `closed=false`
+    feed, so a market discovered live and never written disappears when it closes.
+
+    WHAT IS SKIPPED NOW IS AN IDENTICAL SNAPSHOT, not a cycle. See
+    `catalogue_is_unchanged`: dumping the same 2 200 rows ten times a day costs
+    21.3 ms per row on every later replay and crosses the 42-minute budget in two
+    to three days."""
     tables = LEDGER_TABLES + (CATALOGUE_TABLES if dump_catalogue else ())
     total = 0
+    saltados = 0
     for table in tables:
+        if table in CATALOGUE_TABLES:
+            # Fail-open WITH A RECORD. The gate raising must not cost the dump,
+            # and it must not be invisible either: a permanent failure would
+            # silently restore the per-cycle dump this stage exists to avoid.
+            try:
+                unchanged = catalogue_is_unchanged(con, table, root)
+            except Exception as exc:
+                unchanged = False
+                cy.stage(f"dump:{table}:gate", STOPPED, error=repr(exc))
+            if unchanged:
+                saltados += 1
+                cy.stage(f"dump:{table}", SKIPPED, reason="catalogue_unchanged")
+                continue
         # The catalogue is a full snapshot (its rows are re-stamped every run, so a
         # `since` filter would either take everything or nothing); the ledger is
         # incremental.
@@ -1656,6 +1733,7 @@ def stage_dump(cy: Cycle, con, *, root: str, session_id: str,
     if not dump_catalogue:
         cy.stage("dump:catalogue", SKIPPED, reason="collect_only_nothing_to_replay")
     cy.stage("dump", OK, tables=len(tables), rows_written=total,
+             catalogue_tables_skipped=saltados,
              catalogue="dumped" if dump_catalogue else "skipped")
 
 
