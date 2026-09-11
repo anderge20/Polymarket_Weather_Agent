@@ -707,3 +707,88 @@ sí la tabla exacta); fee `0.05·p·(1−p)` taker-only según D19; `x_exec = 0.
 `PREREG_R21_ENMIENDA_A §A.2`; cuantiles POOLED por lead del artefacto versionado.
 **Limitación principal, repetida porque condiciona el informe entero: sin acceso a red no se
 verificó ni un solo precio vivo, y toda propuesta nueva es clase C hasta que se mida.**
+
+---
+
+# ADENDA DE VALIDACIÓN — sesión A, 2026-09-11 15:35Z
+
+*Escrita al final y no dentro del texto anterior, a propósito: el informe queda como se
+entregó, y esta adenda dice qué sigue en pie y qué no. Editar el cuerpo borraría la
+distinción entre lo que se afirmó y lo que se corrigió.*
+
+## LA RECOMENDACIÓN CENTRAL ESTÁ CADUCADA POR TRES DÍAS
+
+El informe cierra con *«dejar de modelar el tiempo, empezar a medir el libro»*, y lo apoya en:
+
+> `orderbook_snapshots` está vacía y las 16 165 636 filas de precio son **todas
+> `MIDPOINT_ESTIMATED`**
+
+**Eso es cierto del backfill histórico y falso del proyecto a día de hoy.** Medido sobre la
+rama `paper-state` de este mismo repositorio:
+
+| | |
+|---|---|
+| Shards de `orderbook_snapshots` commiteados | **33** |
+| Filas de libro **reales** | **36 850** |
+| `source` | `clob_books_poll` — ni una `MIDPOINT_ESTIMATED` |
+| Cobertura | 2026-09-09 … 2026-09-11, **10 ranuras/día**, ninguna perdida |
+| Campos por fila | `best_bid`, `best_ask`, `spread`, `imbalance`, `bid_depth_1/5/10`, `ask_depth_1/5/10` y el `book_snapshot` con sus niveles |
+
+**Spread observado** sobre los 25 736 libros de dos lados: mediana **0,0100**, p25 0,0080,
+p75 0,0200.
+
+### Qué le hace esto al árbol de decisión
+
+**E2 —«medición del libro: recolección nueva, barata, 4–6 semanas»— ya está corriendo y
+lleva tres días.** No hay que empezarla: hay que esperarla. Las 4–6 semanas caen entre el
+**2026-10-07 y el 2026-10-21** contando desde el 09-09.
+
+**Y E1 cambia de naturaleza.** El informe lo propone *«sobre datos existentes, coste ≈ 0»*
+usando costes **supuestos**. Con el libro recogido, el coste de E1 puede **medirse**. Eso
+importa porque el propio informe concluye que el cuello de botella es el margen y no el
+coste — una conclusión construida sobre un coste que ya no hace falta suponer.
+
+### Por qué se coló, dicho sin reproche porque la clase es conocida
+
+La sesión declaró su límite con honestidad: *«el repo no lleva datos (`results/`, `*.duckdb`
+gitignored)»*. **Eso es cierto de esas rutas.** `paper_state/` en la rama `paper-state` no es
+ninguna de las dos: es un árbol NDJSON commiteado en una rama que no es `main`.
+
+Es la clase que este proyecto ya tiene catalogada: **una afirmación sobre el alcance del
+corpus, hecha sin usar el instrumento.** Se comprobaron las rutas conocidas y se concluyó
+ausencia. Un `git ls-tree -r origin/paper-state` la habría deshecho, y el egress bloqueado no
+era el obstáculo — la rama estaba en el clon local.
+
+## UNA DISCREPANCIA QUE ALGUIEN DEBE RESOLVER ANTES DE USAR NINGÚN COSTE
+
+La mediana del spread **completo** medido aquí es **0,0100**, o sea medio spread ≈ 0,0050.
+El proyecto viene trabajando con **0,0168** como «semidiferencial medido» frente al 0,0100
+que supuso R21. **Son cifras distintas de poblaciones o definiciones distintas**, y no digo
+cuál está bien: digo que **ninguna de las dos debe entrar en un modelo de coste hasta que se
+sepa qué mide cada una**. Es exactamente la forma que nos ha mordido tres veces hoy — dos
+contabilidades para una magnitud.
+
+## LO QUE SIGUE EN PIE, VERIFICADO POR MÍ Y NO LEÍDO
+
+- **El veredicto sobre Strategy A.** Descansa en R21 y R22, preregistrados y congelados.
+  Nada aquí lo toca.
+- **El mecanismo de selección adversa** —la regla compra donde más discrepan `p_model` y
+  `p_mid`, y si el mercado está mejor calibrado ése es el sitio donde el modelo se equivoca—
+  es la explicación correcta y es la que ya sostenía R22.
+- **El defecto de `select_tau`: CONFIRMADO en el código.** `backtest.py:306` hace
+  `m = median(pnls)`, con el comentario *«Median and not mean because with few trades the
+  mean is fixed by one tail»* — razón defendible, consecuencia no vista. Y su
+  `tau_objective.py` **corre y reproduce** la inversión: elige τ=0,04 sobre τ=0,15 pese a que
+  la segunda gana 5× más por operación en esperanza.
+- **Los tres scripts corren offline y reproducen sus números.** Comprobado ejecutándolos, no
+  leyéndolos.
+- **«Ningún punto de decisión dentro del día objetivo fue jamás evaluado»** es correcto: los
+  leads son 9 h y 24 h contra un `endDate` de `target_date 12:00Z`.
+
+## Y LO QUE EL INFORME NO PODÍA SABER
+
+`stage_settle` **no ha corrido nunca en vivo** (A-122): los ciclos de decisión llevan cuatro
+corridas degradando a `--collect-only` porque falta `PAPER_TAU`, fail-closed por R24 P12. Así
+que lo que se acumula desde el día 9 es **cobertura de mercado, no una corrida de estrategia**
+— lo cual **refuerza** el veredicto del informe por una vía que no usó: no hay resultado nuevo
+de Strategy A que pudiera rescatarla, porque no se ha ejecutado ninguno.
