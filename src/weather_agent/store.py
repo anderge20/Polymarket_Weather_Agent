@@ -351,13 +351,24 @@ def load_shards(
         # on a machine where pandas exists, and `upsert_many` takes a fast
         # `INSERT ... SELECT` path only when it can import pandas — which
         # `requirements-paper.txt` deliberately excludes. On the host that runs
-        # the cycle this batching is a NO-OP: measured 2026-09-11, `load:*` went
-        # 855.7 s -> 890.4 s across the merge, 4% worse, the cost of registering
-        # a temp table per shard. `executemany`, the fallback, beats the
-        # row-at-a-time loop by 1.10x and not by the 1.52x its own docstring
-        # records for a different workload. Blocking pandas locally reproduces
-        # the host to within 6% (315 s predicted against 295.83 s measured),
-        # which is what makes that diagnosis a measurement and not a story.
+        # the cycle this batching has NO DETECTABLE EFFECT. Measured 2026-09-11:
+        # `load:*` went 855.7 s -> 890.4 s across the merge, but the store grew
+        # by one shard in between (+3.1% of rows), so normalised the change is
+        # +0.9% — indistinguishable from zero. It is NOT "4% worse": that figure
+        # was the store growing, and attributing it to the code was comparing two
+        # cycles with different amounts of data.
+        #
+        # `executemany`, the fallback, beats the row-at-a-time loop by 1.10x on
+        # one shard and not by the 1.52x its own docstring records for a
+        # different workload. On a full table it runs at 0.96x of an empty one,
+        # so there is no quadratic in the conflict clause.
+        #
+        # AND ONE THING IS UNEXPLAINED, said rather than filled in: with pandas
+        # blocked LOCALLY the batching does improve — 1.09x overall, 1.35x on
+        # price_history — and on the host it does not. Same branch, same
+        # workload, opposite signs. DuckDB version, a different executemany
+        # backend, or something in `load:*` that the local loop does not do are
+        # all candidates and none has been measured.
         #
         # WHAT SURVIVES IS THE CORRECTNESS, NOT THE SPEED: identical conflict
         # semantics, tests verified able to fail, and the column-set grouping
