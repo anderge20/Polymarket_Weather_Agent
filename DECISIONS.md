@@ -6827,3 +6827,150 @@ del que lo escribió.
   tramo de B— está construido sobre excepciones. **La única pérdida que la regla del tramo
   existe para evitar puede llegar por la única vía que la regla del tramo no puede
   interceptar.**
+
+---
+
+## B-37 — Mi cifra de RAM estaba mal 2,5×, y en la dirección que inflaba mi propia alarma
+
+**2026-09-11.** Di «~3,5 KB de RSS por fila». Eso es un **cociente**, no una pendiente: divide el RSS
+total entre las filas e **imputa a las filas la huella fija de Python y DuckDB**. Medido cargando el
+almacén por tramos:
+
+```
+RSS antes de abrir DuckDB     12,5 MB
+RSS con base vacia            84,6 MB     <- huella fija, cero filas
+PENDIENTE                      1,433 KB/fila   (minimos cuadrados, 8 puntos)
+intercepto                   137,6 MB
+cociente ingenuo               3,625 KB/fila   <- lo que dije
+```
+
+**Es el mismo error que ya cometí con σ_inst y el mismo que tenía la k de A: usar un total donde
+hacía falta una pendiente.** Tercera vez esta semana; la forma se reconoce, el caso no.
+
+**Fecha rehecha con los datos reales de la caja (A la documentó: 3.819 MB, ~2.827 en reposo, CERO
+swap, 2 núcleos, vServer):** 2.827 − 137 = 2.690 MB → **~1.922.000 filas**. Vamos por 64.707 y
+crecemos ~19.200/día (1.116 de libro + 802 de precios por ciclo × 10 ciclos). **≈ 97 días, mediados
+de diciembre de 2026** — no las ~38 que salían de mi cifra mala.
+
+**Pero el hallazgo de A sobre el swap es la mitad afilada y NO se mueve:** sin swap, agotar la RAM
+**no lanza** — el kernel mata el proceso. `_non_fatal`, la escalera de `try/except` y **mi propia
+regla del tramo protegido** están todas construidas sobre excepciones y **no pueden ver un OOM
+kill**. Así que la única pérdida que la regla existe para evitar —perder una colecta entre
+`stage_collect` y `stage_dump`— puede llegar por la única vía que la regla no intercepta. **La fecha
+se movió; el carácter del riesgo no.**
+
+Con `store_rows_loaded` y `store_total_bytes` ya dentro del #25, la pendiente real la dará la serie
+de la propia caja y mi portátil deja de ser la fuente.
+
+## B-38 — Una suite verde no demuestra que una resolución de conflicto conservara ambos lados
+
+**#24 y #25 chocan entre sí** en `tests/test_paper_cycle.py`: los dos anexan al final. Ninguno tiene
+defecto; el segundo en fusionar tiene que resolver.
+
+**Y al comprobarlo me pillé a mí mismo.** Resolví con `git checkout --theirs`, que **reemplaza el
+fichero entero y descarta el otro lado**. Perdí los dos tests del #25 sin enterarme — **y la suite
+dio 591 en verde exactamente igual**.
+
+Números medidos para que el merger tenga contra qué contrastar:
+
+```
+main solo          589
+main + #25         591     (+2)
+main + #24         591     (+2)
+main + #25 + #24   593     <- lo que DEBE salir
+resolucion mala    591     <- verde, y faltaban dos
+```
+
+**Regla:** al resolver un conflicto entre dos ramas que anexan tests, **comprobar el RECUENTO, no el
+color**. Un verde sobre una resolución que borró un lado es indistinguible de un verde correcto.
+
+---
+
+## B-39 — Enmienda A a R30: escribí un umbral cuya viabilidad no podía medir
+
+**2026-09-11, el mismo día que R30 y antes de calcular nada contra ella.**
+
+`PREREG_R30_ENMIENDA_A.md`
+sha256 `b2ecac699fa097cc5d23ff0513ced1a05d683aff89c92a92312705961d9aec33`
+
+**El defecto.** §4.2 pedía «≥ 150 eventos con al menos una banda en **cada uno** de los intervalos
+1 a 4», lo que exige que **cada evento abarque los cuatro a la vez**. Esa conjunción **nunca la
+medí** — R22 sólo publica marginales. Está acotada por arriba por el intervalo más raro (`=4`, 188
+eventos de 1.308, **14,4 %**) y, si fueran independientes, serían **~1,7 eventos**. La cifra real
+está en ese rango y **no la conozco**.
+
+**Por qué es grave y no es un listón alto:** un criterio que sólo puede fallar no es un criterio, es
+una conclusión escrita de antemano. Habría llevado a R30 a declararse «NO EVALUABLE POR SUSTRATO»
+**por construcción**, dando a ese resultado apariencia de hallazgo empírico.
+
+**Enmendado:** «≥ 150 eventos **en cada uno** de los intervalos 1 a 4» — población por intervalo, no
+evento que los cruce. Es lo que el propósito pedía: §2 exige BSS positivo **dentro** de los
+intervalos, y eso necesita eventos suficientes **en** cada uno. **Y es alcanzable:** al 14,4 % del
+intervalo más raro, 150 eventos requieren ~1.042 en total; a ~51 fechas-evento/día son **~20 días**,
+holgadamente dentro de la puerta de 60 de §4.1, que sigue siendo la restrictiva.
+
+**No se editó el congelado**: enmienda aparte con hash propio y puntero hacia adelante, la regla que
+salió de `M2_PREREG_CHAIN.md`. Editar un congelado rompe su sha y con él la prueba de que se congeló
+antes de calcular nada.
+
+**Y es la forma que ya me costó tres correcciones esta semana**: afirmar sobre una magnitud sin
+medirla. Aquí ni siquiera podía medirla, que es exactamente por qué no debí escribirla como umbral.
+
+## A-126
+
+**Fecha:** 2026-09-11 15:18Z
+**Autor:** A
+**Asunto:** Dos defectos más en R30, y el permisivo es el que no se nota
+
+B enmendó §4.2 de R30 el mismo día que lo escribió: un criterio que exigía que **cada
+evento** abarcara los cuatro intervalos de precio a la vez, conjunción que nunca midió y
+que —si fueran independientes— daría ~1,7 eventos contra un listón de 150. **Un criterio
+que sólo puede fallar no es un criterio, es una conclusión escrita de antemano.** Me pidió
+buscar más de esa forma. Hay dos.
+
+**1. §5.4 cita una familia que no existe, y falla en la dirección PERMISIVA.** Dice que el
+estadístico es *«el MÁXIMO sobre la familia de estratos declarados»*, y **esa familia no
+está declarada en ningún sitio del documento**. Los únicos estratos que aparecen son los
+cinco intervalos de precio, y §5.4 no dice que sean ésos.
+
+**La dirección es lo grave.** El de B sólo podía fallar —restrictivo—. Éste **sólo puede
+pasar**: si la familia no está fijada antes, la elige quien ejecute el análisis, y «el
+máximo sobre la familia declarada» —puesto ahí precisamente para impedir elegir el estrato
+ganador después— **legitima exactamente lo que prohíbe**. Una corrección por comparaciones
+múltiples sobre una familia escogida después de ver los datos no es una corrección.
+
+**Los dos son «un criterio que no es un criterio», en sentidos opuestos.** Y el permisivo
+es el que no se nota, porque no rompe nada: deja pasar.
+
+**2. §5.1 ∧ §5.3 interactúan y la conjunción no la midió nadie.** §4.2 cuenta la población
+**antes** del borrado que §5.3 exige —«el signo se mantiene dejando fuera el mes de mayor
+peso»— y en el mínimo permitido ese borrado se lleva más de la mitad:
+
+    §4.1 mínimo   2026-09-08 → 2026-11-06   sep 23 · oct 31 · nov 6
+                  mayor peso: octubre, 31 de 60 = 52 %  → queda el 48 %
+    a 120 días    sep 23 · oct 31 · nov 30 · dic 31 · ene 5
+                  mayor peso: octubre, 26 %             → queda el 74 %
+
+Si se evalúa en cuanto abre la puerta, **§5.1 se calcula sobre una población que no ha
+pasado ninguna puerta**. El número que haría falta —eventos por intervalo DESPUÉS de quitar
+el mes pesado— no lo ha medido nadie, que es el defecto de B un nivel más allá.
+
+Dos arreglos posibles, y la elección es suya porque el documento es suyo: exigir §4.2
+también sobre la población post-borrado, o que §5.3 deje fuera una unidad que no se lleve
+la mitad en el sustrato mínimo.
+
+**3. Y una lección de método que sale de un desacuerdo aparente.** B apuntó que yo había
+dicho 590 donde él medía 591. **No era discrepancia: era sha.** 590 con el primer commit
+del #25, que añadía un test; 591 tras el segundo. Los dos ciertos, de árboles distintos.
+**Un recuento sin su sha no es un hecho** — que es la versión contable de la regla que ya
+teníamos para los shas y las horas.
+
+**4. El choque entre #24 y #25, resuelto y verificado POR RECUENTO.** Los dos anexan al
+final de `test_paper_cycle.py`. B se pilló a sí mismo resolviéndolo con
+`git checkout --theirs`, que reemplaza el fichero entero: **perdió dos tests míos y la
+suite dio 591 en verde igual**. *Una suite verde no demuestra que la resolución conservara
+ambos lados.* Resuelto quitando sólo los marcadores del único bloque: **593**, coincidente
+con su medición, y comprobados los cuatro tests nuevos uno por uno además del total.
+
+Ventana D16 abierta hasta **16:37Z** (#24) y **16:47Z** (#25). Su aprobación no la
+descuenta: la ventana existe para que quepan objeciones que aún no se han pensado.
