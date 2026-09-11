@@ -343,7 +343,62 @@ def load_shards(
     shards = [Path(p) for p in paths] if paths is not None else iter_shards(root, table)
     summary = {"table": table, "shards": len(shards), "rows_read": 0, "rows_written": 0}
     for shard in shards:
-        # ONE BATCH PER SHARD, not one statement per row.
+        # ONE BATCH PER SHARD, not one statement per row — and PER SHARD rather
+        # than per table, which is a choice with a measured price on both sides.
+        #
+        # THE 39x IS NOT PRODUCTION'S NUMBER, and this is written before the
+        # rest so nobody reads the rest as an operational claim. It was measured
+        # on a machine where pandas exists, and `upsert_many` takes a fast
+        # `INSERT ... SELECT` path only when it can import pandas — which
+        # `requirements-paper.txt` deliberately excludes. On the host that runs
+        # the cycle this batching has NO DETECTABLE EFFECT. Measured 2026-09-11:
+        # `load:*` went 855.7 s -> 890.4 s across the merge, but the store grew
+        # by one shard in between (+3.1% of rows), so normalised the change is
+        # +0.9% — indistinguishable from zero. It is NOT "4% worse": that figure
+        # was the store growing, and attributing it to the code was comparing two
+        # cycles with different amounts of data.
+        #
+        # `executemany`, the fallback, beats the row-at-a-time loop by 1.10x on
+        # one shard and not by the 1.52x its own docstring records for a
+        # different workload. On a full table it runs at 0.96x of an empty one,
+        # so there is no quadratic in the conflict clause.
+        #
+        # AND ONE THING IS UNEXPLAINED, said rather than filled in: with pandas
+        # blocked LOCALLY the batching does improve — 1.09x overall, 1.35x on
+        # price_history — and on the host it does not. Same branch, same
+        # workload, opposite signs. DuckDB version, a different executemany
+        # backend, or something in `load:*` that the local loop does not do are
+        # all candidates and none has been measured.
+        #
+        # WHAT SURVIVES IS THE CORRECTNESS, NOT THE SPEED: identical conflict
+        # semantics, tests verified able to fail, and the column-set grouping
+        # below. The speed needs a path where Python never touches the rows —
+        # DuckDB reading the .gz shard itself — which is what the pandas branch
+        # was really buying: not pandas, but staying out of Python.
+        #
+        # Per table would be one statement instead of 32 and, WHERE THE FAST PATH
+        # EXISTS, would approach the ceiling: decompressing and parsing the whole
+        # store costs 1.64 s against the 19.86 s that path takes, so if the upsert
+        # were free the speedup would be 474x rather than 39x. (That 474 lands within
+        # 1% of the 478x `upsert_many`'s own docstring measured for the pure
+        # INSERT ... SELECT path, on a different workload years apart.) So there
+        # is a factor of 12 left on the table and it is left there deliberately.
+        #
+        # WHY IT IS LEFT: holding one table's rows at once costs 242 MB of peak
+        # Python heap for `orderbook_snapshots` against 8.3 MB per shard
+        # (measured with `tracemalloc` over the real store, two sessions
+        # agreeing within the difference of one shard). That is 8.6% of the
+        # ~2 827 MB free on a host with NO SWAP, where exhausting memory does not
+        # raise — the kernel kills the process, and `_non_fatal`, the try/except
+        # ladder and the rule that nothing may throw between `stage_collect` and
+        # `stage_dump` are all built on exceptions and cannot see it. Trading 20
+        # seconds for 8.6% of the one resource that kills silently is not a
+        # trade worth making.
+        #
+        # The first estimate of that cost was ~45 MB, from rows x uncompressed
+        # JSON bytes. It was short by more than 5x: `book_snapshot` is nested, and
+        # a parsed Python dict is far heavier than the text it came from.
+        # ESTIMATING PYTHON OBJECT MEMORY FROM TEXT SIZE UNDERSTATES, ALWAYS.
         #
         # `upsert_many`'s own docstring measured the three paths on this exact
         # workload: one INSERT per row 24.99 s, executemany 16.47 s, and
