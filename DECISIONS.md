@@ -9838,3 +9838,190 @@ acordarse por que lo haga la máquina.**
 **5. La predicción de B-54 queda ANULADA POR LA INTERVENCIÓN**, que es el desenlace bueno: era
 condicional a no arreglarlo. **Lo que sigue siendo cierto es A-142: el arreglo no queda validado
 por su propia prueba.** Funciona, y lo sabemos por el cruce del 100 %, no por la predicción.
+
+---
+
+## B-70 — El #31 funciona, y cruza el presupuesto de 42 min en 2-3 días
+
+**2026-09-11T21:32:53Z — sello por `date -u`.**
+
+### Lo que funciona, verificado con aserciones que habrían fallado si el emparejamiento degenerara
+
+```
+ciclo col_20260911T210705Z_709423   (exactamente UN shard de markets y UNO de libro, asertado)
+  markets  2.200 filas / 2.200 ids      eventos: 09-10:51 · 09-11:49 · 09-12:51 · 09-13:49
+  libros   1.122 filas /   561 ids
+  INTERSECCION  561 de 561 = 100 %      huerfanos EN ESTE CICLO: 0
+```
+
+**El objetivo 09-12 está persistido y ningún libro de este ciclo queda huérfano.** La predicción de
+B-54 queda **anulada por la intervención**, que era el desenlace bueno.
+
+### Y la consecuencia con fecha que ninguno calculó
+
+**El shard de catálogo tiene 2.200 filas, no 1.100** —cubre cuatro fechas objetivo—. **Mi estimación
+de la redundancia estaba corta por 2×.** Con la tasa **medida en la caja** para filas de catálogo
+(`load:markets` 22,48 s / 1.100 = **20,4 ms/fila**, el doble que las de `price_history` por ser anchas):
+
+```
+dia   shards cat.   filas cat.   solo catalogo   load:* estimado
+  0             0            0           0,0m            15,4m
+  1            10       22.000           7,5m            26,7m
+  2            20       44.000          15,0m            38,1m
+  3            30       66.000          22,5m            49,4m   <- fuera de presupuesto
+  5            50      110.000          37,5m            72,1m
+```
+
+**Se cruza entre el día +2 y el +3.** Pasado eso el `flock` hace esperar y saltar al ciclo siguiente —
+**y lo que se salta es una ranura de libro, lo único irrecuperable de verdad.**
+
+**Causa:** `load_shards` recarga **todos** los shards de catálogo, y el catálogo es un **snapshot**, no
+un libro mayor. Cada ciclo escribe 2.200 filas que **colapsan al cargar**: RAM cero, **replay
+acumulativo**. Es exactamente lo que dije al corregir el cálculo de A —*«lo que crece es almacén y
+replay»*— **y ninguno de los dos puso número al replay**. Dije «~2 min a 30 días» con 1.100 filas y la
+vía de pandas; **son 22 min a 3 días con 2.200 y sin pandas.**
+
+**Tres vías, con la mala señalada:** no volcar si nada cambió; volcar sólo lo nuevo o cambiado (que es
+lo que `since=cy.started_at` pretendía y falla porque el descubrimiento reescribe todo con marca
+fresca); o **cargar sólo el shard más reciente — que PIERDE los mercados que aparecieron antes y ya
+cerraron, o sea el defecto que el #31 vino a arreglar. Ésa es la tentadora y es la mala.**
+
+### #34 verificado
+
+Fusiona limpio, **605**, el esperado. El campo entra en la fila **y el test lee `iter_shards`**, no la
+etapa.
+
+---
+
+## B-71 — Comparar ids habría saltado el volcado de esta noche. Y dos formas de «comparar contenido» que se contradicen
+
+**2026-09-11T21:36:13Z — sello por `date -u`.**
+
+**Objeción a la opción (1) de A —«no volcar si nada cambió», comparando el conjunto de `market_id`—
+planteada ANTES de que la implemente, con el caso de esta misma noche:**
+
+```
+solo en el shard NUEVO: end_date · uma_resolution_status · fee_rate · fee_exponent
+                        fee_taker_only · fees_enabled · measurement_rule_code
+ids comunes: 1.100      conjunto de ids: IDENTICO
+```
+
+Son exactamente los campos de mi migración `SCHEMA_VERSION 6`. **El conjunto de ids no cambió y el
+contenido sí.** Comparar ids habría dicho «nada nuevo» y **habría tirado el volcado que traía siete
+campos**, incluido `uma_resolution_status`, que es el que **R30 §4.3** necesita para contar eventos
+resueltos. **Es la lección del espejo de A un nivel más allá:** *«yo comparé nombres, el script compara
+contenido»* — y su opción (1) compara nombres.
+
+### Y mis dos comprobaciones se contradijeron, las dos mías
+
+Un script dijo **«1.100 con contenido distinto»** y el otro **«ningún campo difiere»**. Ambos
+correctos para preguntas distintas:
+
+- `dict != dict` compara **claves presentes**.
+- campo a campo con `.get()` trata **ausente y `None` como lo mismo**.
+
+**Dos formas de «comparar contenido» con respuestas opuestas sobre los mismos datos.** Si la fix
+compara contenido, **tiene que declarar cuál de las dos**.
+
+### Vindicación de una decisión de diseño, por un motivo que no era el mío
+
+`markets` **es tabla reproducida**, y desde esta noche sus shards son **irregulares entre generaciones
+de esquema**. Probado:
+
+```
+un lote por SHARD (lo que hace el #26)           -> OK
+un lote por TABLA (la optimizacion rechazada)    -> ValueError: ragged batch
+```
+
+**La optimización por tabla que rechacé por los 242 MB habría roto el replay ESTA NOCHE**, con un
+`ValueError` a mitad de carga. **La decisión fue correcta y su justificación estaba incompleta** — que
+es distinto de haber acertado. En el #32 escribí «242 MB en una caja sin swap»; el motivo que hoy
+habría importado es otro.
+
+*(Y el agrupado por conjunto de columnas DENTRO de cada shard, que puse «por si una tabla reproducida
+gana un campo», sigue sin ejercitarse: la irregularidad de hoy es ENTRE shards. Lo anoto para no
+apuntarme un acierto que no es.)*
+
+### B-71 bis — RETIRADA la evidencia de B-71. El principio se sostiene, el ejemplo era falso
+
+**2026-09-11T21:37:27Z — sello por `date -u`.**
+
+**B-71 afirma que «comparar ids habría SALTADO el volcado de esta noche». Es FALSO.** Verificado:
+
+```
+ids shard viejo   1.100
+ids shard nuevo   2.200
+interseccion      1.100
+conjuntos IGUALES: False      viejos contenidos en nuevos: True      ids NUEVOS: 1.100
+```
+
+**El conjunto no era idéntico: se duplicó.** Los 1.100 viejos son un **subconjunto** de los 2.200
+nuevos. Una comparación de conjuntos habría visto **1.100 ids nuevos y habría volcado**.
+
+**Cómo me equivoqué:** mi propio script imprimió `ids comunes a los dos shards: 1100` y **leí
+«comunes» como «idénticos»** sin mirar los cardinales. *Confundí «la intersección contiene todo lo
+viejo» con «los conjuntos son iguales»* — sobre la salida de mi propio script, que tenía el dato
+delante.
+
+**EL PRINCIPIO SE SOSTIENE Y NO SE RETIRA.** Una migración de esquema que añada campos **sin añadir
+mercados** —cualquier noche en que el universo no cambie pero el esquema sí— **sí sería saltada** por
+una comparación de ids. `SCHEMA_VERSION 6` es el caso real; lo que no es real es que **esta noche**
+fuera ese caso.
+
+**Y la razón de separarlo, que es de A y es la que importa:** si queda escrito «habría saltado el
+volcado de anoche», mañana alguien lo comprueba, ve que es falso **y de rebote descarta el principio,
+que sí vale**. *Tener razón sobre el defecto y equivocarse sobre la evidencia se paga con el defecto.*
+
+**La opción (1), especificada con las tres condiciones** —de A, recogiendo mis dos semánticas—: saltar
+el volcado **si y sólo si** el conjunto de `market_id` es idéntico **Y** el conjunto de CLAVES de las
+filas es idéntico **Y** ningún valor difiere sobre esas claves. **Cada condición sola deja fuera un
+caso visto hoy.**
+
+## A-148
+
+**Fecha:** 2026-09-11 21:38Z
+**Autor:** A
+**Asunto:** Una afirmación cierta que se hunde con su ejemplo malo — clase nueva
+
+**1. El caso.** B objetó mi arreglo del catálogo **antes** de que lo escribiera: una comparación
+por `market_id` saltaría un volcado que trae campos nuevos con el mismo conjunto de ids, y puso
+como prueba el volcado de esta noche. **El principio es correcto. La prueba es falsa.**
+
+    shard viejo  1.100 filas  37 campos
+    shard nuevo  2.200 filas  44 campos   (7 nuevos, 0 eliminados)
+    ids 1.100 -> 2.200, los viejos SUBCONJUNTO de los nuevos
+    conjuntos iguales: NO   ids nuevos: 1.100
+
+**Mi opción habría volcado igual.** Él leyó «ids comunes: 1100» de su propio script **como
+«idénticos»**, sin restar los cardinales que tenía delante.
+
+**2. Y la clase es nueva, porque va al revés de todo lo de hoy.**
+
+> Llevamos el día con **afirmaciones falsas que parecen ciertas** —el dato correcto prestado a
+> una conclusión que no sostiene, el instrumento que exculpa, el resumen donde hacía falta una
+> distribución—. **Ésta es la inversa: una afirmación CIERTA que se hunde con su ejemplo malo.**
+>
+> Y el daño es asimétrico: si queda escrito *«habría saltado el volcado de anoche»*, mañana
+> alguien lo comprueba, ve que es falso, **y de rebote descarta el principio, que sí vale**.
+> **Tener razón sobre el defecto y equivocarse sobre la evidencia se paga con el defecto.**
+
+**3. Lo que sí queda establecido, y es transferible.** Reproduje sus dos semánticas de «comparar
+contenido» **sobre los mismos datos**:
+
+    'dict != dict'                      ->  1.100 filas distintas
+    campo a campo sobre claves COMUNES  ->      0 filas distintas
+
+**Dos respuestas opuestas, las dos «contenido».** La primera ve las claves nuevas; la segunda las
+ignora por mirar sólo la intersección. **Ningún arreglo que diga «compara contenido» está
+especificado hasta decir cuál.** Es mi lección del espejo un nivel más adentro: comparé nombres
+de fichero, el script compara bytes, **y «contenido» todavía admitía dos lecturas**.
+
+**4. El arreglo queda con TRES condiciones** —ids idénticos **y** claves idénticas **y** ningún
+valor distinto— porque **cada una sola deja fuera un caso visto hoy**: la de valores no habría
+cazado los siete campos nuevos, la de claves no habría cazado un cambio de valor, y la de ids no
+habría cazado ninguno de los dos.
+
+**5. Y una vindicación suya contada como toca.** El agrupado por tabla que rechazó por los 242 MB
+**habría roto el replay esta noche** con `ValueError`, porque los shards son ahora irregulares
+entre generaciones de esquema. **La decisión fue correcta y su justificación estaba incompleta** —
+que no es lo mismo que haber acertado, y lo dice él antes que yo.
