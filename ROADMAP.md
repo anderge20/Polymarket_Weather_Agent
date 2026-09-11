@@ -321,3 +321,116 @@ Cada ítem evaluativo (R4, R16, R18/R21, R24) lleva preregistro hasheado antes d
 2. `prediction_time` era el reloj de pared y no `T_asof` — **el mismo vicio que A-32 le reprocha a B**. Corregido con `prediction_time = min(now, T_asof)`, que además es más fuerte que cualquiera de las dos alternativas, y con `lead_efectivo`/`drift` medidos por ciclo.
 
 **Camino restante hasta COMPLETO:** R14 (labels) · R17 (persistencia de features + filtro por `dataset_version`) · R19 (motor de backtest) · R20 (sizing + `edge_net`) · R21 (backtest + calibración de tau) — todos en la pista de B — y luego R24 puede arrancar: sus precondiciones P1–P5 dependen de ellos.
+
+## 8. Delta 2026-09-11 — pista B: R19–R22 cerradas, y qué significa para «COMPLETO» (B-33)
+
+**Este anexo lo escribe B sobre su propia pista.** El roadmap es de A por el reparto de D13; aquí
+sólo se añade el estado de los ítems que ejecutó B, porque el §7 cerraba diciendo *«camino restante:
+R14 · R17 · R19 · R20 · R21 · R22 … y luego R24 puede arrancar»* — y eso **ya no describe el estado**.
+R24 arrancó, y tres de esos ítems tienen veredicto.
+
+| Ítem | Estado | Resultado |
+|---|---|---|
+| **R19** | **HECHO** | `backtest.py`: `walk_forward`, `select_tau`, rejilla `τ ∈ {0,02 … 0,20}`, `τ_est = 0,545 °C` |
+| **R20** | **HECHO** | `costs.py`: modelo D19 `c_taker(p) = rate·(p(1−p))^exp`, fail-closed cuando las fees no son legibles; `x_exec` primario 0,01 (el escalón más adverso de D19) + sensibilidad 0,005/0,001/0 |
+| **R21** | **HECHO — VEREDICTO: NO OPERABLE** | 468 operaciones / 211 eventos / 37 fechas; mediana **−0,0236**. De los cuatro criterios de §4: n≥100 **PASA**; mediana>0 **FALLA**; LOO-estación **FALLA**; sin-el-mes-mayor **FALLA**. IC bootstrap por bloques **[−0,0288, −0,0205]** por evento y **[−0,0270, −0,0205]** por fecha; **37 de 37 fechas con mediana negativa** (signo p = 7,3e-12) |
+| **R22** | **HECHO — VEREDICTO: EN NINGÚN ESTRATO** | T_obs = −0,00252, p_familia = 1,0000. Cobertura honesta: **diez** celdas que estratifican de verdad, no diecisiete |
+| **R24** | **EN EJECUCIÓN EN VIVO** | Modo papel corriendo en Hetzner desde 2026-09-09; 12 ranuras de recogida sin fallar una, ±1 s |
+
+### La causa es de DISEÑO, no de estimación — y es lo que fija el camino que queda
+
+Sobre los 10.000 candidatos, `p_model` está **bien calibrado** (1,0–1,4×). Brier: modelo 0,05191,
+mercado 0,04215, base 0,06801. **El mercado está mejor calibrado que el modelo.** La regla opera
+justo donde `p_model` más se aparta de `p_mid`, y como el mercado es el mejor calibrado de los dos,
+ahí es donde el modelo se equivoca.
+
+**Y la descomposición lo cierra:** el BSS del modelo es **+0,238 sobre la muestra entera** y
+**negativo dentro de cada intervalo de precio** (−0,547, −0,117, −0,023, −0,091, −0,234).
+**Condicionado al precio, el modelo no aporta información.** El +0,238 agregado es la paradoja de
+Simpson, no habilidad.
+
+### Por qué la captura sigue, con la Estrategia A declarada no operable
+
+Hay que decirlo explícitamente porque ningún documento lo dice y desde fuera parece incoherente:
+
+1. **El libro es el sustrato irrecuperable.** Polymarket no publica L2 histórico: un día no recogido
+   es un día perdido. **R21 tuvo que suponerlo y R22 no pudo medirlo en absoluto.** La captura vale
+   con independencia de qué estrategia se evalúe después.
+2. **La cadena end-to-end quedó verificada en vivo** (PnL real en papel el 2026-09-09), y eso es un
+   resultado propio: lo que falla es la señal, no la maquinaria.
+3. **Medido sobre el libro real, el coste es PEOR que el supuesto**: semidiferencial 0,0168 frente a
+   mi `x_exec` de 0,0100 — un 68 % más caro. Refuerza el veredicto de R21 en vez de debilitarlo.
+
+### Camino restante hasta COMPLETO, reescrito
+
+El §7 decía que R24 era el final. **No lo es, porque R24 no puede rescatar una señal que R21 y R22
+midieron ausente.** Lo que queda, y en este orden:
+
+1. **Declarar cerrada la Estrategia A.** Está medida y refutada con criterios preinscritos. No
+   procede recalibrar τ: el fallo no es de umbral.
+2. **Decidir si existe una hipótesis con sustrato**, y preinscribirla antes de mirar nada. La
+   descomposición por intervalo de precio es la restricción dura: cualquier candidata tiene que
+   aportar información **condicionada al precio**, no agregada.
+   → **CRITERIO FIJADO (2026-09-11):** `PREREG_R30_PUERTA_SUSTRATO.md` más CUATRO enmiendas.
+   **No cites el base por su sha sin leer la cadena:** por sí solo no describe ningún criterio
+   vigente de §4.2, §4.3, §5.2, §5.3 ni §5.4.
+   → **ÍNDICE ÚNICO: `R30_PREREG_CHAIN.md`** — estado de cada documento, su sha, y qué cláusula
+   gobierna cuál. Se actualiza; los congelados no se tocan. Ver B-36, B-39, B-40, B-41, B-42.
+3. **Seguir la captura mientras se decide** — es lo único con coste de oportunidad asimétrico: el
+   libro no se puede recoger a posteriori.
+4. **M2 sigue en v2** y su limitación sigue vigente (ver `M2_PREREG_CHAIN.md`): la probabilidad para
+   **un mercado concreto** está peor calibrada que la cifra agregada, y no es corregible con este
+   sustrato (correlación del sesgo por estación entre mitades del periodo: **+0,080**).
+5. **MODELSEL/V5.2 sigue BLOQUEADA** por el 429 de Open-Meteo. Nunca se sortea una cuota ajena (D0).
+
+**El resultado honesto de este proyecto, a día de hoy, es negativo y está medido:** la estrategia
+preinscrita no es operable, y la razón es que el mercado está mejor calibrado que el modelo. Eso es
+un hallazgo, no un fracaso de ejecución — pero sólo cuenta como hallazgo **porque los criterios se
+congelaron y se hashearon antes de calcular nada**.
+
+## 9. Delta 2026-09-11 — pista B: la premisa operativa del proyecto era falsa (B-58)
+
+**El §8 de este roadmap dice, en su punto 3 del camino restante:** *«seguir la captura mientras se
+decide — es lo ÚNICO con coste de oportunidad asimétrico: el libro no se puede recoger a
+posteriori»*. Lo escribí yo esta misma mañana. **Es falso, y la corrección cambia la postura
+operativa, no un detalle.**
+
+**El catálogo es igual de irrecuperable que el libro.** El feed de gamma para modo papel pide
+`closed=false`, y **no devuelve lo cerrado**. Un mercado descubierto en vivo y no persistido
+desaparece al cerrarse, exactamente como una ranura de libro no recogida. Medido hoy:
+
+```
+UNICO shard de markets, volcado 2026-09-09:
+   objetivo 2026-09-10   51 eventos   -> la cobertura aguanto SIEMPRE
+   objetivo 2026-09-11   49 eventos   -> cayo 561 -> 539 bandas al cerrar los 2 en vivo
+   objetivo 2026-09-12    0 eventos   -> los 51 viven SOLO en RAM
+```
+
+`dump_catalogue = deciding or --dump-catalogue`, y **todos los ciclos desde el 09-09 han sido
+collect-only** por el fail-closed de `PAPER_TAU`. Así que `markets` se reconstruye cada ciclo desde un
+shard congelado más lo que el descubrimiento añada en memoria, y **lo añadido nunca se persiste**.
+
+**Consecuencias que el §8 no contemplaba:**
+
+1. **Dos filas marcadas `is_final=True` para el mismo (objetivo, lead, corte) se contradicen.** La
+   serie de cobertura que §4quater de R24 consume **no es reproducible**.
+2. **El hueco crece con la distancia al 09-09.** Ningún objetivo posterior está en el shard.
+3. **La regla del tramo protegido —nada puede lanzar entre `stage_collect` y `stage_dump`— cubría
+   sólo la mitad del problema**, porque la otra pérdida irrecuperable no llega por una excepción:
+   llega por no escribir.
+
+**Y una tercera vía de pérdida, de A:** la caja tiene 3.819 MB y **cero swap**. Agotar la RAM **no
+lanza**: el kernel mata el proceso. `_non_fatal`, la escalera de `try/except` y la regla del tramo
+están **todas construidas sobre excepciones y no pueden verlo**. **La única pérdida que la regla
+existe para evitar puede llegar por la única vía que la regla no intercepta.**
+
+**Reescritura del punto 3 del §8:**
+
+> **3 (corregido).** Seguir la captura, y **persistir el catálogo con la misma urgencia que el libro**:
+> son **dos** flujos irrecuperables, no uno. Y vigilar la RAM como **tercer** modo de pérdida, porque
+> es el único que no produce ni excepción ni registro.
+
+**Por qué esto es planificación y no una nota técnica:** el §8 justificaba seguir gastando ciclos en
+captura con un argumento de asimetría. **El argumento era correcto y el inventario de lo asimétrico
+estaba incompleto** — y un inventario incompleto de lo irrecuperable es exactamente lo que hace que se
+pierda algo mientras todos miran a otro sitio.
