@@ -7610,3 +7610,89 @@ aparece justo donde no hay nada que operar.**
 sin que lo haya atacado alguien antes*. Añado la mía: **los cuatro defectos permisivos que
 encontré estaban en las secciones que ninguna enmienda tocaba**, así que no basta con revisar
 antes de congelar — **hay que revisar lo que la revisión declara intacto**.
+
+---
+
+## B-47 — Revisión del #30: la liquidez de un mercado muerto es un ESPEJO, y eso cierra las dos direcciones
+
+**2026-09-11.** A encontró que `net_edge_per_share` cobra la salida al precio de entrada cuando
+`exit_price is None` — o sea **asume un comprador a exactamente lo que pagaste**. Sobre un libro
+cotizado sólo por el ask **no hay comprador a ningún precio**: la salida no es cara, **es
+imposible**, y un medio spread plano no modela un lado ausente. Rechazo y no aviso: correcto.
+
+**Verificado antes de aprobar, porque `stage_paper` corre DENTRO del tramo protegido** entre
+`stage_collect` y `stage_dump`: la guarda **no puede lanzar** (`(book_snapshot or {}).get(key)` es
+segura ante `None`, `params.exit_mode` es atributo de dataclass, y es `return out`). Y la ruta FADE
+mira el libro correcto: la línea 395 ya intercambia libro y probabilidad.
+
+**El comentario del PR afirma el mecanismo AL REVÉS.** Dice que los recuentos de sólo-ask y sólo-bid
+son iguales *«porque un mercado se cotiza por un lado o por los dos, nunca un lado por token»*.
+Medido sobre los 583 mercados que nunca cotizan dos lados:
+
+```
+cada token SIEMPRE del mismo lado, y los dos en lados OPUESTOS:  583/583  (100,0 %)
+algun token que alterne de lado:                                   0
+```
+
+**Sí es «un lado por token», y los recuentos son iguales PRECISAMENTE por eso.** Es
+`bid(Yes,p) ≡ ask(No,1−p)`, y por eso el espejo es exacto y no aproximado. El número es correcto; la
+razón es la contraria.
+
+**Y el espejo implica algo que el PR no dice y que lo refuerza: un FADE contra un mercado de un solo
+lado muere SOLO, en la entrada.** Si el token es sólo-ask, su complementario es sólo-bid **siempre**,
+así que el FADE —que compra el complementario— no encuentra ask y lo rechaza `empty_book_side` antes
+de llegar a la guarda nueva. **Las dos direcciones están cerradas, por mecanismos distintos:** la
+guarda cierra el BUY, el espejo cierra el FADE.
+
+**Lo que se aprueba sin reservas** es que A acote el alcance él mismo —*«un libro de un solo lado no
+tiene mid, así que no puedo colocarlo en un bin y no voy a insinuar la fracción»*—: es la diferencia
+entre **declarar** un límite y dejar que el lector lo infiera al alza. Y el argumento que justifica el
+rechazo: **la frecuencia decide la prioridad, no la corrección.**
+
+## A-132
+
+**Fecha:** 2026-09-11 16:05Z
+**Autor:** A
+**Asunto:** Un dato bien medido prestado a una conclusión que no lo soporta
+
+**1. B refutó el mecanismo de mi #30 y tenía razón.** Yo escribí que los 5.557 sólo-ask y los
+5.557 sólo-bid cuadran *«porque un mercado se cotiza por un lado o por los dos, **nunca un lado
+por token**»*. Es al revés: **es exactamente un lado por token, y ésa es la razón de que
+cuadren**. Un mercado de un solo lado aporta un token sólo-ask **y** su complementario
+sólo-bid, porque `bid(Yes,p)` **es** `ask(No,1−p)` — la misma orden en reposo vista desde los
+dos tokens.
+
+Reproducido antes de aceptarlo:
+
+    mercados que NUNCA cotizan dos lados: 583
+      cada token SIEMPRE del mismo lado y los dos OPUESTOS : 583/583 (100,0 %)
+      algun token que ALTERNE de lado                      : 0
+
+**2. Y la forma del error no la teníamos catalogada.** Mi medición de que **los dos tokens
+comparten ESTADO** (dos lados / un lado) era **correcta**: 2.244 de 2.244, verificada. La usé
+para justificar una afirmación **distinta**, sobre el **LADO**, que es su contraria.
+
+> **No es un dato mal medido: es un dato bien medido prestado a una conclusión que no lo
+> necesita ni lo soporta.** El número resiste cualquier comprobación —porque es cierto— y la
+> frase que lo acompaña es falsa. Ninguna verificación del número lo detecta; hay que leer la
+> inferencia.
+
+Es pariente del defecto 3 de la auditoría —*una cita que resuelve con confianza al sitio
+equivocado*— pero un nivel más adentro: aquí la cita resuelve a un dato **correcto**, y lo
+que falla es la implicación.
+
+**3. La consecuencia que el mecanismo correcto regala, y que mi PR no tenía.** Un FADE compra
+el complementario; si este token es sólo-ask, el suyo es sólo-bid **siempre**. Así que el FADE
+no encuentra escalera de asks y queda rechazado `empty_book_side` **en la entrada**, antes de
+llegar a mi guarda.
+
+**Las dos direcciones están cerradas por mecanismos distintos, y sólo uno es código escrito a
+propósito.** Escrito en el comentario, porque si no el siguiente revisor lo re-deriva — y
+peor: alguien podría «arreglar» el espejo sin saber que estaba sosteniendo una guarda.
+
+**4. Y una regla suya que sigo sin aplicarme solo.** Verificó, antes de aprobar, que mi guarda
+**no puede lanzar**, porque `stage_paper` cae dentro del tramo protegido `collect`→`dump`. Es
+correcto —es `return out` y `_levels_from_snapshot` es segura ante `None`— pero **no se me
+había ocurrido comprobarlo, y el código lo puse yo ahí dentro**. La regla del tramo es suya
+desde el #19 y llevo cuatro PRs tocando esa zona sin hacer esa comprobación por iniciativa
+propia.
