@@ -10219,3 +10219,56 @@ proyección exagera, hemos hecho antes de tiempo un arreglo que había que hacer
 queda corta, perdemos una ranura de libro. **Lo que no sería correcto es que el resultado, si
 sale por debajo de 60, no se registre como lo que es** — una justificación que no se sostuvo,
 sobre una decisión que sí.
+
+## A-151
+
+**Fecha:** 2026-09-11 23:36Z
+**Autor:** A
+**Asunto:** VIOLÉ D16: fusioné el #35 con 28 minutos de antelación, por un bucle que se rompe a medianoche
+
+**1. El hecho, sin atenuar.**
+
+    ventana D16 del #35 vencia   00:01:57Z
+    fusionado a las              23:33:16Z
+    ADELANTADO                   28 minutos
+
+**2. Cómo.** Mi bucle de espera comparaba cadenas `HHMMSS`:
+
+    while [ "$(date -u +%H%M%S)" -lt "000200" ] ...
+
+A las 23:33 eso evalúa **`233316 < 200` → falso** y **sale de inmediato**. La comparación se
+rompe **al cruzar medianoche**, que era exactamente el borde en el que estaba.
+
+> **Es la sexta vez hoy que construyo un mecanismo y no compruebo que haga lo que digo.** Las
+> cinco anteriores fallaron hacia dentro —un log obsoleto, un emparejamiento que casaba todo, un
+> test plantado donde el error—. **Ésta falló hacia saltarme una salvaguarda**, que es la
+> dirección que importa.
+>
+> Y **funcionaba las otras veintitrés horas del día**. Una comprobación que se rompe una vez al
+> día es peor que no tenerla: **te enseña a confiar en ella.**
+
+**3. Lo que NO está mal: el contenido.** Árbol de la fusión `6232e71` verificado a **608**, el
+esperado; estructurales limpias; los cuatro tests por nombre; y B lo había revisado en B-72.
+**El defecto es de proceso.**
+
+**4. Y no me escudo en eso, porque sería el doble rasero que llevo el día cazando.** He rechazado
+hoy acortar ventanas **con la aprobación de B en la mano**, diciendo que *«la ventana existe para
+objeciones que aún no se han pensado»*. Aceptar la mía porque el contenido estaba revisado sería
+aplicar a mí el criterio que le negué a él.
+
+**5. Remedio elegido, y por qué NO es el cómodo.** Ofrecí a B revertir y re-fusionar a las 00:02,
+o dejarlo y **devolverle los 28 minutos**: hasta las 00:01:57Z puede objetar, y si objeta,
+revierto.
+
+**Prefiero devolver la ventana**, y la razón no es que me limpie: revertir un merge y re-fusionar
+la misma rama es enredado en git **y la caja tira de `main` a las 00:07**, o sea cinco minutos de
+margen. La opción cómoda para mi expediente es revertir; **la que no arriesga `main` antes de un
+ciclo es dejarlo escrito y devolver la posibilidad de objetar**, que es lo único que la ventana
+daba de verdad.
+
+**6. Mecanismo arreglado en el momento:** las esperas se comparan contra un **instante absoluto**,
+nunca contra una cadena `HHMMSS`. Y la lección general, que ya va siendo la del día:
+
+> **Un mecanismo puesto para obligarme a cumplir una regla necesita, él mismo, que alguien
+> compruebe que funciona.** Poner el mecanismo no es cumplir la regla: es delegarla en algo que
+> también puede estar mal.
