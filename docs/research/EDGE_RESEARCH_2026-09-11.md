@@ -1,5 +1,16 @@
 # Polymarket — auditoría adversarial y mapa de edge
 
+> ## ⚠ ESTE INFORME LLEVA UNA ADENDA QUE REFUTA SU LIMITACIÓN DECLARADA Y SU RECOMENDACIÓN CENTRAL
+>
+> **Léela antes que el resumen ejecutivo** — está al final, bajo *ADENDA DE VALIDACIÓN*.
+> En resumen: la rama `paper-state` de este repositorio lleva **36 850 filas de libro
+> reales** desde el 2026-09-09, así que la recolección que §4 (E2) propone *empezar*
+> lleva tres días corriendo. El veredicto sobre Strategy A **no está afectado**.
+>
+> Este puntero está aquí y no dentro del texto **a propósito**: editar el cuerpo borraría
+> la distinción entre lo que se afirmó y lo que se corrigió, pero una corrección que vive
+> 700 líneas más abajo no la lee nadie que entre por el título.
+
 **Fecha:** 2026-09-11 · **Alcance:** todo el proyecto, sin compromiso con el trabajo previo
 **Métrica única:** NET EXPECTED P&L AFTER REALISTIC EXECUTION AND COSTS
 
@@ -750,14 +761,22 @@ coste — una conclusión construida sobre un coste que ya no hace falta suponer
 
 ### Por qué se coló, dicho sin reproche porque la clase es conocida
 
-La sesión declaró su límite con honestidad: *«el repo no lleva datos (`results/`, `*.duckdb`
-gitignored)»*. **Eso es cierto de esas rutas.** `paper_state/` en la rama `paper-state` no es
-ninguna de las dos: es un árbol NDJSON commiteado en una rama que no es `main`.
+**Primera versión de esta adenda, corregida:** dije que era *«una afirmación sobre el alcance
+del corpus hecha sin usar el instrumento»*. **Eso era injusto y, peor, inexacto.**
 
-Es la clase que este proyecto ya tiene catalogada: **una afirmación sobre el alcance del
-corpus, hecha sin usar el instrumento.** Se comprobaron las rutas conocidas y se concluyó
-ausencia. Un `git ls-tree -r origin/paper-state` la habría deshecho, y el egress bloqueado no
-era el obstáculo — la rama estaba en el clon local.
+Comprobado: **`/paper_state/` SÍ está en `.gitignore`** (línea 59), igual que `results/` y
+`*.duckdb`. **La limitación declarada era literalmente cierta.** No se dejó de mirar nada.
+
+Lo que falla es la inferencia. **`.gitignore` dice qué haría una ruta NO RASTREADA en el árbol
+de trabajo; no dice nada de lo que ya está rastreado en otra rama** — y `git` no ignora
+ficheros que ya sigue. En la rama `paper-state` hay **149 ficheros de `paper_state/`
+commiteados**. La comprobación fue real y respondió **otra pregunta**.
+
+Así que la clase no es «no comprobó»: es la que este proyecto catalogó el mismo día — **un
+dato bien medido prestado a una conclusión que no lo soporta.** El dato resiste cualquier
+verificación, porque es verdadero; sólo se caza leyendo la implicación. Un
+`git ls-tree -r origin/paper-state` la habría deshecho, y el egreso bloqueado no era el
+obstáculo: la rama estaba en el clon local.
 
 ## UNA DISCREPANCIA QUE ALGUIEN DEBE RESOLVER ANTES DE USAR NINGÚN COSTE
 
