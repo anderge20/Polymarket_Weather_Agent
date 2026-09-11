@@ -373,3 +373,68 @@ def test_the_two_tails_are_clamped_the_same_way():
     # mirrored quantiles must give a mirrored distribution
     assert sorted(round(v, 6) for v in a.values()) == \
            sorted(round(v, 6) for v in b.values())
+
+
+# ---------------------------------------------------------------------------
+# A2 — the published tail model stays reachable
+# ---------------------------------------------------------------------------
+
+def test_linear_r21_reproduces_the_published_numbers_exactly():
+    """The point of keeping the old path is that it REPRODUCES, so this test
+    pins the actual published values rather than merely asserting the branch
+    runs. R21 and R22 were computed with this CDF; if these numbers move, those
+    results have silently stopped being reproducible."""
+    from weather_agent.probability import (quantiles_to_distribution,
+                                           TAIL_LINEAR_R21)
+    d = quantiles_to_distribution(p10=18.8333, p25=19.6, p50=20.4111,
+                                  p75=21.2, p90=22.2,
+                                  tail_model=TAIL_LINEAR_R21)
+    assert d[18] == pytest.approx(0.0667, abs=1e-3)
+    assert (min(d), max(d)) == (18, 23), "the R21 support was 18..23"
+    assert sum(d.values()) == pytest.approx(1.0)
+
+
+def test_linear_r21_still_gives_the_band_exactly_one_half():
+    """[p50, p75] was exactly 0.50 under the truncated tails — the assertion the
+    exponential model had to move. Under the reproduction path it must come back
+    EXACTLY, not approximately."""
+    from weather_agent.probability import (quantiles_to_distribution,
+                                           band_probability, TAIL_LINEAR_R21)
+    d = quantiles_to_distribution(p10=24.0, p25=25.0, p50=26.0, p75=27.0,
+                                  p90=28.0, tail_model=TAIL_LINEAR_R21)
+    assert band_probability(d, lo=26.0, hi=27.0) == pytest.approx(0.50, abs=1e-12)
+
+
+def test_the_default_tail_model_is_the_exponential_one():
+    """The reproduction path must never become the deciding path: it assigns
+    p = 0 to reachable outcomes."""
+    from weather_agent.probability import (quantiles_to_distribution,
+                                           TAIL_EXPONENTIAL, TAIL_LINEAR_R21)
+    Q = dict(p10=18.8333, p25=19.6, p50=20.4111, p75=21.2, p90=22.2)
+    assert quantiles_to_distribution(**Q) == \
+        quantiles_to_distribution(**Q, tail_model=TAIL_EXPONENTIAL)
+    assert quantiles_to_distribution(**Q) != \
+        quantiles_to_distribution(**Q, tail_model=TAIL_LINEAR_R21)
+
+
+def test_unknown_tail_model_is_refused_rather_than_defaulted():
+    from weather_agent.probability import quantiles_to_distribution
+    with pytest.raises(ValueError):
+        quantiles_to_distribution(p10=24.0, p25=25.0, p50=26.0, p75=27.0,
+                                  p90=28.0, tail_model="gaussian")
+
+
+def test_the_two_models_differ_only_where_they_should():
+    """Same binning, same interpolation between quantiles — the difference must
+    live in the TAIL and nowhere else, which is why both share `_bin`."""
+    from weather_agent.probability import (quantiles_to_distribution,
+                                           TAIL_LINEAR_R21)
+    Q = dict(p10=24.0, p25=25.0, p50=26.0, p75=27.0, p90=28.0)
+    exp = quantiles_to_distribution(**Q)
+    lin = quantiles_to_distribution(**Q, tail_model=TAIL_LINEAR_R21)
+    # the linear model declares everything outside [24, 28] impossible
+    assert (min(lin), max(lin)) == (24, 28)
+    assert min(exp) < 24 and max(exp) > 28
+    # and inside the quantile range the shapes stay close
+    for t in (25, 26, 27):
+        assert abs(exp[t] - lin[t]) < 0.06

@@ -15,6 +15,16 @@ def _validate_quantile(name: str, value: float | None) -> float:
     return value
 
 
+#: A2. The tail model. `TAIL_LINEAR_R21` is the linear one-degree ramp that
+#: produced the published R21 and R22 numbers, KEPT AND SELECTABLE so those
+#: results stay reproducible from code — the same reason `select_tau` keeps
+#: `OBJ_MEDIAN_R21` and `error_model` keeps its withdrawn v3. It is NOT the
+#: default and must not be: it assigns p = 0 to reachable outcomes, which is a
+#: claim no forecast can support. Use it to REPRODUCE, never to decide.
+TAIL_EXPONENTIAL = "exponential"
+TAIL_LINEAR_R21 = "linear_r21"
+
+
 def quantiles_to_distribution(
     *,
     p10: float | None,
@@ -22,6 +32,7 @@ def quantiles_to_distribution(
     p50: float | None,
     p75: float | None,
     p90: float | None,
+    tail_model: str = TAIL_EXPONENTIAL,
 ) -> dict[int, float]:
     """
     Convert forecast quantiles into a discrete integer-temperature
@@ -84,6 +95,32 @@ def quantiles_to_distribution(
     #: 6.9 decay lengths — see the truncation note above.
     TAIL_CUTOFF_LAMBDAS = 6.9
 
+    if tail_model not in (TAIL_EXPONENTIAL, TAIL_LINEAR_R21):
+        raise ValueError(f"unknown tail_model {tail_model!r}")
+
+    if tail_model == TAIL_LINEAR_R21:
+        # VERBATIM the pre-fix behaviour, including the `max(0.0, ...)` that
+        # stopped the lower tail returning negative values. Reproduction only.
+        minimum = math.floor(values[0])
+        maximum = math.ceil(values[-1])
+        if minimum == maximum:
+            return {minimum: 1.0}
+
+        def cdf_r21(x: float) -> float:
+            if x <= values[0]:
+                return max(0.0, 0.10 * (x - (values[0] - 1.0)) / 1.0)
+            for i in range(len(ordered) - 1):
+                p_left, x_left = ordered[i]
+                p_right, x_right = ordered[i + 1]
+                if x <= x_right:
+                    if x_right == x_left:
+                        return p_right
+                    fraction = (x - x_left) / (x_right - x_left)
+                    return p_left + fraction * (p_right - p_left)
+            return 0.90 + 0.10 * min(1.0, (x - values[-1]) / 1.0)
+
+        return _bin(cdf_r21, minimum, maximum)
+
     span_lo = values[1] - values[0]   # p25 - p10
     span_hi = values[-1] - values[-2]  # p90 - p75
     lambda_lo = span_lo * 0.10 / 0.15
@@ -124,6 +161,17 @@ def quantiles_to_distribution(
             return 1.0
         return 1.0 - 0.10 * math.exp(-(x - values[-1]) / lambda_hi)
 
+
+    return _bin(cdf, minimum, maximum)
+
+
+def _bin(cdf, minimum: int, maximum: int) -> dict[int, float]:
+    """Integer-grid mass from a CDF, normalised.
+
+    Shared by both tail models on purpose: they may differ in the TAIL and
+    nowhere else, and a second copy of the binning is how two implementations
+    drift apart while both look right.
+    """
     distribution: dict[int, float] = {}
 
     # Probability mass at integer t is approximated by the CDF
@@ -147,6 +195,7 @@ def quantiles_to_distribution(
         temperature: probability / total
         for temperature, probability in distribution.items()
     }
+
 
 
 def band_probability(
