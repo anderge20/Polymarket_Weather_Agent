@@ -12401,3 +12401,72 @@ no estuviera revisado, es que **está mal**.
 **No fusiono el #39 aunque su ventana venza a las 05:27:27Z.** Lo verificado es mecánico;
 el juicio de si esos cuatro tests son los cuatro que hacen falta es adjudicación, y eso no
 lo hago a las 04:2xZ después de haberme equivocado dos veces esta noche en el encuadre.
+
+---
+
+## B-90 — Una prueba que conduce el mecanismo real no puede aislar un defecto de una serie
+
+*Escrito 2026-09-12T04:30:26Z. Hallazgo de A con `--runxfail` sobre el PR #39.*
+
+### Lo que decía y lo que hacía
+
+El segundo `xfail` del #39 llevaba en su `reason` la palabra «procedencia». A lo corrió con
+`--runxfail` y leyó lo que de verdad imprimía:
+
+    lo que difiere es ['source_timestamps', 'tag_ids'], y esta prueba solo puede
+    hablar de ['ingestion_timestamp', 'source_timestamps']
+
+**Estaba cayendo por el obstáculo 1 —el lado— con la etiqueta del 3 puesta.** Y no es un desliz del
+mensaje: **es estructural.** La prueba conduce `catalogue_is_unchanged` de verdad, los tres
+obstáculos están en serie, y la puerta se topa con el primero que quede en pie. *Una prueba en esa
+posición no puede aislar ninguno, por mucho que su autor lo declare.*
+
+**Y mi commit anterior lo empeoró sin que lo notara**: plantar por `dump_table` es correcto —es lo
+que hace `stage_dump`— **y pone la asimetría JSON delante del reloj**. Arreglé el instrumento por un
+lado y le tapé la vista por el otro, en el mismo commit.
+
+### La salida, y generaliza
+
+**1. Nombrar el obstáculo en vez de afirmarlo.**
+
+    obstaculo 1, el LADO: difieren ['source_timestamps', 'tag_ids']. ningun termino
+    de mercado cambio y la puerta manda volcar igualmente: ...
+
+Una aserción que exija un obstáculo concreto **vuelve a mentir el día que se arregle cualquiera de
+los tres**. Nombrar el que está delante se lee bien en las cuatro etapas de la serie.
+
+**2. Y la afirmación que hacía falta fijar pasa a ser un test QUE PASA.** Si arreglar el lado y los
+tipos fuera todo el trabajo, el del (3) estaría de más — así que se aplican **los dos arreglos** en
+una comparación de referencia local (lado simétrico más normalizador de marcas) y se pregunta qué
+queda:
+
+    queda exactamente  ingestion_timestamp  y  source_timestamps
+    dentro de source_timestamps, exactamente  updatedAt
+    y la mitad congelada sale LIMPIA
+
+El normalizador es local **a propósito**, porque no hay uno de producción. Y el `xfail(strict)` de
+arriba es lo que impide que este test se quede midiendo una copia para siempre: el día que la puerta
+tenga arreglo real, aquél pasa a XPASS, la suite se rompe y **obliga** a reapuntar éste.
+
+### La regla
+
+> **Un defecto de una serie no se aísla conduciendo el mecanismo: se aísla replicando los arreglos
+> anteriores fuera de él.** Y la prueba que sí conduce el mecanismo debe *nombrar* lo que la tumba,
+> nunca *declararlo*.
+
+Es la pareja de [[test-the-wiring-not-just-the-unit]] por el otro extremo: allí el defecto vivía en
+la llamada y había que conducir `main` para verlo; aquí conducir el mecanismo real es justo lo que
+impide ver el defecto que se quiere medir. **Las dos cosas son ciertas y la diferencia es si hay uno
+o varios obstáculos entre la prueba y su objeto.**
+
+### Y de paso, sobre el #36
+
+Medí si el replay mal ordenado deja ganar la fila vieja en algún `upsert` —que sería estado derivado
+incorrecto y no sólo una base de comparación mala—: **cero colisiones de clave** en los dos
+directorios mezclados con clave declarada (`orderbook_snapshots` y `price_history`, 2026/09/09).
+Ninguna fila derivada está mal hoy. **El «documentar y no arreglar» de A aguanta, pero aguanta por
+esto y no por el coste de replay que él adujo.**
+
+A retira además su propio párrafo del #36: son **tres** generaciones de id y **la más antigua ordena
+la última**, no la primera. *La ventana D16 habría dejado pasar un párrafo falso con el reloj en
+verde* — que es el PR #40 con un caso concreto encima.
