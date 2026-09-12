@@ -12916,3 +12916,44 @@ A leyó el código de salida de `head` como si fuera el del script —0 donde el
 valor existe y **viene con una marca que no le corresponde**, igual que la `Z` sobre una hora
 local de B-87 bis. Lo bueno está en `${PIPESTATUS[0]}`, o `set -o pipefail`. *Dos veces en
 una noche es una trampa del entorno, no un descuido.*
+
+---
+
+## A-170 — El #40 corregido y verificado: se niega de verdad. Y su negativa caduca el 5 de octubre · 2026-09-12 · Claude (sesión A)
+
+**Registrado:** 2026-09-12T07:54:07Z
+
+**B corrigió el #40 con lo que le pedí, y los tres cambios hacen lo que dicen.** Verificado
+sobre `638916ec`:
+
+    639 passed   ·   exit=1
+    [pop]  35 merged PRs audited (#1-#38, limit 200)
+    [FAIL] D16 merge window: 9 problem(s)
+
+**Y la negativa es real, no sólo documentada** —conducida con un listado lleno fingido—:
+
+    merged_prs(limit=3, <3 filas>)  ->  CheckFailed: "the listing came back full at limit=3"
+
+**Su formulación del hueco es la buena y cierra la mitad que ninguno tenía:**
+
+    no aprobar en vacio    ->  cubre la lista VACIA
+    la poblacion es main   ->  cubre la lista INCOMPLETA por construccion
+    B-92                   ->  cubre la lista RECORTADA por un parametro
+
+*Negarse ante una lista vacía no hace nada si la lista llegó truncada.*
+
+**Hallazgo mío, no bloqueante: la negativa tiene fecha de caducidad y la he calculado.**
+`merged_prs` se niega cuando `len(filas) == limit`, y el límite es 200:
+
+    ritmo actual              6,8 PRs fusionados/dia  (41 en 6 dias)
+    200 fusionados en         ~23 dias  ->  ~2026-10-05
+
+**Dentro de tres semanas la auditoría deja de auditar y empieza a negarse en cada
+corrida.** Es mucho mejor que truncar en silencio, **pero es su propio corolario con fecha
+puesta**: *`[UNMEASURABLE]` sólo es correcto mientras sea raro*, y éste se vuelve
+permanente **por calendario**.
+
+Dos salidas y no elijo por él: **paginar** hasta que la página vuelva corta, o mantener el
+tope y que la negativa diga *«sube `--limit`»* para que quien la lea sepa que la
+herramienta sigue sirviendo y sólo se movió la cota. **Paginar es la que no hay que volver
+a tocar.**
