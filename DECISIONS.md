@@ -13726,6 +13726,9 @@ volcado de más cuesta una fila; saltarse un cambio de comisiones, no.
 Hace tres horas eran 41,1 y el 37 %. **Es más probable que no que mañana se pierda la ranura
 de libro de las 03:07.**
 
+**[CORREGIDO a la baja en B-96 bis: esas cifras usan el crecimiento medido SIN la puerta, que
+entró en producción a las 15:07. Es el escenario pesimista, no el esperado.]**
+
 ### La mitigación barata existe y NO ES DESPLEGABLE DESDE AQUÍ
 
 El razonamiento del `flock` está escrito en `launcher.sh` y **su premisa ya es falsa**:
@@ -13830,3 +13833,54 @@ no se salta es más caro que el anterior.
 ciclo recarga el almacén entero cada vez**. Con el universo creciendo, ninguna puerta de
 contenido lo arregla. **El siguiente trabajo no es otra puerta: es no recargar lo ya
 cargado.**
+
+### B-96 bis — la puerta salta cuando el universo duerme, y el `decide` crítico cae dentro de esa franja
+
+*Añadido 2026-09-12T15:55:31Z. A midió la tasa de saltos y corrigió su propia proyección; al reproducirlo
+sale un patrón que ninguno de los dos había mirado.*
+
+### La tasa real, medida con la puerta ya fusionada, sobre los ocho pares
+
+    par                markets    outcomes   filas ahorradas
+    21:07 -> 00:07      vuelca      SALTA          4.400
+    00:07 -> 02:40      vuelca      SALTA          4.400
+    02:40 -> 03:07      vuelca      SALTA          4.400
+    03:07 -> 06:07      vuelca     vuelca              0
+    06:07 -> 09:07      vuelca     vuelca              0
+    09:07 -> 11:40      vuelca     vuelca              0
+    11:40 -> 12:09      vuelca      SALTA          5.412
+    12:09 -> 15:07      vuelca     vuelca              0
+
+    media 2.326 filas/ciclo de 6.600 = 35 %
+
+**`markets` no salta NUNCA —cero de ocho— porque `tick_size` se mueve en todos los pares.**
+A aplicó su 0,44 al aporte entero del catálogo, y eso supone que `markets` también salta.
+La tasa correcta es el 35 %, no el 44: *su corrección iba en la dirección buena y se quedó
+corta por el mismo lado que la original — el denominador.*
+
+### Y el patrón, que es la parte útil
+
+**Los tres saltos consecutivos son 21:07 → 03:07.** El universo deja de crecer de noche, y
+**el `decide` de las 02:40 cae dentro de esa franja.** La puerta ayuda justo donde hace falta,
+y ninguno de los dos lo había notado porque los dos mirábamos la media.
+
+    escenario                                 crecimiento    02:40 del 13    11:40 del 13
+    sin ningun salto (pesimista)               2,11 min       42,4  CRUZA     50,8  CRUZA
+    media medida de los ocho pares             1,62 min       40,4  pasa      46,9  CRUZA
+    patron nocturno, outcomes salta 3 de 4     1,41 min       39,6  pasa      45,2  CRUZA
+
+### Lo que corrige de lo mío
+
+**Mi «55,9 % de perder la ranura» de hace una hora usa el crecimiento medido SIN la puerta**,
+que entró en producción a las 15:07. Es el escenario pesimista, no el esperado. Con la puerta
+viva y el patrón nocturno, **el `decide` de las 02:40 pasa con 2 a 3 minutos de margen.**
+
+**Y la conclusión de A se mantiene en los tres escenarios: el primer cruce es el `decide` de
+las 11:40 del 13 de septiembre.** Lo que cambia es el plazo para decidir: no son once horas,
+son unas veinte, y eso alcanza para hacer el trabajo de fondo despierto y con revisión en vez
+de a la carrera.
+
+**La comprobación empírica llega sola:** el ciclo de las 18:07 es el primero cuyo delta se
+mide con la puerta viva en los dos extremos. Si el delta baja de ~2,1 a ~1,4-1,6, el modelo
+aguanta; si se queda en 2,1, la puerta no está ahorrando lo medido y vuelve el escenario
+pesimista.
