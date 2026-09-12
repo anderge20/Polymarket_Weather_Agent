@@ -12847,3 +12847,72 @@ contexto —PRs administrativos, aprobación previa registrada en otro sitio— 
 fueron violaciones reales o excepciones legítimas es **adjudicación**, no medición. Lo que
 está medido es que **la ventana no se respetó**, y eso es lo que queda escrito. El juicio,
 con luz.
+
+---
+
+## B-92 — El número de violaciones que encontraba la auditoría lo elegía un valor por defecto
+
+*Escrito 2026-09-12T07:30:12Z. Hallazgo de A verificando mi PR #40.*
+
+### La cifra dependía del `--limit`, y las dos peores eran las primeras en caerse
+
+    limit=20   ->  2 violaciones, 20 PRs vistos    <- lo que traia el fichero de A
+    limit=30   ->  7 violaciones, 30 PRs vistos    <- lo que traia mi rama
+    limit=40   ->  9 violaciones, 35 PRs vistos    <- todo
+
+    PR #35   1,62 h    23 min corto   2026-09-11
+    PR #24   1,90 h     6 min corto   2026-09-11
+    PR #10   0,07 h   116 min corto   2026-09-09
+    PR #9    0,76 h    75 min corto   2026-09-09
+    PR #8    0,50 h    90 min corto   2026-09-09
+    PR #7    0,53 h    88 min corto   2026-09-09
+    PR #6    0,22 h   107 min corto   2026-09-09
+    PR #5    0,00 h   120 min corto   <- fusionado 3 SEGUNDOS despues de abrirse
+    PR #4    0,00 h   120 min corto   <- 10 segundos
+
+**Las dos que una ventana estrecha pierde primero son las peores, porque son las más
+viejas.** Y sobre esa ventana **los dos** concluimos: *«dos violaciones, ambas de hoy,
+ninguna anterior al #24; no es un patrón viejo, empezó hoy»*. Empezó el 09-09 y ayer era su
+cola.
+
+*Enunciamos algo sobre la HISTORIA desde una ventana que excluía la historia, y la versión
+que salió era la tranquilizadora.*
+
+### Es la regla del propio fichero, aplicada a la mitad que nadie había cerrado
+
+`process_audit.py` se escribió con la regla «ningún chequeo puede aprobar en vacío», y A ya
+la había extendido una vez —*la población es `main`, no la lista de PRs*— cuando yo encontré
+que un commit empujado directo a `main` no aparece en `gh pr list`.
+
+**Faltaba el recorte.** Negarse a aprobar con una lista vacía no hace nada si la lista venía
+**truncada antes de mirarla**. Y el caso peligroso no es el que devuelve cero: es el que
+devuelve un número plausible.
+
+    no aprobar en vacio     ->  cubre la lista VACIA
+    la poblacion es main    ->  cubre la lista INCOMPLETA por construccion
+    B-92                    ->  cubre la lista RECORTADA por un parametro
+
+### Los tres cambios
+
+1. **`merged_prs()` se niega cuando el listado vuelve lleno.** Una página llena es
+   indistinguible de una truncada: **no medible**, nunca auditada. Por defecto 200.
+2. **`main` hace UN fetch y pasa la misma población a los dos chequeos**, así dos resultados
+   presentados juntos no pueden haber mirado historias distintas — que es exactamente lo que
+   producían dos `--limit` separados.
+3. **Cada corrida declara qué cubrió, pase o falle:** `[pop] 35 merged PRs audited (#1-#38,
+   limit 200)`. Sin esa línea la cobertura vive en un valor por defecto que nadie lee, **y
+   una corrida verde sobre una ventana que excluye la historia se lee igual que una corrida
+   verde sobre la historia.**
+
+Sobre la población completa: **9 violaciones y 16 ventanas en silencio**, contra 7 y 12.
+
+**NO adjudico** si las siete del 09-09 fueron violaciones reales o llevan contexto en otro
+sitio. Lo medido es que la ventana no se respetó; el juicio, despierto.
+
+### Y el código de salida tras la tubería, que A cazó en sí mismo
+
+A leyó el código de salida de `head` como si fuera el del script —0 donde el script devuelve
+1— y dice que es la segunda vez esta noche. **No es anécdota: es la familia entera.** El
+valor existe y **viene con una marca que no le corresponde**, igual que la `Z` sobre una hora
+local de B-87 bis. Lo bueno está en `${PIPESTATUS[0]}`, o `set -o pipefail`. *Dos veces en
+una noche es una trampa del entorno, no un descuido.*
