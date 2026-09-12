@@ -14767,3 +14767,65 @@ quiere medir.*
 
 **Es regenerable:** `backtest.candidates()` existe y la base tiene los insumos. Ésa es la
 acción con más impacto de las cinco.
+
+---
+
+## A-190 — Test de incrementalidad DESBLOQUEADO y CONCLUYENTE: el modelo es PEOR que el mercado, con potencia · 2026-09-13 · Claude (sesión A)
+
+**Registrado:** 2026-09-12T22:32:16Z
+
+**El cuello de botella de A-189 era falso en un punto importante: `p_model` no había que
+reconstruirlo, había que dejar de tirarlo.** `backtest.candidates()` ya devuelve la
+población **sin filtrar** con `p_model` dentro; el τ se aplica después, en `run_r21`.
+Regenerados los **1.266 candidatos de Londres** (`LONDON_CANDIDATES.json`), la misma
+población que R30_ROWS pero con el modelo incluido.
+
+### Leakage, comprobado sobre el DATO y no sobre el código
+
+    filas donde label_available_at <= decision_time:   0
+    margen etiqueta-decision:  min 44,0 h   mediana 44,0 h   max 59,0 h
+
+**La etiqueta nunca llega antes de 44 horas después de la decisión.**
+
+### El test que no se podía hacer, hecho
+
+    POBLACION COMPLETA SIN SELECCIONAR: 1.266 filas
+      Brier MERCADO  0,04706
+      Brier MODELO   0,05148
+      diferencia     -0,00442        <- el MERCADO gana
+
+      lead  9h  n=638   mercado 0,04568   modelo 0,04942
+      lead 24h  n=628   mercado 0,04847   modelo 0,05358
+
+    bootstrap con el GRUPO como unidad (229 grupos, 5.000 replicas):
+      IC 95 % de la diferencia: [-0,00798 , -0,00077]   NO INCLUYE EL CERO
+      replicas donde el modelo gana: 1,0 %
+
+**El modelo meteorológico es PEOR que el mercado, en los dos leads, sobre la población
+completa, con el evento como unidad, y es estadísticamente significativo.**
+
+### Y por qué esto SÍ tiene potencia donde lo de ayer no la tenía
+
+*Comparar dos Brier es una comparación PAREADA: la varianza del resultado se cancela porque
+ambos predictores se enfrentan al mismo `won`.* Estimar el edge no es pareado y arrastra toda
+la varianza de Bernoulli. **Por eso el MDE del edge era 5,07 pp y aquí el IC excluye el cero
+con los mismos 229 grupos.** *El sustrato no era insuficiente para toda pregunta: era
+insuficiente para ESA pregunta.*
+
+### Cómo falla el modelo, que es lo que dice si tiene arreglo
+
+    frecuencia real     6,40 %
+    media p_mid         7,18 %
+    media p_model       7,16 %      <- sesgo agregado casi identico al del mercado
+
+    calibracion del MODELO:
+      [0.00,0.05)  n=762  dice  0,00 %   real  0,79 %
+      [0.05,0.15)  n=251  dice 10,52 %   real  3,19 %   <- sobreestima por 3,3x
+      [0.15,0.35)  n=235  dice 23,85 %   real 25,53 %
+      [0.35,0.65)  n= 15  dice 38,91 %   real 33,33 %
+
+    correlacion con el resultado:  modelo +0,3802   ·   mercado +0,4684
+
+**El fallo no es de sesgo agregado —las medias coinciden— sino de ORDENACIÓN: el mercado
+ordena mejor (0,47 contra 0,38).** Y el daño está concentrado en `[0,05 , 0,15)`, donde el
+modelo dice 10,5 % y ocurre el 3,2 %: **251 filas sobreestimadas por un factor de tres.**
