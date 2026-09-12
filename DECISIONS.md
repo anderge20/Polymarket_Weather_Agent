@@ -12630,6 +12630,9 @@ A propone dos —coste superlineal, o ruido— y falta la que importa:
 > **La caja se está quedando sin memoria.** 3.819 MB, **swap CERO**, y el ciclo reconstruye
 > el almacén entero en `:memory:` cada vez.
 
+**[REFUTADA horas después, ver B-91 bis: 281,9 MB medidos, el 7,4 % de la caja. Y era
+refutable con `store_total_bytes`, que llevaba días en la fila.]**
+
 **Las tres encajan igual de bien con seis puntos. Difieren en el MODO DE FALLO, no en el
 grado:**
 
@@ -12734,3 +12737,58 @@ llevamos dos entradas argumentando sobre una magnitud que nadie observa. Su fras
 buena — *la única hipótesis que predice un acantilado en vez de una pendiente es la que no
 se puede observar* — y sigue siendo verdad **aunque la hipótesis sea falsa**: el argumento
 para instrumentar no es que tenga razón, es que hoy no se puede saber.
+
+### B-91 bis — mi hipótesis de memoria, refutada con un campo que llevaba días en la fila
+
+*Añadido 2026-09-12T06:56:17Z, todavía antes de los ciclos de las 09:07 y las 11:40.*
+
+A la refutó con `store_total_bytes`, y **lo he confirmado midiéndolo en vez de extrapolarlo**:
+cargué los 194 shards reales del almacén y medí el pico de RSS.
+
+    almacen extraido: 194 shards, 12,9 MB comprimidos
+      markets                filas=  12.485   RSS pico  204,8 MB
+      outcomes               filas=  24.970   RSS pico  204,8 MB
+      orderbook_snapshots    filas=  43.494   RSS pico  265,1 MB
+      price_history          filas=  30.958   RSS pico  281,9 MB
+
+    TOTAL 111.913 filas   RSS pico 281,9 MB   ->   2,58 KB/fila   =  7,4 % de 3.819 MB
+
+El modelo de A —intercepto 137,6 MB más 1,433 KB/fila— predice 294 MB para ese número de
+filas: **acierta dentro del 4 %.** Para llenar 3,8 GB desde 12,9 MB de NDJSON comprimido
+haría falta un factor de expansión por encima de 300.
+
+**Y el error que importa no es la hipótesis, es cómo llegué a ella.** `store_total_bytes`
+lleva días en la fila —lo escribió mi propio PR #34— y **acota la pregunta sin instrumento
+nuevo**. Propuse construir un aparato para medir algo que la medición existente ya
+respondía. *No miré el dato que tenía antes de pedir uno que no tenía.*
+
+### La cuarta hipótesis, que es la nula y ninguno propuso
+
+> **Varianza de la máquina.** vCPU compartida en una caja de 3,8 GB. Un ciclo un 20 % más
+> lento cabe entero en el ruido de un vecino, **sin mecanismo ninguno**.
+
+**Las tres que teníamos predecían todas que empeora.** Es la forma de
+[[criteria-that-are-not-criteria]] un nivel más arriba: no sobre el umbral sino **sobre el
+conjunto de hipótesis**. Con tres pesimistas y ninguna nula, el marginal de las 11:40 iba a
+«confirmar» algo pasara lo que pasara.
+
+**Mi estadístico ya la admitía numéricamente y mi narración no.** B-91 etiqueta la franja
+12-14 como «lineal / puntual», así que el número estaba previsto — pero lo habría contado
+como *«la ley lineal se confirma»*, y bajo la nula significa lo contrario: **que no hubo
+ningún acontecimiento que explicar y no hay ley que confirmar.** El mismo valor, dos
+conclusiones. *Una hipótesis sin nombrar no recibe su lectura.*
+
+> **Predicción de B-91, con las lecturas corregidas y sin tocar los cortes:**
+>
+>     12 - 14 ms/fila   ->  VARIANZA. El punto de las 06:07 queda suelto y no hay regimen
+>                           nuevo que explicar. NO es «la ley lineal confirmada».
+>     >= 18 ms/fila     ->  REGIMEN NUEVO, coste creciente en el tamaño del almacen.
+>     14 - 18           ->  no decide, declarado asi de antemano.
+
+### Y el PR #41 sigue en pie, con el argumento de A y no con el mío
+
+*«La única que predice un acantilado en vez de una pendiente es la que no se puede
+observar»* sigue siendo verdad **aunque la hipótesis fuera falsa**. El argumento para
+instrumentar no es tener razón: **es que hoy no se puede saber, y eso no lo arregla ganar la
+discusión.** Dos entradas discutiendo sobre una magnitud que nadie observa son el coste de
+no tenerla — y las dos hipótesis que siguen vivas tampoco son observables hoy.
