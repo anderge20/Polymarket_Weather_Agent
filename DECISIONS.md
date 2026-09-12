@@ -14099,3 +14099,71 @@ con los nombres tras una bandera.
 **Y lo que queda dicho sobre los once de B:** *ser sólo-espejo no es un error —hay artefactos
 que se publican para re-derivar, no para guardar— pero tiene que estar NOMBRADO, o el día
 que uno de ellos sea la única copia de algo, nada lo dirá.*
+
+---
+
+## B-98 — La puerta disparó en producción, y mi comprobación registrada estaba mal planteada
+
+*Escrito 2026-09-12T18:45:26Z, con el ciclo de las 18:07 delante.*
+
+### El primer salto real
+
+    col_20260912T180705Z_84bd52   35,42 min   152.157 filas
+
+    markets               1 shard escrito
+    outcomes              0 shards    <- SALTADO
+    market_fee_schedule   0 shards    <- SALTADO
+
+**Primera vez que la puerta salta un volcado en producción.** El estado no se lee del
+`stage_profile` —que sólo guarda `stage`, `at_s` y `elapsed_s`— sino de la ausencia del shard,
+que es la evidencia dura.
+
+### Y mi comprobación registrada no vale, por estar mal condicionada
+
+En B-96 bis escribí: *«el ciclo de las 18:07 es el primero cuyo delta se mide con la puerta
+viva en los dos extremos; si baja de ~2,1 a ~1,4-1,6 el modelo aguanta»*. Salió **+1,49**,
+dentro de la banda.
+
+**Y no confirma nada**, porque lo que un ciclo CARGA viene del volcado del ciclo ANTERIOR:
+
+    15:07  volco todo             ->  el 18:07 carga +10.188 filas   delta +1,49
+    18:07  SALTO outcomes+fees    ->  el 21:07 cargara ~4.401 filas MENOS
+
+**El intervalo cuyo delta medí no contiene ningún salto.** Un +1,49 sin salto está a media
+desviación de la media de 2,11: es exactamente lo que produce la nula de A.
+
+*Es la banda de B-91 otra vez, con otra cara: puse un número sobre un resultado sin exigir que
+el mecanismo hubiera podido actuar dentro del intervalo medido.* Una comprobación que el ruido
+aprueba no es una comprobación — y esta vez el ruido **la aprobó**, que es la forma en que
+este error se cobra de verdad.
+
+> **Comprobación re-planteada, y ahora condicionada al mecanismo.** El primer intervalo que
+> contiene un salto es **15:07→21:07**, o sea el delta del ciclo de las **21:07**:
+>
+>     sin salto en el intervalo    delta ~ 2,11 min   ->  37,5 min
+>     con el salto de las 18:07    delta ~ 1,20 min   ->  36,6 min
+>
+> La separación es pequeña —0,9 min contra una sd de 1,20—, **así que un solo punto tampoco
+> decide.** Lo que sí decide es la serie: con el patrón nocturno, tres saltos seguidos bajan
+> el delta medio a la mitad y eso sí sale del ruido.
+
+### Y una afirmación mía de hace dos horas, refutada por la caja en tres
+
+B-96 dice: *«`market_fee_schedule` no se va a saltar nunca, porque su `source_timestamp` se
+mueve cada ciclo»*. **Acaba de saltar.** Lo medí sobre **un solo par** —12:09→15:07— y escribí
+«nunca».
+
+*Un par no es una serie, y «nunca» es una palabra que exige la serie entera.* Es el mismo
+tamaño de muestra con el que A dijo «44 %» y con el que yo dije «13,50 ms estable»: el defecto
+no es la cifra, es el cuantificador.
+
+### Dónde queda el plazo
+
+Si el patrón nocturno se mantiene —salto en 21:07, 00:07 y 02:40—:
+
+    21:07          36,6 min   pasa
+    00:07          37,8 min   pasa
+    02:40 decide   39,0 min   pasa con 3 minutos de margen
+
+**El `decide` de las 02:40 pasa en el escenario central.** Sigue cruzando el de las 11:40, que
+es donde estaba el plazo desde el principio.
