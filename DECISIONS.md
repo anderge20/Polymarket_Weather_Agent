@@ -10976,3 +10976,105 @@ titular de la memoria, que lo tenía escrito mal.
 minutos. Por mi reloj son **+12,5**, y el reparto histórico disparo→push es **+15, +15,
 +16, +17**. **No va tarde todavía**; empieza a ir tarde pasadas las 00:26Z. Discrepamos
 seis minutos de reloj y conviene saberlo antes de declarar un fallo de colector.
+
+---
+
+## B-80 — Mecanicé el REGISTRO y dejé la AFIRMACIÓN a mano: inventé una hora y con ella un problema
+
+**2026-09-12T00:22:02Z — sello por `date -u`.**
+
+```
+lo que ESCRIBI en un mensaje:     "Son las 00:25Z"
+mi date -u en el comando siguiente:     00:19:15Z
+-> casi SEIS MINUTOS inventados a mano
+```
+
+**Es el mismo defecto de B-68**, registrado hace seis horas tras encontrarle a A dos sellos
+adelantados. Escribí la regla —*«el sello lo pone `date -u` dentro del comando, ninguna cabecera a
+mano»*—, dije que la adoptaba, **y la apliqué sólo a las entradas de este fichero**.
+
+> **Mecanicé el REGISTRO y dejé la AFIRMACIÓN a mano.** La regla cubrió *dónde se escribe*, no *dónde
+> se asegura* — y el canal por el que la afirmación viaja de verdad es el mensaje, no el fichero.
+
+**Y el daño fue real, no cosmético:** con la hora falsa, el ciclo «llevaba 18 minutos» y parecía tarde;
+con la verdadera llevaba 12, **dentro del reparto histórico de +15 a +17 medido por A**. **Inventé una
+hora y con ella un problema de colector que no existía** — y de haber ido más lejos habríamos
+declarado un fallo sobre el flujo irrecuperable.
+
+**Peor aún: hizo dudar a A de SU propio reloj**, con el que fija las ventanas D16. Una hora mía
+inventada puso en cuestión el instrumento con el que se respeta una salvaguarda. Los dos relojes
+coinciden: 00:20:14Z el suyo, 00:21:17Z el mío un minuto después.
+
+**Es mi propio corolario del vigía devuelto** —*el que grita sin motivo enseña a descontar sus
+avisos*— con la diferencia de que aquí **el vigía impaciente era yo** y el ruido no venía de un umbral
+mal puesto sino **de un número tecleado**.
+
+### Regla ampliada, y esta vez donde toca
+
+**Ninguna hora se escribe a mano en NINGÚN sitio — ni en el registro ni en un mensaje.** Si voy a
+afirmar una hora, la imprime un comando en el mismo turno. **Si no la he impreso, no la digo: digo
+«hace un rato».**
+
+*(Nota de A que va con esto: arregló también el titular de su memoria, que tenía la etiqueta
+equivocada. **Una memoria equivocada es peor que ninguna porque se consulta con confianza** — es un
+puntero a un campo inexistente, un nivel más arriba.)*
+
+---
+
+## A-156 — SettlementOperator validado contra la spec congelada, de forma hostil; y mi primer intento de refutarlo adivinaba nombres de atributos · 2026-09-12 · Claude (sesión A)
+
+**Registrado:** 2026-09-12T00:24:09Z
+
+**Lo único de mi pista que no depende de τ: comprobar que la implementación cubre de
+verdad la partición congelada, y no sólo las clases que hemos tocado.**
+
+**Integridad primero.** `SETTLEMENT_OPERATOR_CORE.v3.md` medido ahora:
+`a6d926672817b2eb…` = el sha registrado. La spec está intacta.
+
+**Las once clases, conducidas una a una contra `select_operator`:**
+
+    #   terna                                    spec  implementacion
+    1-2 WU/P_WU_GENERIC_sin_calificador/C,F      FC    SettlementUnavailable
+    3-4 WU/P_byForecast/C,F                      FC    SettlementUnavailable
+    5   WU/P_WU_DailyObservations/C              HP    OPERADOR
+    6   WU/P_WU_DailyObservations/F              FC    SettlementUnavailable
+    7-8 NOAA/P_NOAA_TempColumn/C,F               HP    OPERADOR
+    9   NOAA/P_NOAA_HourlyData/F                 FC    SettlementUnavailable
+    10  HKO/P_HKO_AbsDailyMax/C                  H     OPERADOR
+    11  SIN_CLAUSULA/P_UNKNOWN/C                 FC    SettlementUnavailable
+
+**11 de 11.** Cuatro habilitadas, siete cerradas por diseño.
+
+**Pero eso es confirmación, no validación, así que intenté romperlo por tres sitios:**
+
+    1. ¿discrimina la UNIDAD?   HKO/AbsDailyMax/F (clase 10 es solo C) -> se niega
+                                NOAA/TempColumn/K, WU/DailyObs/K       -> se niegan
+    2. ¿discrimina la REGLA?    NOAA|HKO|WU con P_INVENTADA/C          -> se niegan
+    3. ¿son operadores distintos, o el mismo repetido?
+
+**Y la tercera me salió mal a mí, del modo que este repositorio ya tiene documentado.**
+Sondeé `window_rule` y `series`, que **no existen**: los campos son `window_kind` y
+`required_series`. Los `None` que devolvía no eran un dato, eran **atributos
+inventados** — y con ellos las clases 5 y 7 parecían idénticas, «3 configuraciones
+distintas de 4». **Habría informado de una duplicación que no existe.**
+
+Es exactamente el defecto de `paper_cycle.py:1123`, escrito por nosotros hace horas:
+*«una versión anterior probaba tres nombres plausibles —`timezone_for`, `tz_for`,
+`get_timezone`— y el real no es ninguno»*. **Adivinar una API en vez de leerla.** Lo
+cacé porque cuatro campos devolviendo `None` a la vez no es un resultado, es un síntoma.
+
+**Con los campos reales:**
+
+    clase  5  WU_DAILYOBS_C_PROXY_IEM     LOCAL_CIVIL_DAY   MAX          NONE            metar_body_c
+    clase  7  NOAA_TEMPCOL_C_PROXY_IEM    LOCAL_CIVIL_DAY   MAX          NONE            metar_body_c
+    clase  8  NOAA_TEMPCOL_F_PROXY_IEM    LOCAL_CIVIL_DAY   MAX          NONE            metar_tgroup_tmpf
+    clase 10  HKO_ABSMAX_INTERVAL_FLOOR   SOURCE_DAILY_ROW  SOURCE_DAILY INTERVAL_FLOOR  hko_clmmaxt
+
+**4 de 4 `operator_id` distintos, 4 de 4 configuraciones completas distintas**, y
+**exactamente 4 instancias** de `SettlementOperator` en el módulo — que es lo que su
+docstring afirma: *«los cuatro operadores de §3. Nada más liquida nada.»* La afirmación
+es verdadera y ahora está comprobada, no creída.
+
+**Estado de la pista, sin adornos:** `settle` está **implementado, íntegro y validado
+contra su spec congelada**, y no tiene nada que liquidar porque no hay τ. Eso no es un
+fallo: es una puerta cerrada con la pieza de detrás terminada y comprobada.
