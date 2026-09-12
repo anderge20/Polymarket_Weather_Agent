@@ -11752,3 +11752,101 @@ Línea principal en verde: las dos fusiones son commits de fusión que nombran s
 
 **El #36 NO se fusionó**, conforme a A-159: su ventana vence a las 02:39:43Z y queda para
 revisión de fondo.
+
+---
+
+## B-86 — Confirmado en producción: el gate no saltó, y el plazo es MAÑANA
+
+**2026-09-12T03:02:31Z — sello por `date -u`.**
+
+El ciclo de las 02:40 volcó el catálogo otra vez: **cuarto shard de `markets`**. **El gate del #35 no
+saltó, como predecía B-83** — confirmado en producción y no sólo por comparación de shards.
+
+```
+ciclo   total min   rows_loaded   resident   redundantes
+21:07       17,07        68.447          -            -
+00:07       18,97        76.874     72.869        4.005
+02:40       20,95        85.347     74.741       10.606
+
+crecimiento: +1,91 y +1,98 min por ciclo   (media +1,94, ESTABLE, no acelerado)
+desde 20,95 a +1,94/ciclo -> cruza los 42 min en 11 CICLOS = 1,1 dias -> hacia el 13 de septiembre
+```
+
+**El «2-3 días» de B-70 partía de 15,4 min. Ya vamos por 21:** se ha comido la mitad del margen en
+tres ciclos. **No son 2-3 días: es mañana.**
+
+**Y `rows_resident` demuestra su valor en su segundo punto:** 85.347 cargadas contra 74.741 residentes
+= **10.606 redundantes**, +6.601 en un solo ciclo. **Sin ese campo la proyección de RAM habría usado
+las 85.347.** El #34 estaba bien puesto.
+
+### Consecuencia para mañana
+
+**«El fixture antes que el gate» sigue siendo correcto sólo si las dos cosas caben en el día.** Con
+once ciclos de margen, si el fixture se alarga hay que elegir entre **arreglar el gate con un test más
+pobre** o **pasar el plazo** — y esa decisión se toma **con el número delante, no cuando falte un
+ciclo**.
+
+**Tercera vía apuntada y NO propuesta:** borrar los shards de catálogo redundantes del almacén. Son
+derivados y duplicados exactos, y bastaría conservar **el primero y el último** —el último puede ser un
+subconjunto, ya establecido—. **No se adjudica de madrugada con D0 diciendo «nunca borrar».** Queda
+para mañana como opción, no como propuesta.
+
+---
+
+## A-162 — El plazo es mañana, pero arreglar el gate NO lo elimina: lo mueve a ~4 días. Y `code_commit` resuelto en producción · 2026-09-12 · Claude (sesión A)
+
+**Registrado:** 2026-09-12T03:03:55Z
+
+**Confirmado el cuarto shard de B** —el ciclo de las 02:40 volcó y empujó a las
+03:01:03Z—, **y su medición del crecimiento es correcta.** Pero su aritmética lo atribuye
+entero al catálogo, y descompuesto no lo es:
+
+                total       CATALOGO   libros+precios   loaded   resident   code_commit
+    21:07      17,06 min     43,99 s      879,27 s      68.447      None       None
+    00:07      18,97 min    130,40 s      909,96 s      76.874    72.869       None
+    02:40      20,96 min    208,90 s      943,56 s      85.347    74.741   e341e02745d6
+
+    crecimiento por ciclo:   catalogo +82,5 s   ·   libros+precios +32,1 s
+                             el catalogo es el 72 %, NO el 100 %
+
+**Los libros y los precios crecen de forma irreducible**: cada ciclo son datos nuevos de
+verdad, no un snapshot repetido. **Ninguna puerta de contenido los para.**
+
+**Y eso corrige el plazo en las dos direcciones:**
+
+    sin arreglar nada     +1,94 min/ciclo  ->  cruza 42 min en 11 ciclos = 1,1 dias   (13-sep)
+    con el gate arreglado +0,54 min/ciclo  ->  cruza 42 min en 39 ciclos = 3,9 dias   (16-sep)
+
+**Arreglar el gate no elimina el plazo: lo mueve de mañana a ~cuatro días.** Es la
+diferencia entre *«esto lo resuelve»* y *«esto compra tiempo»*, y de esa distinción
+depende si mañana hay que hacer algo más además del gate.
+
+**Lo que esto le hace a la decisión de mañana, y es lo contrario de lo que parecía:**
+B planteaba *«el fixture antes que el gate, y si el fixture se alarga hay que elegir entre
+un test pobre o pasar el plazo»*. **Con el margen real —11 ciclos hasta el cruce, y ~39
+una vez arreglado— esa disyuntiva no aprieta tanto**: el fixture cabe. Lo que sí aprieta
+es que **el problema de fondo no es el catálogo**, y el catálogo sólo estaba tapándolo.
+
+**El verdadero problema, dicho ahora para que no se descubra dentro de cuatro días:** el
+ciclo **recarga el almacén entero en cada ejecución**, y el almacén crece para siempre
+porque los libros son irrecuperables y por tanto nunca se borran. **Eso no lo arregla
+ninguna puerta; exige no recargar lo que ya se cargó.** El arreglo del gate es correcto y
+hay que hacerlo — pero es un parche sobre el 72 %, no una solución.
+
+**Y el campo `rows_resident` del #34 demuestra su valor en su segundo punto**, como dice
+B: 85.347 cargadas contra 74.741 residentes = **10.606 redundantes**, +6.601 en un ciclo.
+Sin el campo, la proyección de RAM habría usado las 85.347.
+
+### Predicción de A-161 RESUELTA, y antes de lo previsto
+
+    code_commit del ciclo de las 02:40  =  e341e02745d6...
+
+**Es el primer ciclo desde el 2026-09-09 que escribe un sha real en su fila**, y es
+exactamente el commit de fusión del #38, que fusioné a las 02:12:58Z. La caja pulló y lo
+usó veintisiete minutos después. **La predicción decía «el ciclo de las 03:07»; se
+cumplió en el de las 02:40**, porque olvidé que el `decide 9` de las 02:40 también cuenta.
+*El mecanismo acertó y la hora no: un ciclo antes de lo que dije.*
+
+**La tercera vía de B —borrar shards de catálogo redundantes— NO la adjudico**, por la
+misma razón que él: D0 dice «nunca borrar datos» y eso no se toca de madrugada. Queda
+apuntada.
