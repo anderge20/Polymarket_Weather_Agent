@@ -13958,3 +13958,41 @@ mitad descuido, y la mitad que se podía ya está demostrada.*
 días** (A-179), el primer cruce sigue siendo el `decide` de las 11:40 del 13-sep, y el
 problema de fondo —recargar el almacén entero cada vez, con el universo creciendo— **no lo
 toca ninguno de los cinco PRs de hoy**. Tarea #48.
+
+---
+
+## A-182 — Cerrado el #36 sin fusionar: caducó por tercera vez, y lo que valía era la investigación que forzó · 2026-09-12 · Claude (sesión A)
+
+**Registrado:** 2026-09-12T17:52:15Z
+
+**El párrafo del #36 llevaba tres afirmaciones que el #39 falsificó al fusionarse:**
+
+    "AS OF 2026-09-12 THIS GATE HAS NEVER RETURNED True IN PRODUCTION, AND CANNOT"
+    "The fix ... is not in this branch"
+    "repairing the sight on a rifle with no firing pin"
+
+**La puerta funciona, el arreglo está en `main` y el percutor está puesto.** Fusionarlo
+habría metido **un puntero que miente sobre el estado en el docstring exacto que se
+consulta** — la clase que este repositorio ha encontrado cinco veces en dos días,
+introducida por el PR escrito para documentar una de ellas.
+
+**Y lo que venía a aportar ya está en `main`, escrito mejor:** las tres generaciones, el
+orden invertido y **el invariante encabezando**, que es lo que al mío le faltaba. La
+advertencia del subconjunto nunca salió de ahí (línea 1896, intacta).
+
+**Lo que sí valió, y no fue el texto:** su primera versión afirmaba **dos** generaciones con
+`col_ < cyc_` y planteaba el riesgo como futuro. **Comprobar esa afirmación contra el
+almacén es lo que encontró la tercera generación y que la más vieja ordena la última** — que
+se convirtió en el obstáculo 4 del #39, el único que sólo era peligroso **después** de
+arreglar los otros.
+
+> **El PR valía por la investigación que forzó, no por el texto que llevaba.** Y retenerlo
+> anoche bajo A-159 resultó acertado **por una razón más fuerte que la que di**: no es que
+> estuviera sin revisar, es que estaba mal.
+
+**Tres veces caducó el mismo párrafo en veinte horas** —dos generaciones cuando eran tres,
+riesgo futuro cuando ya ordenaba mal, y puerta muerta cuando ya estaba viva—. *Un texto que
+describe un estado caduca al ritmo del estado, y éste cambiaba cada pocas horas.*
+
+**Cerrado sin pérdida de contenido. Quedan abiertos sólo el #33 y el #28, los dos borradores
+de la sesión en la nube, que no son míos y no toco.**
