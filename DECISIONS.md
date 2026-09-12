@@ -14459,3 +14459,63 @@ fuera de toda población medida y ninguna cifra de edge lo incluye.
 **Hong Kong no tiene edge ni deja de tenerlo.** No hay estrategia que lo opere, ninguno de sus 55
 mercados puede liquidar porque la serie que exigen no la escribe nadie, y está fuera de toda
 población medida. *La pregunta no tiene respuesta porque el objeto no existe todavía.*
+
+---
+
+## A-187 — CAMBIO DE OBJETIVO DEL USUARIO: Hong Kong congelado, todo a Londres. Primer resultado medido · 2026-09-12 · Claude (sesión A)
+
+**Registrado:** 2026-09-12T21:42:56Z
+
+**El usuario congela Hong Kong y concentra todo en LONDRES.** Una ciudad, un mercado, una
+hipótesis. No se toca HKO, `hko_clmmaxt`, A-34 ni el settlement de Hong Kong.
+
+**Lo que quedó cerrado de Hong Kong, como lección:**
+
+    coordenada VHHH (aeropuerto)   22.309 / 113.922
+    HKO sede (Tsim Sha Tsui)       22.302 / 114.174
+    distancia                      26,0 km
+    station_coords_v1.json         Hong Kong en excluded_no_icao, "settlement HKO, no METAR"
+
+**Predecir en un sitio y liquidar en otro.** Y el sustrato de calibración R30 (10.000 filas)
+tiene **cero** filas de Hong Kong, porque la tubería va por estación y los HKO tienen
+`icao2` nulo por diseño. *Hong Kong era invisible a toda medición hecha hasta hoy, y nadie
+lo había dicho.*
+
+### LONDRES — primer resultado, medido
+
+    EGLC · 1.266 filas · 115 eventos · 2026-04-11..2026-08-23 · leads 9 y 24
+
+    precio medio del mercado   7,18 %
+    frecuencia real            6,40 %
+
+    [0.00,0.01)  n=734   dif  -0,00 pp   <- CERO exacto, y es el 58 % de la muestra
+    [0.01,0.03)  n=134   dif  +0,31
+    [0.03,0.07)  n= 89   dif  -0,09
+    [0.07,0.15)  n= 79   dif  +1,70
+    [0.15,0.30)  n=107   dif  +2,08
+    [0.30,0.60)  n=120   dif  +4,11
+    [0.60,1.01)  n=  3   dif +37,17      <- n=3, ruido
+
+**Dirección: vender YES / comprar NO.** Corregí mi propia etiqueta —escribí «vender NO» y es
+al revés— antes de que se propagara a ninguna conclusión.
+
+**El look-ahead está cerrado por construcción y lo verifiqué en el código, no de oídas:**
+
+    features.py:67   observation_time <= prediction_time  via db.latest_asof
+    features.py:121  rechaza semantica EXECUTABLE
+    features.py:125  rechaza el precio de OTRO token
+    prices.py:212    el sello sale de point["t"] del ENDPOINT, no de la ingesta
+
+### Las cuatro razones por las que NO lo llamo edge
+
+1. **Selección post-hoc, y es mía:** elegí el tramo `[0,07 , 0,60)` **después** de ver la
+   tabla. Eso infla el resultado por construcción.
+2. **Las filas no son independientes:** 306 filas de **65 eventos**, y las bandas de un
+   evento son mutuamente excluyentes. **El n efectivo está más cerca de 65 que de 306.**
+3. **`p_mid` es un mid INDICATIVO, no ejecutable** (`database.py:25`), y los
+   semidiferenciales que apliqué son de otra población (todas las estaciones, no EGLC).
+4. **Todo in-sample**, sin partición temporal.
+
+**Encargado a B como RED TEAM**, incluido el control de placebo: permutar `won` dentro de
+cada evento conservando un ganador por evento. **Si el «edge» aparece igual, el hallazgo es
+metodológico y no de mercado.**
