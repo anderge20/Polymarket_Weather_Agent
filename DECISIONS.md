@@ -14167,3 +14167,65 @@ Si el patrón nocturno se mantiene —salto en 21:07, 00:07 y 02:40—:
 
 **El `decide` de las 02:40 pasa en el escenario central.** Sigue cruzando el de las 11:40, que
 es donde estaba el plazo desde el principio.
+
+---
+
+## B-99 — La etapa que más crece es la única que la puerta no puede saltar nunca
+
+*Escrito 2026-09-12T18:48:32Z. Medición que decide la cuestión de fondo, y no la decido yo solo.*
+
+### El reparto del crecimiento, por etapa, en los últimos siete ciclos
+
+    ciclo     markets   outcomes     libro   precios    total
+    02:40      109,2 s     99,7 s    617,7 s   325,8 s   20,96 min
+    03:07      149,3 s    137,0 s    631,3 s   335,7 s   22,46
+    06:07      201,3 s    184,1 s    692,4 s   359,9 s   26,04
+    09:07      237,3 s    216,5 s    646,3 s   331,4 s   25,80
+    11:40      304,2 s    282,9 s    711,5 s   355,8 s   29,12
+    12:09      348,8 s    329,3 s    725,4 s   366,2 s   31,07
+    15:07      422,9 s    383,2 s    745,1 s   385,0 s   33,92
+    18:07      462,2 s    425,6 s    759,4 s   382,1 s   35,42
+
+    CATALOGO (markets + outcomes)   + 97,0 s/ciclo    77 %
+    libro + precios                 + 28,3 s/ciclo    23 %
+
+**`load:markets` pasó de 109 a 462 segundos en dieciséis horas —×4,2— y crece a +50,4 s por
+ciclo: es la etapa que más crece de todo el ciclo.** Y es **la única que la puerta no puede
+saltar nunca**, porque `tick_size` se mueve en todos los pares.
+
+*Toda la noche hablamos del catálogo como «el 72 %» y luego «el 68 %» del crecimiento. Ahora
+es el 77 %, y dentro de él la mitad es la parte que ninguna puerta de contenido alcanza.*
+
+### Y el 63 a 1, que es la forma exacta del desperdicio
+
+    cambios reales de tick_size por par:  33, 34, 11, 64, 35   ->  media 35 de 2.200 = 1,6 %
+
+**Se escriben 63 filas por cada una que lleva información.** Y cada volcado de 2.200 filas
+cuesta ~31-50 s de carga **en todos los ciclos posteriores, para siempre**, porque el replay
+lee todos los shards.
+
+### Lo que quitaría cada vía, medido y no supuesto
+
+    puerta (ya dentro)   solo outcomes, ~50 % de los ciclos      ~ -23 s/ciclo de 125
+    deltas en catalogo   los 97 s/ciclo del catalogo enteros
+    DuckDB persistente   los 125 s/ciclo, y el NIVEL tambien
+
+**Esto inclina la decisión y creo que la cierra, pero la cierro con A, no solo.** Mi lectura,
+con los números delante:
+
+- **Los deltas atacan el 77 % del crecimiento y son reversibles.** No cambian ninguna garantía
+  si la instantánea completa periódica es lo bastante frecuente — y el #31, que exige que el
+  universo sea recuperable de un solo shard, se satisface con esa instantánea. *Lo que el #31
+  prohíbe es no tener nunca una completa, no tenerla cada ciclo.*
+- **El DuckDB persistente ataca el 100 % y además el nivel**, que es lo único que baja los 35
+  minutos actuales en vez de sólo frenar su subida. Pero convierte el derivado de efímero en
+  duradero, y un fichero rancio o corrupto pasa a ser estado silencioso — riesgo de clase
+  distinta, no de grado.
+
+**Si tuviera que elegir sin A elegiría los deltas, por reversible y por atacar el término
+dominante.** Y el argumento que me hace dudar es suyo por adelantado: los deltas frenan la
+subida y no bajan el nivel, así que el ciclo se queda en 35 minutos para siempre y el margen
+del `decide` no se recupera, sólo deja de encogerse.
+
+*Con el plazo en el `decide` de las 11:40 de mañana y el de las 02:40 pasando con tres minutos
+de margen, hay noche para hacerlo bien.*
