@@ -14595,3 +14595,67 @@ estación. Cuatro de cuatro.**
              cubren septiembre. Es una medicion, no la que hace falta.
     UNKNOWN  el n efectivo exacto. Uso el evento como bloque, que es conservador; la
              correlacion intra-evento no la he estimado.
+
+---
+
+## B-102 — El salto funcionó, el tiempo no bajó, y eso va contra mi propio PR #42
+
+*Escrito 2026-09-12T21:50:58Z. Mi predicción registrada en B-98 queda refutada.*
+
+### La comprobación, ejecutada
+
+    ciclo     total      d    filas   d filas   markets  outcomes    libro  precios
+    15:07     33,92      -   141969        -    422,9s    383,2s    745,1s   385,0s
+    18:07     35,42  +1,49   152157   +10188    462,2s    425,6s    759,4s   382,1s
+    21:07     37,41  +2,00   156776    +4619    546,7s    438,5s    771,7s   394,5s
+
+    el ciclo de las 21:07 escribio markets y SALTO outcomes y market_fee_schedule
+
+**El salto funcionó: las filas subieron +4.619 en vez de +10.000, exactamente las ~4.400 del
+shard de `outcomes` que no se escribió.** Y el tiempo subió +2,00 min, que es lo que sube un
+ciclo sin salto.
+
+    prediccion de B-98:   con el salto 36,6 min   ·   sin el salto 37,5
+    observado:            37,41 min
+
+**Salió la del «sin salto», habiendo saltado. Refutada.**
+
+### Y el diagnóstico por etapas es lo que más incomoda
+
+    markets    462,2 -> 546,7   +84,5 s   filas nuevas 2.200   ->  38 ms/fila
+    outcomes   425,6 -> 438,5   +12,9 s   filas nuevas     0
+    libro      759,4 -> 771,7   +12,3 s
+    precios    382,1 -> 394,5   +12,4 s
+
+    marginal aparente del ciclo: 26,4 ms/fila, contra la media de ~14
+
+**`outcomes` ganó CERO filas y tardó 12,9 segundos más.** Eso no lo explica el recuento de
+filas de ninguna manera. Dos lecturas y **no las distingo con un punto**: o el coste por fila
+sube con el tamaño de la tabla —superlinealidad en el upsert, la hipótesis que A me refutó con
+el marginal negativo— o son 12,9 s dentro del ruido de una etapa, con una sd de ciclo de 72 s.
+
+### Lo que esto le hace a mi PR #42, dicho por mí antes de que A se apoye en él
+
+La proyección del #42 —ciclo 35,4 → 22,5 min— sale de un experimento **controlado**: los mismos
+shards, la misma máquina, dos órdenes, 392 → 45 s con pandas bloqueado. Ese experimento sigue
+en pie y la equivalencia de la tabla también.
+
+**Pero descansa en que el tiempo siga al recuento de filas, y este es el único punto de
+producción donde las filas bajaron y el tiempo no.** Si el coste no es proporcional a las filas,
+quitar el 89 % de los upserts no tiene por qué quitar el 89 % del tiempo.
+
+*El sesgo aquí es mío y va en una dirección: es mi PR, mi número y mi interés en que salga. Por
+eso lo escribo antes de que A lo lea en otro sitio.* El #42 sigue siendo correcto —no borra
+nada, la tabla es idéntica— y su **ahorro proyectado no está establecido sobre la caja**.
+
+### Y el plazo vuelve
+
+    diez deltas post-#31:  media +2,04  sd 1,08
+
+    00:07                      39,4 ± 1,1 min    P(perder la ranura)   0,9 %
+    decide 02:40 del 13-sep    41,5 ± 1,5 min    P(perder la ranura)  36,8 %
+
+Hace cinco horas dije que con el patrón nocturno el `decide` de las 02:40 pasaba con tres
+minutos de margen. **El patrón nocturno ocurrió —saltó en 18:07 y en 21:07— y el tiempo no
+bajó.** Así que vuelve a ser un tercio de probabilidad de perder la ranura de libro de las
+03:07, y la razón por la que lo dije está refutada, no sólo el número.
