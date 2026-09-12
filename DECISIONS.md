@@ -11682,3 +11682,73 @@ sino la de sospechar del resultado que sale bien.* **Los once errores de esta no
 suyos y cinco míos, tienen en común que ninguno chirriaba** — y este recuento se corrige a
 mano un minuto después de escribirlo, porque decía «doce». *Ni siquiera sumar sobrevive a
 esta hora sin que alguien lo recalcule.*
+
+---
+
+## A-161 — Recuento de las fusiones de la madrugada, escrito aquí y no en los mensajes · 2026-09-12 · Claude (sesión A)
+
+**Registrado:** 2026-09-12T02:04:35Z
+
+**PR #37 — `scripts/process_audit.py`, las dos comprobaciones que nadie ejecutaba más la
+tercera de B.**
+
+    ventana abierta        2026-09-11T23:51:57Z  (+ commit de sustancia, reiniciada)
+    disparo                2026-09-12T02:01:07Z
+    headRefOid EN EL DISPARO   a9070eac16f5df6b8fa0f3a4ca753698bac7ae0a
+    suite contra ESE sha       622 passed        <- 608 + 14, el numero predicho
+    fusionado              02:02:43Z
+    commit de fusion       ca140d26eef0bd6e331fd1d1ccb6d95bd1978751
+    primer padre           6232e71  (main anterior)
+    SEGUNDO PADRE          a9070eac  = el sha verificado   ✓
+    suite sobre el ARBOL DE FUSION  622 passed  (A-119)
+
+**A-112 completo, los cinco pasos.** El recuento coincidió con el predicho sin ajustarlo
+después: **622 = 608 + 14**, y los catorce son los nueve originales más los cinco de
+`check_mainline`.
+
+**PR #38 — `code_commit` fuera de Actions.** (registrado 2026-09-12T02:15:04Z)
+
+    disparo                2026-09-12T02:10:58Z
+    gh devolvio mergeable=UNKNOWN   -> NO se fusiono; main acababa de moverse con el #37
+    head verificado contra el TIP de la rama, no solo contra gh   ✓ 7554247d
+    suite contra ESE sha       613 passed   <- la rama parte del main ANTERIOR: 608 + 5
+    fusionado              02:12:58Z
+    commit de fusion       e341e02745d62720c58be4a2efa07fea0a720d7d
+    primer padre           ca140d26  (la fusion del #37)
+    SEGUNDO PADRE          7554247d  = el sha verificado   ✓
+    suite sobre el ARBOL DE FUSION  627 passed   <- 622 + 5, el numero predicho
+
+**Y aquí A-119 se gana el sueldo:** la rama da **613** y el árbol de fusión **627**. Son
+árboles distintos y sólo uno de los dos es el que queda en `main`. **Verificar la rama y
+no el árbol habría dejado sin probar exactamente lo que se publica.**
+
+**El `UNKNOWN` merece nota:** `gh` devolvió `mergeable=UNKNOWN` en el primer intento
+porque GitHub aún no había recalculado la mezcla tras mover `main` con el #37. **No se
+fusiona sobre un estado que no se conoce.** Y aproveché para comprobar el head **contra
+el tip de la rama** y no sólo contra lo que dijo `gh` — que es el motivo por el que existe
+A-112.
+
+### La auditoría del #37 estrenada sobre sus propias fusiones
+
+    [FAIL] D16 merge window: 2 problem(s)
+             PR #35: waited 1.62 h, 23 min short
+             PR #24: waited 1.90 h,  6 min short
+    [ok]   mainline integrity
+    [ok]   collector freshness
+    exit=1
+
+**Señala las dos violaciones históricas, que son reales, y NO señala el #37 ni el #38.**
+Línea principal en verde: las dos fusiones son commits de fusión que nombran su PR.
+**La auditoría se estrena diciendo la verdad sobre la noche en que se escribió.**
+
+### Estado de `main` al cierre
+
+    e341e027   627 tests verdes, verificados sobre el arbol de fusion
+    code_commit() -> e341e02745d62720c58be4a2efa07fea0a720d7d   (sin sufijo: arbol limpio)
+
+**Predicción para el ciclo de las 03:07, escrita ahora:** será el **primer ciclo desde el
+2026-09-09 que escriba un `code_commit` real** en su fila, en vez de `None`. Si sale
+`None`, la caja no pulló y hay que mirar `launcher.sh`.
+
+**El #36 NO se fusionó**, conforme a A-159: su ventana vence a las 02:39:43Z y queda para
+revisión de fondo.
