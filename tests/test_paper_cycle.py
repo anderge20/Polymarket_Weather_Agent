@@ -2878,3 +2878,38 @@ def test_code_commit_degrades_to_none_instead_of_aborting_a_cycle(monkeypatch):
 
     monkeypatch.setattr(paper_cycle.subprocess, "run", boom)
     assert paper_cycle.code_commit() is None
+
+
+def test_an_UNRECOGNISED_shard_name_can_never_win_the_selection(tmp_path):
+    """The invariant that survives the history the ordering is built on.
+
+    `_shard_sort_key` orders Actions-era ids before box ids because collection
+    moved on 2026-09-09 and Actions has written nothing since. That premise is
+    history and could stop being true — a new collector, a backfill, a rename.
+
+    What must not depend on it: a name the key does not recognise sorts FIRST,
+    so it can never win `max()` while a recognised shard exists, and the worst
+    it can do is leave the baseline OLDER than the truth. An older baseline
+    makes the sets differ and the catalogue get dumped — fail-open, which costs
+    seconds of replay, against a wrongful skip, which loses a catalogue the
+    universe cannot be rebuilt without.
+
+    Session A found this by trying to break the key through its premise and
+    failing; pinned here so the property is asserted rather than argued.
+    """
+    d = tmp_path / "markets" / "2026" / "09" / "12"
+    d.mkdir(parents=True)
+    conocido = "markets__col_20260912T114005Z_e79a6c__0000.ndjson.gz"
+    for n in (conocido,
+              "markets__zzz_un_generador_futuro__0000.ndjson.gz",
+              "markets__cyc_34369049661__0000.ndjson.gz"):
+        (d / n).write_bytes(b"")
+    rutas = list(d.iterdir())
+
+    assert sorted(rutas)[-1].name.startswith("markets__zzz_"), (
+        "el nombre desconocido ya no ordena el ultimo por alfabeto: esta prueba "
+        "dejaria de demostrar que la clave lo corrige")
+    assert max(rutas, key=paper_cycle._shard_sort_key).name == conocido, (
+        "un nombre que la clave NO reconoce gano la seleccion: puede quedarse "
+        "con una base mas NUEVA que la que sabe fechar, y entonces un salto "
+        "indebido deja de ser imposible")

@@ -1693,6 +1693,17 @@ PROVENANCE_KEYS = {"source_timestamps": ("updatedAt",)}
 def _shard_sort_key(path):
     """Order shards by TIME, which is not the same as ordering them by name.
 
+    THE INVARIANT, FIRST, BECAUSE IT IS THE PART THAT CANNOT EXPIRE: a filename
+    this function does not recognise sorts BEFORE every one it does. So an
+    unrecognised generation can never win the selection while a recognised shard
+    exists, and the worst it can do is leave the baseline OLDER than the truth --
+    which makes the sets differ and the catalogue get dumped. Fail-open, and it
+    holds whoever writes the shard and whatever they name it.
+
+    Session A's review found this by trying to break the key through its history
+    and failing. The history below is why the ordering is currently what it is;
+    the invariant above is why it stays safe when the history stops being true.
+
     The day directory is reliable (zero-padded), so only the filename inside it
     needs care -- and inside it three id generations coexist in four directories
     of `origin/paper-state`:
@@ -1717,6 +1728,8 @@ def _shard_sort_key(path):
     Actions-era ids sort BEFORE box ids within a directory because collection
     moved to the box on 2026-09-09 at 18:53 and Actions has written nothing
     since -- so in any directory holding both, the Actions shard is the older.
+    That premise is HISTORY and could stop being true; the invariant at the top
+    is what makes the failure harmless if it does.
     """
     m = re.search(r"__col_(\d{8}T\d{6}Z)_", path.name)
     return (str(path.parent), 1, m.group(1)) if m else (str(path.parent), 0, path.name)
