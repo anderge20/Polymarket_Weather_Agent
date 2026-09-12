@@ -14716,3 +14716,54 @@ con el sustrato actual. Y las razones no son «el mercado es eficiente», son co
 **Lo que NO he demostrado y no voy a afirmar:** que no exista edge en Londres. He demostrado
 que **este sustrato no puede detectarlo**. 81 grupos de libro vivo en cuatro meses no dan
 potencia para un efecto de uno o dos puntos porcentuales, lo haya o no.
+
+---
+
+## A-189 — FASE 2 LONDRES: el cuello de botella es POTENCIA, y está cuantificado · 2026-09-13 · Claude (sesión A)
+
+**Registrado:** 2026-09-12T22:17:12Z
+
+**Inventario del sustrato de Londres, medido sobre `data/pmw.duckdb` (2,4 GB) y los
+artefactos de investigación:**
+
+    p_mid as-of + won            SI    1.266 filas EGLC / 10.000 totales
+    p_model                      NO    solo para las 468 que PASARON el filtro tau
+    forecast (icon_seamless)     SI    236 para EGLC, 118 fechas, 2 runs/dia (06z, 18z)
+    ensemble / multi-modelo      NO    UN solo modelo
+    observacion tmax             SI    118 dias EGLC
+    libro historico bid/ask      NO    el orderbook empieza el 2026-09-09, prospectivo
+    volumen                      UNKNOWN
+
+**Y una falsa alarma que cacé antes de reportarla:** `issue_time` se pintaba en
+`Europe/Madrid`. La columna es `TIMESTAMP WITH TIME ZONE` y con TZ=UTC el run `18z` sale a
+las 18:00 UTC. **El instante es correcto; era mi sesión.** Cuarta del día.
+
+### El cuello de botella no es el modelo: es la POTENCIA
+
+    grupos (evento,lead) de libro VIVO en Londres:  81
+    sd del estadistico por grupo:                   16,29 pp
+
+    EFECTO MINIMO DETECTABLE (alfa 5 %, potencia 80 %):   5,07 pp
+
+    para detectar 1 pp  ->  ~2.080 grupos   25,7x lo que hay
+    para detectar 2 pp  ->    ~520 grupos    6,4x
+    para detectar 3 pp  ->    ~231 grupos    2,9x
+
+**Los costes de fricción están en 1-2 pp. El efecto económicamente relevante está por
+debajo del umbral de detección de este sustrato por un factor de entre 3 y 26.**
+
+*No es que no haya edge en Londres: es que con 81 grupos no se puede distinguir un edge de
+2 pp de un cero, exista o no.* Y por eso el «+1,37 pp» de ayer tenía un IC de
+[-0,80 , +3,80]: **el intervalo es ancho porque el n es pequeño, no porque el efecto sea
+ambiguo.**
+
+### Y el segundo cuello, que impide el test que más pedía el usuario
+
+**`p_model` no se conservó para los 9.532 candidatos rechazados.** El test de
+incrementalidad —¿aporta la meteorología algo que el mercado no tenga?— **no se puede correr
+sobre una población no seleccionada**, porque las 468 que sí lo tienen fueron elegidas
+justamente por tener `|p_model - p_mid|` grande. *Seleccionar sobre la magnitud que se
+quiere medir.*
+
+**Es regenerable:** `backtest.candidates()` existe y la base tiene los insumos. Ésa es la
+acción con más impacto de las cinco.
