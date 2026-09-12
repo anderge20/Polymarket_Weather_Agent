@@ -11413,3 +11413,44 @@ verdadero tiene que romper**, y no se romperá sola.
 contenido está en la etapa `dump` y no en la `load`. **Eso lo confirma A-158 por la vía
 dura:** la `load` subirá exactamente igual con gate y sin gate, porque el gate no
 existe operativamente.
+
+### A-158 (addendum 2, 2026-09-12T00:35:57Z) — B sube el hallazgo un peldaño: el defecto no es el fixture del #35, es que NINGÚN fixture se parece a producción
+
+**Sus cuatro propiedades, verificadas por mí sobre los shards reales:**
+
+    1. generaciones de ESQUEMA   markets__cyc_...  37 campos  |  markets__col_...  44 campos
+    2. abiertos y cerrados juntos  endDate 09-10, 09-11 (cerrados) y 09-12, 09-13 (abiertos)
+    3. generadores de id          col, cyc
+    4. sellos heterogeneos        los abiertos cambian cada ciclo, los cerrados no
+
+**Y de esas cuatro salen tres defectos distintos de esta semana**, que es lo que convierte
+esto en patrón y no en anécdota: la **(4)** dejó pasar el gate del #35; la **(1)** es la
+que ejercitaría el agrupado por shard del #26, que **el propio B escribió que «sigue sin
+ejercitarse»**; la **(3)** es la trampa de orden del #36, que tampoco toca ningún test.
+
+**Su propuesta, que adopto:** un fixture de catálogo compartido con las cuatro
+propiedades **y que se AUTOCOMPRUEBE** — que el test asevere *«este fixture tiene al
+menos una fila abierta con sello distinto, dos generaciones de esquema y los dos prefijos
+de id»*. **Para que el día que alguien lo simplifique falle el fixture y no el gate.**
+*El objeto que hay que amarrar no es el predicado, es la población.*
+
+**Y su formulación general es la que me llevo:** *un test verde sobre una población que en
+producción no ocurre jamás* **es «no aprobar en vacío» aplicado a los fixtures** — no
+aprueba por no haber nada que medir, **aprueba porque le dimos algo que no se parece a lo
+que hay**. Y no se nota, porque *un fixture es correcto por construcción: lo escribió
+quien sabía qué quería probar, y contiene exactamente lo que él imaginaba.*
+
+**Los campos vacíos son SEIS, no uno.** En los 2.200 de un shard:
+
+    end_date · data_end · data_start · close_time · last_traded_time · winning_outcome
+    todos 2.200/2.200 nulos
+
+**Un campo que existe, se llama como la cosa y está vacío es peor que uno ausente**: el
+ausente da `KeyError`, éste da `None` y parece un dato. Me pilló a mí hace veinte minutos.
+
+**Pero NO hay defecto vivo, y lo compruebo antes de alarmar.** `backtest.universe()` filtra
+por `AND m.end_date = ?` —y `NULL = valor` nunca es cierto— **pero sólo la llama
+`backtest.py:216`**, el camino retrospectivo de R21 sobre el backfill. **El ciclo paper usa
+su propio `select_universe` (`paper_cycle.py:392`)**, que además documenta en la 398 que
+`close_time` es NULL para un mercado abierto. **Población distinta, sin defecto.** Queda
+anotado y no se toca.
