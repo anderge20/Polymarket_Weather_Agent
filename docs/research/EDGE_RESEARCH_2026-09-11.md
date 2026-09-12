@@ -1025,3 +1025,80 @@ viva**. Ninguna de esas conclusiones pasa por el spread.
 futuro —el de E1 incluido— **tiene que condicionar por bin de precio**, porque entre el bin 0
 y el bin 7 hay un factor de tres en la media. Un único número para "el spread" es la misma
 clase de defecto que un único número para "la probabilidad".
+
+---
+
+# ADENDA 4 — qué estadístico exige el uso, y por qué la media
+
+Sesión A señala, con razón, que «falla por 4–7×» es cierto **sólo de la mediana** y que invita
+a leer «no está ni cerca», cuando el margen real es **1,8×**. Verifiqué su dato nuevo sobre
+los ratios dentro de cada bin y sale exacto.
+
+## 1. La distribución, con n
+
+```
+n = 25 736 libros a dos caras (de 36 850; 11 114 están cotizados a UN SOLO LADO)
+media 0,0193  ->  semidiferencial 0,0096
+mediana 0,0100 -> semidiferencial 0,0050        media/mediana = 1,93x
+p90 0,0400 · p99 0,1200 (12x la mediana) · máx 0,8100
+```
+
+**Estratificar reduce el sesgo pero no lo elimina.** Dentro de cada bin de precio:
+
+| bin | n | mediana | media | ratio | semidif. media | vs 0,036 |
+|---|---|---|---|---|---|---|
+| 0 | 8 037 | 0,0100 | 0,0130 | 1,30× | 0,0065 | 5,5× |
+| 1 | 1 484 | 0,0200 | 0,0294 | 1,47× | 0,0147 | 2,5× |
+| 2 | 1 258 | 0,0200 | 0,0399 | 2,00× | 0,0200 | **1,8×** |
+| 3 | 1 080 | 0,0200 | 0,0253 | 1,26× | 0,0126 | 2,8× |
+| 4 | 987 | 0,0200 | 0,0219 | 1,10× | 0,0110 | 3,3× |
+| 5 | 1 004 | 0,0200 | 0,0203 | 1,02× | 0,0102 | 3,5× |
+| 6 | 1 055 | 0,0200 | 0,0252 | 1,26× | 0,0126 | 2,9× |
+| 7 | 1 251 | 0,0200 | 0,0410 | **2,05×** | **0,0205** | **1,8×** |
+| 8 | 1 478 | 0,0200 | 0,0293 | 1,46× | 0,0146 | 2,5× |
+| 9 | 8 102 | 0,0100 | 0,0132 | 1,32× | 0,0066 | 5,5× |
+
+Ratios por bin: **1,02× a 2,05×**. **La mediana por bin tampoco es segura.**
+
+## 2. Qué estadístico exige el uso — la MEDIA, y no por prudencia
+
+A ofrece «citar ambos» o «decir cuál exige el uso». Lo segundo es contestable y es mejor
+respuesta:
+
+**El P&L es aditivo.** La pregunta de viabilidad no es «¿cómo es un libro típico?» sino
+«¿cuánto capturo por fill, en esperanza, a lo largo de muchos fills?». Esa magnitud es una
+**media**, no una mediana. La mediana contesta a una pregunta sobre la *forma* de la
+distribución que aquí no es la que decide.
+
+Así que el número vinculante es **la media del peor bin: semidiferencial 0,0205, que falla
+por 1,8×** contra el margen de 0,036. No 7×.
+
+**Y la media sigue siendo optimista**, por un motivo que empuja en la misma dirección:
+un market maker no recibe fills muestreados uniformemente de los libros. Recibe fills
+**cuando alguien cruza**, y cruzan de forma desproporcionada cuando el spread está ancho
+porque algo está a punto de moverse. Eso es adverse selection, y significa que la media de
+los libros **sobrestima** lo que un maker se queda de verdad. El 1,8× es una **cota
+superior** del margen, no una estimación central.
+
+## 3. Qué cambia y qué no
+
+**La conclusión no cambia: la provisión de liquidez sigue muerta.** Lo que cambia es el
+margen que hereda quien lea esto después, y A tiene razón en que importa: *1,8× es una clase
+de muerte distinta de 7×*. Alguien que re-derive el umbral más adelante —con un fair value
+mejor, que es la juntura débil que yo mismo señalé en el brief de Codex— necesita saber que
+el hueco era 1,8× y no 7×, porque **un fair value dos veces más preciso lo cerraría.**
+
+Ese es exactamente el experimento que esto deja abierto, y no lo estaba antes de la
+objeción de A.
+
+## 4. Dónde estaba el error, que es el mío de siempre
+
+El informe ya llevaba el 1,8× en ADENDA 3 y en el puntero de cabecera. Lo que **no** actualicé
+fue la caja de corrección de la descripción de la PR #28 — **la superficie que un revisor lee
+primero.** Es la tercera vez en esta sesión que arreglo una superficie de resumen y dejo otra
+sin tocar. La regla que me faltaba, escrita para que no dependa de acordarme:
+
+> **Cuando un número se corrige, se corrige en TODAS las superficies de resumen a la vez:**
+> el puntero de cabecera, la descripción de la PR, y cualquier caja de corrección. El cuerpo
+> congelado no se toca; los resúmenes no están congelados y su trabajo es enrutar al lector
+> al estado actual.
