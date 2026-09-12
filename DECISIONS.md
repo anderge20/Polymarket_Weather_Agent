@@ -11635,3 +11635,48 @@ refutación mutua— **no existe en el repositorio**. Vive en mensajes entre dos
 en este fichero. Un tercero que mire los PRs mañana verá **diez fusiones, cero reviews,
 siete comentarios**. **Es la misma forma que el `code at` del log: el registro existe, es
 exacto, y está donde nadie va a buscarlo.**
+
+---
+
+## A-160 — Traspaso al día siguiente: lo que queda vivo, dónde vive, y qué NO hay que creerse · 2026-09-12 · Claude (sesión A)
+
+**Registrado:** 2026-09-12T00:53:17Z · B cerró la jornada; quedan mis dos ventanas
+
+**Escrito aquí y no en los mensajes, por su razón, que es la misma que justifica el
+extracto del log: mañana el mensaje no estará y el registro sí.**
+
+**LO QUE NO HAY QUE CREERSE, primero, porque es lo que más cuesta desandar:**
+
+    el gate del #35 NO FUNCIONA         devuelve False en todos los ciclos (A-158)
+    el plazo de 2-3 dias SIGUE VIVO     tasa lineal confirmada, 20,67 ms/fila (A-157)
+    la tarea #40 esta REABIERTA         la cerre creyendo que el #35 la resolvia
+    "el colector verde en Actions"      lleva dos dias sin cron; mide paper-state
+    code_commit=None en todo shard      desde el 09-09; el #38 lo arregla, sin fusionar
+    seis columnas existen y estan vacias  end_date, data_end, data_start, close_time,
+                                          last_traded_time, winning_outcome
+
+**EL ORDEN DE MAÑANA, y el primero no es el que parece urgente:**
+
+    1. FIXTURE heterogeneo autocomprobante (#45)  ANTES que el gate: es lo que lo dejo pasar
+    2. arreglo del gate (#40)                     excluir ingestion_timestamp y updatedAt
+                                                  DENTRO de source_timestamps, no el dict
+    3. #36 con revision de FONDO (A-159)          no mecanica; su parrafo nuevo no ha pasado por nadie
+    4. auditoria que distinga (#46)               "ventana OK" vs "revision NO REGISTRADA"
+    5. campo que nombre EL GENERADOR (#43)        dependencia externa NO registrada; prioridad
+       sobre collect_only_reason, que repara una VERSIONADA
+    6. extracto de lineas `code at` (#42)         sin plazo, y por eso nadie lo hara solo
+
+**De B, y no es mío, queda:** R30 bins 1 y 2 son **EVALUABLES** (su corrección de B-81:
+por eventos el mes pesado es 2026-05 al 22,8 %, no 2026-04 al 42,7 % por filas), y el
+contraste se corre **con la unidad verificada dos veces antes de calcular nada**. Y ~500
+eventos prospectivos —unos diez días, hacia el **22 de septiembre**— desbloquean los
+cuatro bins.
+
+**LO QUE SÍ ESTÁ FIRME:** `SettlementOperator` validado 11/11 contra la spec congelada
+(`a6d92667…` íntegra), `settle` terminado y sin nada que liquidar porque no hay τ, el
+colector sin un hueco desde el 09-09, y el espejo al día.
+
+**Y la frase de la jornada, que es de él y la suscribo:** *releerse no funciona nunca; lo
+que cambia con la hora no es la capacidad de encontrar errores propios —ésa no existe—
+sino la de sospechar del resultado que sale bien.* **Los doce errores de esta noche, seis
+suyos y cinco míos, tienen en común que ninguno chirriaba.**
