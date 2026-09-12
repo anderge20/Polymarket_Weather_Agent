@@ -29,9 +29,19 @@ con §4.2, §4.3, §5.2, §5.3 y §5.4 rotos y **nada se lo advertiría**. Es el
 | `PREREG_R30_ENMIENDA_I.md` | `03f0b5a292425d7f6c50c08feca6a4d6cc429b0e8d537183a7c3fc97e61e71fb` | **VIGENTE** (su §5.5(d) lo sustituye J) |
 | `PREREG_R30_ENMIENDA_J.md` | `bbac91ffecf0183711ab18ff020cbb0b819340ddc451aceefa8547d64c86ab31` | **VIGENTE** |
 | `PREREG_R30_ENMIENDA_K.md` | `149e66955afd6581f1e511850baff9d6f153d6a425a21250d7b35cce79ae282e` | **VIGENTE** |
+| `PREREG_R30_ENMIENDA_L.md` | `b23053f75e299a9702a1f5229ba2352b25a23964dd8d4c154c1558496f2a2b7b` | **VIGENTE** (su §5.5(c) y el nuevo §5.5(f) rigen el ámbito del contraste) |
+| `PREREG_R30_ENMIENDA_M.md` | `9b036f6bbb8f0525cbad7b0faab8c781f75128304b5ed5080b1f9caf26389f2f` | **VIGENTE** (corrige la unidad de potencia y de bloque que L relajó) |
 
-**Nada se ha calculado todavía contra R30.** Base y cuatro enmiendas son del mismo día,
-2026-09-11, todas anteriores a tocar un solo dato.
+**Base y enmiendas A–K: todas anteriores a tocar un solo dato**, del 2026-09-11.
+
+**YA NO. El 2026-09-12T03:44:14Z se ejecutó §5.5 y la línea de arriba deja de ser cierta.** La enmienda **L** es
+la primera escrita DESPUÉS de calcular, y la única: la ejecución literal del §5.5 congelado devolvió
+un `p = 1,0000` degenerado, y la causa era que su nula afirmaba una propiedad del sustrato —«las
+bandas de un evento son una partición con un solo ganador»— que nadie midió antes de congelarla.
+**L declara en su primera sección todo lo que su autor ya había visto al escribirla**, incluido el
+`d_b` del intervalo 1, para que se pueda descontar. **Y la M corrige a la L**: declarar la
+contaminación no protege de nada por sí solo — L metió, de paso, una relajación de la unidad de
+potencia que ascendía dos intervalos a evaluables.
 
 ## Qué cláusula gobierna qué, y dónde leerla
 
@@ -51,6 +61,8 @@ con §4.2, §4.3, §5.2, §5.3 y §5.4 rotos y **nada se lo advertiría**. Es el
 | §5.5(c) | **I, sustituido por K** | citaba la familia de §5.4 sin su corrección: suelo de falso positivo **22,6 %** con k=5. Ahora `T = max_b \|d_b\|` con nula generada sorteando **un ganador por evento con probabilidades ∝ `p_mid`** — la permutación de §5.4 contrastaría independencia, no calibración |
 | §5.5(d) | **I, sustituido por J** | el umbral de explotabilidad usaba la MEDIANA del intervalo; el coste de una serie es la MEDIA (hasta 2,05x dentro del bin). Ahora el estadístico se calcula **sobre la población que la candidata opera**, y el filtro —si lo hay— se declara antes |
 | §5.5 | **I** (nuevo) | contraste de calibración del mercado: estadístico, IC, criterio de mal calibrado, umbral de explotabilidad y regla de potencia — todo fijado ANTES de calcular la curva |
+| §5.5(c) unidad y ámbito | **L** | la nula «respeta por construcción que las bandas de un evento son una partición con un solo ganador», y **las dos mitades son falsas sobre el sustrato**: la partición es **(evento, lead)** (8 de 1 308 eventos tienen un solo ganador; 2 571 de 2 571 grupos (evento,lead) tienen como mucho uno), y sólo **726 de 2 571** grupos son partición — el resto tiene todas las bandas en 0,0005 y ninguna gana. Nuevo §5.5(f): ámbito = suma `p_mid` ≥ 0,50, umbral que cae en un hueco VACÍO (0,4850–0,5360). **Escrita DESPUÉS de calcular, y lo declara** |
+| §5.5(b)(e) y ocupación de §5.4, unidad | **M** | L escribió que la potencia y el bloque se contaran en grupos (evento, lead). **No se sigue de su propio hallazgo y afloja**: los dos plazos de un evento son la misma estación, el mismo día y el mismo tiempo. Con grupos la familia sube a `[0,1,2,3,4]`; con eventos, que es lo que §4.2 congeló, sigue en `[0,1,2]`. **La partición de la nula sigue siendo (evento, lead); el bloque y la potencia vuelven al evento** |
 | §5.4 | **B, luego C** | B: familia enumerada y cerrada. C: la parte de precio pasa a **regla de ocupación** |
 | §6.1, §6.3, §7, §8 | base | sin cambios |
 

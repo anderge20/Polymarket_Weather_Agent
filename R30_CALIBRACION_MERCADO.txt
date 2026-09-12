@@ -1,0 +1,76 @@
+R30 §5.5 — CONTRASTE DE CALIBRACION DEL MERCADO
+preinscripcion: PREREG_R30_PUERTA_SUSTRATO.md 0a5b794e6563... + enmiendas A-M
+ejecutado: 2026-09-12T03:51:08Z
+
+=============== A) POBLACION COMPLETA (sin p-valor, §5.5(f))
+filas 10000   grupos (evento,lead) 2571
+§5.5(f/L) ambito suma p_mid >= 0,50: 726 grupos, 7787 filas   (fuera 1845 grupos, 2213 filas)
+--> se calcula sobre la POBLACION COMPLETA, SIN p-valor (§5.5(f/L): su nula no esta definida)
+grupos con exactamente 1 banda ganadora: 734 de 2571  (0 ganadores: 1837, >1: 0)
+
+borrado §5.3, por EVENTOS (enmienda M) — no por filas:
+  estacion de mayor peso: EGLC  115 eventos
+  mes de mayor peso:      2026-05  298 eventos
+
+ bin   filas  eventos  ev-est  ev-mes      f_b  p_mid_b      d_b   veredicto
+   0    7919     1290    1175    1001   0.0086   0.0101  -0.0015   EVALUABLE
+   1     573      301     256     180   0.1099   0.1460  -0.0360   EVALUABLE
+   2     541      267     227     157   0.2292   0.2464  -0.0172   EVALUABLE
+   3     450      249     215     138   0.3489   0.3450  +0.0039   NO EVALUABLE POR POTENCIA
+   4     268      188     158     109   0.4701   0.4389  +0.0313   NO EVALUABLE POR POTENCIA
+   5      81       77      64      40   0.6049   0.5432  +0.0617   NO EVALUABLE POR POTENCIA
+   6      23       21      19      16   0.7826   0.6504  +0.1322   NO EVALUABLE POR POTENCIA
+   7      26       24      23      13   0.6923   0.7438  -0.0515   NO EVALUABLE POR POTENCIA
+   8      31       28      28       9   0.8387   0.8541  -0.0154   NO EVALUABLE POR POTENCIA
+   9      88       56      56      27   0.9659   0.9728  -0.0069   NO EVALUABLE POR POTENCIA
+
+familia §5.4 (>= 150 EVENTOS en las TRES poblaciones): [0, 1, 2]
+
+IC 95 % por bloques sobre EVENTOS (enmienda M), 10000 replicas:
+  bin 0:  d_b = -0.0015   IC [-0.0039, +0.0011]   excluye 0: no
+          §5.5(d/J)  |d_b| = 0.0015   umbral = 0.0065 (media) + 0.0005 (fees D19) = 0.0070   ->  NO supera
+          (mediana del semidiferencial 0.0050, media 0.0065, n filas del intervalo 7919)
+  bin 1:  d_b = -0.0360   IC [-0.0621, -0.0076]   excluye 0: SI
+          §5.5(d/J)  |d_b| = 0.0360   umbral = 0.0147 (media) + 0.0062 (fees D19) = 0.0209   ->  SUPERA
+          (mediana del semidiferencial 0.0100, media 0.0147, n filas del intervalo 573)
+  bin 2:  d_b = -0.0172   IC [-0.0510, +0.0176]   excluye 0: no
+          §5.5(d/J)  |d_b| = 0.0172   umbral = 0.0200 (media) + 0.0093 (fees D19) = 0.0293   ->  NO supera
+          (mediana del semidiferencial 0.0100, media 0.0200, n filas del intervalo 541)
+
+§5.5(c) NO se ejecuta sobre la poblacion completa: la nula sortea un ganador por grupo y 1 837 de 2 571 grupos no tienen ninguno.
+
+=============== B) POBLACION DE PARTICION (§5.5(f): suma p_mid >= 0,50)
+filas 10000   grupos (evento,lead) 2571
+§5.5(f/L) ambito suma p_mid >= 0,50: 726 grupos, 7787 filas   (fuera 1845 grupos, 2213 filas)
+--> se calcula sobre la POBLACION DE PARTICION: 7787 filas, 726 grupos
+grupos con exactamente 1 banda ganadora: 721 de 726  (0 ganadores: 5, >1: 0)
+
+borrado §5.3, por EVENTOS (enmienda M) — no por filas:
+  estacion de mayor peso: EGLC  42 eventos
+  mes de mayor peso:      2026-04  194 eventos
+
+ bin   filas  eventos  ev-est  ev-mes      f_b  p_mid_b      d_b   veredicto
+   0    5762      359     318     165   0.0113   0.0122  -0.0009   EVALUABLE
+   1     543      275     243     120   0.1105   0.1465  -0.0360   NO EVALUABLE POR POTENCIA
+   2     528      255     222     114   0.2292   0.2464  -0.0172   NO EVALUABLE POR POTENCIA
+   3     440      242     211     115   0.3500   0.3453  +0.0047   NO EVALUABLE POR POTENCIA
+   4     265      185     155      77   0.4717   0.4387  +0.0330   NO EVALUABLE POR POTENCIA
+   5      81       77      64      39   0.6049   0.5432  +0.0617   NO EVALUABLE POR POTENCIA
+   6      23       21      19       9   0.7826   0.6504  +0.1322   NO EVALUABLE POR POTENCIA
+   7      26       24      23      13   0.6923   0.7438  -0.0515   NO EVALUABLE POR POTENCIA
+   8      31       28      28      19   0.8387   0.8541  -0.0154   NO EVALUABLE POR POTENCIA
+   9      88       56      56      29   0.9659   0.9728  -0.0069   NO EVALUABLE POR POTENCIA
+
+familia §5.4 (>= 150 EVENTOS en las TRES poblaciones): [0]
+
+IC 95 % por bloques sobre EVENTOS (enmienda M), 10000 replicas:
+  bin 0:  d_b = -0.0009   IC [-0.0041, +0.0026]   excluye 0: no
+          §5.5(d/J)  |d_b| = 0.0009   umbral = 0.0065 (media) + 0.0006 (fees D19) = 0.0071   ->  NO supera
+          (mediana del semidiferencial 0.0050, media 0.0065, n filas del intervalo 5762)
+
+T observado = max_b |d_b| = 0.0009   (intervalo 0)
+nula «el mercado esta calibrado», 10000 replicas:  p = 0.4898   ->  NO se rechaza la calibracion
+
+§5.3 sobre el intervalo del maximo (bin 0), signo observado -:
+  sin EGLC           d_b = -0.0015   signo SOBREVIVE
+  sin 2026-04        d_b = +0.0022   signo NO sobrevive

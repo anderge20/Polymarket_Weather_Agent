@@ -12222,3 +12222,123 @@ NULL, y `None == None` vale entre dos representaciones de nada. **No era una
 simplificación del fixture: era lo único que lo hacía verde.** Eso refuerza el #45 —el
 fixture heterogéneo autocomprobante— **con una quinta propiedad: columnas tipadas NO
 nulas de las tres familias.**
+
+---
+
+## B-89 — Dos de las tres familias eran el LADO; y R30 §5.5 ejecutado, con dos enmiendas que costó
+
+*Escrito 2026-09-12T04:02:26Z.*
+
+### 1. La puerta: tres obstáculos en serie, y el de en medio es el único caro
+
+A cargó una base **desde un shard** —la dirección que recorre la caja— y sacó 2.200 de 2.200 filas
+difiriendo en siete columnas de tres familias, contra mi «JSON y DOUBLE viajan limpios». **Mi
+medición estaba hecha sobre un shard escrito DESDE la base: la única dirección en la que dos de las
+tres no pueden aparecer.** A tenía razón.
+
+Pero las tres familias **no son tres defectos**, y esto lo cierra:
+
+    read_shard  vs  db.query       2.200 filas, 7 columnas, 3 familias
+    read_shard  vs  export_rows    2.200 filas, 5 columnas, 1 familia
+
+`store.export_rows` —por donde `stage_dump` escribe— desestringifica el JSON **a propósito**, y lo
+dice en su propio docstring. La puerta lee el shard con `read_shard` y la tabla con `db.query`: está
+**comparando los dos lados de una transformación que el volcado aplica queriendo**.
+
+    1  el LADO          db.query donde tocaba export_rows        una llamada
+    2  los TIPOS        5 columnas TIMESTAMP, str contra datetime  un normalizador
+    3  la PROCEDENCIA   los abiertos mueven dos relojes por ciclo  y solo se ve tras 1 y 2
+
+**El arreglo v1 de A queda explicado además de refutado**: excluir los campos de procedencia atacaba
+el (3) con el (1) y el (2) delante. Y el mío, al revés: llamé «el defecto entero» al (2) porque medí
+por el lado que esconde el (1).
+
+*Los dos medimos bien y encuadramos mal, cada uno en una dirección distinta del mismo tubo.*
+
+### 2. Y el fixture cazó la capa siguiente del mismo tapado, dentro de sí mismo
+
+Al plantar el shard por donde lo planta `stage_dump`, la autoverificación del fixture **falló**: con
+la asimetría JSON delante, TODAS las filas difieren y la mitad congelada deja de distinguirse de la
+que se mueve. La propiedad de «dos poblaciones» se mide ahora por el lado simétrico, y la asimetría
+se comprueba aparte. **Los defectos no pueden ponerse uno delante de otro, y el instrumento tampoco
+puede dejar que lo hagan dentro de él.**
+
+### 3. PR #40 — D16 se cumplió al minuto en siete PRs donde no se escribió nada
+
+    30 fusionados    0 revisiones formales    11 sin NINGUNA huella
+    #38 espero 2,19 h y 0 comentarios    #34 2,00 h y 0    #29 2,00 h y 0
+    #37 espero 2,18 h y 0                #27 2,00 h y 0    #25 2,03 h y 0
+
+`check_d16` los da por conformes **y acierta**: la regla se cumplió. Lo que no se cumplió es la razón
+de la regla, y ningún check podía distinguirlo — así que «D16: OK» se leía como «alguien miró», que
+es una afirmación que nadie había medido nunca aquí. **Cuatro de ellos pasaron de las 2 h por menos
+de dos minutos.**
+
+El check nuevo va pegado al del reloj porque **el par es el hallazgo**, y su docstring dice lo que no
+puede ver: si la huella es una revisión, y quién la escribió (las dos sesiones empujan con la misma
+cuenta). *Un aprobado significa «la ventana no estuvo en silencio», nunca «esto se revisó».*
+
+### 4. R30 §5.5 EJECUTADO. Y la nula congelada no era ejecutable
+
+**La primera línea que imprimió el script invalidó el contraste:** «eventos con exactamente 1 banda
+ganadora: **8 de 1.308**». §5.5(c) genera la nula sorteando un ganador por evento *«respetando por
+construcción que las bandas de un evento son una partición con un solo ganador»*. **Las dos mitades
+de esa frase eran falsas sobre el sustrato**, y nadie las midió antes de congelarla:
+
+    agrupando por           grupos   0 gan.   1 gan.   2 gan.
+    evento                    1308      937        8      363     <- los 2 son los dos plazos
+    (evento, lead)            2571     1837      734        0     <- la particion es esta
+
+    suma de p_mid por grupo:  mediana 0,0025   y es BIMODAL
+      con ganador  (734):  mediana 1,0190     <- libro vivo
+      sin ganador (1837):  mediana 0,0010     <- todas las bandas en el suelo de 0,0005
+
+Forzar un ganador a 1.837 grupos que no tienen ninguno infla `f_b` por construcción: de ahí el
+**`p = 1,0000`**, que no era «el mercado está calibrado» sino un artefacto. **Sin esa línea impresa
+habría publicado la conclusión cómoda.**
+
+**Enmienda L** (`b23053f75e29…`): unidad de partición `(evento, lead)`; ámbito `suma p_mid ≥ 0,50`,
+umbral que cae en un **hueco vacío** de la distribución (0,4850–0,5360), o sea separa dos poblaciones
+disjuntas en vez de cortar una — y es independiente del desenlace (admite 5 grupos sin ganador,
+excluye 13 con ganador). **Es la primera enmienda de la cadena escrita después de calcular, y lo
+declara en su primera sección con todo lo que yo ya había visto.**
+
+**Enmienda M** (`9b036f6bbb8f…`): **L relajó la unidad de la potencia**. Escribió que §5.5(e) y la
+ocupación de §5.4 se contaran en grupos `(evento, lead)`, y eso no se sigue de su propio hallazgo:
+los dos plazos de un evento son la misma estación, el mismo día y el mismo tiempo.
+
+    contando EVENTOS (§4.2 congelado)     familia = [0, 1, 2]
+    contando GRUPOS (L)                   familia = [0, 1, 2, 3, 4]
+
+**Dos intervalos ascendían a evaluables por un cambio de unidad que metí quince minutos antes, en la
+enmienda cuyo objeto era corregir un error de unidad.** La partición de la nula sigue siendo el
+grupo; el bloque y la potencia vuelven al evento. *Declarar la contaminación no protege de nada por
+sí solo.*
+
+### 5. El resultado, con los dos cómputos y todos los intervalos con su n
+
+Población de partición (726 grupos, 7.787 filas; 721 con un ganador, 5 sin ninguno, 0 con más):
+
+     bin  filas  eventos  ev-est  ev-mes     f_b   p_mid_b      d_b   veredicto
+       0   5762      359     318     165  0,0113   0,0122  -0,0009   EVALUABLE
+       1    543      275     243     120  0,1105   0,1465  -0,0360   NO EVALUABLE POR POTENCIA
+       2    528      255     222     114  0,2292   0,2464  -0,0172   NO EVALUABLE POR POTENCIA
+       3    440      242     211     115  0,3500   0,3453  +0,0047   NO EVALUABLE POR POTENCIA
+       4    265      185     155      77  0,4717   0,4387  +0,0330   NO EVALUABLE POR POTENCIA
+
+    bin 0:  d_b = -0,0009   IC [-0,0041, +0,0026]   no excluye el 0
+            |d_b| = 0,0009  contra umbral 0,0065 (media) + 0,0006 (fees D19) = 0,0071  -> NO supera
+    T = max_b |d_b| = 0,0009      nula de calibracion, 10.000 replicas:  p = 0,4898
+
+**VEREDICTO: no se rechaza que el mercado esté calibrado.** El único intervalo evaluable da un sesgo
+de 0,0009 contra un suelo de coste de 0,0071 — y ni siquiera está demostrado que sea real.
+
+**Y lo que §5.5(e) obliga a decir en vez de callarlo:** el intervalo 1 tiene `d_b = −0,0360` con
+|d_b| por encima de su umbral de coste (0,0209), **y NO es evaluable por potencia**: 120 eventos en
+la población post-borrado contra los 150 que exige §4.2. *La señal que importaría es la que no tiene
+potencia.* Le faltan **+69 eventos en el intervalo 1** (275 → 344) para que su recuento post-borrado
+llegue a 150 con la retención observada del 43,6 %. No son «+500 eventos»: esa cifra mía era de
+cuando contaba filas.
+
+**Los dos cómputos publicados en `R30_CALIBRACION_MERCADO.txt`**, el de la población completa sin
+p-valor (su nula no está definida sobre ella) y el de la de partición con él.
