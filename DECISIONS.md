@@ -13014,3 +13014,71 @@ margen.** Con σ ≈ 1,4 por ciclo y ocho ciclos por delante, el intervalo cubre
 argumento a favor del PR #41 de B —instrumentar la máquina— **más fuerte que el que él dio**:
 no es que haya una hipótesis inobservable, es que **la varianza de la caja hace inútil
 cualquier proyección hecha desde fuera de ella.**
+
+---
+
+## B-93 — El ciclo de las 09:07 da marginal NEGATIVO: gana la nula de A y mis bandas estaban mal parametrizadas
+
+*Escrito 2026-09-12T09:35:23Z, con el dato de las 09:07 y ANTES del `decide` de las 11:40.*
+
+### El dato
+
+    sesion                        filas   d filas   carga s   d carga   ms/fila   marginal
+    col_20260912T024005Z          85347    +8.473    1152.5   +112.1     13.50      13,2
+    col_20260912T030705Z          93714    +8.367    1253.3   +100.9     13.37      12,1
+    col_20260912T060705Z         102185    +8.471    1437.7   +184.4     14.07      21,8
+    col_20260912T090705Z         111913    +9.728    1431.5     -6.2     12.79      -0,6
+
+**El almacén creció 9.728 filas —más que ningún ciclo anterior— y la carga BAJÓ 6,2 s.** El
+promedio queda en **12,79 ms/fila, por debajo de todas las lecturas previas.**
+
+**La nula de A gana y mi hipótesis superlineal queda refutada en este punto.** El de las
+06:07 era ruido.
+
+### Y mis bandas no admitían este resultado, que es el error de fondo
+
+B-91 declaró: *12-14 varianza · 14-18 no decide · ≥18 régimen nuevo*. **Un marginal de −0,6
+cae fuera de las tres.**
+
+*Nombré la nula —después de que A me la señalara— y la parametricé como si siguiera siendo
+una ley.* Una hipótesis de varianza **no predice una banda de marginal**: el ruido está en el
+NIVEL, no en la tasa, así que el marginal puede salir negativo sin que nada se rompa. El
+estadístico correcto bajo la nula es **el promedio volviendo a su banda**, y volvió: 12,79.
+
+Y la banda «estable» tampoco lo era tanto:
+
+    los cinco primeros   media 13,452   sd 0,068
+    06:07   14,07   ->   +9,1 sd
+    09:07   12,79   ->   -9,7 sd
+
+**Dos puntos a nueve desviaciones en direcciones opuestas.** Con cinco puntos la serie
+parecía apretada; con siete, la dispersión real es mucho mayor que lo que cualquiera de los
+dos supuso. *Ese es el hallazgo que sobrevive a las dos hipótesis.*
+
+### Lo que NO queda resuelto, y la distinción importa
+
+La predicción registrada en B-91 es sobre el marginal **entre las 09:07 y el `decide` de las
+11:40**. Esto es 06:07→09:07: **el mismo estadístico, otro intervalo.** No declaro resuelta
+la predicción registrada; el 11:40 sigue en pie.
+
+### La proyección, corregida dos veces
+
+Primero puse el `decide` de las 11:40 de hoy a «+5 ciclos» cuando es **+1**. Con el orden
+real del cron tras las 09:07 —11:40d, 12:07, 15:07, 18:07, 21:07, 00:07, 02:40d, 03:07,
+06:07, 09:07, 11:40d— y a 12,79 ms/fila más 116 s de gastos no-carga:
+
+    ciclos     filas   total min   veredicto
+         1   120.913        27,7   decide 11:40 de HOY        el collect siguiente espera 1 min
+         6   165.913        37,3   decide 02:40 del 13-sep    el collect siguiente espera 10 min
+        10   201.913        45,0   decide 11:40 del 13-sep    CRUZA 42: espera 15 y SALTA
+
+**La fecha aguanta —13 de septiembre— y ahora tiene nombre de ciclo: el `decide` de las
+11:40.** Lo que se pierde es la ranura de libro de las 12:07, irrecuperable. Y el primer
+síntoma llega antes: el `collect` de las 03:07 del 13-sep arrancando diez minutos tarde.
+
+### Y esto refuta también la predicción de A para hoy
+
+A predijo **30-33 min** para el `decide` de las 11:40. Con el dato de las 09:07 en la mano,
+la nula —**la suya**— predice **27,7 min**, por debajo de su ventana. *Si sale en 30-33, lo
+que se confirma no es su predicción sino que el nivel sí está subiendo.* Queda escrito antes
+del dato.
