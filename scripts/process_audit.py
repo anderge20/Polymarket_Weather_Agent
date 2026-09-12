@@ -45,6 +45,19 @@ import sys
 
 D16_WINDOW = dt.timedelta(hours=2)
 
+#: Deliberately far above anything this repository will hold. THE NUMBER OF
+#: VIOLATIONS THE AUDIT FINDS WAS BEING CHOSEN BY A DEFAULT VALUE: with the 20
+#: this file shipped with it reported 2, with 30 it reports 7, and over the whole
+#: history there are 9 — the two it never saw are the worst of them, PRs #4 and
+#: #5, merged 10 and 3 SECONDS after opening. On that window we concluded "the
+#: pattern started today"; it started on 2026-09-09 and yesterday was its tail.
+#:
+#: It is this file's own rule — a check may not pass vacuously — applied to the
+#: POPULATION instead of the predicate, which is the half neither session had
+#: closed. Refusing to pass on an empty list does nothing if the list was
+#: truncated before you looked at it.
+DEFAULT_LIMIT = 200
+
 # The collector runs at 7 */3 (cron, on the box) and pushes 15-17 minutes later.
 # 3.5 h leaves a slot's worth of slack and still catches a missed slot, which is
 # the only failure that is PERMANENT -- there is no endpoint that returns a past
@@ -72,7 +85,30 @@ def _utc(stamp: str) -> dt.datetime:
     return dt.datetime.fromisoformat(stamp.replace("Z", "+00:00")).astimezone(dt.timezone.utc)
 
 
-def check_d16(limit: int = 20, runner=_run) -> list[str]:
+def merged_prs(limit: int = DEFAULT_LIMIT, runner=_run) -> list[dict]:
+    """Every merged PR, or a refusal — never a silently truncated prefix.
+
+    A listing that comes back FULL is indistinguishable from one that was cut
+    short, so it is reported as unmeasurable rather than audited. That is the
+    same decision `CheckFailed` already encodes for "gh failed": an audit over a
+    window that excludes the history is not an audit over the history, and the
+    dangerous version is the one that still returns a plausible number.
+    """
+    raw = runner(["gh", "pr", "list", "--state", "merged", "--limit", str(limit),
+                  "--json", "number,createdAt,mergedAt,reviews,comments"])
+    rows = json.loads(raw)
+    merged = [r for r in rows if r.get("mergedAt")]
+    if not merged:
+        raise CheckFailed("no merged PRs returned -- cannot audit what is not there")
+    if len(rows) >= limit:
+        raise CheckFailed(
+            f"the listing came back full at limit={limit}: there may be older PRs "
+            "this run never saw, and a count over a window that excludes the "
+            "history is not a count over the history")
+    return merged
+
+
+def check_d16(limit: int = DEFAULT_LIMIT, runner=_run, merged=None) -> list[str]:
     """Every merged PR must show >= 2 h between opening and merging.
 
     `createdAt` is a PROXY and it is the permissive one. D16 dates the window from
@@ -82,12 +118,7 @@ def check_d16(limit: int = 20, runner=_run) -> list[str]:
     because it needs no bookkeeping and it caught a real violation on its first
     run; the exact clock stays in the declared deadline written at record time.
     """
-    raw = runner(["gh", "pr", "list", "--state", "merged", "--limit", str(limit),
-                  "--json", "number,createdAt,mergedAt"])
-    rows = json.loads(raw)
-    merged = [r for r in rows if r.get("mergedAt")]
-    if not merged:
-        raise CheckFailed("no merged PRs returned -- cannot audit what is not there")
+    merged = merged if merged is not None else merged_prs(limit, runner)
 
     violations = []
     for r in sorted(merged, key=lambda r: -r["number"]):
@@ -98,6 +129,66 @@ def check_d16(limit: int = 20, runner=_run) -> list[str]:
                 f"PR #{r['number']}: waited {waited.total_seconds()/3600:.2f} h, "
                 f"{short:.0f} min short (opened {r['createdAt']}, merged {r['mergedAt']})")
     return violations
+
+
+def check_objection_window_was_used(limit: int = DEFAULT_LIMIT, runner=_run,
+                                    merged=None) -> list[str]:
+    """D16 is a window for OBJECTIONS. `check_d16` can only see the clock.
+
+    A PR that waits 2 h 00 and merges with nothing written on it satisfies
+    `check_d16` exactly. That is not a hypothetical: measured on 2026-09-12,
+
+        30 fusionados   0 revisiones formales   11 sin NINGUNA huella
+        #38  espero 2,19 h   0 comentarios       #34  espero 2,00 h   0
+        #37  espero 2,18 h   0                   #29  espero 2,00 h   0
+        #35  espero 1,62 h   0                   #27  espero 2,00 h   0
+        #25  espero 2,03 h   0
+
+    `check_d16` reports those as compliant, because they are. The rule was
+    honoured and the reason for the rule was not, and the audit could not tell
+    the two apart -- so "D16: OK" was being read as "somebody looked", which is
+    a claim nothing in this repo had ever measured.
+
+    WHAT THIS CHECK CAN AND CANNOT SEE, because the distinction is the point:
+
+      * it sees whether the window left a TRACE -- a review, or a comment written
+        before the merge. Nothing at all is the failure it reports;
+      * it CANNOT see whether the trace is a review. A one-line "green" and a
+        substantive objection are the same event to the API;
+      * it CANNOT see who wrote it. Both sessions push under one GitHub account,
+        so a note to oneself and a peer's objection are indistinguishable here.
+
+    So a pass means "the window was not silent", never "this was reviewed". Said
+    plainly because the failure this check exists to correct was exactly a
+    weaker measurement being read as a stronger claim.
+
+    Formal reviews are counted separately and reported even when zero, since
+    `reviews: 0` across all 30 is itself the finding: review is happening in the
+    comment stream, where no tooling looks for it.
+    """
+    merged = merged if merged is not None else merged_prs(limit, runner)
+
+    silent, formales = [], 0
+    for r in sorted(merged, key=lambda r: -r["number"]):
+        fin = _utc(r["mergedAt"])
+        revs = [v for v in (r.get("reviews") or [])
+                if v.get("submittedAt") and _utc(v["submittedAt"]) < fin]
+        coms = [c for c in (r.get("comments") or [])
+                if c.get("createdAt") and _utc(c["createdAt"]) < fin]
+        formales += len(revs)
+        if not revs and not coms:
+            esperado = (fin - _utc(r["createdAt"])).total_seconds() / 3600
+            silent.append(
+                f"PR #{r['number']}: window of {esperado:.2f} h left NO trace -- "
+                f"no review and no comment before the merge")
+
+    out = list(silent)
+    if formales == 0:
+        out.append(
+            f"0 formal reviews across {len(merged)} merged PRs: whatever review "
+            "happens is in the comment stream, and no check but this one looks "
+            "there")
+    return out
 
 
 def check_collector(max_age: dt.timedelta = COLLECTOR_MAX_AGE, runner=_run,
@@ -164,12 +255,34 @@ def check_mainline(since: str = "2026-09-11", runner=_run) -> list[str]:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--limit", type=int, default=20, help="merged PRs to audit")
+    ap.add_argument("--limit", type=int, default=DEFAULT_LIMIT,
+                    help="cap on merged PRs fetched; a listing that comes back "
+                         "FULL is reported unmeasurable, never audited as if it "
+                         "were the whole history")
     ap.add_argument("--since", default="2026-09-11", help="how far back to walk main")
     args = ap.parse_args(argv)
 
     failed = False
-    for name, fn in (("D16 merge window", lambda: check_d16(args.limit)),
+
+    # ONE fetch, ONE population, both PR checks over it -- so the two can never
+    # be reported side by side having looked at different sets, and so the size
+    # of what was audited is stated on every run rather than inferred from a
+    # default nobody reads.
+    try:
+        poblacion = merged_prs(args.limit)
+        print(f"[pop]  {len(poblacion)} merged PRs audited "
+              f"(#{min(r['number'] for r in poblacion)}-"
+              f"#{max(r['number'] for r in poblacion)}, limit {args.limit})")
+    except CheckFailed as exc:
+        print(f"[UNMEASURABLE] merged-PR population: {exc}")
+        return 1
+
+    for name, fn in (("D16 merge window", lambda: check_d16(merged=poblacion)),
+                     # Deliberately adjacent to the clock check, and deliberately
+                     # after it: the pair is the finding. The first says the rule
+                     # was kept, the second says whether it did anything.
+                     ("D16 window was used",
+                      lambda: check_objection_window_was_used(merged=poblacion)),
                      ("mainline integrity", lambda: check_mainline(args.since)),
                      ("collector freshness", check_collector)):
         try:
