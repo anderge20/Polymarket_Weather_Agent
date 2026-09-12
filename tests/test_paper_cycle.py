@@ -14,6 +14,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
+from unittest import mock
 
 from weather_agent import database, database as db_mod, store
 from weather_agent import observations as obs_mod
@@ -2361,3 +2362,82 @@ def test_code_commit_degrades_to_none_instead_of_aborting_a_cycle(monkeypatch):
 
     monkeypatch.setattr(paper_cycle.subprocess, "run", boom)
     assert paper_cycle.code_commit() is None
+
+
+# ---------------------------------------------------------------------------
+# The machine the cycle did not fit into
+# ---------------------------------------------------------------------------
+
+def test_ru_maxrss_is_converted_on_linux_and_not_on_macos():
+    """`ru_maxrss` is KiB on Linux and BYTES on macOS. The box is Linux.
+
+    Written as a test and not as a comment because the failure is silent and
+    exactly 1 024x: a field that reads 24 MB where the truth is 24 GB, or the
+    reverse, and nothing in the number says which. Development runs on macOS and
+    production on Linux, so whichever platform the author checked on would look
+    right.
+    """
+    class _Uso:
+        ru_maxrss = 1000
+
+    for plataforma, esperado in (("linux", 1000 * 1024), ("darwin", 1000)):
+        with mock.patch.object(paper_cycle.sys, "platform", plataforma), \
+             mock.patch("resource.getrusage", return_value=_Uso()):
+            assert paper_cycle.machine_stats()["rss_peak_bytes"] == esperado, (
+                f"en {plataforma} el pico sale mal por un factor de 1024")
+
+
+def test_meminfo_is_parsed_in_bytes_and_both_fields_come_out():
+    meminfo = ("MemTotal:        3911132 kB\n"
+               "MemFree:          128880 kB\n"
+               "MemAvailable:     402312 kB\n"
+               "Buffers:            1234 kB\n")
+    with mock.patch("builtins.open", mock.mock_open(read_data=meminfo)):
+        out = paper_cycle.machine_stats()
+    assert out["mem_total_bytes"] == 3911132 * 1024
+    assert out["mem_available_bytes"] == 402312 * 1024
+
+
+def test_an_unavailable_measurement_is_None_and_never_zero():
+    """"No lo medí" y "medí cero" son hechos distintos.
+
+    This field exists to be believed on the day it reports a small number. A 0
+    standing in for "there is no /proc here" would read as "no memory left",
+    which is the alarm it is meant to raise for real.
+    """
+    with mock.patch("builtins.open", side_effect=OSError("no /proc")):
+        out = paper_cycle.machine_stats()
+    assert out["mem_available_bytes"] is None
+    assert out["mem_total_bytes"] is None
+    assert out["rss_peak_bytes"] is not None, (
+        "getrusage sigue disponible: sin /proc se pierde la memoria libre, no el pico")
+
+
+def test_the_machine_fields_reach_the_SHARD_and_not_only_the_stage(
+        tmp_path, monkeypatch):
+    """The lesson PR #34 cost, applied before it costs it again.
+
+    `rows_resident` was computed, passed to `cy.stage()` and never written to the
+    row — and the test that should have caught it was reading the stage too,
+    standing in the same place as the error. So this asserts on the SHARD.
+    """
+    monkeypatch.delenv("GITHUB_SHA", raising=False)
+    for nombre in ("stage_discover", "stage_collect", "stage_venue_coverage"):
+        monkeypatch.setattr(paper_cycle, nombre,
+                            lambda cy, *a, **k: cy.stage("x", paper_cycle.OK))
+
+    store_root = tmp_path / "store"
+    assert paper_cycle.main([
+        "--target-date", "2026-09-10", "--dataset-version", "ds1",
+        "--store-root", str(store_root), "--db", str(tmp_path / "t.duckdb"),
+        "--collect-only", "--summary-json", str(tmp_path / "s.json")]) == 0
+
+    fila = [r for sh in store.iter_shards(store_root, "cycle_params")
+            for r in store.read_shard(sh)][0]
+    for campo in ("rss_peak_bytes", "mem_available_bytes", "mem_total_bytes"):
+        assert campo in fila, (
+            f"{campo} no llego a la fila: es el defecto del #23 otra vez, un "
+            "valor que se queda en la etapa")
+    assert fila["rss_peak_bytes"] and fila["rss_peak_bytes"] > 1_000_000, (
+        f"pico de {fila['rss_peak_bytes']!r} bytes: un proceso de Python no "
+        "cabe en eso, asi que o la unidad esta mal o no se midio")
