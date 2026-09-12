@@ -14374,3 +14374,88 @@ ciclos: 00:07, 02:40 y 03:07.
 
 **Y el `decide` de las 02:40 es el primero que corre con el arreglo Y tiene presupuesto de
 42 minutos.** Es la prueba y el riesgo en el mismo ciclo.
+
+---
+
+## B-100 — Auditoría adversarial de Hong Kong: la pregunta no tiene respuesta porque el objeto no existe
+
+*Escrito 2026-09-12T21:31:20Z. Encargo del usuario **relatado por A**, no recibido de él directamente; lo hago
+constar porque el informe acaba delante del usuario.*
+
+### (e) No existe ninguna estrategia que opere Hong Kong
+
+    src/weather_agent/strategy/  contiene UN modulo: strategy_a.py
+    strategy_a.py:159   SELECT market_id, event_id, station_identifier, ...
+    strategy_a.py:201   station=m.get("station_identifier")
+
+    medido sobre el shard vivo de las 18:07, 2.761 mercados:
+      HKO 55        station_identifier NULL en 55 de 55
+      mercados que strategy_a PUEDE ver (ICAO no nulo): 1.661
+      de esos, HKO: 0
+
+**Hong Kong es una clase de LIQUIDACIÓN —`OP_HKO_ABSMAX`—, no un lugar donde se opere.** La
+pregunta «¿tiene edge?» presupone una estrategia que no existe.
+
+### (c) Y no liquida ninguno. No 22 de 55: los 55
+
+**No es que falte la serie en el almacén: la serie no tiene productor.**
+
+    OP_HKO_ABSMAX   required_series = SERIES_HKO = "hko_clmmaxt"
+
+    quien escribe "hko_clmmaxt" fuera de settlement.py:
+      tests/test_labels.py:229, 244, 266      <- un fixture. Ningun ingestor.
+
+    observations.py escribe solo IEM_ASOS_TMPF / _1F / _0.1F / IEM_ASOS_METAR_1C
+    weather_observations en el almacen comprometido: 0 shards
+
+**Y es exactamente la forma de defecto que el propio código documenta** en `paper_cycle.py`:1145
+para `metar_body_c` — *«el ÚNICO sitio donde había aparecido fuera del core congelado era un
+FIXTURE de los tests de este repositorio»*. Aquél se encontró y se arregló. **El de HKO es
+idéntico y sigue vivo**, y nadie lo miró porque nunca se abrió una posición HKO.
+
+### (a) y (b) juntas: no es el clasificador ni la fuente. Es la añada
+
+Las preguntas de los 22 y los 33 son **idénticas en plantilla**; sólo cambia la fecha. Lo que
+los distingue es **cuándo se descubrieron**:
+
+    SIN codigo (22)   discovered_at 2026-09-09T15:16
+    CON codigo (33)   discovered_at 2026-09-11T21:22 / 21:23 / 2026-09-12T06:31
+
+    serie sobre los once shards: ESTABLE EN 22 mientras el total crece de 22 a 55
+
+**Un campo derivado se calcula una vez, al descubrir, y ninguna corrección posterior alcanza las
+filas ya ingeridas.** `measurement_rule_code` lo añadió la migración 5 —un `ALTER` añade la
+columna en NULL, no rellena valores— y el clasificador sólo corre sobre lo que descubre.
+
+**Y no es un problema de Hong Kong:**
+
+    descubierto     total   sin rule_code   sin ICAO
+    2026-09-09       1100            1100       1067
+    2026-09-11       1100               0         22
+    2026-09-12        561               0         11
+
+    los 1.100 del 09-09:  NOAA 1.045 · WU 33 · HKO 22
+
+**El 40 % del universo vivo no puede liquidar, y Hong Kong es el 2 % de esa población.**
+
+### (d) Los `tenths` son exactamente el conjunto HKO
+
+    whole degree 2.706  ·  tenths 55      y los 55 tenths son los 55 HKO, uno a uno
+
+Si A-34 excluyó los `tenths` de §9 —**relatado por A, no verificado por mí**—, Hong Kong está
+fuera de toda población medida y ninguna cifra de edge lo incluye.
+
+### UNKNOWN, marcados
+
+    UNKNOWN  si subir record_version re-derivaria los 1.100. El mecanismo EXISTE y NO se ha
+             usado para esto; que funcione es una prediccion, no una medicion.
+    UNKNOWN  si HKO podria obtenerse siquiera: observations.py declara el impacto de revision
+             como UNKNOWN para HKO en su propia cabecera.
+    UNKNOWN  A-34 y la exclusion de tenths. Relatado, no verificado.
+    UNKNOWN  por que 1.067 de los 1.100 del 09-09 no tienen ICAO y 33 si. No medido.
+
+### La respuesta en una línea
+
+**Hong Kong no tiene edge ni deja de tenerlo.** No hay estrategia que lo opere, ninguno de sus 55
+mercados puede liquidar porque la serie que exigen no la escribe nadie, y está fuera de toda
+población medida. *La pregunta no tiene respuesta porque el objeto no existe todavía.*
