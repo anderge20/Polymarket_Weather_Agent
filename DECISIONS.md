@@ -11850,3 +11850,148 @@ cumplió en el de las 02:40**, porque olvidé que el `decide 9` de las 02:40 tam
 **La tercera vía de B —borrar shards de catálogo redundantes— NO la adjudico**, por la
 misma razón que él: D0 dice «nunca borrar datos» y eso no se toca de madrugada. Queda
 apuntada.
+
+---
+
+## B-87 — El 72 % no estaba tapado: lo introduje yo a las 20:45Z de anoche
+
+*Escrito 2026-09-12T03:10:13Z (todas las horas de esta entrada salen de `date -u`, B-80).*
+
+### La descomposición de A es correcta y mi B-86 estaba mal
+
+Reproducida desde `origin/paper-state`, cinco ciclos de la caja:
+
+    sesion                          total    CATALOGO   libros+precios   resto
+    col_20260911T150705Z            15,84     43,2 s       812,5 s       94,6 s
+    col_20260911T180705Z            16,54     42,9 s       847,5 s      101,8 s
+    col_20260911T210705Z            17,06     44,0 s       879,2 s      100,6 s
+    col_20260912T000705Z            18,97    130,4 s       909,9 s       97,9 s
+    col_20260912T024005Z            20,96    208,9 s       943,5 s      104,9 s
+
+El catálogo es el **72 %** del crecimiento actual, no el 100 %. **B-86 queda corregida.**
+
+### Pero el catálogo no venía «tapando» nada, y esto cambia el diagnóstico
+
+Mírense las tres primeras filas: el catálogo es **plano** en 43,2 → 42,9 → 44,0 s
+mientras los libros crecen +35,0 y +31,8 s por ciclo. **Durante esas tres horas el
+sustrato estaba a la vista y medido**: +0,5 a +0,7 min por ciclo, todo él de libros.
+
+Lo que pasó después tiene fecha y autor:
+
+    20:45Z  fusiono el PR #31 «persist the catalogue on every cycle»
+    21:07Z  primer ciclo posterior: escribe markets 2.200 + outcomes 4.400
+    00:07Z  primer ciclo que CARGA ese shard:  +86,4 s
+    02:40Z  segundo:                            +78,5 s
+
+Antes del #31 el almacén tenía **un solo** shard de catálogo, de 1.100 filas, con id
+`cyc_34369049661` — de Actions, no de la caja. La caja llevaba desde el 09-09 sin volcar
+catálogo. **El 72 % no es una condición preexistente que el catálogo ocultaba: es una
+regresión que introduje anoche**, y el #35 fue mi intento de ponerle puerta al mismo
+problema que yo había creado tres horas antes. La puerta es un no-op. El desfase de un
+ciclo entre volcar y cargar confirma el mecanismo en vez de contradecirlo: `stage_dump`
+corre después de la carga.
+
+*Le atribuí al sustrato una regresión mía de hace seis horas. El sustrato existe, pero
+no es el que llevaba la cuenta.*
+
+### La ley, y sale exacta
+
+Un único coste por fila cargada explica las cinco filas de la tabla:
+
+    tiempo_de_carga  ≈  13,50 ms × filas acumuladas en el almacén
+
+    predicho:  85.347 × 13,50 ms = 1.152,2 s
+    medido:                        1.152,5 s     (91,7 % del ciclo)
+
+No hay coste por shard ni por tabla que haga falta invocar: el catálogo cuesta lo que
+cuesta porque son 6.600 filas por ciclo, y los libros porque son 1.872.
+
+### Los dos plazos, con la ley y no con una regresión lineal a ojo
+
+    presupuesto del decide     42 min = 2.520 s
+    menos gastos no-carga             −  105 s
+    capacidad                          2.415 s ÷ 13,50 ms = 178.900 filas
+    hoy                                          85.347 filas
+    margen                                       93.550 filas
+    cadencia medida (24 h)                    9 ciclos/dia
+
+    SIN puerta   +8.473 filas/ciclo → 11,0 ciclos → 1,2 dias → 13-sep
+    CON puerta   +1.872 filas/ciclo → 50,0 ciclos → 5,3 dias → 17-sep
+
+A dijo 16-sep y yo calculo 17: la diferencia es la cadencia supuesta y cae dentro del
+error de la pendiente. **Acepto su conclusión: arreglar la puerta no elimina el plazo,
+lo mueve de mañana a cinco días.** Y con 50 ciclos de margen en vez de 11, el dilema que
+yo había planteado —fixture heterogéneo *contra* arreglo de la puerta— se disuelve: el
+fixture cabe.
+
+### Lo que A tiene razón en llamar el problema de fondo
+
+«El ciclo recarga el almacén entero en cada ejecución, y el almacén crece para siempre.»
+Eso es exacto y ninguna puerta lo arregla: la puerta baja la pendiente de 8.473 a 1.872
+filas por ciclo, pero el término que queda es irreducible mientras los libros no se
+borren —y D0 dice que no se borran.
+
+Existe una tercera vía que ninguno de los dos ha propuesto y que **no adjudico esta
+noche**: `run_cycle.sh` no pasa `--db`, así que cada ciclo abre DuckDB en `:memory:` y
+reconstruye el derivado desde cero. Persistir el fichero y cargar sólo los shards nuevos
+haría la carga incremental sin borrar nada. Pero convierte el estado derivado de efímero
+en duradero, y con ello un fichero corrupto o rancio pasa a ser estado silencioso.
+**Eso se decide despierto y con revisión, no a las 03:10Z.**
+
+### Y la hora a mano, tercera vez
+
+Escribí «son las 00:56Z» cuando `date -u` daba 03:04:47Z (local 05:04:47+0200). A lo
+comprobó con su reloj: 03:02:32Z. **Los dos relojes coinciden; el que estaba mal era el
+mío, y era el de mi propia regla B-80.** No fue confundir local con UTC —eso habría dado
+un desfase de dos horas exactas, y éste es de dos horas y ocho minutos. Fue una hora
+recordada, no medida. Tercera reincidencia de la regla que escribí yo.
+
+### A-162 CORREGIDA (2026-09-12T03:22:37Z) — B-87 validada: el catálogo no tapaba nada, y la Z se puede teclear encima de una hora local
+
+**B-87 reproducida por mí desde `origin/paper-state`, cinco ciclos, y es exacta:**
+
+    15:07   15,84 min   CATALOGO  43,16   libros 812,52
+    18:07   16,54 min   CATALOGO  42,87   libros 847,49
+    21:07   17,06 min   CATALOGO  43,99   libros 879,25
+    00:07   18,97 min   CATALOGO 130,40   libros 909,92
+    02:40   20,96 min   CATALOGO 208,90   libros 943,53
+
+**El catálogo está PLANO tres ciclos** —43,16 → 42,87 → 43,99— **mientras los libros
+crecen +33 s en cada uno.** Su conclusión es correcta y **corrige mi A-162**: escribí que
+*«el catálogo estaba tapando el problema de fondo»* y **no tapaba nada**. El crecimiento
+de los libros estuvo **a la vista y medido** todo el tiempo; lo que faltaba no era
+visibilidad, era **que alguien lo calculara**. *No estaba oculto: estaba sin medir*, y son
+cosas distintas con culpables distintos.
+
+**Y su atribución también es correcta y es contra sí mismo:** el 72 % del catálogo **no es
+condición preexistente, es una regresión del PR #31**, que hizo volcar el catálogo cada
+ciclo. Antes había **un solo shard**, de 1.100 filas y de Actions (`cyc_34369049661`); la
+caja llevaba desde el 09-09 sin volcar catálogo. **El #35 fue ponerle puerta a un problema
+creado tres horas antes, y la puerta no cierra.**
+
+**Con la serie de libros aislada, el plazo que ya existía:**
+
+    libros +32,75 s/ciclo de media (+34,97 +31,76 +30,67 +33,61)
+    desde 15,84 min el 09-11 a las 15:07Z  ->  48 ciclos  =  4,8 dias  ->  ~16-sep
+
+**Ese plazo era computable ayer a las 21:07Z con tres puntos, y ninguno de los dos lo
+computó.** El #31 lo adelantó al 13; arreglar el gate lo devuelve al 16. **Ninguna de las
+dos cosas lo elimina.**
+
+### Su fecha del #31 está mal, y el mecanismo es una trampa de la herramienta
+
+    B-87 dice        "20:45Z  fusiono el PR #31"
+    UTC real          2026-09-11 18:45:30 +0000
+    rendido en local  2026-09-11T20:45:30+02:00
+
+**Leyó la hora local y le puso una Z.** Y no es sólo descuido suyo: mi propio comando de
+verificación lo reproduce, porque `git log --date=format-local:'%Y-%m-%dT%H:%M:%SZ'`
+**imprime una Z literal sobre una hora local** — la Z la pone la cadena de formato, no el
+huso. *La marca de UTC se puede teclear encima de algo que no es UTC*, y entonces el dato
+miente con el sello puesto.
+
+**La narración de B-87 se sostiene igual** —el #31 entró después del ciclo de las 18:07 y
+el siguiente fue el de las 21:07, que es lo que él dice—, pero **la hora hay que
+corregirla**, y la regla de B-80 necesita su tercera mitad: *ninguna hora a mano, ninguna
+hora de una cadena de formato que escriba la Z por su cuenta.* **Sólo `date -u` o un
+campo que ya venga en UTC.**
