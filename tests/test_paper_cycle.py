@@ -2912,7 +2912,7 @@ def test_meminfo_is_parsed_in_bytes_and_both_fields_come_out():
     with mock.patch("builtins.open", mock.mock_open(read_data=meminfo)):
         out = paper_cycle.machine_stats()
     assert out["mem_total_bytes"] == 3911132 * 1024
-    assert out["mem_available_bytes"] == 402312 * 1024
+    assert out["mem_available_at_params_bytes"] == 402312 * 1024
 
 
 def test_an_unavailable_measurement_is_None_and_never_zero():
@@ -2924,7 +2924,7 @@ def test_an_unavailable_measurement_is_None_and_never_zero():
     """
     with mock.patch("builtins.open", side_effect=OSError("no /proc")):
         out = paper_cycle.machine_stats()
-    assert out["mem_available_bytes"] is None
+    assert out["mem_available_at_params_bytes"] is None
     assert out["mem_total_bytes"] is None
     assert out["rss_peak_bytes"] is not None, (
         "getrusage sigue disponible: sin /proc se pierde la memoria libre, no el pico")
@@ -2951,7 +2951,8 @@ def test_the_machine_fields_reach_the_SHARD_and_not_only_the_stage(
 
     fila = [r for sh in store.iter_shards(store_root, "cycle_params")
             for r in store.read_shard(sh)][0]
-    for campo in ("rss_peak_bytes", "mem_available_bytes", "mem_total_bytes"):
+    for campo in ("rss_peak_bytes", "mem_available_at_params_bytes",
+                  "mem_total_bytes"):
         assert campo in fila, (
             f"{campo} no llego a la fila: es el defecto del #23 otra vez, un "
             "valor que se queda en la etapa")
@@ -2992,3 +2993,22 @@ def test_an_UNRECOGNISED_shard_name_can_never_win_the_selection(tmp_path):
         "con una base mas NUEVA que la que sabe fechar, y entonces un salto "
         "indebido deja de ser imposible")
 
+
+def test_the_available_field_carries_the_INSTANT_it_was_read_at():
+    """The two numbers do not measure the same thing and sit in the same row.
+
+    `rss_peak_bytes` is a MAXIMUM over the process; the other is an INSTANT read
+    in `stage_params`, after the peak was released. Side by side they read as
+    comparable, and a reader would conclude "plenty of room" from a maximum set
+    against the calmest moment of the cycle.
+
+    Session A's finding, and the same class as the `ru_maxrss` unit trap: a
+    number whose meaning does not travel with it. So the meaning goes in the
+    NAME, where it cannot be separated from the value — asserted here so a
+    later rename cannot quietly drop it.
+    """
+    out = paper_cycle.machine_stats()
+    assert "mem_available_at_params_bytes" in out, sorted(out)
+    assert "mem_available_bytes" not in out, (
+        "el nombre corto volvio: se lee como comparable con un MAXIMO y no lo es")
+    assert "peak" in "rss_peak_bytes", "el maximo tiene que decir que es un maximo"

@@ -1558,6 +1558,27 @@ def machine_stats() -> dict:
     Anything unavailable comes back None and never 0: "not measured" and
     "measured zero" are different facts, and the whole point of this field is to
     be believed on the day it reports a small number.
+
+    AND THE TWO NUMBERS DO NOT MEASURE THE SAME INSTANT, which is why one of
+    them carries its instant in its name. Session A's finding:
+
+        rss_peak_bytes                 getrusage: the MAXIMUM over the whole
+                                       process, so during the load that
+                                       dominates the cycle
+        mem_available_at_params_bytes  /proc: an INSTANT, read here, in
+                                       `stage_params`, after the peak was
+                                       released
+
+    Side by side in one row they read as comparable and they are not. A reader
+    seeing `rss_peak 280 MB` next to `available 3,4 GB` would conclude "plenty
+    of room", having compared a maximum against a reading taken at the calmest
+    moment of the cycle. THE QUESTION ABOUT PRESSURE IS ANSWERED BY
+    `rss_peak_bytes` AGAINST `mem_total_bytes`; `available` bounds what ELSE was
+    running, not what this cycle had to fit into.
+
+    It is the same class as the `ru_maxrss` unit trap -- a number whose meaning
+    does not travel with it -- so the fix is the same: put the meaning in the
+    name, where it cannot be separated from the value.
     """
     import resource
 
@@ -1583,7 +1604,7 @@ def machine_stats() -> dict:
         pass                                  # no /proc: not Linux, or restricted
 
     return {"rss_peak_bytes": rss,
-            "mem_available_bytes": available,
+            "mem_available_at_params_bytes": available,
             "mem_total_bytes": total}
 
 
