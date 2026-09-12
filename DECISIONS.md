@@ -13319,3 +13319,71 @@ diferencia entre arreglarlo con calma y arreglarlo esta noche.**
 **Ventana operativa, dicha con claridad: el arreglo tiene que estar en `main` y pullado por
 la caja ANTES del ciclo de las 02:40 de mañana**, que son unas catorce horas. Si no llega,
 el siguiente tope duro es el de las 11:40 de mañana, y ése ya se pasa.
+
+---
+
+## B-94 — La puerta arreglada: cuatro obstáculos, y el cuarto sólo era peligroso una vez arreglados los otros
+
+*Escrito 2026-09-12T12:20:20Z. A pregunta quién escribe el arreglo; lo escribo yo, porque los tres
+`xfail(strict)` que definen «arreglado» estaban en mi rama y tenían que voltear ahí.*
+
+### El cuarto obstáculo, que no estaba en la lista de ninguno
+
+A pidió arreglar «los dos obstáculos en serie». Son **cuatro**, y el que faltaba es el que
+el propio arreglo vuelve peligroso:
+
+    1  EL LADO        export_rows en vez de db.query    2 de 7 columnas, sin normalizar nada
+    2  LOS TIPOS      5 columnas TIMESTAMP              str contra datetime
+    3  PROCEDENCIA    ingestion_timestamp + updatedAt   solo la clave, no la columna
+    4  LA SELECCION   sorted(shards)[-1]                una afirmacion sobre el TIEMPO
+
+**Mientras la puerta era un `False` constante, elegir mal la base de comparación no costaba
+nada.** Con la puerta viva, un shard rancio que **casualmente** coincida con el estado actual
+mientras el verdadero último difiere hace que la puerta **salte un volcado que debe**:
+fail-**cerrado**, y lo que se pierde es un catálogo sin el cual el universo no se reconstruye.
+
+*Arreglar la comparación sin arreglar la selección habría creado el riesgo que el #36
+describía como inocuo — y era inocuo, exactamente hasta que el arreglo entrara.* Un defecto
+latente que sólo se activa al reparar otro no aparece en ninguna lista de los dos.
+
+### Lo que la puerta hace sobre datos reales, y no sobre el fixture
+
+Los cinco pares consecutivos de esta noche:
+
+    markets   000705->024005 .. 090705->114005    vuelca las cinco veces
+    outcomes  000705->024005, 024005->030705      SALTA
+    outcomes  030705->060705 .. 090705->114005    vuelca
+
+    8.800 filas no escritas en diez decisiones = 1.760/ciclo de 6.600 = 27 %
+
+Vuelca `markets` siempre porque **`tick_size` cambia de verdad** —33, 34 y 35 filas por par—
+y vuelca `outcomes` en los tres pares donde **el universo creció**: 66 tokens nuevos entre
+las 09:07 y las 11:40, que hay que persistir. **Las dos cosas son la puerta funcionando.**
+
+### Y esto corrige el plazo que A calculó, en la dirección incómoda
+
+A proyectó que el arreglo baja el crecimiento de 2,01 a 0,63 min/ciclo y **compra dos días**.
+Eso supone que el volcado del catálogo desaparece. No desaparece:
+
+    crecimiento   2,01 -> 1,64 min/ciclo        al 100 %, como el proyectaba, daria 0,63
+    decide 02:40 13-sep   +6    39,0 min   pasa
+    decide 11:40 13-sep  +10    45,5 min   CRUZA IGUAL
+
+Con universo estable el techo es el 67 % —`outcomes` saltando siempre— y eso mueve el primer
+cruce al 02:40 del 14. **El arreglo compra como mucho un día, y al ritmo de descubrimiento de
+esta noche no compra ninguno.**
+
+**Su ventana de catorce horas sigue siendo correcta y su razón no**: no es que el arreglo
+salve el `decide` de las 02:40 —ése pasa igual, 41,2 min sin arreglo— es que el que no pasa
+es el de las 11:40, con arreglo o sin él.
+
+### El desperdicio que queda, y por qué ninguna puerta lo toca
+
+**El catálogo escribe una instantánea completa de 2.200 filas para registrar 66 tokens
+nuevos. Sesenta y cinco a uno.** Y el #31 exige la instantánea completa precisamente para que
+el universo sea recuperable de un solo shard, así que no hay puerta que lo arregle: exige
+volcar deltas con una instantánea completa periódica, que es un cambio de diseño del almacén.
+**Sin adjudicar**, con la tercera vía del DuckDB persistente.
+
+    main         627 passed,  0 xfailed
+    rama #39     634 passed,  0 xfailed
