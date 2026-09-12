@@ -14855,3 +14855,70 @@ más holgado, pero esa población incluye 424 filas donde acertar no tiene méri
 *Lo dejo escrito porque la comprobación salió a favor: si sólo se registran las
 autocomprobaciones que refutan, el registro miente sobre la tasa de acierto de quien las
 hace.*
+
+---
+
+## B-103 — Red team del Brier de Londres: sobrevive a tres de cuatro, incluido el mío, y la muestra operable son dos meses
+
+*Escrito 2026-09-12T22:55:31Z.*
+
+### (3) Mi propio ataque falla, y además refuerza el resultado
+
+    poblacion              n   Brier mercado  Brier modelo       dif
+    completa (la de A)  1266         0,04706       0,05148   +0,00442
+    libro VIVO           842         0,06793       0,07364   +0,00571
+    libro MUERTO         424         0,00562       0,00749   +0,00187
+
+    libro vivo, bootstrap por grupo (81 grupos, 5.000 replicas)
+      IC 95 % [+0,00042 , +0,01092]   EXCLUYE EL 0   el modelo gana en el 1,8 %
+
+**La ventaja del mercado es MAYOR sobre libro vivo, no menor.** Y encaja con el razonamiento
+del pareado que A dio: en los muertos aciertan los dos —el mercado trivialmente, el modelo
+casi— así que quitarlos quita una región fácil para ambos y deja la difícil.
+
+***Mi hallazgo de los libros muertos mata el EDGE y no mata el BRIER.*** Son preguntas distintas
+y el sustrato alcanza para una y no para la otra — que es exactamente lo que A dijo al
+encontrarlo: *el sustrato no era insuficiente para toda pregunta, era insuficiente para aquélla.*
+
+### (4) La escala tampoco
+
+Sólo 4 de 81 grupos tienen `p_model` sumando menos de 0,9; la mediana es 1,0000 exacta. Y
+renormalizando `p_model` a la misma suma que `p_mid` dentro del grupo, **el modelo sale peor**:
++0,00645 contra +0,00571, con IC [+0,00085 , +0,01162] que sigue excluyendo el cero.
+
+### (2b) El tramo sobreestimado es estructural
+
+`[0,05 , 0,15)` sobreestima en los **cinco** meses: dice ~10,5 % y ocurre entre el 0 y el 6,6 %.
+Eso aguanta.
+
+### (2) Lo que sí aterriza, y obliga a una salvedad
+
+    mes         filas TOTAL  filas VIVAS  grupos vivos
+    2026-04             396          396           36
+    2026-05             494          428           39
+    2026-06             128           15            5
+    2026-07             142            3            1
+    2026-08             106            0            0
+
+**El 97,9 % de las filas operables son abril y mayo.** Agosto tiene 106 filas y **cero** vivas.
+*Los libros de Londres se mueren progresivamente a lo largo de la muestra.*
+
+Así que «1.266 filas, 2026-04-11 a 2026-08-23» es cierto de la población completa y **engañoso
+de la operable: son dos meses, no cinco**. Y en los dos únicos meses posteriores con algún dato
+vivo gana el modelo —n=15 y n=3, que no refuta nada, pero tampoco extiende el resultado.
+
+**La afirmación honesta:** el mercado bate al modelo en Londres **en abril y mayo de 2026**, con
+IC que excluye el cero sobre 81 grupos. Fuera de esa ventana no hay muestra operable.
+
+### (1) UNKNOWN, y no se rellena
+
+`R21_BACKTEST.json` es un diccionario de resumen —`prereg_sha256`, contadores, `acceptance`,
+`sensibilidad`— **sin filas**. No hay `p_model` por fila con el que contrastar los 1.266 contra
+las 46 de EGLC de R21. Verificar que es el mismo modelo exige regenerar R21 o encontrar su caché.
+
+### Resumen
+
+    (1) verificar contra R21           UNKNOWN, falta el dato por fila
+    (2) dano de un mes o estructural   el TRAMO es estructural; la MUESTRA es de dos meses
+    (3) ventaja del libro muerto       NO. Es mayor sin el. Mi ataque falla.
+    (4) escala                         NO. Renormalizado el modelo sale peor.
