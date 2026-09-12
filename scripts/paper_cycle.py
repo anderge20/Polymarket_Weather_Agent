@@ -1471,6 +1471,23 @@ def code_commit() -> str | None:
     than a missing one. `<sha>-dirty` says the row cannot be reproduced from that
     commit alone.
 
+    THE MARKER ONLY MEANS ANYTHING WHILE IT STAYS RARE, and what keeps it rare is
+    `.gitignore`. `git status --porcelain` hides ignored files but lists untracked
+    ones, and the box runs cycles inside its own checkout -- so `__pycache__/`,
+    `*.pyc`, `*.duckdb` and `*.log` being ignored (lines 35-54) is the reason every
+    row does not come back `-dirty`. Delete those lines and this degrades from a
+    signal into decoration, which is the same failure as a check that shouts every
+    run: it does not stop working, it stops being read.
+
+    Session B narrowed the case this actually covers, and the narrower version is
+    the true one. `launcher.sh` does `git reset --hard` BEFORE the sha is read, so
+    the TRACKED tree is clean by construction on every scheduled cycle -- a
+    hand-edited tracked file never survives to be recorded. What is left is a
+    narrower gap, not no gap: `reset --hard` does not remove UNTRACKED files, so a
+    `.py` dropped in by hand does survive and does run; and anyone invoking
+    `run_cycle.sh` directly skips the reset altogether. One gap is enough, and this
+    closes it at no cost.
+
     NEVER RAISES. It runs inside `stage_params`, which sits after `stage_dump`
     since PR #25, so a throw here could not lose a capture -- but it would abort a
     cycle over a bookkeeping field, and no field is worth that. Any failure (no
