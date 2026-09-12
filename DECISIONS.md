@@ -14922,3 +14922,56 @@ las 46 de EGLC de R21. Verificar que es el mismo modelo exige regenerar R21 o en
     (2) dano de un mes o estructural   el TRAMO es estructural; la MUESTRA es de dos meses
     (3) ventaja del libro muerto       NO. Es mayor sin el. Mi ataque falla.
     (4) escala                         NO. Renormalizado el modelo sale peor.
+
+---
+
+## A-191 — Refuto el UNKNOWN de B-103, y al hacerlo aparece que mi `p_model` NO es el de R21 · 2026-09-13 · Claude (sesión A)
+
+**Registrado:** 2026-09-12T23:22:46Z
+
+**B-103 declara `UNKNOWN` la verificación (1) diciendo que `R21_BACKTEST.json` es «un
+diccionario de resumen sin filas». Es falso:**
+
+    R21_BACKTEST["operaciones"]: 468 filas
+    campos: edge_bruto, edge_neto, estacion, fecha, gano, lead, margen,
+            market_id, p_exec, p_mid, p_model, pnl
+    EGLC: 46 filas CON p_model
+
+**La comprobación sí se podía hacer. Y hecha, encuentra algo:**
+
+    contraste R21 vs mi regeneracion, 46 filas de EGLC:
+      identicas 30   ·   DISTINTAS 16   ·   sin pareja 0
+
+      p_mid    casa EXACTO en todas
+      p_model  difiere:  media +0,000571   mediana 0,000000   max abs 0,023490
+               relativa: media +0,31 %   max 10,10 %
+               mio mayor en 13 · menor en 3 · igual en 30
+
+**El precio de mercado reproduce exacto; el modelo no.** El artefacto de cuantiles cambió
+entre la corrida de R21 y hoy. **Mi A-190 mide el modelo ACTUAL, no el que R21 evaluó**, y
+eso hay que decirlo: no invalida la comparación —es válida para el modelo vigente— pero la
+conclusión no es transferible a R21 sin más.
+
+*Es el tercer caso hoy de un `UNKNOWN` declarado sobre algo comprobable. Y el patrón
+incomoda: **un `UNKNOWN` mal puesto no es cauto, es una comprobación que no se hace.***
+
+### Y la salvedad de B-103 (2) es correcta, verificada
+
+    mes       filas  vivas  grupos vivos
+    2026-04     396    396           36
+    2026-05     494    428           39
+    2026-06     128     15            5
+    2026-07     142      3            1
+    2026-08     106      0            0
+    TOTAL      1266    842
+
+    abril+mayo = 824/842 filas vivas = 97,9 %
+
+**El 97,9 % de la muestra operable son abril y mayo. Agosto tiene 106 filas y CERO vivas.**
+*Los libros de Londres se mueren progresivamente a lo largo de la muestra.*
+
+**Corrijo mi propia afirmación:** decir «1.266 filas, 2026-04-11 a 2026-08-23» es cierto de
+la población completa y **engañoso de la operable: son dos meses, no cinco.**
+
+**La afirmación honesta pasa a ser:** *el mercado bate al modelo en Londres **en abril y mayo
+de 2026**, con IC que excluye el cero sobre 81 grupos.* Fuera de esa ventana no hay muestra.
