@@ -14229,3 +14229,58 @@ del `decide` no se recupera, sólo deja de encogerse.
 
 *Con el plazo en el `decide` de las 11:40 de mañana y el de las 02:40 pasando con tres minutos
 de margen, hay noche para hacerlo bien.*
+
+---
+
+## A-184 — La puerta no saltará en diez días: hay una migración de tick en curso. Y el RSS medido mata la hipótesis de memoria con un número, no con un proxy · 2026-09-12 · Claude (sesión A)
+
+**Registrado:** 2026-09-12T18:53:07Z · URGENTE: el decide de las 02:40 queda AL BORDE
+
+**El ciclo de las 18:07 volvió a volcar, y esta vez el catálogo NO había cambiado de
+conjunto: cero claves nuevas, cero desaparecidas.** Aplicada la lógica **fusionada** a los
+dos shards:
+
+    campos que difieren: {'tick_size': 35}     0.01  ->  0.001
+
+**La puerta es correcta.** Volcó porque `tick_size` cambió en 35 mercados, que es un cambio
+real y exactamente lo que debe dejar pasar.
+
+### El diagnóstico correcto no es «el universo crece»: es una MIGRACIÓN DE TICK
+
+    shard    total   0.01   0.001
+    03:07     2200   1296    904
+    09:07     2673   1569   1104
+    12:09     2706   1555   1151
+    15:07     2761   1545   1216
+    18:07     2761   1510   1251
+
+    deltas de los que quedan a 0,01: -2, -12, -10, -35   media -14,8/ciclo
+    quedan 1.510  ->  102 ciclos = 10 dias  ->  ~22 de septiembre
+
+**Polymarket está migrando los mercados de tick 0,01 a 0,001, y mientras dure, la puerta NO
+PUEDE saltar**: cada ciclo trae mercados migrados y eso es un cambio legítimo. **A-179 decía
+44 % de saltos; la cifra real durante los próximos diez días es ~0 %.**
+
+**Y eso devuelve el crecimiento a 2,11 min/ciclo, no 1,49:**
+
+    21:07                  37,5
+    00:07                  39,6
+    decide 02:40 13-sep    41,8      <- AL BORDE de los 42
+    decide 11:40 13-sep    50,2      <- SE PASA
+
+**El `decide` de mañana a las 02:40 queda a 0,2 minutos del límite.** Ya no es una moneda al
+aire: es un empate técnico, y cualquier varianza de la caja —que hemos medido en σ 1,3— lo
+decide.
+
+### Y el RSS medido mata la hipótesis de memoria con un número
+
+El #41 llegó a tiempo y el ciclo de las 18:07 **es el primero que mide la máquina**:
+
+    rss_peak_bytes             317,7 MB
+    mem_total_bytes          3.819 MB      ->  8,3 %
+    mem_available_at_params  2.723 MB
+
+**Mi proyección de A-168 daba 351 MB (9,2 %) con la pendiente de 1,433 KB/fila: +10 % de
+error.** *La hipótesis de memoria estaba refutada por aritmética sobre un proxy y ahora lo
+está por una lectura directa* — que es lo que B dijo que haría falta, y tenía razón aunque su
+hipótesis fuera falsa.
