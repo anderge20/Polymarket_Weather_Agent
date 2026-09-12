@@ -2655,6 +2655,75 @@ def test_provenance_still_blocks_the_gate_once_the_side_and_the_types_are_fixed(
             "y entonces no es el reloj de Polymarket sino contenido")
 
 
+def test_the_three_fixes_do_not_suppress_a_REAL_term_change(con, tmp_path):
+    """A residue that still contains a genuine change is better evidence than a clean one.
+
+    The test above shows the fixes do not make the gate dump for NOTHING. On its
+    own that is half an argument, and it is the flattering half: a gate wired to
+    `return True` would pass it. This is the other half — with all three fixes
+    applied, a catalogue in which a market term actually moved must still come
+    out DIFFERENT.
+
+    `tick_size` is that term on the box, and it is not hypothetical. Measured
+    across every consecutive catalogue pair since PR #31 started dumping:
+
+        21:07 -> 00:07   1 067 filas solo-reloj   tick_size en 33
+        00:07 -> 02:40   1 066 filas solo-reloj   tick_size en 34
+        02:40 -> 03:07   1 089 filas solo-reloj   tick_size en 11
+
+    So a correct gate would have dumped `markets` on every cycle of the night,
+    and for the right reason. It is `outcomes` — 4 400 rows a cycle with zero
+    content changes in every pair — that a correct gate actually skips.
+
+    Session A's finding, and the correction that came with it: the residue this
+    branch reported as "exactly the two provenance columns" is a property of the
+    FIXTURE, which holds `tick_size` constant by construction. On the box the
+    residue also holds real changes. The clean residue is the one you would want
+    to see, which is the reason to distrust it.
+    """
+    root = tmp_path / "store"
+    _heterogeneous_catalogue(con, root, seen_before="2026-09-12T00:24:26Z",
+                             seen_now="2026-09-12T02:59:18Z",
+                             tick_now=0.001)        # 0,01 -> 0,001, el de la caja
+
+    previo = {r["market_id"]: r
+              for r in store.read_shard(
+                  next(p for p in store.iter_shards(root, "markets")
+                       if "col_2026" in p.name))}
+    ahora = {r["market_id"]: r for r in store.export_rows(con, "markets")}
+
+    def _norm(v):
+        if isinstance(v, datetime):
+            return v.astimezone(timezone.utc).isoformat()
+        if isinstance(v, str):
+            try:
+                return datetime.fromisoformat(v.replace("Z", "+00:00")) \
+                    .astimezone(timezone.utc).isoformat()
+            except ValueError:
+                return v
+        return v
+
+    # los TRES arreglos: lado simetrico, tipos normalizados, procedencia fuera
+    difs = {k: {c for c in set(previo[k]) | set(ahora[k])
+                if c not in _PROV_COLS
+                and _norm(previo[k].get(c)) != _norm(ahora[k].get(c))}
+            for k in ahora if k in previo}
+    cambiadas = {k: d for k, d in difs.items() if d}
+
+    assert cambiadas, (
+        "con los tres arreglos puestos, un catalogo en el que tick_size SI se "
+        "movio sale identico: la puerta habria saltado un volcado que debia "
+        "hacer, y el universo pierde un cambio real de forma permanente")
+    assert set().union(*cambiadas.values()) == {"tick_size"}, (
+        f"cambia {sorted(set().union(*cambiadas.values()))} y solo se movio "
+        "tick_size: el fixture arrastra algo mas y esta prueba no demuestra "
+        "que el cambio detectado sea el real")
+    limpias = {k for k, d in difs.items() if not d}
+    assert limpias, (
+        "TODAS las filas cambian: sin una mitad limpia esto no distingue "
+        "«detecta el cambio real» de «no sabe no detectar nada»")
+
+
 @pytest.mark.xfail(strict=True, reason=(
     "El #36 dice que la puerta supone orden-de-ruta = orden-de-tiempo, y eso "
     "ya es falso en cuatro directorios de origin/paper-state: en "
