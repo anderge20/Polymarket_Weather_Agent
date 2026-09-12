@@ -14829,3 +14829,29 @@ insuficiente para ESA pregunta.*
 **El fallo no es de sesgo agregado —las medias coinciden— sino de ORDENACIÓN: el mercado
 ordena mejor (0,47 contra 0,38).** Y el daño está concentrado en `[0,05 , 0,15)`, donde el
 modelo dice 10,5 % y ocurre el 3,2 %: **251 filas sobreestimadas por un factor de tres.**
+
+### A-190 (addendum, 2026-09-12T22:52:37Z) — fui a invalidar mi propio resultado por el libro muerto y sale reforzado
+
+**Sospecha propia:** que la ventaja del mercado en Brier fuera un artefacto de los 148
+grupos de libro muerto, donde `p_mid ≈ 0,0005` y `won = 0` casi siempre — **el mercado
+acierta trivialmente y el Brier se lo premia.** Si era eso, lo que reporté al usuario como
+concluyente no valía.
+
+    COMPLETA      n=1266  mercado 0,04706  modelo 0,05148  dif -0,00442
+    LIBRO MUERTO  n= 424  mercado 0,00562  modelo 0,00749  dif -0,00187
+    LIBRO VIVO    n= 842  mercado 0,06793  modelo 0,07364  dif -0,00571   <- MAYOR
+
+    libro vivo, bootstrap por grupo (81 grupos):
+      IC 95 %: [-0,01090 , -0,00040]   no incluye el cero
+      replicas donde el modelo gana: 1,6 %
+
+**La brecha es MAYOR en el libro vivo, que es donde importa. La sospecha era infundada y el
+resultado sale reforzado.**
+
+**Y la acotación honesta:** en libro vivo el límite superior es **−0,00040**, pegado al
+cero. **Es significativo por poco**, con 81 grupos. En la población completa el margen es
+más holgado, pero esa población incluye 424 filas donde acertar no tiene mérito.
+
+*Lo dejo escrito porque la comprobación salió a favor: si sólo se registran las
+autocomprobaciones que refutan, el registro miente sobre la tasa de acierto de quien las
+hace.*
