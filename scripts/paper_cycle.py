@@ -34,6 +34,7 @@ from __future__ import annotations
 import argparse
 import fcntl
 import json
+import re
 import os
 import subprocess
 import sys
@@ -1679,6 +1680,87 @@ def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
     return params
 
 
+#: Columns that record WHEN WE LOOKED, never what we saw. Measured on
+#: origin/paper-state over every consecutive catalogue pair the box has written:
+#: `ingestion_timestamp` moves on all 1 100 open markets every cycle, and inside
+#: `source_timestamps` exactly one key moves, `updatedAt` -- Polymarket's own
+#: write clock. Over the same pairs 33, 34 and 11 markets changed `tick_size`,
+#: which is a real term and MUST still force a dump.
+PROVENANCE_COLS = ("ingestion_timestamp",)
+PROVENANCE_KEYS = {"source_timestamps": ("updatedAt",)}
+
+
+def _shard_sort_key(path):
+    """Order shards by TIME, which is not the same as ordering them by name.
+
+    The day directory is reliable (zero-padded), so only the filename inside it
+    needs care -- and inside it three id generations coexist in four directories
+    of `origin/paper-state`:
+
+        col_20260909T185316Z_77df77     ISO 8601, the box
+        col_34340664711_2026-09-09      Actions run id + date
+        cyc_34369049661                 Actions run id
+
+    `sorted()` puts `cyc_` last because 'o' < 'y', and puts `col_<runid>` after
+    any ISO stamp because '3' > '2' -- so the OLDEST generation sorts LAST, and
+    permanently: Actions run ids only grow, and every ISO stamp of this century
+    starts with '2'.
+
+    THIS BECAME DANGEROUS THE MOMENT THE GATE STARTED WORKING. While
+    `catalogue_is_unchanged` was a constant False the wrong baseline cost
+    nothing. With the gate live, comparing against a stale shard that happens to
+    match current state, while the true latest differs, makes the gate SKIP a
+    dump it owes -- fail-CLOSED, and what it loses is a catalogue the universe
+    cannot be rebuilt without. Fixing the comparison without fixing the
+    selection would have introduced that.
+
+    Actions-era ids sort BEFORE box ids within a directory because collection
+    moved to the box on 2026-09-09 at 18:53 and Actions has written nothing
+    since -- so in any directory holding both, the Actions shard is the older.
+    """
+    m = re.search(r"__col_(\d{8}T\d{6}Z)_", path.name)
+    return (str(path.parent), 1, m.group(1)) if m else (str(path.parent), 0, path.name)
+
+
+def _comparable(value):
+    """One representation for a value that DuckDB and JSON disagree about.
+
+    `store.read_shard` returns what JSON can carry and DuckDB returns what it
+    typed, so every non-NULL TIMESTAMP column differs from itself. Measured on a
+    real box shard through the real `load_shards`: 2 200 of 2 200 rows differing
+    on five timestamp columns.
+    """
+    if isinstance(value, datetime):
+        return value.astimezone(timezone.utc).isoformat()
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(
+                value.replace("Z", "+00:00")).astimezone(timezone.utc).isoformat()
+        except ValueError:
+            return value
+    return value
+
+
+def _without_provenance(row):
+    """The row as a SNAPSHOT: what the market says, not when we asked it."""
+    out = {}
+    for col, value in row.items():
+        if col in PROVENANCE_COLS:
+            continue
+        drop = PROVENANCE_KEYS.get(col)
+        if drop and value is not None:
+            parsed = value
+            if isinstance(parsed, str):
+                try:
+                    parsed = json.loads(parsed)
+                except ValueError:
+                    parsed = None
+            if isinstance(parsed, dict):
+                value = {k: v for k, v in parsed.items() if k not in drop}
+        out[col] = _comparable(value)
+    return out
+
+
 def catalogue_is_unchanged(con, table: str, root: str) -> bool:
     """Would this catalogue dump be byte-for-byte the previous one?
 
@@ -1722,8 +1804,15 @@ def catalogue_is_unchanged(con, table: str, root: str) -> bool:
     shards = store.iter_shards(root, table)
     if not shards:
         return False                          # nothing to compare against
-    previous = list(store.read_shard(sorted(shards)[-1]))
-    current = db.query(con, f"SELECT * FROM {table}")
+    previous = list(store.read_shard(max(shards, key=_shard_sort_key)))
+    # READ THE SAME SIDE THE SHARD WAS WRITTEN FROM. `stage_dump` writes through
+    # `store.export_rows`, which parses JSON columns back into nested objects on
+    # purpose; `db.query` returns them as strings. Comparing `read_shard`
+    # against `db.query` compares the two sides of a transformation the dump
+    # applies deliberately -- on a real box shard that alone accounted for two
+    # of the seven differing columns, `source_timestamps` and `tag_ids`, with no
+    # normalisation needed once the right side is read.
+    current = store.export_rows(con, table)
     key = list(store.CONFLICT_COLS[table])
 
     ident = lambda r: tuple(str(r.get(c)) for c in key)
@@ -1731,10 +1820,9 @@ def catalogue_is_unchanged(con, table: str, root: str) -> bool:
         return False
     if {k for r in previous for k in r} != {k for r in current for k in r}:
         return False
-    prev_by = {ident(r): r for r in previous}
-    cols = {k for r in current for k in r}
-    return all(all(prev_by[ident(r)].get(c) == r.get(c) for c in cols)
-               for r in current)
+    prev_by = {ident(r): _without_provenance(r) for r in previous}
+    curr = [(ident(r), _without_provenance(r)) for r in current]
+    return all(prev_by[i] == r for i, r in curr)
 
 
 def stage_dump(cy: Cycle, con, *, root: str, session_id: str,

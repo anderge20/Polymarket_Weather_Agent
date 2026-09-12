@@ -2514,15 +2514,13 @@ def test_the_catalogue_fixture_has_the_shape_the_box_has(con, tmp_path):
         "el defecto de lado y el de tipos son dos cosas distintas")
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "MEDIDO: `store.read_shard` devuelve lo que JSON sabe llevar y `db.query` "
-    "lo que DuckDB tipo, asi que cualquier columna TIMESTAMP no nula difiere "
-    "DE SI MISMA. La puerta del #35 es una constante False y no lo parece. "
-    "El dia que compare representaciones comparables, strict=True convierte "
-    "esto en XPASS y obliga a quitar el marcador."))
-def test_the_gate_calls_a_catalogue_changed_when_it_is_compared_against_ITSELF(
-        con, tmp_path):
-    """One row, written from the table, compared against that same table."""
+def test_a_catalogue_compared_against_ITSELF_is_unchanged(con, tmp_path):
+    """One row, written from the table, compared against that same table.
+
+    ERA UN XFAIL HASTA QUE LA PUERTA SE ARREGLO, y el `strict=True` es lo que
+    forzo quitar el marcador: en cuanto `catalogue_is_unchanged` empezo a
+    comparar representaciones comparables esto paso a XPASS y rompio la suite.
+    Antes devolvia False -- nada habia cambiado y la puerta decia que si."""
     root = tmp_path / "store"
     _plant(con, root, [_box_market("m1", seen_at="2026-09-09T15:16:32Z",
                                    updated_at="2026-09-09T12:56:42Z")],
@@ -2534,23 +2532,14 @@ def test_the_gate_calls_a_catalogue_changed_when_it_is_compared_against_ITSELF(
         "volcado de 6 600 filas por ciclo que deberia evitar sigue entero")
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "La puerta manda volcar un catalogo en el que NINGUN termino cambio. Hoy "
-    "cae por el obstaculo 1 —el lado: compara `read_shard` contra `db.query` "
-    "cuando el shard se escribio por `export_rows`— y cuando ese se arregle "
-    "caera por el 2 y luego por el 3. LOS TRES ESTAN EN SERIE, y por eso esta "
-    "prueba no puede aislar ninguno: conduce la puerta de verdad, y la puerta "
-    "se topa con el primero que quede. Lo que si hace es NOMBRAR en voz alta "
-    "cual la esta tumbando cada vez, en vez de pasar por casualidad. El "
-    "obstaculo 3 aislado se demuestra aparte, y ese test PASA."))
 def test_a_catalogue_that_only_moved_its_clocks_is_not_dumped_again(con, tmp_path):
-    """The gate orders a dump of a catalogue in which no term changed.
+    """Two clocks moving is not the universe changing.
 
-    IT CANNOT ISOLATE ONE OBSTACLE, and saying so is the point. It drives the
-    real `catalogue_is_unchanged`, which meets whichever of the three comes
-    first; an earlier draft claimed to isolate provenance and was falling on the
-    side asymmetry with a message that said "clocks". Session A caught that.
-    """
+    EL ULTIMO DE LOS TRES OBSTACULOS EN SERIE, y el unico que se ve conduciendo
+    la puerta entera. Fue `xfail` mientras cualquiera de los otros dos estaba
+    delante -- el lado primero, los tipos despues -- y su mensaje nombraba cual
+    lo estaba tumbando cada vez, porque una prueba que conduce el mecanismo real
+    se topa con el primero que quede en pie y no puede aislar ninguno."""
     root = tmp_path / "store"
     # `seen_at` NULL en las dos rondas y `mismo_dia` apagado: los otros dos
     # defectos quedan dormidos y esta prueba solo puede fallar por el suyo.
@@ -2724,24 +2713,55 @@ def test_the_three_fixes_do_not_suppress_a_REAL_term_change(con, tmp_path):
         "«detecta el cambio real» de «no sabe no detectar nada»")
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "El #36 dice que la puerta supone orden-de-ruta = orden-de-tiempo, y eso "
-    "ya es falso en cuatro directorios de origin/paper-state: en "
-    "paper_state/*/2026/09/09 conviven `cyc_…`, `col_<runid>_…` y "
-    "`col_<ts>Z_…`, y 'o' < 'y' pone el shard de Actions el ultimo por encima "
-    "de seis del ciclo posteriores. La generacion `col_<runid>` es peor porque "
-    "'3' > '2': ordena despues de cualquier marca 2026 para siempre."))
 def test_the_gate_compares_against_the_most_recent_shard_and_not_the_last_by_name(
         con, tmp_path):
-    """`sorted(shards)[-1]` is a claim about time, and the store refutes it."""
+    """`sorted(shards)[-1]` is a claim about TIME, and the store refutes it.
+
+    THIS ONE HAD TO BE FIXED TOO, and only because the others were. While the
+    gate was a constant False the wrong baseline cost nothing. With the gate
+    live, a stale shard that happens to match current state while the true
+    latest differs makes the gate SKIP a dump it owes -- fail-CLOSED, losing a
+    catalogue the universe cannot be rebuilt without. Fixing the comparison
+    without fixing the selection would have created that.
+    """
     root = tmp_path / "store"
     _heterogeneous_catalogue(con, root, mismo_dia=True)
-    elegido = sorted(store.iter_shards(root, "markets"))[-1]
+    shards = store.iter_shards(root, "markets")
 
+    assert "cyc_" in sorted(shards)[-1].name, (
+        "el fixture ya no reproduce la inversion: 'cyc' ordena despues de 'col' "
+        "por alfabeto, y sin eso esta prueba no demuestra nada")
+    elegido = max(shards, key=paper_cycle._shard_sort_key)
     assert "col_20260911T210705Z" in elegido.name, (
         f"la puerta compara contra {elegido.name}: es el shard congelado del "
         "2026-09-09, anterior al que el ciclo escribio, y sale el ultimo "
         "porque 'cyc' ordena despues de 'col'")
+
+
+def test_an_actions_run_id_never_sorts_after_an_iso_stamp(tmp_path):
+    """'3' > '2', so a run id orders after any 2026 stamp — permanently.
+
+    `cyc_` sorting last is an accident of the alphabet that closed on
+    2026-09-09. `col_<runid>_<fecha>` is worse: Actions run ids only grow and
+    every ISO stamp of this century starts with '2', so that generation would
+    sort last for ever. 16 such shards are in the store today.
+    """
+    d = tmp_path / "markets" / "2026" / "09" / "09"
+    d.mkdir(parents=True)
+    nombres = ["markets__col_20260909T185316Z_77df77__0000.ndjson.gz",
+               "markets__col_34340664711_2026-09-09__0000.ndjson.gz",
+               "markets__cyc_34369049661__0000.ndjson.gz"]
+    for n in nombres:
+        (d / n).write_bytes(b"")
+    rutas = [d / n for n in nombres]
+
+    assert sorted(rutas)[-1].name.startswith("markets__cyc_"), (
+        "el orden alfabetico ya no invierte: la premisa de esta prueba cambio")
+    elegido = max(rutas, key=paper_cycle._shard_sort_key)
+    assert "20260909T185316Z" in elegido.name, (
+        f"elegido {elegido.name}: las dos generaciones de Actions tienen que "
+        "ordenar ANTES que cualquier marca del box, porque la recoleccion se "
+        "mudo a la caja el 2026-09-09 y Actions no ha escrito nada desde")
 
 
 def test_code_commit_is_asked_of_git_when_actions_is_not_there(tmp_path, monkeypatch):
