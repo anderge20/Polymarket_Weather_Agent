@@ -347,3 +347,132 @@ def test_the_replay_applies_rows_in_one_statement_per_column_group(con, tmp_path
         assert calls["one"] == 0, "the row-at-a-time path must not be used"
     finally:
         fresh.close()
+
+
+# ---------------------------------------------------------------------------
+# Newest-first replay: the same table, without re-applying what it overwrites
+# ---------------------------------------------------------------------------
+
+def _snapshot(n, *, tick, extra=0):
+    """A catalogue-shaped snapshot: the same keys every time, values that move."""
+    return [{"market_id": f"m{i}", "dataset_version": "ds1", "record_version": 1,
+             "event_id": f"e{i}", "question": f"q{i}", "tick_size": tick}
+            for i in range(n + extra)]
+
+
+def _plantar(root, table, rows, *, run_id, when):
+    store.write_shard(rows, table=table, run_id=run_id, root=root, when=when)
+
+
+def _cargar(root, table, db):
+    con = db.init_db(db.connect(":memory:"))
+    out = store.load_shards(con, table=table, root=root)
+    filas = {(r["market_id"], r["dataset_version"], r["record_version"]): r
+             for r in db.query(con, f"SELECT * FROM {table}")}
+    con.close()
+    return filas, out
+
+
+def test_newest_first_gives_the_SAME_table_as_the_full_replay(tmp_path, monkeypatch):
+    """The equivalence this optimisation rests on, asserted and not argued.
+
+    `upsert` is last-write-wins, so after a full oldest->newest replay the row
+    standing for a key is the one from the NEWEST shard that holds it. Going the
+    other way and skipping keys already seen reaches the same row without writing
+    the ones it would have overwritten.
+
+    Measured on the real store before this was written: `markets` went from
+    26 092 upserts to 2 761 and `outcomes` from 46 662 to 5 522, both tables
+    coming out identical row for row.
+    """
+    from weather_agent import database as db
+    raiz = tmp_path / "store"
+    # tres instantaneas del mismo universo, con un valor que cambia y el universo
+    # creciendo — que es la forma que tiene el catalogo de la caja
+    for i, (tick, extra, hora) in enumerate(((0.01, 0, 9), (0.01, 2, 12), (0.001, 4, 15))):
+        _plantar(raiz, "markets", _snapshot(5, tick=tick, extra=extra),
+                 run_id=f"col_2026091{2}T{hora:02d}0705Z_aaaaaa",
+                 when=dt.datetime(2026, 9, 12, hora, 7, tzinfo=dt.timezone.utc))
+
+    nuevo, res_nuevo = _cargar(raiz, "markets", db)
+    assert res_nuevo["replay"] == "newest_first"
+
+    monkeypatch.setattr(store, "_newest_first", lambda shards: None)
+    viejo, res_viejo = _cargar(raiz, "markets", db)
+    assert res_viejo["replay"] == "full"
+
+    assert nuevo == viejo, "el replay nuevo-primero no reproduce la tabla completa"
+    assert res_nuevo["rows_written"] < res_viejo["rows_written"], (
+        f"no ahorro nada: {res_nuevo['rows_written']} contra "
+        f"{res_viejo['rows_written']} — si no salta filas, no hace lo que dice")
+    assert res_nuevo["rows_read"] == res_viejo["rows_read"], (
+        "rows_read tiene que seguir siendo lo OFRECIDO: se leen todos los shards "
+        "en los dos modos, y sólo cambia lo que se aplica")
+
+
+def test_a_tie_inside_one_day_DISABLES_it_rather_than_guessing(tmp_path):
+    """Two shards in one directory and one without an instant: full replay.
+
+    Fail-CLOSED is the danger here, not fail-open: an unrecognised shard that
+    really was the newest would be visited last and its rows dropped for older
+    ones. So anything unresolvable degrades to today's behaviour, which is
+    order-insensitive and always correct.
+    """
+    raiz = tmp_path / "store"
+    cuando = dt.datetime(2026, 9, 9, 18, 53, tzinfo=dt.timezone.utc)
+    _plantar(raiz, "markets", _snapshot(2, tick=0.01),
+             run_id="col_20260909T185316Z_77df77", when=cuando)
+    _plantar(raiz, "markets", _snapshot(2, tick=0.01),
+             run_id="cyc_34369049661", when=cuando)          # mismo dia, sin marca
+    assert store._newest_first(store.iter_shards(raiz, "markets")) is None
+
+
+def test_an_undated_shard_ALONE_in_its_day_does_not_disable_it(tmp_path):
+    """And this is why the rule is per DIRECTORY and not per filename.
+
+    The store's oldest `markets` shard is `cyc_34369049661`, an Actions id with
+    no timestamp. It sits alone in `2026/09/09`. A rule demanding every filename
+    parse would refuse the whole table — disabling the optimisation on exactly
+    the table that needs it most, `load:markets`, which went 109 s -> 462 s in
+    sixteen hours and is the stage the catalogue gate can never skip.
+    """
+    raiz = tmp_path / "store"
+    _plantar(raiz, "markets", _snapshot(2, tick=0.01), run_id="cyc_34369049661",
+             when=dt.datetime(2026, 9, 9, 18, 53, tzinfo=dt.timezone.utc))
+    _plantar(raiz, "markets", _snapshot(3, tick=0.001),
+             run_id="col_20260912T180705Z_84bd52",
+             when=dt.datetime(2026, 9, 12, 18, 7, tzinfo=dt.timezone.utc))
+    orden = store._newest_first(store.iter_shards(raiz, "markets"))
+    assert orden is not None and "col_20260912T180705Z" in orden[0].name, (
+        f"orden={[p.name for p in (orden or [])]}")
+
+
+def test_a_ledger_shaped_table_is_unaffected(tmp_path):
+    """Unique conflict keys means nothing is ever skipped: same rows, same count.
+
+    Said with a test because "harmless" is a claim about behaviour, and the
+    optimisation costs a set lookup per row that must buy something or be inert.
+    """
+    from weather_agent import database as db
+    raiz = tmp_path / "store"
+    for h in (9, 12):
+        filas = [{"token_id": f"t{h}{i}", "observation_time": f"2026-09-12T{h:02d}:00:00Z",
+                  "dataset_version": "ds1", "record_version": 1, "indicative_price": 0.5}
+                 for i in range(4)]
+        store.write_shard(filas, table="price_history",
+                          run_id=f"col_20260912T{h:02d}0705Z_aaaaaa", root=raiz,
+                          when=dt.datetime(2026, 9, 12, h, 7, tzinfo=dt.timezone.utc))
+    con = db.init_db(db.connect(":memory:"))
+    out = store.load_shards(con, table="price_history", root=raiz)
+    assert out["rows_read"] == out["rows_written"] == 8, out
+    con.close()
+
+
+def test_shard_time_reads_only_the_boxs_own_ids(tmp_path):
+    assert store.shard_time("markets__col_20260912T180705Z_84bd52__0000.ndjson.gz") \
+        == "20260912T180705Z"
+    for otro in ("markets__cyc_34369049661__0000.ndjson.gz",
+                 "markets__col_34340664711_2026-09-09__0000.ndjson.gz"):
+        assert store.shard_time(otro) is None, (
+            f"{otro}: un id de Actions no lleva instante, y devolver algo aqui "
+            "seria inventarse el orden que esta funcion existe para no inventar")

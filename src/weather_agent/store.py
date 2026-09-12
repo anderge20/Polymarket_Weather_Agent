@@ -302,6 +302,68 @@ def read_shard(path: str | os.PathLike) -> Iterator[dict]:
                 raise ValueError(f"{path}:{n}: malformed NDJSON line ({exc})") from exc
 
 
+
+_TIMESTAMP_EN_NOMBRE = re.compile(r"__col_(\d{8}T\d{6}Z)_")
+
+
+def shard_time(path) -> str | None:
+    """The instant a shard was written, read off its NAME, or None.
+
+    Only the box's own ids carry one. The two Actions generations -- `cyc_<runid>`
+    and `col_<runid>_<fecha>` -- do not, and neither will whatever writes next.
+    Returning None rather than guessing is what lets the caller refuse to use an
+    order it cannot establish.
+    """
+    m = _TIMESTAMP_EN_NOMBRE.search(Path(path).name)
+    return m.group(1) if m else None
+
+
+def _newest_first(shards) -> list | None:
+    """The shards newest-first, or None if their order cannot be established.
+
+    ALL OR NOTHING, AND THAT IS THE WHOLE SAFETY ARGUMENT. A replay that skips
+    keys it has already seen is only equivalent to a full replay if it visits the
+    shards in true reverse-chronological order; one shard out of place and the
+    skipping could keep an OLD row over a new one -- silently, and in the derived
+    state every later decision reads. So anything unresolvable disables the
+    optimisation for that table and the caller falls back to the full replay,
+    which is order-insensitive because upsert is last-write-wins.
+
+    NOT the rule `paper_cycle._shard_sort_key` uses, and the difference is the
+    direction of safety. There, an unrecognised name sorting FIRST is fail-open:
+    the gate gets an older baseline, the sets differ, the catalogue is dumped.
+    Here the same rule would be fail-CLOSED -- an unrecognised shard that really
+    was the newest would be visited last and its rows dropped for older ones.
+
+    ORDER COMES FROM THE DAY DIRECTORY, WHICH IS THE PART OF THE PATH THAT CAN BE
+    TRUSTED: zero-padded, written by the store itself, and never ambiguous. Only
+    a directory holding TWO OR MORE shards needs their filenames to carry an
+    instant, and only to break the tie inside it.
+
+    That distinction is what makes this usable at all. Requiring every filename to
+    parse would disable it on `markets`, because the store's oldest shard is
+    `markets__cyc_34369049661` -- an Actions id with no timestamp. It sits alone
+    in `2026/09/09`, so the directory settles it and nothing needs to be guessed
+    about the Actions era. The ledger tables, whose `2026/09/09` directories hold
+    three generations at once, fall back to the full replay -- which costs them
+    nothing, since a ledger never repeats a conflict key and nothing would be
+    skipped anyway.
+    """
+    por_dia: dict[str, list] = {}
+    for ruta in shards:
+        por_dia.setdefault(str(Path(ruta).parent), []).append(Path(ruta))
+    orden = []
+    for dia in sorted(por_dia, reverse=True):
+        dentro = por_dia[dia]
+        if len(dentro) > 1:
+            marcas = [shard_time(x) for x in dentro]
+            if any(m is None for m in marcas) or len(set(marcas)) != len(marcas):
+                return None             # empate irresoluble DENTRO de un dia
+            dentro = [x for _, x in sorted(zip(marcas, dentro), reverse=True)]
+        orden.extend(dentro)
+    return orden
+
+
 def load_shards(
     con,
     *,
@@ -342,6 +404,35 @@ def load_shards(
         )
     shards = [Path(p) for p in paths] if paths is not None else iter_shards(root, table)
     summary = {"table": table, "shards": len(shards), "rows_read": 0, "rows_written": 0}
+
+    # NEWEST FIRST, SKIPPING KEYS ALREADY LOADED -- and it is the same table.
+    #
+    # `upsert` is last-write-wins, so after a full oldest->newest replay the row
+    # standing for a key is the one from the NEWEST shard that contains it. Going
+    # the other way and skipping keys already seen reaches that same row without
+    # writing the ones it would have overwritten. Verified against the real store
+    # rather than argued -- both tables came out IDENTICAL row for row:
+    #
+    #     markets    11 shards   26 092 upserts -> 2 761    -89 %
+    #     outcomes   10 shards   46 662 upserts -> 5 522    -88 %
+    #
+    # WHY IT MATTERS HERE AND NOT ELSEWHERE. The catalogue is a full snapshot, so
+    # every cycle re-writes all 2 200 rows and every later cycle re-applies them;
+    # `load:markets` went 109 s -> 462 s in sixteen hours and is the fastest
+    # growing stage of the cycle. A ledger table never repeats a conflict key, so
+    # nothing is skipped and this path costs it a set lookup per row.
+    #
+    # It DELETES NOTHING -- every shard stays where it is, and PR #31's guarantee
+    # that the universe is recoverable from one shard is untouched. What changes
+    # is only which rows are handed to the database.
+    orden = _newest_first(shards)
+    vistas: set | None = None
+    if orden is not None:
+        shards, vistas = orden, set()
+        summary["replay"] = "newest_first"
+    else:
+        summary["replay"] = "full"
+
     for shard in shards:
         # ONE BATCH PER SHARD, not one statement per row — and PER SHARD rather
         # than per table, which is a choice with a measured price on both sides.
@@ -422,6 +513,11 @@ def load_shards(
         groups: dict[tuple, list] = {}
         for row in read_shard(shard):
             summary["rows_read"] += 1
+            if vistas is not None:
+                clave = tuple(str(row.get(c)) for c in cols)
+                if clave in vistas:
+                    continue            # una mas nueva ya gano esta clave
+                vistas.add(clave)
             groups.setdefault(tuple(row.keys()), []).append(row)
         for batch in groups.values():
             summary["rows_written"] += db.upsert_many(con, table, batch, cols)
