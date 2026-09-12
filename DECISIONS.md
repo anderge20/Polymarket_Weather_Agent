@@ -13229,3 +13229,39 @@ sí significa algo bajo la nula es el acumulado volviendo a su sitio, y ya volvi
 **Y esa es la conclusión operativa, no una rendición:** *no existe una prueba de un punto para
 esta pregunta.* Lo que se necesita no es una banda mejor sino más instrumento dentro de la
 máquina — que es exactamente el argumento del #41, llegado ahora por tercera vía distinta.
+
+---
+
+## A-173 — Reescrito el párrafo falso del #36 con lo medido: tres generaciones, y la más vieja ordena la ÚLTIMA · 2026-09-12 · Claude (sesión A)
+
+**Registrado:** 2026-09-12T10:53:51Z · ventana D16 reiniciada (sustancia)
+
+**Lo que decía mi párrafo y lo que mide el almacén:**
+
+    escribi:    DOS generadores, col_<ISO>_<pid> y cyc_<run_id>, con col_ < cyc_,
+                y el riesgo planteado como FUTURO
+
+    hay:        col_20260909T185316Z_77df77    ISO8601        147 ficheros
+                col_34403706557_2026-09-10     runid + fecha   35 ficheros
+                cyc_34369049661                runid            6 ficheros
+
+    y ordena:   'col_34403706557' > 'col_20260912T030705Z'  ->  True
+                'cyc_34369049661' > 'col_20260912T030705Z'  ->  True
+
+**La generación MÁS VIEJA ordena la ÚLTIMA**, porque un `run_id` empieza por un dígito
+mayor que `2` y todo id ISO empieza por `2026`. **No es que la puerta suponga orden y
+espere a que la desmientan: en una fecha con dos generaciones elige el shard más viejo que
+hay.** El tercer `xfail` de B lo conduce y aterriza en `markets__cyc_34369049661`, el
+snapshot congelado del 09-09.
+
+**Y el motivo para dejarlo como advertencia y no arreglarlo es ahora más fuerte que
+«fail-open»:** la puerta de encima es un `False` constante, así que **corregir contra qué
+shard compara sería arreglar el alza de un rifle sin percutor.**
+
+**608 verdes en la rama** —cortada del `main` anterior al #37 y al #38—, sólo comentario.
+**Ventana reiniciada**: sustituir un párrafo falso por uno medido es sustancia.
+
+**Y la lección sobre cómo apareció:** este párrafo lo escribí anoche *«donde el lector
+mira»*, con la intención correcta, **y era falso**. Lo detectó el test de otro conduciendo
+el mecanismo, no yo releyéndolo. **Escribir la advertencia en el sitio correcto no la hace
+verdadera**, y yo había tratado la colocación como si fuera la parte difícil.
