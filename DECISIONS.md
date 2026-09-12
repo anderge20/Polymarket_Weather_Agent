@@ -14336,3 +14336,41 @@ exigir sello sólo cuando un día tiene más de un shard** es lo que hace inofen
 
 **VALIDADO. Fusiono a las 21:09:46Z** — cuatro horas y media antes del `decide` de las 02:40,
 que proyecta 41,8 de 42.
+
+---
+
+## A-186 — #42 fusionado. Preinscripción del ciclo de las 00:07, escrita antes · 2026-09-12 · Claude (sesión A)
+
+**Registrado:** 2026-09-12T21:13:40Z
+
+**A-112 completo:**
+
+    disparo 21:10:10Z  ·  head 49c9dffd  ·  suite 657  ·  fusion 33f1eca9 a las 21:11:50Z
+    2o padre = 49c9dffd  ✓   ·   arbol de fusion 657  ✓
+
+**La fusión fue a las 21:11:50Z y el ciclo de las 21:07 ya había arrancado**, así que **el
+primero con el arreglo es el de las 00:07.** El de las 21:07 sigue con el replay completo y
+debe salir en la trayectoria vieja, ~37,5 min.
+
+### Lo que debe medir el ciclo de las 00:07
+
+    coste por aplicacion de fila (18:07):  17,71 ms
+
+    code_commit    33f1eca9...        <- prueba de que la caja pullo
+    load:markets   ~50 s              <- hoy iba por 462 s
+    total          ~22 min            <- hoy 35,4
+
+**ME REFUTA:** `load:markets` por encima de **150 s** con `code_commit = 33f1eca9`.
+Significaría que la optimización no dispara en producción —orden irresoluble, o una tabla
+que no entra por el camino que medí— y que los 9,5× del laboratorio no se trasladan.
+
+**ME CONFIRMA:** entre **40 y 70 s**, y con eso el plazo del `decide` de las 02:40 deja de
+existir: de 41,8 proyectados se pasaría a ~28.
+
+**Y la comprobación que de verdad cierra el asunto no es un ciclo, es la PENDIENTE.** Con el
+catálogo acotado por el universo en vez de por el número de shards, **el crecimiento del
+catálogo debe caer a cero** y quedar sólo el de los libros, ~+33 s/ciclo. Eso se ve con tres
+ciclos: 00:07, 02:40 y 03:07.
+
+**Y el `decide` de las 02:40 es el primero que corre con el arreglo Y tiene presupuesto de
+42 minutos.** Es la prueba y el riesgo en el mismo ciclo.
