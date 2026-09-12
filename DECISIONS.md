@@ -13772,3 +13772,61 @@ revisión.*
 yo no puedo hacer; la desplegable acelera los ciclos que no lo necesitan; y las dos vías de
 fondo siguen sin adjudicar. **Lo que está en juego mañana es una ranura de libro de tres
 horas, con probabilidad 0,56.** Acotado, pero irrecuperable.
+
+---
+
+## A-179 — Mi propia cláusula de refutación se ha activado: el arreglo funciona y el universo crece. El ahorro es del 44 %, no del 68 % · 2026-09-12 · Claude (sesión A)
+
+**Registrado:** 2026-09-12T15:53:00Z
+
+**El ciclo de las 15:07 corrió con el arreglo dentro y VOLVIÓ A VOLCAR el catálogo.**
+
+    code_commit   42120f2d242c   <- la caja pullo, como predije
+    dump:markets  0,59 s          <- VOLCO
+    total         33,92 min       (+2,85 sobre el anterior)
+
+**La puerta no falló: el catálogo cambió de verdad.** Comparados los shards de las 12:09 y
+las 15:07: **55 claves nuevas, cero desaparecidas.**
+
+**Y eso activa la cláusula que escribí en A-178:** *«ME REFUTA que siga volcando con el
+arreglo dentro. Significaría que el conjunto de mercados cambia de verdad en cada ciclo y
+que el problema no era la comparación sino el universo.»* **Se ha activado a medias, y la
+mitad que se cumple es la cara:**
+
+    shard                    filas  nuevas
+    col_20260912T000705Z      2200      0   <- sin cambio
+    col_20260912T024005Z      2200      0   <- sin cambio
+    col_20260912T030705Z      2200      0   <- sin cambio
+    col_20260912T060705Z      2585    385
+    col_20260912T090705Z      2673     88
+    col_20260912T114005Z      2706     33
+    col_20260912T120919Z      2706      0   <- sin cambio
+    col_20260912T150705Z      2761     55
+
+**Cuatro de nueve transiciones sin cambio real: la puerta saltará el 44 % de los ciclos, no
+el 100 %.** Y el universo **crece** —de 2.200 a 2.761 en un día—, así que cada volcado que
+no se salta es más caro que el anterior.
+
+### La proyección de A-178 era optimista y la corrijo
+
+    A-178 decia   crecimiento con el gate arreglado  0,63 min/ciclo   (suponia 100 % de saltos)
+    MEDIDO        ahorro 0,44 x 1,38 = 0,61          ->  2,11 - 0,61 = 1,49 min/ciclo
+
+    desde 33,92:
+      18:07                  35,4
+      21:07                  36,9
+      00:07                  38,4
+      decide 02:40 13-sep    39,9      pasa, con 2,1 min de margen
+      decide 11:40 13-sep    45,9      SE PASA
+
+**El primer cruce NO se mueve al 15 de septiembre. Se queda en el 13, en el `decide` de las
+11:40.** El arreglo compra **un turno**, no dos días.
+
+> **Supuse que «la puerta arreglada» equivalía a «la puerta salta siempre», y nadie lo
+> midió.** El 68 % que cité era el aporte del catálogo al crecimiento, no la fracción que se
+> puede evitar — **y confundí el tamaño del problema con el tamaño de la solución.**
+
+**Lo que sigue en pie y ahora manda:** el problema de fondo no es el catálogo sino que **el
+ciclo recarga el almacén entero cada vez**. Con el universo creciendo, ninguna puerta de
+contenido lo arregla. **El siguiente trabajo no es otra puerta: es no recargar lo ya
+cargado.**
