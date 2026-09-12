@@ -11678,5 +11678,7 @@ colector sin un hueco desde el 09-09, y el espejo al día.
 
 **Y la frase de la jornada, que es de él y la suscribo:** *releerse no funciona nunca; lo
 que cambia con la hora no es la capacidad de encontrar errores propios —ésa no existe—
-sino la de sospechar del resultado que sale bien.* **Los doce errores de esta noche, seis
-suyos y cinco míos, tienen en común que ninguno chirriaba.**
+sino la de sospechar del resultado que sale bien.* **Los once errores de esta noche, seis
+suyos y cinco míos, tienen en común que ninguno chirriaba** — y este recuento se corrige a
+mano un minuto después de escribirlo, porque decía «doce». *Ni siquiera sumar sobrevive a
+esta hora sin que alguien lo recalcule.*
