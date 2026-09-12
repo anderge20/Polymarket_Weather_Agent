@@ -13473,6 +13473,9 @@ Desde el ciclo de las 12:09 —31,07 min, 131.926 filas—:
     decide 11:40 del 13-sep     7    45,1 ± 3,3            100 %                  82,4 %
     decide 02:40 del 14-sep    11    53,1 ± 4,2            100 %                  99,6 %
 
+**[MAL CONTADO. Los pasos son 5, 9 y 13, no 3, 7 y 11 — ver B-95 bis. Las probabilidades
+correctas son 37 %, 97 % y 100 %, o sea que subestime la de mañana por un factor de 30.]**
+
 **Los dos `decide` que quedan antes del cruce ya retrasan su `collect` con certeza.** Lo que
 está en juego no es si se retrasa sino cuándo el retraso supera los 15 minutos y la ranura de
 libro **se pierde**, que es irrecuperable porque no existe endpoint que devuelva un libro
@@ -13537,3 +13540,54 @@ crece al doble de velocidad que un ciclo suelto**, porque crecen los dos.
 ventana D16 vence a las **14:19:05Z** — dentro de hora y media, y muy por delante del tope
 duro de las 02:40. **No hay conflicto entre respetar la ventana y llegar al plazo**, que era
 lo único que podía forzar una decisión incómoda.
+
+### B-95 bis — conté mal los ciclos y subestimé el riesgo de mañana por un factor de 30
+
+*Añadido 2026-09-12T12:56:31Z. A dio la cifra correcta; al comprobarla salió que la mía estaba mal, no la suya.*
+
+Desde el ciclo de las 12:09, el orden real del cron es:
+
+     1  15:07      2  18:07      3  21:07      4  00:07      5  02:40 decide
+     6  03:07      7  06:07      8  09:07      9  11:40 decide
+
+**El `decide` de las 02:40 está a CINCO pasos, no a tres.** Y como el delta medido es por
+paso, las proyecciones se corren dos:
+
+    ciclo                       n    total ±1sd    P(cruza 42 y PIERDE la ranura)
+    decide 02:40 del 13-sep     5    41,1 ± 2,8              37,4 %
+    decide 11:40 del 13-sep     9    49,1 ± 3,8              97,0 %
+    decide 02:40 del 14-sep    13    57,1 ± 4,5             100,0 %
+
+    B-95 decia:  +3 -> 37,1 min -> 1,2 %
+    lo correcto: +5 -> 41,1 min -> 37,4 %
+
+**La primera pérdida de ranura de libro puede ser MAÑANA a las 03:07, con probabilidad 0,37 —
+no a las 12:07 con 0,82.** Un tercio, no un uno por ciento.
+
+*Y el error es de los baratos de cometer y caros de tener: contar pasos de un calendario a
+ojo cuando el propio `install.sh` lo enumera.* Quinta vez en esta jornada que el dato que
+corregía la cuenta estaba a un comando de distancia.
+
+### Y lo que A midió y yo no usé
+
+El `collect` retrasado de las 12:09 **tardó 31,07 min, más que el `decide` que lo retrasó**, y
+el par ocupó la caja **60,3 minutos seguidos**, de 11:40:05Z a 12:40:23Z sin un hueco. Hoy no
+aprieta —el siguiente `collect` es a las 15:07— **pero el par crece al doble de velocidad que
+un ciclo suelto, porque crecen los dos.**
+
+### La revisión de fondo de A sobre el #39, aplicada
+
+A intentó romper mi clave de orden por su premisa —que los ids de Actions son más viejos— y
+no pudo, porque **lo que la clave no reconoce ordena PRIMERO**: un generador desconocido no
+puede ganar la selección mientras exista un shard reconocido, y lo peor que hace es dejar la
+base más vieja que la verdad, que hace diferir los conjuntos y **volcar**. Fail-open, escriba
+Actions o no.
+
+Tiene razón en que eso debe encabezar el docstring en vez de la historia: *la historia explica
+por qué el orden es el que es; el invariante explica por qué sigue siendo seguro cuando la
+historia deje de ser cierta.* Hecho, y fijado con un test que además comprueba que el nombre
+desconocido sigue ordenando el último por alfabeto — si no, dejaría de demostrar lo que dice.
+
+**Y la tensión que podía haber habido no existe:** la ventana D16 del #39 vence a media tarde,
+a doce horas del tope duro de las 02:40. *Si hubiéramos tardado dos horas más en llegar aquí,
+la elección entre respetar D16 y salvar la ranura habría estado sobre la mesa de madrugada.*
