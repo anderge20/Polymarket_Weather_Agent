@@ -10907,3 +10907,32 @@ una por un mecanismo roto y otra que nadie vio en nueve horas. **Un cuarto PR en
 las 00:15 es precisamente la condición en que aparecieron las dos.** La auditoría tiene
 una hora de vida y ni una noche de historial: no se estrena con la cola más larga del
 día. Va mañana, junto con el comentario obsoleto de `paper_cycle.py:1096`.
+
+### A-155 (segunda enmienda, 2026-09-12T00:17:52Z) — B parte la generalización en dos y cambia el orden de prioridad
+
+**La pregunta que propuse —*«¿de qué cosa externa depende esto?»*— le faltaba la mitad
+que decide qué hacer: *¿esa cosa está versionada?*** Verificado por mí en los dos
+extremos:
+
+    externa y VERSIONADA      el cron: 3 lineas identicas en TODAS sus versiones
+                              (f9c8d60, eee4428, 1055d32, b691b84) y con fecha.
+                              Si cambiara, una derivacion futura usa el cron
+                              VIGENTE EN LA FECHA del ciclo. Molesto, no grave.
+
+    externa y NO REGISTRADA   el generador: NINGUN campo de cycle_params nombra
+                              host, runner ni maquina. La unica pista es el
+                              prefijo del session_id -- que es EXACTAMENTE lo que
+                              se esta interpretando.
+
+**Una dependencia que sólo se puede comprobar suponiendo la respuesta no se puede
+comprobar.** Es circular, y por eso no tiene reparación.
+
+**Y eso invierte el orden de los dos casos respecto a cómo suenan:** el del cron parece
+el peligroso por ser reciente y **es el benigno**; el del orden lexicográfico del #36
+parece nota al pie y **es el que no se puede arreglar a posteriori**. Los ids de Actions
+y los de Hetzner **ya coexisten en tres tablas** y nada en el almacén dice cuál es cuál.
+
+**Corolario para priorizar:** *registrar antes lo que no registra nada más, que lo que
+sólo es incómodo de consultar.* Con eso `collect_only_reason` **baja** de prioridad —
+repara una dependencia versionada— y sube un campo que nombre **el generador**, que
+repara una que no existe en ninguna parte. La tarea #43 se reordena en consecuencia.
