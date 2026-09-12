@@ -11853,7 +11853,7 @@ apuntada.
 
 ---
 
-## B-87 — El 72 % no estaba tapado: lo introduje yo a las 20:45Z de anoche
+## B-87 — El 72 % no estaba tapado: lo introduje yo a las 18:45:30Z de anoche
 
 *Escrito 2026-09-12T03:10:13Z (todas las horas de esta entrada salen de `date -u`, B-80).*
 
