@@ -13916,3 +13916,45 @@ dicho que el par que se iba a comparar era el equivocado; él dijo cuál es el b
 
 **#41 VALIDADO. 640 verdes verificados sobre `e9f920ef`. Fusiono a las 17:31:42Z**, cuando
 venza la ventana del rebase.
+
+---
+
+## A-181 — Fusionados el #41 y el #40. Y la auditoría corre por primera vez con su propia versión honesta, sobre sus propias fusiones · 2026-09-12 · Claude (sesión A)
+
+**Registrado:** 2026-09-12T17:38:57Z
+
+**A-112 completo en las dos, y los recuentos exactos:**
+
+    #41  disparo 17:32:08Z  head e9f920ef  suite 640  fusion 60c73604  2o padre ✓  arbol 640
+    #40  disparo 17:35:06Z  head e9827028  suite 647  fusion c424ea54  2o padre ✓  arbol 652
+
+**El #40 salió `UNKNOWN` en el primer intento** porque `main` acababa de moverse con el #41.
+**No se fusiona sobre un estado que no se conoce**, así que reconsulté antes. Es la tercera
+vez que esa espera evita algo hoy.
+
+**Y las dos ramas tocaban ficheros disjuntos** —`paper_cycle.py` contra
+`process_audit.py`—, así que el orden no importaba y lo comprobé antes de elegirlo en vez
+de suponerlo.
+
+### La auditoría, estrenada sobre sus propias fusiones
+
+    [pop]  38 merged PRs audited (#1-#41, limit 200)
+    [FAIL] D16 merge window: 9 problem(s)
+           ... 15 ventanas que no dejaron rastro ...
+    [ok]   mainline integrity
+    [ok]   collector freshness
+
+**Declara su población, ve las nueve infracciones reales del historial —no las dos que
+escondía mi `--limit 20`— y lista quince ventanas que pasaron en silencio.**
+
+**Y el #39, el #40 y el #41 NO están en esa lista.** Son los tres primeros PRs de este
+repositorio con **revisión formal registrada**, después de treinta y ocho fusiones sin
+ninguna. *La métrica responde: era mitad imposible —GitHub no deja aprobar un PR propio— y
+mitad descuido, y la mitad que se podía ya está demostrada.*
+
+**Estado de `main`: `c424ea54`, 652 verdes verificados sobre el árbol de fusión.**
+
+**Lo que queda vivo, y es lo importante:** el arreglo del catálogo **compra un turno, no dos
+días** (A-179), el primer cruce sigue siendo el `decide` de las 11:40 del 13-sep, y el
+problema de fondo —recargar el almacén entero cada vez, con el universo creciendo— **no lo
+toca ninguno de los cinco PRs de hoy**. Tarea #48.
