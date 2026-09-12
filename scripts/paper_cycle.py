@@ -1468,8 +1468,18 @@ def code_commit() -> str | None:
 
     THE DIRTY SUFFIX IS NOT DECORATION. A sha names a tree; if the working copy has
     been edited, the sha names a tree that did NOT run, and a false fact is worse
-    than a missing one. `<sha>-dirty` says the row cannot be reproduced from that
+    than a missing one. The suffix says the row cannot be reproduced from that
     commit alone.
+
+    AND IT CARRIES WHAT DIRTIED IT, not merely that something did. Session B's
+    objection: a stray build artefact and a hand-placed `.py` that changed what the
+    cycle DID would produce the identical string, the first is what happens and the
+    second is the entire reason for the field -- so the reader a month later gets a
+    bare `-dirty` and cannot tell which they are looking at. The counts cost
+    nothing, `git status --porcelain` already returns the lines, and they turn an
+    alarm into a diagnosis:
+
+        6232e71...-dirty(0 modified, 3 untracked)
 
     THE MARKER ONLY MEANS ANYTHING WHILE IT STAYS RARE, and what keeps it rare is
     `.gitignore`. `git status --porcelain` hides ignored files but lists untracked
@@ -1509,7 +1519,10 @@ def code_commit() -> str | None:
         dirty = subprocess.run(["git", "-C", str(repo), "status", "--porcelain"],
                                capture_output=True, text=True, timeout=10)
         if dirty.returncode == 0 and dirty.stdout.strip():
-            return f"{head}-dirty"
+            lines = [l for l in dirty.stdout.splitlines() if l.strip()]
+            untracked = sum(1 for l in lines if l.startswith("??"))
+            return (f"{head}-dirty({len(lines) - untracked} modified, "
+                    f"{untracked} untracked)")
         return head
     except Exception:
         return None

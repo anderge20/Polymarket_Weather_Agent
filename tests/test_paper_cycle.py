@@ -2321,7 +2321,30 @@ def test_code_commit_marks_a_dirty_tree_rather_than_naming_a_tree_that_did_not_r
         return _Done(" M scripts/paper_cycle.py\n")
 
     monkeypatch.setattr(paper_cycle.subprocess, "run", fake_run)
-    assert paper_cycle.code_commit() == "a" * 40 + "-dirty"
+    assert paper_cycle.code_commit() == "a" * 40 + "-dirty(1 modified, 0 untracked)"
+
+
+def test_dirty_says_WHAT_dirtied_it_because_the_two_cases_are_not_alike(monkeypatch):
+    """A stray artefact and a hand-placed source file are not the same finding.
+
+    Both used to produce the identical `-dirty`, and the harmless one is the one
+    that actually happens -- so the reader would learn to skip it, and the day it
+    meant something they would skip it too. B's objection, and the counts cost
+    nothing: `git status --porcelain` already returns the lines.
+    """
+    monkeypatch.delenv("GITHUB_SHA", raising=False)
+
+    class _Done:
+        def __init__(self, out):
+            self.returncode, self.stdout = 0, out
+
+    def fake_run(cmd, **kw):
+        if "rev-parse" in cmd:
+            return _Done("b" * 40 + "\n")
+        return _Done("?? scripts/hotfix.py\n?? notes.txt\n M src/weather_agent/paper.py\n")
+
+    monkeypatch.setattr(paper_cycle.subprocess, "run", fake_run)
+    assert paper_cycle.code_commit() == "b" * 40 + "-dirty(1 modified, 2 untracked)"
 
 
 def test_code_commit_degrades_to_none_instead_of_aborting_a_cycle(monkeypatch):
