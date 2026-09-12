@@ -12601,3 +12601,81 @@ presupuesto**.
 **Punto de control barato y ya fechado: el `decide` de las 11:40 de hoy.** Es el único
 comparable con el de las 02:40 (20,96 min) y dirá si la nube de incrementos se estrecha o
 se abre. **Escrito antes: predigo 30-33 min, y me refuta cualquier valor por encima de 36.**
+
+---
+
+## B-91 — El modelo lineal refutado, una tercera hipótesis que nadie nombró, y un punto de control que no discrimina
+
+*Escrito 2026-09-12T06:41:57Z, ANTES de que corran los ciclos de las 09:07 y las 11:40. Medición de A,
+reproducida por mí.*
+
+### La refutación es correcta y es más fuerte en el marginal
+
+    sesion                        filas   d filas   carga s   d carga   ms/fila   marginal
+    col_20260911T180705Z          66591         -     890.4         -     13.37          -
+    col_20260911T210705Z          68447    +1.856     923.3    +32.9     13.49     17,7
+    col_20260912T000705Z          76874    +8.427    1040.4   +117.1     13.53     13,9
+    col_20260912T024005Z          85347    +8.473    1152.5   +112.1     13.50     13,2
+    col_20260912T030705Z          93714    +8.367    1253.3   +100.9     13.37     12,1
+    col_20260912T060705Z         102185    +8.471    1437.7   +184.4     14.07     21,8
+
+**Mi «13,50 ms/fila» aguantó cuatro puntos y se rompió en el sexto.** Y el marginal es lo
+que lo delata: **21,8 ms/fila con un delta de filas plano** (+8.471 contra +8.367). No es
+volumen.
+
+### La tercera hipótesis, que ninguno de los dos nombró
+
+A propone dos —coste superlineal, o ruido— y falta la que importa:
+
+> **La caja se está quedando sin memoria.** 3.819 MB, **swap CERO**, y el ciclo reconstruye
+> el almacén entero en `:memory:` cada vez.
+
+**Las tres encajan igual de bien con seis puntos. Difieren en el MODO DE FALLO, no en el
+grado:**
+
+    superlineal  ->  el ciclo se pasa del presupuesto y se pierde UNA ranura de libro
+    memoria      ->  OOM kill: a media escritura, sin linea de log y sin shard
+
+**Y nada en el repositorio podía distinguirlas**: cero coincidencias de `getrusage`,
+`/proc/meminfo` o `psutil` en `src`, `scripts` y `ops`. El almacén se mide a sí mismo en
+filas y bytes y **nunca mide la máquina en la que no cupo**. *La única hipótesis que predice
+un acantilado en vez de una pendiente es la que no se puede observar.* PR #41.
+
+### El punto de control de A no puede refutar nada, y esto va antes del dato
+
+A predice **30-33 min** para el `decide` de las 11:40 y se declara refutado **por encima de
+36**. Las cuentas, con dos ciclos por delante (09:07 y el propio 11:40), ~119.125 filas:
+
+    lineal, el pico de las 06:07 fue puntual   carga 1.666 s   total ~29,9 min   avg 13,99
+    el marginal de 21,8 persiste               carga 1.807 s   total ~32,2 min   avg 15,17
+
+**Los dos modelos caen por debajo de 36.** Su criterio de refutación lo pasan ambos, así que
+no puede refutar ninguno: *un punto de control que las dos hipótesis aprueban no es una
+prueba.* Es la forma de [[criteria-that-are-not-criteria]] aplicada a un umbral operativo en
+vez de a uno estadístico.
+
+**El estadístico que sí discrimina es el MARGINAL**, y se saca de dos filas consecutivas de
+`cycle_params`:
+
+> **Predicción registrada antes del dato.** Coste marginal en ms/fila entre el ciclo de las
+> 09:07 y el `decide` de las 11:40:
+>
+>     lineal / puntual        12 - 14 ms/fila
+>     regimen nuevo          >= 18 ms/fila
+>
+> La franja 14-18 no decide y se declara así de antemano. **A mí me refuta cualquier valor
+> ≥ 18 con el total por debajo de 30 min**, porque eso sería coste creciente sin
+> consecuencia operativa, que es lo contrario de lo que he venido diciendo.
+
+### Y su corrección del presupuesto es correcta: ata a DOS ciclos, no a diez
+
+Verificado en `ops/hetzner/install.sh`:
+
+    7 */3  collect    -> hueco de 180 min    ocho al dia    NO atados
+    40 2   decide 9   -> hueco de  27 min + 15 de flock = 42    ATADO
+    40 11  decide 24  -> hueco de  27 min + 15 de flock = 42    ATADO
+
+**Un `collect` a 26 minutos no está ni cerca de su límite.** Lo he estado diciendo mal toda
+la noche al hablar de «el ciclo»: lo que cruza el presupuesto es **uno de los dos ciclos del
+día que tienen presupuesto**, y lo que se pierde es la ranura de libro posterior —las 03:07
+o las 12:07—, que es irrecuperable porque no existe endpoint que devuelva un libro pasado.
