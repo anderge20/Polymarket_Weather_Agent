@@ -13265,3 +13265,57 @@ shard compara sería arreglar el alza de un rifle sin percutor.**
 mira»*, con la intención correcta, **y era falso**. Lo detectó el test de otro conduciendo
 el mecanismo, no yo releyéndolo. **Escribir la advertencia en el sitio correcto no la hace
 verdadera**, y yo había tratado la colocación como si fuera la parte difícil.
+
+---
+
+## A-174 — El decide de las 11:40 pone fecha y hora al plazo: el de mañana a las 02:40 está EN EL BORDE y el de las 11:40 se pasa · 2026-09-12 · Claude (sesión A)
+
+**Registrado:** 2026-09-12T12:11:29Z
+
+**El `decide` de las 11:40 —el ciclo que SÍ tiene los 42 minutos— salió en 29,12 min, con
+marginal +22,4 ms/fila.**
+
+**Mi predicción de A-167 era 30-33 y salió 29,12: por debajo de mi banda.** Y mi criterio
+de refutación —«me refuta por encima de 36»— **no se disparó**, que es exactamente lo que
+B-91 dijo que pasaría. *Di una banda equivocada y un criterio que no podía cazarla.* La
+banda falla y el criterio la absuelve: **eso es un criterio suelto, no un acierto.**
+
+**El nivel no se mueve; lo que explotó es la varianza:**
+
+    marginales   17,7  13,9  13,2  12,1  21,8  -0,6  22,4
+    media 14,4 ms   sd 7,8 ms      <- la sd es la mitad de la media
+    primeros cuatro 14,2   ultimos tres 14,5   <- el NIVEL es el mismo
+
+**Eso cierra la discusión de las cuatro hipótesis: no hay régimen nuevo.** Hay una tasa
+estable de ~14 ms/fila con un ruido enorme encima, y el crecimiento del total es real y
+constante.
+
+### El plazo, con fecha, hora e incertidumbre
+
+    crecimiento  +2,01 min/ciclo   sd 1,38
+
+    decide 02:40 del 13-sep   + 6 ciclos ->  41,2 +- 3,4 min   rango 37,8 a 44,6   AL BORDE
+    decide 11:40 del 13-sep   +10 ciclos ->  49,2 +- 4,4 min                       SE PASA
+    decide 02:40 del 14-sep   +16 ciclos ->  61,3 +- 5,5 min                       muy pasado
+
+**El primero en riesgo real es el de MAÑANA A LAS 02:40, y es una moneda al aire.** El de
+las 11:40 de mañana se pasa en la estimación central. **Lo que se pierde al pasarse es la
+ranura de libro siguiente —03:07 o 12:07—, y eso es irrecuperable.**
+
+### Qué compra el arreglo, medido y no supuesto
+
+    aporte del catalogo   1,38 min/ciclo de los 2,01   (68 %)
+    con el gate arreglado 0,63 min/ciclo
+
+    decide 02:40 13-sep  ->  32,9 min
+    decide 11:40 13-sep  ->  35,5 min
+    decide 02:40 14-sep  ->  39,3 min
+    decide 11:40 15-sep  ->  48,2 min   <- ahi cruza
+
+**El arreglo mueve el primer cruce del 13 al 15 de septiembre: compra unos dos días, no
+más.** Sigue sin eliminar el plazo, porque los libros crecen igual — pero **dos días es la
+diferencia entre arreglarlo con calma y arreglarlo esta noche.**
+
+**Ventana operativa, dicha con claridad: el arreglo tiene que estar en `main` y pullado por
+la caja ANTES del ciclo de las 02:40 de mañana**, que son unas catorce horas. Si no llega,
+el siguiente tope duro es el de las 11:40 de mañana, y ése ya se pasa.
