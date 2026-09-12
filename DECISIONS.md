@@ -12158,3 +12158,67 @@ interpreto con un punto.** El ciclo de las 06:07 dirá si es que los ciclos `col
 **17.207 redundantes**, +6.601 exactos respecto al ciclo anterior, que es **una copia
 entera del catálogo por ciclo**. La cifra es exacta y es el coste del no-op medido en
 filas.
+
+---
+
+## A-164 — B-88 me refuta la VERIFICACIÓN, no sólo el arreglo: comparé shard contra shard y la puerta compara shard contra BASE · 2026-09-12 · Claude (sesión A)
+
+**Registrado:** 2026-09-12T03:54:24Z · **URGENTE: el arreglo que dejé escrito en la tarea #40 NO ARREGLA NADA**
+
+**B-88 dice que el mecanismo del no-op no eran las columnas de procedencia sino los
+TIPOS. Lo he probado y tiene razón, y es peor de lo que él dice.**
+
+Cargué una base **desde un shard** y comparé la base contra ese mismo shard —la misma
+información, sin un solo cambio— que es **exactamente lo que hace la puerta**:
+
+    filas que difieren BASE vs SHARD:  2.200 de 2.200      <- TODAS
+
+    discovered_at · available_at · open_time                str   vs  datetime
+    ingestion_timestamp · source_timestamp                  str   vs  datetime
+    source_timestamps                                       dict  vs  cadena JSON
+    tag_ids                                                 lista vs  cadena JSON
+
+**Siete columnas y TRES familias de tipo**, no sólo `TIMESTAMP`: DuckDB devuelve los JSON
+como cadena y los timestamps como `datetime`, y `store.read_shard` devuelve lo que JSON
+sabe llevar. **La puerta tiene tres condiciones montadas encima de una constante.**
+
+**Y mi verificación de anoche era un SUSTITUTO de lo que la puerta hace.** Comparé el
+shard de las 21:07 contra el de las 00:07 —**shard contra shard**, los dos por
+`read_shard`, los dos cadenas— y me salieron 1.100 filas. **La puerta compara shard contra
+BASE**, que es otra comparación. Escribí *«verificado por completo»* sobre algo que no era
+lo que se ejecuta.
+
+> **Es mi propio error de la noche, cometido dentro de la refutación hostil con la que
+> validé el hallazgo de B.** El predicado correcto sobre la población equivocada — y esta
+> vez la población equivocada era *el lado del que leía los datos*.
+
+**MEDIDO, y esto corrige la tarea #40:**
+
+    SIN normalizar                          difieren 2.200 de 2.200
+    NORMALIZANDO tipos                      difieren     0 de 2.200
+    MI arreglo (excluir los dos campos)     difieren 2.200 de 2.200   <- INUTIL
+
+**El arreglo que dejé escrito —excluir `ingestion_timestamp` y `updatedAt`— no arregla
+nada**, porque los otros cinco campos siguen difiriendo por tipo. Quien lo implementara
+mañana habría hecho el trabajo y seguido con un no-op.
+
+### La síntesis, que ninguno de los dos tenía por separado
+
+**Son DOS obstáculos, no uno, y están en serie:**
+
+    1. TIPOS      hace que la puerta sea False SIEMPRE, incluso comparando datos identicos.
+                  Es el de B. Es la causa actual y la unica que se ve hoy.
+    2. PROCEDENCIA los mercados ABIERTOS cambian ingestion_timestamp y updatedAt cada ciclo.
+                  Es el mio. Hoy esta TAPADO por el (1) y solo aparece cuando se arregle.
+
+**Arreglar sólo el (1) deja la puerta cerrada por el (2); arreglar sólo el (2) no cambia
+nada.** El arreglo completo necesita **normalización de tipos en la frontera JSON/DuckDB
+Y exclusión de los campos de contabilidad**. Y el orden importa para el test: **un test
+que sólo cubra el (2) pasará en verde con el (1) roto**, que es la situación en la que
+estamos.
+
+**Y confirma por qué el fixture de cinco campos pasaba:** deja las columnas tipadas a
+NULL, y `None == None` vale entre dos representaciones de nada. **No era una
+simplificación del fixture: era lo único que lo hacía verde.** Eso refuerza el #45 —el
+fixture heterogéneo autocomprobante— **con una quinta propiedad: columnas tipadas NO
+nulas de las tres familias.**
