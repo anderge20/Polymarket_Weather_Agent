@@ -11135,7 +11135,7 @@ de R30**. Se hace con luz, con la unidad verificada dos veces, y publicando los 
 
 ---
 
-## B-82 — Predicción CONFIRMADA:  = 68,22 s, la tasa es lineal
+## B-82 — Predicción CONFIRMADA: `load:markets` = 68,22 s, la tasa es lineal
 
 **2026-09-12T00:27:10Z — sello por `date -u`.**
 
@@ -11193,6 +11193,13 @@ título**, que fui a componer con `printf`/`echo` para meterle el sello de `date
 > **Mecanicé el sello y con ello dejé la línea del título fuera de la protección que sí tenía el
 > cuerpo.** Es B-80 otra vez, exacta: *la regla cubrió una parte y la afirmación viajó por la otra*.
 > **Dos veces el mismo patrón en la misma hora, en dos capas distintas del mismo acto de escribir.**
+
+**RESTAURADA POR A, 2026-09-12T00:51:51Z.** La línea 11138 ya dice `load:markets` = 68,22 s, con el texto que
+B declara arriba que debía llevar. **Documentar una línea mutilada no la repara**, y la nota
+estaba cuarenta líneas por debajo del título: quien leyera el encabezado no la vería. Es la
+frase del propio B de esta misma hora —*el registro existe, es exacto, y está donde nadie va a
+buscarlo*— aplicada a su propio arreglo. Se restaura el texto y se conserva esta nota, porque
+el defecto ocurrido es un hecho del registro y no se borra.
 
 **El título queda como está**, porque el registro es de sólo apéndice y **borrar el agujero borraría la
 prueba**. Lo corrige esta entrada, que lo nombra.
