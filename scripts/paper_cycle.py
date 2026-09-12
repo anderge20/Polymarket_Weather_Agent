@@ -35,6 +35,7 @@ import argparse
 import fcntl
 import json
 import os
+import subprocess
 import sys
 import time
 import traceback
@@ -1453,6 +1454,80 @@ def stage_settle(cy: Cycle, con, *, dataset_version: str) -> dict:
     return {"positions_open": n_open, "settled": settled, "refusals": refusals}
 
 
+def code_commit() -> str | None:
+    """Which code produced this row — asked of git when Actions is not there.
+
+    `GITHUB_SHA` IS AN ACTIONS VARIABLE AND WE LEFT ACTIONS ON 2026-09-09. It is
+    unset on the box, so `os.environ.get("GITHUB_SHA")` has returned None for every
+    cycle since -- six of six on 2026-09-11 alone -- and so has `GITHUB_RUN_ID`.
+    Every shard the box has written is a measurement with no record of the code
+    that made it, which is the one thing this project keeps insisting on: a count
+    without its sha is not a fact. The field was not wrong, it was pointed at a
+    host we no longer run on, exactly like the collector check that reported green
+    for two days after its workflow's schedules were removed.
+
+    THE DIRTY SUFFIX IS NOT DECORATION. A sha names a tree; if the working copy has
+    been edited, the sha names a tree that did NOT run, and a false fact is worse
+    than a missing one. The suffix says the row cannot be reproduced from that
+    commit alone.
+
+    AND IT CARRIES WHAT DIRTIED IT, not merely that something did. Session B's
+    objection: a stray build artefact and a hand-placed `.py` that changed what the
+    cycle DID would produce the identical string, the first is what happens and the
+    second is the entire reason for the field -- so the reader a month later gets a
+    bare `-dirty` and cannot tell which they are looking at. The counts cost
+    nothing, `git status --porcelain` already returns the lines, and they turn an
+    alarm into a diagnosis:
+
+        6232e71...-dirty(0 modified, 3 untracked)
+
+    THE MARKER ONLY MEANS ANYTHING WHILE IT STAYS RARE, and what keeps it rare is
+    `.gitignore`. `git status --porcelain` hides ignored files but lists untracked
+    ones, and the box runs cycles inside its own checkout -- so `__pycache__/`,
+    `*.pyc`, `*.duckdb` and `*.log` being ignored (lines 35-54) is the reason every
+    row does not come back `-dirty`. Delete those lines and this degrades from a
+    signal into decoration, which is the same failure as a check that shouts every
+    run: it does not stop working, it stops being read.
+
+    Session B narrowed the case this actually covers, and the narrower version is
+    the true one. `launcher.sh` does `git reset --hard` BEFORE the sha is read, so
+    the TRACKED tree is clean by construction on every scheduled cycle -- a
+    hand-edited tracked file never survives to be recorded. What is left is a
+    narrower gap, not no gap: `reset --hard` does not remove UNTRACKED files, so a
+    `.py` dropped in by hand does survive and does run; and anyone invoking
+    `run_cycle.sh` directly skips the reset altogether. One gap is enough, and this
+    closes it at no cost.
+
+    NEVER RAISES. It runs inside `stage_params`, which sits after `stage_dump`
+    since PR #25, so a throw here could not lose a capture -- but it would abort a
+    cycle over a bookkeeping field, and no field is worth that. Any failure (no
+    git, no repo, a timeout) degrades to None, which is exactly the state we are
+    already in.
+    """
+    env = os.environ.get("GITHUB_SHA")
+    if env:
+        return env
+    repo = Path(__file__).resolve().parents[1]
+    try:
+        sha = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"],
+                             capture_output=True, text=True, timeout=10)
+        if sha.returncode != 0:
+            return None
+        head = sha.stdout.strip()
+        if not head:
+            return None
+        dirty = subprocess.run(["git", "-C", str(repo), "status", "--porcelain"],
+                               capture_output=True, text=True, timeout=10)
+        if dirty.returncode == 0 and dirty.stdout.strip():
+            lines = [l for l in dirty.stdout.splitlines() if l.strip()]
+            untracked = sum(1 for l in lines if l.startswith("??"))
+            return (f"{head}-dirty({len(lines) - untracked} modified, "
+                    f"{untracked} untracked)")
+        return head
+    except Exception:
+        return None
+
+
 def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
                  dataset_version: str, quantile_provenance: dict | None = None) -> dict:
     """Persist the parameters this cycle actually ran with.
@@ -1585,7 +1660,7 @@ def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
         "market_sum_min": args.market_sum_min,
         "market_sum_max": args.market_sum_max,
         "collect_only": bool(args.collect_only),
-        "code_commit": os.environ.get("GITHUB_SHA"),
+        "code_commit": code_commit(),
         "run_id": os.environ.get("GITHUB_RUN_ID"),
         # B's second condition: the cycle records WHICH artifact it used. The id
         # is a sha over the artifact's canonical content, so it names the fit
