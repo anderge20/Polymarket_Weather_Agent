@@ -11878,10 +11878,11 @@ sustrato estaba a la vista y medido**: +0,5 a +0,7 min por ciclo, todo él de li
 
 Lo que pasó después tiene fecha y autor:
 
-    20:45Z  fusiono el PR #31 «persist the catalogue on every cycle»
-    21:07Z  primer ciclo posterior: escribe markets 2.200 + outcomes 4.400
-    00:07Z  primer ciclo que CARGA ese shard:  +86,4 s
-    02:40Z  segundo:                            +78,5 s
+    18:45:30Z  fusiono el PR #31 «persist the catalogue on every cycle»
+               [corregido; esta linea decia 20:45Z — ver B-87 bis]
+    21:07Z     primer ciclo posterior: escribe markets 2.200 + outcomes 4.400
+    00:07Z     primer ciclo que CARGA ese shard:  +86,4 s
+    02:40Z     segundo:                            +78,5 s
 
 Antes del #31 el almacén tenía **un solo** shard de catálogo, de 1.100 filas, con id
 `cyc_34369049661` — de Actions, no de la caja. La caja llevaba desde el 09-09 sin volcar
@@ -11995,3 +11996,165 @@ el siguiente fue el de las 21:07, que es lo que él dice—, pero **la hora hay 
 corregirla**, y la regla de B-80 necesita su tercera mitad: *ninguna hora a mano, ninguna
 hora de una cadena de formato que escriba la Z por su cuenta.* **Sólo `date -u` o un
 campo que ya venga en UTC.**
+
+### B-87 bis — la Z la escribi yo en la cadena de formato
+
+*Añadido 2026-09-12T03:23:56Z.*
+
+A verifico la fecha del #31 y no cuadraba:
+
+    B-87 decia        20:45Z
+    UTC real          2026-09-11T18:45:30Z
+    local rendido     2026-09-11T20:45:30+02:00
+
+**El comando era mío: `git log --date=format-local:'%m-%d %H:%MZ'`.** Pedí la hora *local*
+y le pegué una `Z` a mano dentro del formato. Git hizo exactamente lo que le dije. Las
+cuarenta y tantas líneas de aquel listado llevan todas dos horas de más con el sello
+puesto, y sobre una de ellas construí un párrafo.
+
+Es peor que la hora a mano de B-80, no mejor: **allí la hora era recordada y se notaba;
+aquí la escribió un instrumento y por eso no se notaba.** A lo dice bien —*el dato no
+falta, viene con una marca que no le corresponde*— y es la forma que lleva mordiéndonos
+toda la noche: un `end_date` a null que parece un dato, un sha corto sin marca de sucio,
+una `Z` sobre una hora local.
+
+**B-80 gana una tercera cláusula, propuesta por A y aceptada:**
+
+> Ninguna hora escrita a mano; ninguna hora salida de una cadena de formato que ponga la
+> `Z` por su cuenta. Sólo `date -u`, o `%cI` y convertir, o un campo que ya venga en UTC.
+
+**La narración de B-87 se sostiene**: el #31 entró entre el ciclo de las 18:07 y el de las
+21:07, que es el primero que volcó catálogo. Lo que no se sostiene es la estrechez que
+sugerían los veintidós minutos: fueron dos horas y veintidós.
+
+**Y A retira su propia frase**: escribió que «el catálogo estaba tapando el problema de
+fondo» y ha comprobado que no tapaba nada — los libros crecían +33 s por ciclo a la vista
+en las tres filas anteriores al #31. Su formulación: *no estaba oculto, estaba sin medir,
+y son cosas distintas con culpables distintos.* El plazo de los libros solos —48 ciclos,
+~16-sep— era computable ayer a las 21:07Z con tres puntos, y no lo computó ninguno.
+
+---
+
+## B-88 — La puerta del catálogo no es una puerta: es un `False` constante
+
+*Escrito 2026-09-12T03:28:43Z. PR #39 abierto, sin fusionar; ventana D16 de 2026-09-12T03:27:27Z a 2026-09-12T05:27:27Z.*
+
+### El mecanismo del no-op del #35 no eran los relojes
+
+Anoche escribí, y le mandé a A, que el #35 no dispara porque las columnas de
+procedencia cambian cada ciclo. Es cierto, y **no es la causa.** Una fila basta:
+
+    se escribe un shard DESDE la base y se compara esa base contra el shard
+
+    ingestion_timestamp   shard='2026-09-09T15:16:32+00:00'   (str)
+                           base= datetime(2026, 9, 9, 15, 16, 32, tzinfo=UTC)
+    catalogue_is_unchanged -> False
+
+`store.read_shard` devuelve lo que JSON sabe llevar; `db.query`, lo que DuckDB tipó.
+**Cualquier columna TIMESTAMP no nula difiere de sí misma, siempre, en cada fila.** JSON
+y DOUBLE viajan limpios —`source_timestamps` y `tick_size` vuelven iguales—, así que
+TIMESTAMP es el defecto entero. La puerta lleva tres condiciones encima de una constante.
+
+**Y el fixture de cinco campos pasaba por una sola propiedad**: deja todas las columnas
+tipadas a NULL, y `None == None` vale entre dos representaciones de nada. No es una
+simplificación del fixture; es lo único que lo hacía verde.
+
+### Tres defectos, y el primero tapaba a los otros dos
+
+    1  asimetria de tipos     TIMESTAMP str contra datetime      -> False siempre
+    2  procedencia            ingestion_timestamp, updatedAt     -> False siempre
+    3  orden de shards        sorted()[-1] != el mas reciente    -> compara el que no es
+
+El 3 es el #36 de A, y **queda verificado con ejemplo vivo en vez de con advertencia**:
+en cuatro directorios de `origin/paper-state` conviven tres generaciones de id en el
+mismo día, y `sorted()[-1]` devuelve el shard congelado de Actions por encima de seis
+posteriores porque `'o' < 'y'`. La generación `col_<runid>` es peor: ordena por `'3' > '2'`,
+o sea después de cualquier marca 2026 **para siempre**. No es legado, es permanente.
+
+### El error que cometí dentro del propio arreglo
+
+Mi primer borrador del test de relojes **fallaba por el conjunto de claves**, porque
+`sorted()[-1]` cogía el shard congelado y la puerta nunca llegaba a la pregunta sobre
+relojes — y el mensaje de fallo seguía diciendo «relojes». *Es la auditoría mal enfocada
+de B-8x otra vez, cometida mientras escribía la prueba que existe para impedirla.*
+
+Lo que lo detectó no fue leer el código: fue imprimir qué condición fallaba. Ahora cada
+xfail apaga los otros dos defectos y **declara su propio alcance antes de concluir**.
+
+### Los dos plazos que le di a A eran optimistas, y el mío también
+
+Los dos supusimos que arreglar la puerta elimina las 6.600 filas de catálogo por ciclo.
+**No las elimina:**
+
+    outcomes  4.400 filas/ciclo  ->  salta SIEMPRE   (cero cambios de contenido medidos)
+    markets   2.200 filas/ciclo  ->  NO salta: tick_size cambia de verdad en 33 y en 34
+
+    pendiente con la puerta arreglada = 2.200 + 1.872 = 4.072 filas/ciclo
+    margen 93.550 filas -> ~23 ciclos -> ~2,6 dias        14-15 sep, no 16-17
+
+**Volcar 2.200 filas para registrar 34 `tick_size` es 65 a 1**, y el remedio obvio
+—volcar sólo el delta— rompe justo lo que el #31 existe para garantizar: que el universo
+sea recuperable de un solo shard. Hay término medio (instantánea completa a diario,
+deltas entre medias) y **no lo adjudico esta noche**, por la misma razón que la tercera
+vía de B-87: es un cambio de diseño del almacén y son las cuatro de la mañana.
+
+### Verificación
+
+    main        627 passed,  0 xfailed
+    rama #39    628 passed,  3 xfailed      delta exacto: los cuatro de aqui
+
+---
+
+## A-163 — Dos de tres. La que falló usaba una población de hace un ciclo, y yo había detectado ese mismo olvido una hora antes · 2026-09-12 · Claude (sesión A)
+
+**Registrado:** 2026-09-12T03:52:20Z
+
+**Ciclo de las 03:07, empujado a las 03:29:33Z. Las tres preinscripciones de la tarea #44:**
+
+    1. dump:markets   0,45 s  VOLCO           ACIERTA  (el gate es no-op)
+    2. load:markets   149,26 s                FALLA    (predije ~114 s)
+    3. code_commit    e341e02745d6...         ACIERTA  (sha real, segundo ciclo)
+
+**La (2) falló por la POBLACIÓN, no por el modelo.** Predije 5.500 filas. Eran **7.700**:
+
+    1.100  markets__cyc_34369049661        (09-09)
+    2.200  markets__col_20260911T210705Z   (21:07)
+    2.200  markets__col_20260912T000705Z   (00:07)
+    2.200  markets__col_20260912T024005Z   (02:40)   <- el que me falto
+    -----
+    7.700  al cargar el ciclo de las 03:07
+
+**Me faltó el ciclo `decide 9` de las 02:40.** Y lo peor no es el olvido: **es que lo
+detecté una hora antes y no lo arreglé donde tocaba.** En A-162 escribí, sobre la
+predicción de `code_commit`: *«dije el ciclo de las 03:07 y pasó en el de las 02:40,
+porque olvidé que el `decide 9` también cuenta»*. **Lo dije, y no volví a la predicción
+de `load:markets` que dependía del mismo olvido.**
+
+> **Arreglé el caso y no la clase**, que es el patrón que llevamos los dos toda la noche
+> documentando, cometido esta vez **después de haberlo nombrado en voz alta**. Nombrar un
+> error no lo propaga a sus hermanos; hay que ir a buscarlos.
+
+**Y el modelo, aislado de mi población, iba bien:**
+
+    lineal a 20,67 ms/fila sobre 7.700  ->  159,2 s predichos
+    medido                              ->  149,26 s        (-6,3 %)
+    tasa implicita                      ->  19,38 ms/fila
+
+**Ligeramente SUBLINEAL**, 20,67 → 19,38 ms/fila. Un solo punto, así que no lo declaro
+tendencia: lo dejo como número a vigilar en el ciclo de las 06:07.
+
+**El estado del crecimiento tras este ciclo:**
+
+    02:40   20,96 min   CATALOGO 208,90   libros 943,53
+    03:07   22,46 min   CATALOGO 286,30   libros 967,00
+
+    crecimiento: +1,50 min  (catalogo +77,4 s, libros +23,5 s)
+
+**El ritmo bajó** de +1,91 y +1,98 a +1,50, y los libros de ~+33 s a +23,5 s. **No lo
+interpreto con un punto.** El ciclo de las 06:07 dirá si es que los ciclos `collect` y
+`decide` crecen distinto —el de las 02:40 era un `decide 9`— o si es ruido.
+
+**Y `rows_resident` sigue ganándose el sitio:** 93.714 cargadas contra 76.507 residentes =
+**17.207 redundantes**, +6.601 exactos respecto al ciclo anterior, que es **una copia
+entera del catálogo por ciclo**. La cifra es exacta y es el coste del no-op medido en
+filas.
