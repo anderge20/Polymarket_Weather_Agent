@@ -100,6 +100,70 @@ def check_d16(limit: int = 20, runner=_run) -> list[str]:
     return violations
 
 
+def check_objection_window_was_used(limit: int = 30, runner=_run) -> list[str]:
+    """D16 is a window for OBJECTIONS. `check_d16` can only see the clock.
+
+    A PR that waits 2 h 00 and merges with nothing written on it satisfies
+    `check_d16` exactly. That is not a hypothetical: measured on 2026-09-12,
+
+        30 fusionados   0 revisiones formales   11 sin NINGUNA huella
+        #38  espero 2,19 h   0 comentarios       #34  espero 2,00 h   0
+        #37  espero 2,18 h   0                   #29  espero 2,00 h   0
+        #35  espero 1,62 h   0                   #27  espero 2,00 h   0
+        #25  espero 2,03 h   0
+
+    `check_d16` reports those as compliant, because they are. The rule was
+    honoured and the reason for the rule was not, and the audit could not tell
+    the two apart -- so "D16: OK" was being read as "somebody looked", which is
+    a claim nothing in this repo had ever measured.
+
+    WHAT THIS CHECK CAN AND CANNOT SEE, because the distinction is the point:
+
+      * it sees whether the window left a TRACE -- a review, or a comment written
+        before the merge. Nothing at all is the failure it reports;
+      * it CANNOT see whether the trace is a review. A one-line "green" and a
+        substantive objection are the same event to the API;
+      * it CANNOT see who wrote it. Both sessions push under one GitHub account,
+        so a note to oneself and a peer's objection are indistinguishable here.
+
+    So a pass means "the window was not silent", never "this was reviewed". Said
+    plainly because the failure this check exists to correct was exactly a
+    weaker measurement being read as a stronger claim.
+
+    Formal reviews are counted separately and reported even when zero, since
+    `reviews: 0` across all 30 is itself the finding: review is happening in the
+    comment stream, where no tooling looks for it.
+    """
+    raw = runner(["gh", "pr", "list", "--state", "merged", "--limit", str(limit),
+                  "--json", "number,createdAt,mergedAt,reviews,comments"])
+    rows = json.loads(raw)
+    merged = [r for r in rows if r.get("mergedAt")]
+    if not merged:
+        raise CheckFailed("no merged PRs returned -- cannot audit what is not there")
+
+    silent, formales = [], 0
+    for r in sorted(merged, key=lambda r: -r["number"]):
+        fin = _utc(r["mergedAt"])
+        revs = [v for v in (r.get("reviews") or [])
+                if v.get("submittedAt") and _utc(v["submittedAt"]) < fin]
+        coms = [c for c in (r.get("comments") or [])
+                if c.get("createdAt") and _utc(c["createdAt"]) < fin]
+        formales += len(revs)
+        if not revs and not coms:
+            esperado = (fin - _utc(r["createdAt"])).total_seconds() / 3600
+            silent.append(
+                f"PR #{r['number']}: window of {esperado:.2f} h left NO trace -- "
+                f"no review and no comment before the merge")
+
+    out = list(silent)
+    if formales == 0:
+        out.append(
+            f"0 formal reviews across {len(merged)} merged PRs: whatever review "
+            "happens is in the comment stream, and no check but this one looks "
+            "there")
+    return out
+
+
 def check_collector(max_age: dt.timedelta = COLLECTOR_MAX_AGE, runner=_run,
                     now: dt.datetime | None = None) -> list[str]:
     """The collector is measured where it actually writes, not where it used to.
@@ -164,12 +228,17 @@ def check_mainline(since: str = "2026-09-11", runner=_run) -> list[str]:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--limit", type=int, default=20, help="merged PRs to audit")
+    ap.add_argument("--limit", type=int, default=30, help="merged PRs to audit")
     ap.add_argument("--since", default="2026-09-11", help="how far back to walk main")
     args = ap.parse_args(argv)
 
     failed = False
     for name, fn in (("D16 merge window", lambda: check_d16(args.limit)),
+                     # Deliberately adjacent to the clock check, and deliberately
+                     # after it: the pair is the finding. The first says the rule
+                     # was kept, the second says whether it did anything.
+                     ("D16 window was used",
+                      lambda: check_objection_window_was_used(args.limit)),
                      ("mainline integrity", lambda: check_mainline(args.since)),
                      ("collector freshness", check_collector)):
         try:

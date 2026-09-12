@@ -97,6 +97,8 @@ def test_main_reports_failure_when_a_check_cannot_be_measured(monkeypatch, capsy
     monkeypatch.setattr(process_audit, "check_d16",
                         lambda limit: (_ for _ in ()).throw(
                             process_audit.CheckFailed("gh failed: not logged in")))
+    monkeypatch.setattr(process_audit, "check_objection_window_was_used",
+                        lambda limit: [])
     monkeypatch.setattr(process_audit, "check_mainline", lambda since: [])
     monkeypatch.setattr(process_audit, "check_collector", lambda: [])
     assert process_audit.main([]) == 1
@@ -107,10 +109,29 @@ def test_main_reports_failure_when_a_check_cannot_be_measured(monkeypatch, capsy
 
 def test_main_is_green_only_when_both_checks_are_green(monkeypatch, capsys):
     monkeypatch.setattr(process_audit, "check_d16", lambda limit: [])
+    monkeypatch.setattr(process_audit, "check_objection_window_was_used",
+                        lambda limit: [])
     monkeypatch.setattr(process_audit, "check_mainline", lambda since: [])
     monkeypatch.setattr(process_audit, "check_collector", lambda: [])
     assert process_audit.main([]) == 0
-    assert capsys.readouterr().out.count("[ok]") == 3
+    assert capsys.readouterr().out.count("[ok]") == 4
+
+
+def test_main_runs_the_window_check_and_not_only_the_clock(monkeypatch, capsys):
+    """Si el check nuevo no estuviera cableado, la prueba de arriba seguiria verde.
+
+    Contarlo por numero de `[ok]` dice cuantos corrieron, no cuales — y un check
+    que existe sin estar cableado es exactamente la forma de la comprobacion del
+    colector que paso en vacio dos dias."""
+    monkeypatch.setattr(process_audit, "check_d16", lambda limit: [])
+    monkeypatch.setattr(process_audit, "check_objection_window_was_used",
+                        lambda limit: ["PR #38: window of 2.19 h left NO trace"])
+    monkeypatch.setattr(process_audit, "check_mainline", lambda since: [])
+    monkeypatch.setattr(process_audit, "check_collector", lambda: [])
+    assert process_audit.main([]) == 1
+    out = capsys.readouterr().out
+    assert "[ok]   D16 merge window" in out
+    assert "[FAIL] D16 window was used" in out and "PR #38" in out
 
 
 def _mainline_runner(log_output, record=None):
@@ -157,3 +178,81 @@ def test_mainline_walks_the_first_parent_and_nothing_else():
         runner=_mainline_runner("6232e71|a b|Merge PR #35: x\n", record))
     log_cmd = [c for c in record if c[:2] == ["git", "log"]][0]
     assert "--first-parent" in log_cmd
+
+
+# ---------------------------------------------------------------------------
+# D16 is a window for objections, and the clock check cannot see whether one
+# was ever raised in it
+# ---------------------------------------------------------------------------
+
+def _pr_traza(number, created, merged, *, reviews=(), comments=()):
+    return {"number": number, "createdAt": created, "mergedAt": merged,
+            "reviews": [{"submittedAt": t} for t in reviews],
+            "comments": [{"createdAt": t} for t in comments]}
+
+
+def test_a_window_honoured_to_the_minute_and_silent_is_reported():
+    """PR #38 as it actually happened: 2,19 h waited, nothing written on it.
+
+    `check_d16` passes this and is right to. The rule was kept. What the pair of
+    checks exists to separate is that the reason for the rule was not.
+    """
+    payload = json.dumps([_pr_traza(38, "2026-09-12T00:01:31Z", "2026-09-12T02:12:57Z")])
+    problems = process_audit.check_objection_window_was_used(
+        runner=_runner_for(payload))
+    assert any("PR #38" in p and "NO trace" in p for p in problems), problems
+    assert process_audit.check_d16(runner=_runner_for(payload)) == [], (
+        "el reloj deberia estar limpio: si no, esta prueba no demuestra que los "
+        "dos checks miden cosas distintas")
+
+
+def test_a_comment_before_the_merge_counts_as_a_trace():
+    """A comment is what review looks like here — 0 formal reviews in 30 PRs."""
+    payload = json.dumps([_pr_traza(
+        26, "2026-09-11T14:51:04Z", "2026-09-11T16:51:46Z",
+        comments=["2026-09-11T15:40:00Z"])])
+    assert [p for p in process_audit.check_objection_window_was_used(
+        runner=_runner_for(payload)) if "PR #26" in p] == []
+
+
+def test_a_comment_written_AFTER_the_merge_is_not_a_trace():
+    """Otherwise the check would accept a note added once the merge is done.
+
+    That is not an objection window, it is a changelog — and the whole defect
+    being corrected here is a weaker measurement read as a stronger claim.
+    """
+    payload = json.dumps([_pr_traza(
+        26, "2026-09-11T14:51:04Z", "2026-09-11T16:51:46Z",
+        comments=["2026-09-11T18:00:00Z"])])
+    assert any("PR #26" in p for p in process_audit.check_objection_window_was_used(
+        runner=_runner_for(payload)))
+
+
+def test_zero_formal_reviews_is_reported_even_when_every_window_left_a_trace():
+    """The comment stream is where review lives, and nothing else looks there.
+
+    Measured 2026-09-12: `reviews` is 0 on all 30 merged PRs. If that goes
+    unsaid, a green run reads as "reviews happen", which is the same conflation
+    this file was written to stop.
+    """
+    payload = json.dumps([_pr_traza(
+        26, "2026-09-11T14:51:04Z", "2026-09-11T16:51:46Z",
+        comments=["2026-09-11T15:40:00Z"])])
+    problems = process_audit.check_objection_window_was_used(
+        runner=_runner_for(payload))
+    assert len(problems) == 1 and "0 formal reviews" in problems[0], problems
+
+
+def test_the_window_check_refuses_to_pass_when_there_is_nothing_to_audit():
+    with pytest.raises(process_audit.CheckFailed, match="no merged PRs"):
+        process_audit.check_objection_window_was_used(runner=_runner_for("[]"))
+
+
+def test_an_open_pr_is_not_counted_as_a_silent_window():
+    payload = json.dumps([
+        _pr_traza(40, "2026-09-12T03:00:00Z", None),
+        _pr_traza(26, "2026-09-11T14:51:04Z", "2026-09-11T16:51:46Z",
+                  reviews=["2026-09-11T15:40:00Z"])])
+    problems = process_audit.check_objection_window_was_used(
+        runner=_runner_for(payload))
+    assert not any("PR #40" in p for p in problems), problems
