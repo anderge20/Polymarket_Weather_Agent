@@ -14975,3 +14975,67 @@ la población completa y **engañoso de la operable: son dos meses, no cinco.**
 
 **La afirmación honesta pasa a ser:** *el mercado bate al modelo en Londres **en abril y mayo
 de 2026**, con IC que excluye el cero sobre 81 grupos.* Fuera de esa ventana no hay muestra.
+
+---
+
+## B-104 — El leakage por la puerta de atrás: el susto estaba justificado y no ocurre
+
+*Escrito 2026-09-12T23:27:11Z. Y antes de nada, un error mío que A tuvo que encontrar.*
+
+### Un UNKNOWN que era una comprobación no hecha
+
+Declaré que `R21_BACKTEST.json` era «un diccionario de resumen sin filas». Imprimí `list(d)[:8]`
+y concluí sobre el objeto entero. **`operaciones` es la décima clave**: 468 filas, 46 de EGLC,
+las 46 con `p_model`. *Mi propia truncación, presentada como propiedad del fichero.*
+
+**Y la observación de fondo de A es la que importa, no el caso:** *un `UNKNOWN` mal puesto no es
+cauto — es una comprobación que no se hace, con la etiqueta que la exime de hacerse.* Tres hoy.
+El orden es test, métrica, y el `UNKNOWN` **lo último**.
+
+### El susto estaba justificado
+
+    artifacts/m2_quantiles.json
+      fit_instant   2026-09-09T15:27:34Z
+      ventana       2026-04-09T12:00Z .. 2026-09-05T16:00Z
+
+**La ventana de entrenamiento del artefacto contiene entera la de evaluación de Londres**
+(2026-04-11 .. 2026-08-23). Si ese artefacto estuviera en la ruta, sería leakage de manual.
+
+### Pero no está en la ruta, y esto va trazado
+
+    quien importa quantile_artifact:  fit_quantile_artifact · paper_cycle · replay_cycle
+    backtest.py                       NO lo importa
+
+    backtest.candidates()   ->  p_model = feat["weather_prob"]
+    features.build_feature  ->  lee forecast_p10..p90 DE LA FILA de weather_forecasts
+    esas columnas            ->  las escribe fit_m2_v3.py
+
+**La guarda `R_FIT_AFTER_DECISION` existe y protege el ciclo vivo, no el backtest** — pero el
+backtest no la necesita, porque no pasa por el artefacto.
+
+Y `fit_m2_v3` es walk-forward **en el código**, no sólo en su cabecera:
+
+    for target, lead in windows:
+        t = target 12:00Z - lead            # el instante de decision
+        train = em.training_pairs(pairs, t, lead)
+
+    em.training_pairs filtra:  label_available_at <= t
+
+*La disciplina as-of está también en el modelo, no sólo en el precio.* **El leakage por la
+puerta de atrás no ocurre.**
+
+### Entonces por qué difieren las 16
+
+    46 emparejadas · 30 identicas · 16 distintas
+    por mes   2026-04: 9 · 2026-05: 3 · 2026-06: 4        por lead  9h: 7 · 24h: 9
+    diferencia media +0,00164 absoluto, maxima 0,02349
+
+**HIPÓTESIS, marcada como tal:** el pool de etiquetas creció entre R21 y hoy, así que la misma
+ventana walk-forward dispone de más pares antes del mismo instante y da otro shift. **Sigue
+siendo walk-forward correcto.** Lo que la apoya: las diferencias son pequeñas y se concentran en
+los meses más **tempranos**, los de conjunto de entrenamiento más corto y por tanto más
+sensibles a que se añadan pares. *Probarla exige el estado de la base en la corrida de R21, que
+no tengo.*
+
+Lo que sí queda establecido y es de A: **A-190 mide el modelo vigente, no el que R21 evaluó**, y
+la conclusión no es transferible a R21 sin decirlo.
