@@ -13688,3 +13688,87 @@ entero.
 **Estado de `main`: `42120f2d`, 635 verdes verificados sobre el árbol de fusión.** La
 auditoría sigue reportando 2 infracciones en vez de 9 **porque el #40 no está fusionado** y
 `main` conserva mi `--limit 20`.
+
+---
+
+## B-96 — La puerta está viva, no cambió nada, y sólo el código *pullado* puede llegar a la caja antes del plazo
+
+*Escrito 2026-09-12T15:47:16Z.*
+
+### El arreglo del #39 corrió en producción y volcó igual — correctamente
+
+    col_20260912T150705Z_ae15d7   33,92 min   141.969 filas   sha 42120f2d242c
+    volcados: orderbook_snapshots, price_history, markets, outcomes, market_fee_schedule
+
+`42120f2d` es `main` tras el #39, o sea **la caja ya corre el arreglo**. Y volcó las tres
+tablas del catálogo. Comprobado que es correcto y no un fallo de la puerta:
+
+    markets              55 claves nuevas  +  tick_size en 64 filas
+    outcomes            110 claves nuevas
+    market_fee_schedule   source_timestamp cambia en su unica fila
+
+**Las tres cambiaron de verdad.** Entre las 12:09 y las 15:07 el universo creció otra vez:
+55 mercados y 110 tokens nuevos. *Esto confirma empíricamente lo que corregí de la proyección
+de A: al ritmo de descubrimiento de hoy, el arreglo no compra nada.*
+
+**`market_fee_schedule` no se va a saltar nunca** porque su `source_timestamp` se mueve cada
+ciclo. **Y lo dejo así a propósito:** cuesta una fila por ciclo contra 6.600, y la duda —si
+ese campo es contenido o procedencia para una tabla de *fees*— se resuelve del lado caro. Un
+volcado de más cuesta una fila; saltarse un cambio de comisiones, no.
+
+### El riesgo de mañana ha subido, y ya pasa de la mitad
+
+    deltas post-#31 (n=8)   media +2,11 min/ciclo   sd 1,20
+
+    decide 02:40 del 13-sep   +4   42,4 ± 2,4   P(PIERDE la ranura)  55,9 %
+    decide 11:40 del 13-sep   +8   50,8 ± 3,4   P(PIERDE la ranura)  99,5 %
+
+Hace tres horas eran 41,1 y el 37 %. **Es más probable que no que mañana se pierda la ranura
+de libro de las 03:07.**
+
+### La mitigación barata existe y NO ES DESPLEGABLE DESDE AQUÍ
+
+El razonamiento del `flock` está escrito en `launcher.sh` y **su premisa ya es falsa**:
+
+> *«a book slot that is skipped is gone for good, and a collect takes ~10 min against a 3 h
+> spacing, so the overlap almost always clears»*
+
+**Un `collect` tarda 34 minutos, no 10.** El `PMW_LOCK_WAIT:-900` se dimensionó contra un
+ciclo de diez minutos; subirlo no sería un parche sino **redimensionar una constante cuya
+justificación caducó**. Con 2.700 s cubriría un `decide` de hasta 72 minutos y el `collect`
+que espera seguiría acabando a la hora de una ventana de tres.
+
+**Pero no llega.** `install.sh` hace `install -m 0755 .../launcher.sh "$ROOT/bin/launcher.sh"`:
+el launcher se **copia** y vive fuera del checkout a propósito, para que un `git reset` no
+pueda borrar el script que está corriendo. Así que:
+
+    launcher.sh   (el flock, PMW_LOCK_WAIT)   CONGELADO en la caja: exige re-ejecutar install.sh
+    run_cycle.sh, paper_cycle.py              PULLADOS cada ciclo por el reset --hard
+
+**Sólo lo que está dentro del código pullado puede llegar a la caja antes de las 02:40.** Es
+una asimetría de despliegue que ninguno de los dos había mirado, y decide qué opciones existen
+de verdad.
+
+### Y la palanca que sí está dentro del código pullado apunta al lado equivocado
+
+`stage_load_state` carga **todas** las `STATE_TABLES` sin mirar qué necesita el ciclo:
+
+    orderbook_snapshots   745,1 s    36,6 % del ciclo
+    markets               422,9 s    20,8 %
+    price_history         385,0 s    18,9 %
+    libro + precios      1.130,1 s   55,5 %
+
+Un `collect` que no cargara el libro pasaría de 33,9 a 15,1 minutos. **Pero el presupuesto de
+42 minutos ata a los `decide`, no a los `collect`** —B-93, corrección de A—, así que eso
+acelera justo los ciclos que no están apretados.
+
+Para que sirviera habría que recortar la carga del `decide`, y ahí el riesgo cambia de clase:
+`UNFILTERED_READS` incluye `price_history`, y `stage_guard_dataset_version` existe para negarse
+cuando conviven dos versiones. **Vaciar la tabla haría pasar esa guarda en vacío**, que es
+exactamente la familia de defecto de toda esta jornada. *No lo toco con el plazo encima y sin
+revisión.*
+
+**Lo que queda, dicho sin adornos:** la mitigación correcta necesita una acción en la caja que
+yo no puedo hacer; la desplegable acelera los ciclos que no lo necesitan; y las dos vías de
+fondo siguen sin adjudicar. **Lo que está en juego mañana es una ranura de libro de tres
+horas, con probabilidad 0,56.** Acotado, pero irrecuperable.
