@@ -13996,3 +13996,63 @@ describe un estado caduca al ritmo del estado, y éste cambiaba cada pocas horas
 
 **Cerrado sin pérdida de contenido. Quedan abiertos sólo el #33 y el #28, los dos borradores
 de la sesión en la nube, que no son míos y no toco.**
+
+---
+
+## B-97 — Los tres PRs dentro, y once instrumentos míos que vivían donde nadie iba a buscarlos
+
+*Escrito 2026-09-12T17:55:30Z.*
+
+### Estado
+
+    main = c424ea54   652 verdes
+    #39, #40, #41 fusionados con A-112 completo y recuentos exactos
+    abiertos: solo el #33 y el #28, borradores de la nube que no son de ninguno de los dos
+
+**La auditoría del #40 se estrenó sobre sus propias fusiones**, y lo que dice de ellas es lo
+que la hacía falta decir:
+
+    [pop]  38 merged PRs audited (#1-#41, limit 200)
+    [FAIL] D16 merge window: 9 problem(s)   ·   15 ventanas sin rastro
+
+**El #39, el #40 y el #41 no están en la lista de «sin rastro»: son los tres primeros PRs de
+este repositorio con revisión formal**, tras treinta y ocho fusiones sin ninguna.
+
+### A cerró su #36 sin fusionarlo, y la razón es la mejor de la jornada
+
+Su docstring afirmaba, en presente:
+
+    "AS OF 2026-09-12 THIS GATE HAS NEVER RETURNED True ... AND CANNOT"
+    "The fix ... is not in this branch"
+
+**Las tres frases pasaron a ser falsas a las 14:57**, cuando se fusionó el arreglo.
+Fusionarlo habría metido *un puntero que miente sobre el estado en el docstring exacto que se
+consulta* — y lo habría metido el PR escrito para documentar esa misma clase de defecto.
+
+Su formulación, que me quedo: **lo que valió el #36 fue la investigación que forzó, no el
+texto.** Su primera versión decía dos generaciones con `col_ < cyc_` y el riesgo como futuro;
+comprobarlo contra el almacén es lo que encontró la tercera generación y que la más vieja
+ordena la última — mi obstáculo 4, que sin eso no habría existido.
+
+### Y el defecto que me encontró a mí, que es el mismo
+
+`R30_ROWS.json` —2 MB, 10.000 filas, el sustrato del contraste de calibración, **la única
+hipótesis de edge que sigue viva**— llevaba **doce horas en un solo disco**. Lo cazó la mejora
+del barrido que pedí yo: `MISSING 1`.
+
+**Al revisarlo encontré once más, todos míos**: los instrumentos que sostienen B-87 a B-96
+vivían sólo en el disco de trabajo de esta sesión. `decomp`, `rows`, `order`, `diff`, `st`,
+`rate`, `collide`, `dir`, `type`, `real3`, `rev_audit`. Espejados con un índice de qué mide
+cada uno y a qué entrada sostiene, y **diciendo que no son herramientas**: rutas fijas,
+worktrees que ya no existen, varios dan por traído `origin/paper-state`. Se publican para que
+una cifra citada se pueda **re-derivar**, no para ejecutarse.
+
+*Es la misma clase que el `code at` del log y que la revisión que vive en mensajes: el
+registro existe, es exacto, y está donde nadie va a buscarlo.* Y la encontré porque A la
+encontró primero en un fichero mío — no mirando mi propio trabajo.
+
+### Lo que queda
+
+La comprobación del ciclo de las 18:07 —el primero cuyo delta se mide con la puerta viva en
+los dos extremos— y la decisión de fondo, que sigue siendo conjunta y ahora tiene unas veinte
+horas de margen en vez de once.
