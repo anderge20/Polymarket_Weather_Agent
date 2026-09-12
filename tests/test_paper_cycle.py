@@ -2245,3 +2245,96 @@ def test_a_failing_catalogue_gate_dumps_anyway_AND_says_so(con, tmp_path,
         "restore the per-cycle dump with no line anywhere")
     assert gate["status"] == paper_cycle.STOPPED
     assert "no conflict cols" in gate["error"]
+
+
+def test_code_commit_is_asked_of_git_when_actions_is_not_there(tmp_path, monkeypatch):
+    """The sha must reach the ROW off Actions, which is where we now run.
+
+    `GITHUB_SHA` is an Actions variable and collection moved to the box on
+    2026-09-09, so this field has written None into every shard since -- six of
+    six on 2026-09-11. The project's own rule is that a count without its sha is
+    not a fact, and the box has been producing exactly those.
+
+    Asserted on the SHARD and not on the stage, for the reason PR #34 already
+    cost us once.
+    """
+    monkeypatch.delenv("GITHUB_SHA", raising=False)
+    monkeypatch.setattr(paper_cycle, "stage_discover",
+                        lambda cy, *a, **k: cy.stage("discover", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_collect",
+                        lambda cy, *a, **k: cy.stage("collect:books", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_venue_coverage",
+                        lambda cy, *a, **k: cy.stage("venue_coverage", paper_cycle.OK))
+
+    store_root = tmp_path / "store"
+    assert paper_cycle.main([
+        "--target-date", "2026-09-10", "--dataset-version", "ds1",
+        "--store-root", str(store_root), "--db", str(tmp_path / "t.duckdb"),
+        "--collect-only", "--summary-json", str(tmp_path / "s.json")]) == 0
+
+    row = [r for sh in store.iter_shards(store_root, "cycle_params")
+           for r in store.read_shard(sh)][0]
+    sha = row["code_commit"]
+    assert sha, "no sha in the row — the cycle recorded no code identity at all"
+    assert len(sha.split("-")[0]) == 40, f"not a full sha: {sha!r}"
+
+
+def test_code_commit_prefers_the_actions_variable_when_it_is_set():
+    """Running ON Actions must keep reporting what Actions says.
+
+    The repo checkout there is the code that runs, but `GITHUB_SHA` is the
+    authority for WHICH sha that is (for a pull_request run it is the merge
+    commit, which `rev-parse HEAD` would also give -- and if the two ever
+    disagree, the platform is right about its own run).
+    """
+    import os as _os
+    prev = _os.environ.get("GITHUB_SHA")
+    _os.environ["GITHUB_SHA"] = "deadbeef" * 5
+    try:
+        assert paper_cycle.code_commit() == "deadbeef" * 5
+    finally:
+        if prev is None:
+            _os.environ.pop("GITHUB_SHA", None)
+        else:
+            _os.environ["GITHUB_SHA"] = prev
+
+
+def test_code_commit_marks_a_dirty_tree_rather_than_naming_a_tree_that_did_not_run(
+        monkeypatch):
+    """A sha names a tree. If the working copy was edited, it names the wrong one.
+
+    A false fact is worse than a missing one: `<sha>-dirty` says the row cannot
+    be reproduced from that commit alone, which is the honest claim.
+    """
+    monkeypatch.delenv("GITHUB_SHA", raising=False)
+
+    class _Done:
+        def __init__(self, out):
+            self.returncode, self.stdout = 0, out
+
+    calls = []
+
+    def fake_run(cmd, **kw):
+        calls.append(cmd)
+        if "rev-parse" in cmd:
+            return _Done("a" * 40 + "\n")
+        return _Done(" M scripts/paper_cycle.py\n")
+
+    monkeypatch.setattr(paper_cycle.subprocess, "run", fake_run)
+    assert paper_cycle.code_commit() == "a" * 40 + "-dirty"
+
+
+def test_code_commit_degrades_to_none_instead_of_aborting_a_cycle(monkeypatch):
+    """No field is worth killing a cycle over -- least of all a bookkeeping one.
+
+    It runs after `stage_dump` (PR #25), so a throw could not lose a capture. It
+    could still end a cycle, and the failure it would be reacting to leaves us
+    exactly where we already are: no sha.
+    """
+    monkeypatch.delenv("GITHUB_SHA", raising=False)
+
+    def boom(cmd, **kw):
+        raise OSError("git not found")
+
+    monkeypatch.setattr(paper_cycle.subprocess, "run", boom)
+    assert paper_cycle.code_commit() is None

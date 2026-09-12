@@ -35,6 +35,7 @@ import argparse
 import fcntl
 import json
 import os
+import subprocess
 import sys
 import time
 import traceback
@@ -1453,6 +1454,50 @@ def stage_settle(cy: Cycle, con, *, dataset_version: str) -> dict:
     return {"positions_open": n_open, "settled": settled, "refusals": refusals}
 
 
+def code_commit() -> str | None:
+    """Which code produced this row — asked of git when Actions is not there.
+
+    `GITHUB_SHA` IS AN ACTIONS VARIABLE AND WE LEFT ACTIONS ON 2026-09-09. It is
+    unset on the box, so `os.environ.get("GITHUB_SHA")` has returned None for every
+    cycle since -- six of six on 2026-09-11 alone -- and so has `GITHUB_RUN_ID`.
+    Every shard the box has written is a measurement with no record of the code
+    that made it, which is the one thing this project keeps insisting on: a count
+    without its sha is not a fact. The field was not wrong, it was pointed at a
+    host we no longer run on, exactly like the collector check that reported green
+    for two days after its workflow's schedules were removed.
+
+    THE DIRTY SUFFIX IS NOT DECORATION. A sha names a tree; if the working copy has
+    been edited, the sha names a tree that did NOT run, and a false fact is worse
+    than a missing one. `<sha>-dirty` says the row cannot be reproduced from that
+    commit alone.
+
+    NEVER RAISES. It runs inside `stage_params`, which sits after `stage_dump`
+    since PR #25, so a throw here could not lose a capture -- but it would abort a
+    cycle over a bookkeeping field, and no field is worth that. Any failure (no
+    git, no repo, a timeout) degrades to None, which is exactly the state we are
+    already in.
+    """
+    env = os.environ.get("GITHUB_SHA")
+    if env:
+        return env
+    repo = Path(__file__).resolve().parents[1]
+    try:
+        sha = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"],
+                             capture_output=True, text=True, timeout=10)
+        if sha.returncode != 0:
+            return None
+        head = sha.stdout.strip()
+        if not head:
+            return None
+        dirty = subprocess.run(["git", "-C", str(repo), "status", "--porcelain"],
+                               capture_output=True, text=True, timeout=10)
+        if dirty.returncode == 0 and dirty.stdout.strip():
+            return f"{head}-dirty"
+        return head
+    except Exception:
+        return None
+
+
 def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
                  dataset_version: str, quantile_provenance: dict | None = None) -> dict:
     """Persist the parameters this cycle actually ran with.
@@ -1585,7 +1630,7 @@ def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
         "market_sum_min": args.market_sum_min,
         "market_sum_max": args.market_sum_max,
         "collect_only": bool(args.collect_only),
-        "code_commit": os.environ.get("GITHUB_SHA"),
+        "code_commit": code_commit(),
         "run_id": os.environ.get("GITHUB_RUN_ID"),
         # B's second condition: the cycle records WHICH artifact it used. The id
         # is a sha over the artifact's canonical content, so it names the fit
