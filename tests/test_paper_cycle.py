@@ -2535,42 +2535,124 @@ def test_the_gate_calls_a_catalogue_changed_when_it_is_compared_against_ITSELF(
 
 
 @pytest.mark.xfail(strict=True, reason=(
-    "MEDIDO en origin/paper-state: `ingestion_timestamp` (nuestro) y "
-    "`source_timestamps.updatedAt` (de Polymarket) se mueven cada ciclo en la "
-    "mitad abierta del catalogo sin que ningun termino cambie — 2 200 de 4 400 "
-    "outcomes por ciclo con CERO cambios de contenido. Procedencia no es "
-    "contenido, y la puerta las compara igual. Aqui `ingestion_timestamp` va "
-    "NULL a proposito, para que el defecto de tipos no se ponga delante."))
+    "La puerta manda volcar un catalogo en el que NINGUN termino cambio. Hoy "
+    "cae por el obstaculo 1 —el lado: compara `read_shard` contra `db.query` "
+    "cuando el shard se escribio por `export_rows`— y cuando ese se arregle "
+    "caera por el 2 y luego por el 3. LOS TRES ESTAN EN SERIE, y por eso esta "
+    "prueba no puede aislar ninguno: conduce la puerta de verdad, y la puerta "
+    "se topa con el primero que quede. Lo que si hace es NOMBRAR en voz alta "
+    "cual la esta tumbando cada vez, en vez de pasar por casualidad. El "
+    "obstaculo 3 aislado se demuestra aparte, y ese test PASA."))
 def test_a_catalogue_that_only_moved_its_clocks_is_not_dumped_again(con, tmp_path):
-    """Two clocks moving is not the universe changing."""
+    """The gate orders a dump of a catalogue in which no term changed.
+
+    IT CANNOT ISOLATE ONE OBSTACLE, and saying so is the point. It drives the
+    real `catalogue_is_unchanged`, which meets whichever of the three comes
+    first; an earlier draft claimed to isolate provenance and was falling on the
+    side asymmetry with a message that said "clocks". Session A caught that.
+    """
     root = tmp_path / "store"
     # `seen_at` NULL en las dos rondas y `mismo_dia` apagado: los otros dos
     # defectos quedan dormidos y esta prueba solo puede fallar por el suyo.
     _heterogeneous_catalogue(con, root)
 
-    # Y la prueba declara su propio alcance antes de concluir. En su primer
-    # borrador esto fallaba por las condiciones 1 y 2 —`sorted()[-1]` cogia el
-    # shard congelado— y el mensaje decia "relojes". Una prueba que no comprueba
-    # que su defecto es el que la hace fallar no mide lo que dice medir.
+    # NOMBRA el obstaculo que la esta tumbando, en vez de afirmar cual es. Lo
+    # que no puede hacer es exigir que sea uno concreto: eso fue el error del
+    # borrador anterior, y volveria a mentir cada vez que se arreglase uno.
     previo = list(store.read_shard(sorted(store.iter_shards(root, "markets"))[-1]))
     actual = db_mod.query(con, "SELECT * FROM markets")
     ident = lambda r: tuple(str(r.get(c)) for c in _KEY)
-    assert {ident(r) for r in previo} == {ident(r) for r in actual}, (
-        "el conjunto de claves difiere: esta prueba fallaria por la condicion 1 "
-        "y no por los relojes")
-    assert {c for r in previo for c in r} == {c for r in actual for c in r}, (
-        "el conjunto de columnas difiere: fallaria por la condicion 2")
+    assert {ident(r) for r in previo} == {ident(r) for r in actual}
+    assert {c for r in previo for c in r} == {c for r in actual for c in r}
     pb = {ident(r): r for r in previo}
     malas = {c for r in actual for c in pb[ident(r)] | r.keys()
              if pb[ident(r)].get(c) != r.get(c)}
-    assert malas and malas <= set(_PROV_COLS), (
-        f"lo que difiere es {sorted(malas)}, y esta prueba solo puede hablar de "
-        f"{sorted(_PROV_COLS)}")
-
+    obstaculo = ("1, el LADO" if malas - set(_PROV_COLS) else
+                 "3, la PROCEDENCIA")
     assert paper_cycle.catalogue_is_unchanged(con, "markets", str(root)), (
+        f"obstaculo {obstaculo}: difieren {sorted(malas)}. " + (
         "ningun termino de mercado cambio y la puerta manda volcar igualmente: "
         "filas escritas para registrar dos relojes, y cada copia se recarga en "
-        "todos los ciclos posteriores a 13,50 ms por fila")
+        "todos los ciclos posteriores a 13,50 ms por fila"))
+
+
+def test_provenance_still_blocks_the_gate_once_the_side_and_the_types_are_fixed(
+        con, tmp_path):
+    """The third obstacle survives the other two, and this one PASSES.
+
+    THE SERIES IS THE FINDING, and it is what makes each fix insufficient alone:
+
+        1  el LADO          `db.query` donde tocaba `export_rows`   una llamada
+        2  los TIPOS        5 columnas TIMESTAMP, str vs datetime   un normalizador
+        3  la PROCEDENCIA   los abiertos mueven dos relojes         excluir columnas
+
+    The test above drives the real gate and therefore cannot isolate any of
+    them: it meets whichever comes first. So the claim that 3 OUTLIVES 1 and 2
+    is made here instead, on a local reference comparison that applies both
+    fixes — the symmetric side, and a timestamp normaliser — and then asks what
+    is left. If nothing were left, fixing 1 and 2 would be the whole job and the
+    provenance work would be wasted; that is the thing worth pinning.
+
+    A local normaliser and not the production one ON PURPOSE: there is no
+    production one yet. The day `catalogue_is_unchanged` grows a real fix, the
+    xfail above flips to XPASS and `strict=True` fails the suite, which is what
+    forces this test to be re-pointed at the real thing rather than left here
+    quietly measuring a copy.
+    """
+    root = tmp_path / "store"
+    _heterogeneous_catalogue(con, root, seen_before="2026-09-12T00:24:26Z",
+                             seen_now="2026-09-12T02:59:18Z")
+
+    def _norm(v):
+        # el arreglo 2: una marca de tiempo es la misma cosa en las dos formas
+        if isinstance(v, datetime):
+            return v.astimezone(timezone.utc).isoformat()
+        if isinstance(v, str):
+            try:
+                return datetime.fromisoformat(v.replace("Z", "+00:00")) \
+                    .astimezone(timezone.utc).isoformat()
+            except ValueError:
+                return v
+        return v
+
+    # el arreglo 1: se lee por el lado por el que `stage_dump` escribio
+    previo = {r["market_id"]: r
+              for r in store.read_shard(
+                  next(p for p in store.iter_shards(root, "markets")
+                       if "col_2026" in p.name))}
+    ahora = {r["market_id"]: r for r in store.export_rows(con, "markets")}
+
+    difs = {k: {c for c in set(previo[k]) | set(ahora[k])
+                if _norm(previo[k].get(c)) != _norm(ahora[k].get(c))}
+            for k in ahora if k in previo}
+
+    congelada = {k: d for k, d in difs.items() if not d}
+    movida = {k: d for k, d in difs.items() if d}
+    assert congelada, (
+        "ninguna fila queda limpia con el lado y los tipos arreglados: alguno "
+        "de los dos arreglos no es suficiente y esta prueba no puede hablar "
+        "del tercero")
+    assert movida, (
+        "TODAS las filas quedan limpias: arreglar el lado y los tipos bastaria "
+        "y el obstaculo 3 no existiria — que es justo lo contrario de lo que "
+        "origin/paper-state mide (2 200 de 4 400 outcomes por ciclo con cero "
+        "cambios de contenido)")
+    restante = set().union(*movida.values())
+    assert restante == set(_PROV_COLS), (
+        f"lo que sobrevive a los dos arreglos es {sorted(restante)}, y la serie "
+        f"afirma que es exactamente la procedencia, {sorted(_PROV_COLS)} — "
+        "LOS DOS relojes, el nuestro y el de Polymarket")
+    for k, d in movida.items():
+        antes = json.loads(previo[k]["source_timestamps"]
+                           if isinstance(previo[k]["source_timestamps"], str)
+                           else json.dumps(previo[k]["source_timestamps"]))
+        despues = json.loads(ahora[k]["source_timestamps"]
+                             if isinstance(ahora[k]["source_timestamps"], str)
+                             else json.dumps(ahora[k]["source_timestamps"]))
+        assert {c for c in set(antes) | set(despues)
+                if antes.get(c) != despues.get(c)} == {"updatedAt"}, (
+            f"{k}: dentro de source_timestamps cambia algo que no es updatedAt, "
+            "y entonces no es el reloj de Polymarket sino contenido")
 
 
 @pytest.mark.xfail(strict=True, reason=(
