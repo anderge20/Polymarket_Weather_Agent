@@ -64,7 +64,7 @@ def mirror_reach() -> tuple[str | None, str | None]:
     head = subprocess.run(["git", "log", "-1", "--format=%cI", REF],
                           capture_output=True, text=True)
     mirrored = head.stdout.strip() if head.returncode == 0 else None
-    files = [p for p in SOURCE.iterdir() if p.is_file() and p.suffix in SUFFIXES]
+    files = [p for p in SOURCE.rglob("*") if p.is_file() and p.suffix in SUFFIXES]
     newest = max((p.stat().st_mtime for p in files), default=None)
     if newest is not None:
         newest = datetime.datetime.fromtimestamp(
@@ -80,7 +80,7 @@ def main() -> int:
     # against whatever was fetched last — a false pass, and the quietest kind.
     subprocess.run(["git", "fetch", "-q", "origin", REF.split("/", 1)[1]],
                    capture_output=True)
-    names = sorted(p.name for p in SOURCE.iterdir()
+    names = sorted(str(p.relative_to(SOURCE)) for p in SOURCE.rglob("*")
                    if p.is_file() and p.suffix in SUFFIXES)
     missing, stale = [], []
     for name in names:
@@ -100,6 +100,34 @@ def main() -> int:
         print(f"    MISSING  {n}")
     for n in stale:
         print(f"    STALE    {n}")
+
+    # THE SWEEP ONLY EVER LOOKED ONE WAY, so a file that lives in the MIRROR and
+    # never in the corpus was invisible to it -- it can only be missing from a set
+    # it is compared against. Session B published eleven instruments straight into
+    # `mediciones_ciclo/` and this reported `MISSING 0` while none of them existed
+    # on the corpus side. Mirror-only is not an error: some artefacts are published
+    # to be re-derived from, not kept. But it must be NAMED, or the day one of them
+    # is the only copy of something, nothing says so.
+    ref_files = subprocess.run(["git", "ls-tree", "-r", "--name-only", REF],
+                               capture_output=True, text=True)
+    only_mirror = []
+    if ref_files.returncode == 0:
+        known = set(names)
+        only_mirror = sorted(
+            n for n in ref_files.stdout.splitlines()
+            if pathlib.Path(n).suffix in SUFFIXES and n not in known)
+    if only_mirror:
+        # COUNTED, NOT LISTED. The first version printed all of them and produced 241
+        # lines, because this branch legitimately carries project documents that were
+        # never corpus files. A check that shouts every run gets discounted, and a
+        # discounted check is worse than none because it still looks armed -- so the
+        # fact gets one line and the names go behind a flag.
+        print(f"  mirror-only {len(only_mirror)} "
+              f"(published, never in the corpus -- `--list-mirror-only` to name them)")
+        if "--list-mirror-only" in sys.argv:
+            for n in only_mirror:
+                print(f"    MIRROR-ONLY  {n}")
+
     return 1 if (missing or stale) else 0
 
 
