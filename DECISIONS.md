@@ -10613,3 +10613,23 @@ ciclos del 09-09 en adelante **no se pueden atribuir a un commit por su propia
 fila**. Se pueden reconstruir por fecha contra el historial de `main`, que es
 recuperable, pero **eso es inferencia y no registro**. El arreglo no repara los
 shards ya escritos; sólo impide que sigan saliendo así.
+
+### A-154 (addendum, 2026-09-12T00:03:40Z) — tres comprobaciones más del ciclo de las 00:07, escritas antes de que aterrice
+
+El lanzador hace `git fetch` + `reset --hard origin/$REF` **antes de cada corrida**
+(`ops/hetzner/launcher.sh:88-94`), así que el ciclo de las 00:07 corre con `6232e71`:
+**el #34 y el #35 dentro**. Eso da tres predicciones además de `load:markets`:
+
+1. **`store_rows_resident` presente y no nulo.** Es el primer ciclo que lleva el
+   arreglo del #34. Si vuelve a salir ausente, el arreglo llegó al código y no a la
+   fila — **otra vez**, y esta vez con el test que debía cazarlo ya escrito.
+2. **`code_commit` sigue a `None`.** El #38 no está fusionado. Si saliera con sha,
+   mi diagnóstico de A-154 §3 está mal y hay otra fuente que no he visto.
+3. **`dump:markets` VUELCA, no salta.** El catálogo cambió de verdad —entra el día
+   09-13 en la ventana— así que la puerta del #35 debe decir «cambiado». **Si salta,
+   el #35 tiene un defecto y se revierte**: saltar un catálogo que sí cambió es
+   exactamente el fallo que el #31 existe para impedir, reintroducido por su
+   arreglo.
+
+La (3) es la que importa: es la **primera ejecución en producción** de la puerta que
+fusioné 28 minutos antes de tiempo.
