@@ -12444,6 +12444,8 @@ queda:
     dentro de source_timestamps, exactamente  updatedAt
     y la mitad congelada sale LIMPIA
 
+**[Corregido por A, ver B-90 bis: ese residuo limpio es del FIXTURE, no de la caja.]**
+
 El normalizador es local **a propósito**, porque no hay uno de producción. Y el `xfail(strict)` de
 arriba es lo que impide que este test se quede midiendo una copia para siempre: el día que la puerta
 tenga arreglo real, aquél pasa a XPASS, la suite se rompe y **obliga** a reapuntar éste.
@@ -12507,3 +12509,36 @@ arreglos puestos **la puerta de esta noche habría volcado igual, y por el motiv
 correcto**. Sin ese dato, el arreglo sólo se sabe que no vuelca de más; con él, se sabe
 además que **no deja de volcar cuando debe**. *Un residuo que contiene un cambio genuino es
 mejor evidencia que un residuo limpio.*
+
+### B-90 bis — el residuo limpio era el que yo quería ver
+
+*Añadido 2026-09-12T04:56:14Z. Corrección de A.*
+
+Escribí que con los tres arreglos puestos «queda **exactamente** `ingestion_timestamp` y
+`source_timestamps`». **Eso es una propiedad del fixture**, que mantiene `tick_size` constante a
+propósito. En la caja el residuo lleva además cambios reales:
+
+    21:07 -> 00:07   1.067 filas solo-reloj   tick_size en 33
+    00:07 -> 02:40   1.066 filas solo-reloj   tick_size en 34
+    02:40 -> 03:07   1.089 filas solo-reloj   tick_size en 11
+
+*(Los 45 de A son el salto 00:07→03:07, que se salta el shard de las 02:40; por ciclo consecutivo
+son 33, 34 y 11. La conclusión es suya y aguanta en un cuarto par.)*
+
+**Y el añadido no es una pega, es la otra mitad del argumento.** El test de procedencia que escribí
+demuestra que los arreglos **no hacen volcar de más** — y eso lo pasaría también una puerta cableada
+a `return True`. Falta que **no dejen de volcar cuando deben**, y eso es lo que `tick_size` prueba:
+con los tres arreglos puestos, un catálogo en el que un término se movió de verdad tiene que salir
+distinto. Añadido como test que pasa.
+
+**La formulación de A, que es la general:** *un residuo que todavía contiene un cambio genuino es
+mejor evidencia que uno limpio — y el limpio es el que uno querría ver, que es exactamente por qué
+conviene desconfiar de él.*
+
+Es mi propio corolario de [[criteria-that-are-not-criteria]] con el signo cambiado: **el sesgo
+confirmatorio no sólo elige el estadístico, también elige qué residuo se cita.** El mío se leía mejor
+sin `tick_size`, y por eso lo omití sin notarlo.
+
+**Corolario operativo que sí se deduce de esto, y ya estaba dicho pero ahora tiene cuatro pares
+detrás:** una puerta correcta **habría volcado `markets` todas las noches y con razón**. Lo que salta
+de verdad es `outcomes` — 4.400 filas por ciclo con cero cambios de contenido en los cuatro pares.
