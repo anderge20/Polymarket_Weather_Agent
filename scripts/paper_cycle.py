@@ -1661,23 +1661,33 @@ def catalogue_is_unchanged(con, table: str, root: str) -> bool:
 
     AND "THE MOST RECENT SHARD" MEANS MOST RECENT BY PATH, NOT BY TIME. `sorted()`
     orders `<date>/<table>__<session_id>__NNNN.ndjson.gz` lexicographically: the
-    date leads, and the session id breaks ties WITHIN a day. The ids come from two
-    generators that do not sort in their own chronological order -- `col_<ISO>_<pid>`
-    (the Hetzner cron) and `cyc_<run_id>` (Actions) -- and `col_... < cyc_...` while
-    `cyc_` is the OLDER of the two, Actions schedules having been disabled
-    2026-09-09 when collection moved to the box. The gate therefore assumes
-    lexicographic path order IS temporal order, which holds only while every id in
-    a given day comes from one generator.
+    date leads, and the session id breaks ties WITHIN a day. Counted in the store,
+    the ids come from THREE generations, not two:
 
-    That assumption has already been violated, just not here: on 2026-09-09 both
-    generators wrote into the same date for THREE tables (`cycle_params`,
-    `orderbook_snapshots`, `price_history`). The catalogue tables escaped by
-    accident of scheduling, not by design -- `markets`, `outcomes` and
-    `market_fee_schedule` have `cyc` on 09-09 and `col` on 09-11, different dates,
-    where the date component decides and the ids never compete. Let a third
-    generator share a date with `cyc_` and this compares against the wrong shard,
-    the sets differ, and it dumps: fail-open a third time. Which is why it is
-    written here as a caveat and not fixed as a bug."""
+        col_20260909T185316Z_77df77    ISO8601        147 files
+        col_34403706557_2026-09-10     run id + date   35 files
+        cyc_34369049661                run id           6 files
+
+    AND THE OLDEST GENERATION SORTS LAST, which is the opposite of the reassuring
+    version. A run id begins with a digit above `2`, and every ISO id begins with
+    `2026`:
+
+        'col_34403706557'  >  'col_20260912T030705Z'   ->  True
+        'cyc_34369049661'  >  'col_20260912T030705Z'   ->  True
+
+    So this does not merely *assume* path order is time order and wait to be
+    disproved: on a date holding both generations it picks the oldest shard
+    available. Session B's test in PR #39 drives it and lands on
+    `markets__cyc_34369049661`, the frozen 2026-09-09 snapshot.
+
+    The three generations already share a date in four directories of
+    `paper-state`, and the catalogue tables escaped by accident of scheduling, not
+    by design -- `markets`, `outcomes` and `market_fee_schedule` have `cyc` on
+    09-09 and `col` on 09-11, different dates, where the date component decides and
+    the ids never compete. It is written here as a caveat rather than fixed because
+    the failure is fail-open (wrong baseline -> sets differ -> dump), and because
+    the gate above it does not run at all yet; fixing the shard selection of a
+    constant `False` would be repairing the sight on a rifle with no firing pin."""
     shards = store.iter_shards(root, table)
     if not shards:
         return False                          # nothing to compare against
