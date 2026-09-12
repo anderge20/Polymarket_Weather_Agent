@@ -13082,3 +13082,49 @@ A predijo **30-33 min** para el `decide` de las 11:40. Con el dato de las 09:07 
 la nula —**la suya**— predice **27,7 min**, por debajo de su ventana. *Si sale en 30-33, lo
 que se confirma no es su predicción sino que el nivel sí está subiendo.* Queda escrito antes
 del dato.
+
+### B-93 bis — los dos criterios fallaron el mismo turno en direcciones opuestas
+
+*Añadido 2026-09-12T09:36:37Z, todavía antes del `decide` de las 11:40. Formulación de A.*
+
+    mi banda (12-14 / >= 18)   demasiado ESTRECHA   no cabia lo que ocurrio (-0,6)
+    su umbral (<= 36 min)      demasiado ANCHO      lo aprobaban las dos hipotesis
+
+> **Un criterio puede fallar por admitirlo todo o por no admitir lo que pasa.** Y el error
+> común es que **ninguno midió antes la dispersión del instrumento**. Con deltas de +184 s y
+> −6 s en ciclos consecutivos, el ruido es del orden de la señal: cualquier banda estrecha
+> sobre un solo par de puntos iba a fallar.
+
+*Es la tercera vez esta noche que la misma forma aparece con otra cara: no mirar lo que ya
+tenías antes de decidir cómo mirar.* Los cinco deltas del régimen post-#31 estaban en la
+tabla desde el principio.
+
+### La incertidumbre, cuantificada, que es lo que A pedía y ninguno había hecho
+
+Deltas del total por ciclo desde que el volcado del #31 empieza a cargarse:
+
+    +1,91   +1,99   +1,50   +3,58   -0,24        media +1,748   sd muestral 1,365
+
+**La desviación es el 78 % de la media.** Proyectando desde 25,80 min con `sd·√n`:
+
+    ciclo                       n    punto    ±1sd      P(cruzar 42 min)
+    decide 11:40 de HOY         1    27,5    ± 1,4          0,0 %
+    decide 02:40 del 13-sep     6    36,3    ± 3,3          4,4 %
+    decide 11:40 del 13-sep    10    43,3    ± 4,3         61,7 %
+    decide 02:40 del 14-sep    14    50,3    ± 5,1         94,7 %
+
+**El plazo deja de ser una fecha y pasa a ser una moneda al aire con nombre propio: el
+`decide` de las 11:40 del 13 de septiembre, al 62 %.** Y para el de las 02:40 del 14 ya es
+prácticamente seguro. *(A usó la sd poblacional, 1,221, y sale 63 % — la misma conclusión.)*
+
+**Mi «45,0 min» de hace un rato era un punto sin intervalo**, calculado desde el coste por
+fila en vez de desde la serie de totales. El intervalo es lo que hay que publicar cuando la
+desviación es cuatro quintos de la media.
+
+### Y esto le da al #41 un argumento mejor que el que escribí
+
+Yo dije que la hipótesis del acantilado es inobservable. **El problema real es peor, y es de
+A:** la varianza de la caja hace **inútil cualquier proyección hecha desde fuera de ella.**
+No es que falte una hipótesis — es que el intervalo de la que tenemos cubre desde «sobra» hasta
+«se pasa», y **no se estrecha con más aritmética, sólo con más instrumento dentro de la
+máquina.**
