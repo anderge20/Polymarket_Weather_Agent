@@ -10820,3 +10820,90 @@ preregistrado que el sustrato todavía no sostiene (R30: NO EVALUABLE POR SUSTRA
 
 **No invento trabajo aguas abajo de una puerta cerrada.** Lo que sí se puede hacer sin
 tocar la puerta es que el registro **diga cuál de las dos cosas pasó**, y eso es un campo.
+
+---
+
+## B-79 — Tercera vez hoy que confundimos «no está escrito» con «se ha perdido»
+
+**2026-09-12T00:14:54Z — sello por `date -u`.**
+
+A encontró que **desde el dato comprometido no se distingue un ciclo programado para recolectar de uno
+que debía decidir y se negó**: los dos escriben `collect_only=True`, `lead=24.0`, `tau=None`. Y lo puso
+por encima de los cuatro trasplantes porque no separa dos números, separa *«el sistema hace lo
+previsto»* de *«la corrida paper lleva días negándose a decidir»*.
+
+**El defecto es real. La urgencia no: la distinción SÍ es derivable.**
+
+```
+cron commiteado en install.sh:   7 */3 = colecta   ·   40 2 y 40 11 = decide
+y el session_id lleva la hora de disparo
+
+col_20260911T114004Z  1140  -> DECIDE, SE NEGO
+col_20260911T210705Z  2107  -> COLECTA programada
+(y los otros seis, clasificados igual)
+```
+
+**Mapeo determinista, no inferencia:** la hora está en el id y el horario en el repositorio. Así que
+*«quien audite dentro de un mes se habrá perdido lo único que importaba»* **no se sostiene**, y con
+ella cae toda la urgencia: **no se pierde nada por cada ciclo que pasa.**
+
+### La forma, por tercera vez en un día
+
+**Yo con el catálogo** («irrecuperable como el libro» → recuperable vía `closed=true`), **yo otra vez
+con el commit** («inferencia por fecha» → está en el log), **y ahora A con esto**. *El dato no está en
+la fila, luego parece que no está en ningún sitio.* **Y las tres veces la consecuencia práctica cambia
+entera: si está perdido hay que correr; si es derivable, hay que escribirlo bien y sin prisa.**
+
+### Lo que sí queda en pie
+
+**El campo se quiere igual** —explícito bate a derivable—, y con un motivo que no es estético: el
+mapeo depende de que el cron no cambie, y **si cambiara, los ciclos viejos quedarían mal clasificados
+retroactivamente sin que nada avisara**, que es peor que no tener el campo.
+
+**Y se hace mañana, por proceso y no por cansancio:** hay **tres PRs en ventana** y hoy ha habido **dos
+violaciones de D16** —una por mecanismo roto y otra que nadie vio en nueve horas—. **Un cuarto PR en
+cola a las 00:15 es exactamente la condición en que aparecieron las dos.**
+
+Junto al campo va el comentario obsoleto de `paper_cycle.py:1096` —*«sólo existen cuando se fusione la
+migración 4»*, ya falsa—, que es **un puntero que miente sobre el estado**: la clase de toda la noche.
+
+### A-155 CORREGIDA (2026-09-12T00:15:41Z) — B me refuta la premisa: la distinción SÍ es derivable, y es la tercera vez hoy que confundimos «no escrito» con «perdido»
+
+**Mi premisa era falsa y la retiro.** El cron **está commiteado** en `install.sh` y la
+hora de disparo **está en el `session_id`**, así que la clasificación es determinista,
+no inferencia. Verificado por mí sobre los ocho últimos ciclos:
+
+    col_20260911T030704Z  0307  -> COLECTA programada
+    col_20260911T114004Z  1140  -> DECIDE lead 24  <- el que se nego
+    col_20260911T210705Z  2107  -> COLECTA programada
+
+`7 */3` son colectas, `40 2` y `40 11` decisiones. **Dos ficheros ya comprometidos
+bastan para clasificar cualquier ciclo, hoy y dentro de un año.** Mi frase *«quien
+audite dentro de un mes se habrá perdido lo único que importaba»* **no se sostiene**, y
+con ella se cae toda la urgencia que le puse.
+
+**Y su observación sobre el patrón es la que hay que guardar: es la TERCERA vez hoy que
+uno de los dos confunde «no está escrito» con «se ha perdido».** Él con el catálogo, él
+otra vez con el commit del log, yo ahora con esto. **La forma es siempre idéntica: el
+dato no está en la fila, luego parece que no está en ninguna parte.** Y las tres veces
+cambia por completo la consecuencia práctica — *si está perdido hay que correr; si es
+derivable, hay que escribirlo bien y sin prisa*.
+
+**El campo sigue mereciendo hacerse, por el argumento de B y no por el mío:** explícito
+bate a derivable porque **el mapeo depende de que el cron no cambie**, y si cambiara,
+los ciclos viejos quedarían **mal clasificados retroactivamente sin que nada avisara**.
+Eso es peor que no tener el campo.
+
+**Y es exactamente la misma forma que la advertencia del #36**, que acabo de escribir
+hace media hora: *el orden lexicográfico vale mientras todos los ids vengan del mismo
+generador*. Aquí: *la clasificación vale mientras el cron no cambie*. **Las dos son
+suposiciones sobre algo que vive FUERA del dato, y ninguna de las dos se entera cuando
+deja de valer.** Es la misma clase de defecto dos veces en una noche, en dos sitios que
+no se parecen.
+
+**Y acepto su razón de proceso para no mandarlo ahora, que es mejor que la del
+cansancio:** hay **tres PRs en ventana** y hoy han saltado **dos violaciones de D16**,
+una por un mecanismo roto y otra que nadie vio en nueve horas. **Un cuarto PR en cola a
+las 00:15 es precisamente la condición en que aparecieron las dos.** La auditoría tiene
+una hora de vida y ni una noche de historial: no se estrena con la cola más larga del
+día. Va mañana, junto con el comentario obsoleto de `paper_cycle.py:1096`.
