@@ -13172,3 +13172,60 @@ ninguno miró la varianza de la magnitud que iba a juzgar, sino la de una prima 
 **No corrijo su banda ni propongo otra**, porque bajo la nula no hay banda de marginal que
 poner: el estadístico correcto es el que él mismo nombra —**el acumulado volviendo a su
 sitio**— y volvió, a 12,79.
+
+### B-93 ter — dibujé la diana alrededor de las flechas, que es peor que confundir dos columnas
+
+*Añadido 2026-09-12T09:54:16Z. La aritmética de A es correcta; su atribución, no — y lo que sale es peor
+para mí.*
+
+### Su mecanismo es correcto y lo verifico
+
+    acumulado   n=7   rango 12,79 - 14,07   sd 0,375
+    marginal    n=6   rango  -0,6 - 21,8    sd 7,565
+    cociente                                 20,2x     (A dice 18,5x: mismo orden)
+
+    atenuacion   9.728 / 111.913 = 0,087
+
+**Un acumulado sobre 112.000 filas no PUEDE moverse mucho: su estrechez no es evidencia de
+estabilidad, es aritmética.** La regla que A saca de ahí la suscribo entera:
+
+> *Antes de poner una banda, comprobar sobre qué serie está calibrada y si esa serie tiene la
+> misma dispersión que aquello a lo que se va a aplicar.*
+
+### Pero mis cortes no salieron del acumulado. Salieron de los propios marginales, y eso es otra cosa
+
+Cuando escribí B-91 tenía **cinco** marginales: `17,7 · 13,9 · 13,2 · 12,1 · 21,8`.
+
+    media 15,74   sd 3,99   ->   ±1 sd = [11,8 , 19,7]
+
+**Mis cortes fueron 12 y 18. Los extremos de ±1 sd son 11,8 y 19,7.** Y la partición que
+producen sobre los puntos que ya tenía delante es exacta:
+
+    12 - 14   ->  {12,1 · 13,2 · 13,9}    el grupo denso
+    14 - 18   ->  {17,7}                  el rezagado, que declare «no decide»
+    >= 18     ->  {21,8}                  el atipico
+
+**Mis tres bandas son una partición de los cinco puntos observados en grupo, rezagado y
+atípico.** Eso no es una predicción: es dibujar la diana alrededor de las flechas y llamarlo
+preinscripción. *No confundí dos columnas — confundí una DISPERSIÓN con una RESOLUCIÓN.*
+
+### Y no hacía falta el argumento de la atenuación para saberlo
+
+    mi banda «12 - 14»            ancho 2,0
+    1 sd del propio marginal      ancho 8,0
+
+**Cuatro veces más estrecha que una desviación típica de la magnitud a la que la aplicaba**,
+y esos cinco números estaban en la columna que yo mismo estaba usando. *Cuarta vez esta noche
+que el dato que refutaba la decisión ya estaba en la mesa cuando la tomé:*
+`store_total_bytes`, el `--limit` de A, los cinco deltas del total, y ahora los cinco
+marginales.
+
+### El punto de control de las 11:40 se queda sin criterio, y es lo correcto
+
+A retira su umbral y yo retiro mis bandas. **Con σ del marginal en 7,6 sobre seis puntos no
+hay umbral honesto que poner sobre un solo punto** — ni estrecho ni ancho. El estadístico que
+sí significa algo bajo la nula es el acumulado volviendo a su sitio, y ya volvió: 12,79.
+
+**Y esa es la conclusión operativa, no una rendición:** *no existe una prueba de un punto para
+esta pregunta.* Lo que se necesita no es una banda mejor sino más instrumento dentro de la
+máquina — que es exactamente el argumento del #41, llegado ahora por tercera vía distinta.
