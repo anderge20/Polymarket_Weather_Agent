@@ -1645,6 +1645,20 @@ def catalogue_is_unchanged(con, table: str, root: str) -> bool:
     "changed". Fail-open again, and stated so nobody reads the skip as stronger
     than it is.
 
+    AS OF 2026-09-12 THIS GATE HAS NEVER RETURNED True IN PRODUCTION, AND CANNOT.
+    The third condition compares values, and the OPEN markets are re-inserted by
+    discovery on every cycle carrying two fields that follow the cycle clock --
+    `ingestion_timestamp` and `source_timestamps.updatedAt`. Measured across the
+    21:07 and 00:07 shards: 1 100 rows differ, and they are exactly the 1 100 whose
+    `endDate` is in the future (09-12 and 09-13); the 1 100 closed ones (09-10 and
+    09-11) are byte-identical. There are always open markets, so condition 3 always
+    fails and the function always returns False. **The dump this was written to
+    prevent still happens every cycle, and the 42-minute budget crossing is still
+    coming.** The fix is to exclude those two bookkeeping fields -- `updatedAt`
+    INSIDE the dict, not the dict, which also carries `endDate` -- and it is not in
+    this branch. Everything below is true about the comparison as designed; none of
+    it is yet true about the comparison as it runs.
+
     AND "THE MOST RECENT SHARD" MEANS MOST RECENT BY PATH, NOT BY TIME. `sorted()`
     orders `<date>/<table>__<session_id>__NNNN.ndjson.gz` lexicographically: the
     date leads, and the session id breaks ties WITHIN a day. The ids come from two
