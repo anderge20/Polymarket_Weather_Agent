@@ -2247,6 +2247,297 @@ def test_a_failing_catalogue_gate_dumps_anyway_AND_says_so(con, tmp_path,
     assert "no conflict cols" in gate["error"]
 
 
+# ---------------------------------------------------------------------------
+# The catalogue fixture, shaped by what the box actually writes
+# ---------------------------------------------------------------------------
+#
+# The gate tests above pass over a market of five fields —
+# `{market_id, dataset_version, record_version, event_id, question}`. Every
+# other column of `markets` is left NULL, and that is not a simplification: it
+# is the single property that makes those tests pass. `None == None` holds for
+# any two representations of nothing, so a fixture that sets no typed column
+# cannot see a gate that compares two representations of something.
+#
+# THE GATE IS A CONSTANT `False`, and it takes one row to show it:
+#
+#     una fila, escrita al shard DESDE la base, comparada contra esa misma base
+#       ingestion_timestamp   shard='2026-09-09T15:16:32+00:00'   (str)
+#                              base= datetime(2026, 9, 9, 15, 16, 32, tzinfo=UTC)
+#       catalogue_is_unchanged -> False
+#
+# `store.read_shard` returns what JSON can carry and `db.query` returns what
+# DuckDB typed, so any non-NULL TIMESTAMP column differs from itself, forever,
+# on every row. Nothing changed and the gate said "changed". JSON and DOUBLE
+# columns round-trip clean — `source_timestamps` and `tick_size` both come back
+# equal — so TIMESTAMP is the whole of it.
+#
+# AND UNDERNEATH THAT, A SECOND DEFECT the first one hides. Measured on
+# `origin/paper-state`, over the two consecutive catalogue pairs the box has
+# written:
+#
+#     markets   21:07 -> 00:07   1 067 filas solo-reloj   tick_size en 33
+#               00:07 -> 02:40   1 066 filas solo-reloj   tick_size en 34
+#     outcomes  21:07 -> 00:07   2 200 filas solo-reloj   NADA de contenido
+#               00:07 -> 02:40   2 200 filas solo-reloj   NADA de contenido
+#
+# Two populations share each table: half the rows are open and get re-ingested
+# every cycle, which moves two clocks and nothing else —
+#
+#     ingestion_timestamp            nuestro   — cuando miramos
+#     source_timestamps.updatedAt    suyo      — cuando Polymarket lo toco
+#
+# — while the other half are frozen, resolved markets still carrying their
+# 2026-09-09 stamps. So even after the types are made comparable the gate still
+# never fires, because provenance is not content. That `updatedAt` is
+# provenance the store proves rather than asserts: it moved on all 1 100 open
+# markets between 00:07 and 02:40 while exactly 34 of them changed any term. If
+# it meant "this market changed", 1 100 markets changed and no other column
+# recorded it.
+#
+# The two defects are pinned SEPARATELY below, because a test that carries both
+# fails for the first and says nothing about the second — which is how the
+# five-field fixture came to certify a gate that never fires.
+
+_PROV_COLS = ("ingestion_timestamp", "source_timestamps")
+
+# Added by SCHEMA_VERSION 6. An older shard predates them, and the gate's second
+# condition — the column set — exists for exactly this.
+_V6_COLS = ("end_date", "fee_rate", "fee_exponent", "fee_taker_only",
+            "fees_enabled", "measurement_rule_code", "uma_resolution_status")
+
+_KEY = ("market_id", "dataset_version", "record_version")
+
+
+def _box_market(market_id, *, updated_at, seen_at=None, tick_size=0.01, v6=True):
+    """One catalogue row in the shape the box writes them.
+
+    `seen_at` defaults to NULL so a caller can exercise the provenance defect
+    without the TIMESTAMP one standing in front of it.
+    """
+    row = {"market_id": market_id, "dataset_version": "ds1", "record_version": 1,
+           "event_id": f"e{market_id}", "question": f"q{market_id}",
+           "tick_size": tick_size,
+           "ingestion_timestamp": seen_at,
+           "source_timestamps": json.dumps({"createdAt": "2026-09-09T12:56:42Z",
+                                            "updatedAt": updated_at},
+                                           sort_keys=True)}
+    if v6:
+        row.update({c: None for c in _V6_COLS})
+    return row
+
+
+def _plant(con, root, rows, *, run_id, when, via_db=True):
+    """Write `rows` to a shard the way the code that wrote it did.
+
+    `via_db=True` goes through the table, which is what `stage_dump` does and
+    the only way to get the values the gate will actually compare against: a
+    shard built from the dicts carries Python's idea of each field, and the
+    round trip through DuckDB is precisely where the two representations part.
+
+    `via_db=False` writes the dicts straight out, which is how a shard from an
+    OLDER BINARY exists at all. `SELECT *` can only ever return today's column
+    set, so a pre-V6 shard cannot be produced through today's table — and a
+    fixture that tried would quietly have one schema generation instead of two.
+    """
+    if not via_db:
+        store.write_shard(rows, table="markets", run_id=run_id, root=root, when=when)
+        return
+    con.execute("DELETE FROM markets")
+    for r in rows:
+        db_mod.upsert(con, "markets", r, _KEY)
+    store.write_shard(db_mod.query(con, "SELECT * FROM markets"),
+                      table="markets", run_id=run_id, root=root, when=when)
+
+
+_DIA = datetime(2026, 9, 11, 21, 7, tzinfo=timezone.utc)
+_DIA_ACTIONS = datetime(2026, 9, 9, 15, 16, tzinfo=timezone.utc)
+
+
+def _heterogeneous_catalogue(con, root, *, seen_before=None, seen_now=None,
+                             tick_now=0.01, mismo_dia=False):
+    """Plant the store the box has, and leave `con` holding the next cycle's state.
+
+    Two shards under two id generations and two schema generations — the frozen
+    2026-09-09 Actions snapshot (`cyc_…`, pre-V6 columns) and the box's first
+    one (`col_…`) — because the box's store has both and the five-field fixture
+    has neither.
+
+    `mismo_dia` puts them in ONE day directory, which is where `sorted()[-1]`
+    stops meaning "the most recent". Default OFF, and the default is the faithful
+    one: `markets` today has its `cyc_` shard in 2026/09/09 and its `col_` ones
+    in 09/11 and 09/12, so the hazard is real but latent THERE. It is live in
+    `cycle_params`, `orderbook_snapshots`, `price_history` and `venue_coverage`,
+    whose 2026/09/09 directories hold all three generations at once.
+
+    It is off by default because a fixture that carries every defect at once
+    proves only the first one. With the hazard on, the gate reads the frozen
+    2026-09-09 shard, fails on the key set, and never reaches the question about
+    clocks — which is exactly how this fixture was wrong on its first draft.
+
+    What `con` ends up holding is the current cycle: the open half with both
+    clocks advanced, the frozen half untouched, and no term changed anywhere.
+    """
+    congelado = dict(updated_at="2026-09-09T12:56:42Z")
+    viejo = [_box_market("m1", v6=False, **congelado)]   # binario pre-V6
+    previo = ([_box_market("m1", **congelado)]
+              + [_box_market(f"m{i}", seen_at=seen_before,
+                             updated_at="2026-09-12T00:22:45Z") for i in (2, 3)])
+    ahora = ([_box_market("m1", **congelado)]
+             + [_box_market(f"m{i}", seen_at=seen_now, tick_size=tick_now,
+                            updated_at="2026-09-12T02:58:45Z") for i in (2, 3)])
+
+    _plant(con, root, viejo, run_id="cyc_34369049661", via_db=False,
+           when=_DIA if mismo_dia else _DIA_ACTIONS)
+    _plant(con, root, previo, run_id="col_20260911T210705Z_709423", when=_DIA)
+    con.execute("DELETE FROM markets")
+    for r in ahora:
+        db_mod.upsert(con, "markets", r, _KEY)
+    return ahora
+
+
+def test_the_catalogue_fixture_has_the_shape_the_box_has(con, tmp_path):
+    """The fixture asserts its OWN properties, because it is the instrument.
+
+    A fixture that quietly loses a property does not fail. It makes every test
+    built on it weaker, silently, and those tests go on passing — which is how
+    the five-field market came to certify a gate that never fires. Nothing was
+    wrong with those tests except the world they ran in, and no assertion
+    anywhere described that world.
+
+    So this exercises no gate. It reads the fixture back out of the store, from
+    the same side the gate reads it, and checks the four properties are there.
+    """
+    root = tmp_path / "store"
+    _heterogeneous_catalogue(con, root, seen_before="2026-09-12T00:24:26Z",
+                             seen_now="2026-09-12T02:59:18Z", mismo_dia=True)
+    shards = sorted(store.iter_shards(root, "markets"))
+    filas = {p: list(store.read_shard(p)) for p in shards}
+    assert len(shards) == 2, "el fixture debe plantar DOS shards previos"
+    # nombrados, no indexados: `sorted` los ordena col_ < cyc_, que es justo la
+    # inversion que el cuarto test pone a prueba, y un indice aqui la heredaria
+    reciente = next(p for p in shards if "col_2026" in p.name)
+    antiguo = next(p for p in shards if "cyc_" in p.name)
+
+    # (1) dos generaciones de id conviviendo en el MISMO directorio-dia
+    assert len({p.parent for p in shards}) == 1, (
+        "los dos shards cayeron en directorios distintos: la fecha vuelve a "
+        "ordenarlos y la propiedad que #36 describe desaparece del fixture")
+    prefijos = {p.name.split("__")[1].split("_")[0] for p in shards}
+    assert prefijos == {"cyc", "col"}, (
+        f"una sola generacion de id ({prefijos}): el fixture ya no distingue "
+        "orden-de-ruta de orden-de-tiempo")
+
+    # (2) dos generaciones de ESQUEMA
+    cols_r = {c for r in filas[reciente] for c in r}
+    cols_a = {c for r in filas[antiguo] for c in r}
+    assert set(_V6_COLS) & (cols_r - cols_a), (
+        "los dos shards declaran las mismas columnas: la segunda condicion de "
+        "la puerta —la migracion de esquema— ya no se ejerce")
+
+    # (3) DOS poblaciones, medidas donde la puerta mira: shard contra base
+    previo = {r["market_id"]: r for r in filas[reciente]}
+    ahora = {r["market_id"]: r for r in db_mod.query(con, "SELECT * FROM markets")}
+    movidas = [k for k in ahora if k in previo
+               and any(previo[k].get(c) != ahora[k].get(c) for c in _PROV_COLS)]
+    quietas = [k for k in ahora if k in previo
+               and all(previo[k].get(c) == ahora[k].get(c) for c in _PROV_COLS)]
+    assert movidas and quietas, (
+        f"una sola poblacion (movidas={len(movidas)}, quietas={len(quietas)}): "
+        "con una sola, comparar procedencia y comparar contenido dan el mismo "
+        "resultado, y el fixture no distingue una puerta correcta de una que "
+        "no dispara nunca")
+
+    # (4) y los relojes son lo UNICO que se mueve
+    for k in ahora:
+        p = previo.get(k)
+        if p is None:
+            continue
+        distintas = {c for c in set(p) | set(ahora[k]) if p.get(c) != ahora[k].get(c)}
+        assert distintas <= set(_PROV_COLS), (
+            f"{k} cambia {sorted(distintas - set(_PROV_COLS))}: el fixture "
+            "representa un ciclo en el que el universo SI cambio, y entonces "
+            "volcar es correcto y la prueba no demuestra nada")
+
+
+@pytest.mark.xfail(strict=True, reason=(
+    "MEDIDO: `store.read_shard` devuelve lo que JSON sabe llevar y `db.query` "
+    "lo que DuckDB tipo, asi que cualquier columna TIMESTAMP no nula difiere "
+    "DE SI MISMA. La puerta del #35 es una constante False y no lo parece. "
+    "El dia que compare representaciones comparables, strict=True convierte "
+    "esto en XPASS y obliga a quitar el marcador."))
+def test_the_gate_calls_a_catalogue_changed_when_it_is_compared_against_ITSELF(
+        con, tmp_path):
+    """One row, written from the table, compared against that same table."""
+    root = tmp_path / "store"
+    _plant(con, root, [_box_market("m1", seen_at="2026-09-09T15:16:32Z",
+                                   updated_at="2026-09-09T12:56:42Z")],
+           run_id="col_20260911T210705Z_709423", when=_DIA)
+
+    assert paper_cycle.catalogue_is_unchanged(con, "markets", str(root)), (
+        "el shard se escribio DESDE esta misma base y la puerta dice que el "
+        "catalogo cambio: no es una puerta, es un False constante, y el "
+        "volcado de 6 600 filas por ciclo que deberia evitar sigue entero")
+
+
+@pytest.mark.xfail(strict=True, reason=(
+    "MEDIDO en origin/paper-state: `ingestion_timestamp` (nuestro) y "
+    "`source_timestamps.updatedAt` (de Polymarket) se mueven cada ciclo en la "
+    "mitad abierta del catalogo sin que ningun termino cambie — 2 200 de 4 400 "
+    "outcomes por ciclo con CERO cambios de contenido. Procedencia no es "
+    "contenido, y la puerta las compara igual. Aqui `ingestion_timestamp` va "
+    "NULL a proposito, para que el defecto de tipos no se ponga delante."))
+def test_a_catalogue_that_only_moved_its_clocks_is_not_dumped_again(con, tmp_path):
+    """Two clocks moving is not the universe changing."""
+    root = tmp_path / "store"
+    # `seen_at` NULL en las dos rondas y `mismo_dia` apagado: los otros dos
+    # defectos quedan dormidos y esta prueba solo puede fallar por el suyo.
+    _heterogeneous_catalogue(con, root)
+
+    # Y la prueba declara su propio alcance antes de concluir. En su primer
+    # borrador esto fallaba por las condiciones 1 y 2 —`sorted()[-1]` cogia el
+    # shard congelado— y el mensaje decia "relojes". Una prueba que no comprueba
+    # que su defecto es el que la hace fallar no mide lo que dice medir.
+    previo = list(store.read_shard(sorted(store.iter_shards(root, "markets"))[-1]))
+    actual = db_mod.query(con, "SELECT * FROM markets")
+    ident = lambda r: tuple(str(r.get(c)) for c in _KEY)
+    assert {ident(r) for r in previo} == {ident(r) for r in actual}, (
+        "el conjunto de claves difiere: esta prueba fallaria por la condicion 1 "
+        "y no por los relojes")
+    assert {c for r in previo for c in r} == {c for r in actual for c in r}, (
+        "el conjunto de columnas difiere: fallaria por la condicion 2")
+    pb = {ident(r): r for r in previo}
+    malas = {c for r in actual for c in pb[ident(r)] | r.keys()
+             if pb[ident(r)].get(c) != r.get(c)}
+    assert malas and malas <= set(_PROV_COLS), (
+        f"lo que difiere es {sorted(malas)}, y esta prueba solo puede hablar de "
+        f"{sorted(_PROV_COLS)}")
+
+    assert paper_cycle.catalogue_is_unchanged(con, "markets", str(root)), (
+        "ningun termino de mercado cambio y la puerta manda volcar igualmente: "
+        "filas escritas para registrar dos relojes, y cada copia se recarga en "
+        "todos los ciclos posteriores a 13,50 ms por fila")
+
+
+@pytest.mark.xfail(strict=True, reason=(
+    "El #36 dice que la puerta supone orden-de-ruta = orden-de-tiempo, y eso "
+    "ya es falso en cuatro directorios de origin/paper-state: en "
+    "paper_state/*/2026/09/09 conviven `cyc_…`, `col_<runid>_…` y "
+    "`col_<ts>Z_…`, y 'o' < 'y' pone el shard de Actions el ultimo por encima "
+    "de seis del ciclo posteriores. La generacion `col_<runid>` es peor porque "
+    "'3' > '2': ordena despues de cualquier marca 2026 para siempre."))
+def test_the_gate_compares_against_the_most_recent_shard_and_not_the_last_by_name(
+        con, tmp_path):
+    """`sorted(shards)[-1]` is a claim about time, and the store refutes it."""
+    root = tmp_path / "store"
+    _heterogeneous_catalogue(con, root, mismo_dia=True)
+    elegido = sorted(store.iter_shards(root, "markets"))[-1]
+
+    assert "col_20260911T210705Z" in elegido.name, (
+        f"la puerta compara contra {elegido.name}: es el shard congelado del "
+        "2026-09-09, anterior al que el ciclo escribio, y sale el ultimo "
+        "porque 'cyc' ordena despues de 'col'")
+
+
 def test_code_commit_is_asked_of_git_when_actions_is_not_there(tmp_path, monkeypatch):
     """The sha must reach the ROW off Actions, which is where we now run.
 
