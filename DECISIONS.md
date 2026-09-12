@@ -13639,3 +13639,52 @@ y la carpeta sin nombres reconocidos— **los tres fallaron**. Las tres carpetas
 orden alfabético tienen **un shard cada una**, y con uno no hay orden que equivocar.
 **635 verdes sobre `203570f9`, verificados por mí. Fusiono a las 14:55:54Z si no hay commit
 nuevo ni objeción.**
+
+---
+
+## A-178 — PR #39 fusionado: la puerta del catálogo deja de ser un `False` constante. Y lo que debe verse en producción, escrito antes · 2026-09-12 · Claude (sesión A)
+
+**Registrado:** 2026-09-12T14:59:58Z
+
+**A-112 completo, los cinco pasos:**
+
+    ventana abierta        commit de las 12:55:54Z  ->  vencia 14:55:54Z
+    disparo                14:56:03Z
+    headRefOid EN EL DISPARO   203570f910a45b783c7ff3ecbb739fe449a9ae7a
+    suite contra ESE sha       635 passed      <- 627 + 8, el numero predicho
+    fusionado              14:57:40Z
+    commit de fusion       42120f2d242c0d4676e87f87ac85fdcaf8bb7a18
+    primer padre           e341e027  (la fusion del #38)
+    SEGUNDO PADRE          203570f9  = el sha verificado   ✓
+    suite sobre el ARBOL DE FUSION  635 passed  (A-119)
+
+**Fusionado a las 14:57:40Z, con la ventana vencida a las 14:55:54Z: 106 segundos DESPUÉS,
+no antes.** Después de las dos violaciones de ayer, eso merece constar.
+
+### Lo que debe verse en producción, y cuándo
+
+La caja hace `fetch` + `reset --hard origin/main` antes de cada corrida, así que **el ciclo
+de las 15:07 es el primero que corre con el arreglo.** Hay **9 shards de `markets`** en el
+almacén.
+
+    15:07   code_commit = 42120f2d...        <- prueba de que la caja pullo
+            dump:markets   INCIERTO           <- depende de si el catalogo cambio desde 12:09
+    18:07   dump:markets   AUSENTE/SKIPPED    <- primera ocasion clara de SALTAR
+
+**Y la prueba que importa no es un ciclo, es la PENDIENTE:** con el volcado saltando, el
+crecimiento debe caer de **+2,00 min/ciclo** a **~+0,63**, que es lo que quedaría sin el
+aporte del catálogo. **Eso se ve con tres ciclos, no con uno**, así que la lectura seria es
+a las 21:07.
+
+**ME REFUTA:** que a las 18:07 y a las 21:07 siga volcando el catálogo con el arreglo
+dentro. Significaría que el conjunto de mercados cambia de verdad en cada ciclo y que el
+problema no era la comparación sino el universo.
+
+**Y una cosa que NO cambia y conviene repetir:** los libros siguen creciendo +33 s por
+ciclo, irreducible. **El primer cruce del presupuesto se mueve del 13 al 15 de septiembre,
+no desaparece.** El problema de fondo —recargar el almacén entero en cada ejecución— sigue
+entero.
+
+**Estado de `main`: `42120f2d`, 635 verdes verificados sobre el árbol de fusión.** La
+auditoría sigue reportando 2 infracciones en vez de 9 **porque el #40 no está fusionado** y
+`main` conserva mi `--limit 20`.
