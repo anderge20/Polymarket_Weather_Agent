@@ -15089,3 +15089,71 @@ exige normalizar antes de mirar la dirección.*
 **Y que B abriera su entrada reconociendo su propio `UNKNOWN` mal puesto** —*«imprimí
 `list(d)[:8]` y concluí sobre el objeto entero; mi propia truncación presentada como
 propiedad del fichero»*— es lo que hace utilizable el resto de lo que escribe.
+
+---
+
+## B-105 — Dónde pierde el modelo de verdad: el 93 % del efecto está en 179 filas de una sola banda
+
+*Escrito 2026-09-12T23:55:26Z. Cierre de Londres.*
+
+### Primero, una corrección de A sobre mi lectura
+
+Atribuí las 16 diferencias a que el pool de etiquetas creció, afectando a las decisiones
+**tempranas**. Iba al revés, y lo dicen mis propios números contados como fracción:
+
+    mes       total  distintas  fraccion
+    2026-04      33          9       27 %
+    2026-05       9          3       33 %
+    2026-06       4          4      100 %
+
+**Miré los absolutos —9, 3, 4— y abril gana porque tiene 33 de las 46 filas.** La fracción
+**crece** con el mes, y el mecanismo con el signo corregido lo explica: las etiquetas se añaden
+al **final** del pool, así que afectan a las decisiones **tardías**.
+
+> **Regla de A, adoptada:** *comparar entre grupos de distinto n exige normalizar antes de mirar
+> la dirección.* Es la tercera vez hoy que un recuento absoluto sobre grupos desiguales apunta
+> al revés que la fracción.
+
+### Dos ataques nuevos, los dos fallan
+
+**Influencia** — leave-one-group-out sobre los 81 grupos vivos: la diferencia se mueve entre
++0,00509 y +0,00650. **Ningún grupo la vuelve negativa.**
+
+**Quitar el tramo malo** — sin las filas con `p_model` en `[0,05 , 0,15)`, el que sobreestima
+3,3×, la ventaja del mercado **crece** a +0,00751 con IC `[+0,00059 , +0,01397]`.
+
+### Y eso relocaliza el déficit
+
+    tramo de p_model      n   p_model   p_mid    real   B mercado  B modelo       dif
+    [0,00 , 0,05)       425     0,00%   0,93%   1,41%     0,01353   0,01412   +0,00059
+    [0,05 , 0,15)       189    10,58%   8,87%   4,23%     0,04600   0,04546   -0,00053
+    [0,15 , 0,30)       179    22,65%  24,50%  27,37%     0,18207   0,20700   +0,02493
+    [0,30 , 0,60)        46    34,26%  32,88%  30,43%     0,21212   0,21190   -0,00022
+    [0,60 , 1,01)         3    76,69%  55,50%  66,67%     0,13518   0,20318   +0,06800
+
+**En `[0,05 , 0,15)` el modelo GANA al mercado, pese a sobreestimar 3,3×.** Y el déficit entero
+vive en `[0,15 , 0,30)`:
+
+    tramo              n    peso   contribucion   % del total
+    [0,15 , 0,30)    179   21,3%       +0,00530         93 %
+
+**El 93 % de la ventaja del mercado sale de 179 filas en un solo tramo** — y allí el modelo dice
+22,65 %, el mercado 24,50 % y ocurre el 27,37 %: **los dos subestiman y el mercado subestima
+menos.**
+
+*El «fallo de ordenación, no de sesgo» de A es correcto en espíritu y estaba mal situado: no
+está donde el modelo más sobreestima, sino donde subestima y el mercado subestima menos.*
+
+### Cierre de Londres
+
+    el mercado bate al modelo en Brier, abril-mayo 2026, IC excluye el cero sobre 81 grupos
+    sobrevive al libro muerto: la brecha CRECE en libro vivo
+    sobrevive a la escala: renormalizado el modelo sale peor
+    sobrevive a la influencia: ningun grupo lo voltea
+    sobrevive a quitar el tramo sobreestimado: crece
+    no hay leakage: ni en el precio, ni en la etiqueta, ni en el modelo (fit_m2_v3 es walk-forward)
+    97,9 % de la muestra operable es abril y mayo; agosto tiene CERO vivas
+    y esta CONCENTRADO: el 21 % de las filas aporta el 93 % del efecto
+
+**Formulación de A que se adopta: NO EDGE MEDIDO, no NO EDGE SUPUESTO.** La diferencia entre las
+dos cosas es todo el trabajo de estos dos días.
