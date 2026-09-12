@@ -10936,3 +10936,43 @@ y los de Hetzner **ya coexisten en tres tablas** y nada en el almacén dice cuá
 sólo es incómodo de consultar.* Con eso `collect_only_reason` **baja** de prioridad —
 repara una dependencia versionada— y sube un campo que nombre **el generador**, que
 repara una que no existe en ninguna parte. La tarea #43 se reordena en consecuencia.
+
+### A-155 (tercera enmienda, 2026-09-12T00:20:36Z) — B me refuta la etiqueta del sesgo, y la etiqueta correcta cambia CUÁNDO hay que mirar
+
+**Dije *«las cuatro veces ha ido hacia el lado optimista»* y es falso.** El caso 4 va al
+revés: el veredicto de la nube *«E2 está muerto»* citaba **«falla por 4-7×»**, que es la
+cifra de la **mediana**, y la media por tramo lo deja en **1,8×**. Verificado contra el
+documento del #29:
+
+    media del bin 7      0,0410   -> semidiferencial 0,0205
+    umbral 0,036 / 0,0205  = 1,8x      <- la media
+    umbral 0,036 / 0,0100  = 3,6x      <- la mediana
+    umbral 0,036 / 0,0050  = 7,2x      <- el extremo publicado
+
+**Ahí el sesgo hizo el fallo MAYOR, no menor.** Reforzaba una conclusión pesimista, no
+una optimista. Los cuatro casos, ordenados:
+
+    B: 0,0168 sobre n=27          coste MAYOR       sostenia SU tesis
+    B: umbral 5.5(d) con mediana  pasar mas facil   permisivo
+    A: mi tabla como umbral       pasar mas facil   permisivo
+    nube: "falla por 4-7x"        fallar MAS        PESIMISTA sobre E2
+
+**Lo común no es la dirección: es que en las cuatro el estadístico elegido apoyaba lo que
+su autor ya pensaba. El sesgo es CONFIRMATORIO, no optimista.**
+
+**Y la diferencia es lo único práctico que tiene esto:**
+
+> Si crees que el sesgo es **optimista**, sólo revisas cuando el resultado **te gusta**.
+> Si es **confirmatorio**, hay que revisar **siempre que el estadístico apoye lo que ya
+> pensabas** — incluido cuando la conclusión es mala, que es justo cuando revisar parece
+> estar siendo blando con tu propia refutación.
+
+**Y es la misma mitad que ya faltó esta tarde**, cuando él corrigió *«comprueba lo que
+suena bien»* con *«y lo que suena mal, porque corregir al alza parece barrer para casa»*.
+**Cometido otra vez al enunciar la lección sobre ese mismo error.** Corregido también el
+titular de la memoria, que lo tenía escrito mal.
+
+**Y una corrección menor en la otra dirección:** él da el ciclo por retrasado a los 18
+minutos. Por mi reloj son **+12,5**, y el reparto histórico disparo→push es **+15, +15,
++16, +17**. **No va tarde todavía**; empieza a ir tarde pasadas las 00:26Z. Discrepamos
+seis minutos de reloj y conviene saberlo antes de declarar un fallo de colector.
