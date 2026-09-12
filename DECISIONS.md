@@ -12342,3 +12342,62 @@ cuando contaba filas.
 
 **Los dos cómputos publicados en `R30_CALIBRACION_MERCADO.txt`**, el de la población completa sin
 p-valor (su nula no está definida sobre ella) y el de la de partición con él.
+
+---
+
+## A-165 — Verificado el PR #39 de B: los tres `xfail` son estrictos y fallan por su motivo. Y uno demuestra que MI docstring del #36 es falso · 2026-09-12 · Claude (sesión A)
+
+**Registrado:** 2026-09-12T04:24:45Z · verificación **mecánica**, no adjudicación de contenido (A-159)
+
+**El #39 toca SÓLO tests:** 346 líneas en `tests/test_paper_cycle.py`, **cero en
+`scripts/paper_cycle.py`**. Es el orden correcto y el que acordamos: **el fixture antes
+que el arreglo.**
+
+    628 passed, 3 xfailed        (627 en main + 1 que pasa + 3 que fijan defectos)
+
+    PASA    test_the_catalogue_fixture_has_the_shape_the_box_has   <- la tarea #45
+    xfail   ..._compared_against_ITSELF                            <- tipos (obstaculo 1)
+    xfail   ..._only_moved_its_clocks_is_not_dumped_again          <- procedencia (obstaculo 2)
+    xfail   ..._most_recent_shard_and_not_the_last_by_name         <- orden (mi #36)
+
+**Los tres son `strict=True`**, así que **el día que se arreglen, la suite se pone roja y
+el arreglo se anuncia solo.** Es «no aprobar en vacío» aplicado al `xfail`.
+
+**Refutación intentada: ¿fallan por SU motivo o por un typo?** Corridos con `--runxfail`,
+cada uno falla en su propia aserción y con su propio mensaje. **No hay falso rojo.**
+
+**Y el segundo `xfail` se delata a sí mismo de un modo que conviene anotar:** su aserción
+dice *«lo que difiere es ['source_timestamps', 'tag_ids'] y esta prueba sólo puede hablar
+de ['ingestion_timestamp', 'source_timestamps']»*. **Está fallando en parte por el
+obstáculo 1, que es de otro.** Es exactamente lo que A-164 predijo: *un test que apunta al
+obstáculo 2 no puede aislarlo mientras el 1 esté presente.* Que el propio test lo diga en
+voz alta es lo correcto.
+
+### Y su tercer `xfail` demuestra que MI docstring del #36 es falso
+
+Escribí en el #36 que hay **dos** generadores: `col_<ISO>_<pid>` (caja) y `cyc_<run_id>`
+(Actions). **Contados en el almacén, son TRES generaciones:**
+
+    col_20260909T185316Z_77df77     ISO8601      147 ficheros
+    col_34403706557_2026-09-10      runid+fecha   35 ficheros   <- la que NO conocia
+    cyc_34369049661                 runid          6 ficheros
+
+Y el orden es **peor** que lo que advertí:
+
+    'col_34403706557'  >  'col_20260912T030705Z'   ->  True    <- el MAS VIEJO sale DESPUES
+    'cyc_34369049661'  >  'col_20260912T030705Z'   ->  True
+
+**Porque `'3' > '2'`:** los ids de Actions basados en `run_id` ordenan **después de
+cualquier** id con fecha ISO, que empieza por `2026`. Mi advertencia decía que `col_`
+ordena antes que `cyc_` y que el riesgo era futuro. **La realidad es que la generación más
+antigua ordena la última, y su test lo demuestra: la puerta elige
+`markets__cyc_34369049661`, el shard congelado del 09-09.**
+
+**Consecuencia directa: el PR #36 lleva un párrafo FALSO y no se fusiona hasta
+reescribirlo.** Haberlo parado anoche por A-159 —«su párrafo nuevo no ha pasado por
+nadie»— resulta haber sido correcto **por una razón más fuerte que la que di**: no es que
+no estuviera revisado, es que **está mal**.
+
+**No fusiono el #39 aunque su ventana venza a las 05:27:27Z.** Lo verificado es mecánico;
+el juicio de si esos cuatro tests son los cuatro que hacen falta es adjudicación, y eso no
+lo hago a las 04:2xZ después de haberme equivocado dos veces esta noche en el encuadre.
