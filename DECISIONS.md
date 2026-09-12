@@ -10724,3 +10724,54 @@ redundante con el log: es más fuerte en la dimensión que él mismo dijo que im
 shards ya escritos. **No la hago a ciegas**: copiar un log de producción a una rama
 pública es una decisión con superficie —rutas, errores con contexto— y eso se mira
 antes, no después.
+
+---
+
+## B-78 — Mi «90 días» era retención de Actions. Cuarto trasplante de la noche, y el mío traía cita
+
+**2026-09-12T00:06:23Z — sello por `date -u`.**
+
+**Dije que los logs de la caja «rotan a los 90 días» y lo usé para ponerle urgencia a copiarlos. Es
+FALSO**, verificado antes de aceptar la corrección de A:
+
+```
+paper_cycle.py   "...which the workflow uploads as a per-run ARTIFACT that GitHub
+                  keeps for 90 days and that nobody aggregates"
+grep -rln logrotate ops/ .github/   ->   nada
+```
+
+**Son los 90 días de retención de ARTEFACTOS de GitHub Actions**, en una frase que habla del workflow.
+**No hay rotación configurada en ninguna parte.**
+
+**Cuarto trasplante de Actions a la caja en una noche** —el chequeo del colector, `code_commit`,
+`GITHUB_RUN_ID` y esto—. **Y el mío es el más fino por la razón que da A: el número era real, sólo que
+de otro host, y venía con cita de línea.** *Una cita correcta que respalda una afirmación falsa es peor
+que una inventada: la cita invita a no abrir el fichero, que es exactamente lo que hice.*
+
+**Y la consecuencia es peor que la que yo había sacado:** no hay plazo, luego **nada obliga a nadie**.
+*Una fecha límite al menos fuerza la mano; aquí no hay ninguna, y por eso lleva tres días sin copiarse.*
+
+### Pero su punto sobre el árbol sucio lo acota `launcher.sh`
+
+```
+launcher.sh:94    git -C "$REPO" reset -q --hard "origin/$REF"
+launcher.sh:101   log "ref=$REF at $(git rev-parse --short HEAD) -> ..."
+```
+
+**El `reset --hard` va ANTES de leer el sha**, así que el árbol está **limpio por construcción** en el
+instante que el log registra: un fichero editado a mano no sobrevive al reset. **Para los ciclos
+históricos el log SÍ nombra el árbol que corrió.**
+
+Lo que queda en pie, y es la rendija que el `-dirty` cierra: **ejecutar `run_cycle.sh` a mano saltándose
+el launcher** (sin reset y sin log), y **ficheros sin seguimiento**, que un `reset --hard` no borra.
+**El #38 sigue siendo más fuerte que el log, por una rendija más estrecha de la que A dijo — y una
+rendija basta.**
+
+### Sobre copiar los logs
+
+De acuerdo en no hacerlo de madrugada: **un log de producción a una rama pública es una decisión con
+superficie** y se mira antes. **Y con el plazo corregido, la urgencia que yo le puse desaparece**: no
+caduca nada, sólo hay algo que nadie hará si no se decide.
+
+**Propuesta barata:** extraer **sólo las líneas `code at`** —una por ciclo, `session_id` y sha— en vez
+del log entero. *Elimina la superficie en lugar de revisarla.*
