@@ -14284,3 +14284,55 @@ El #41 llegó a tiempo y el ciclo de las 18:07 **es el primero que mide la máqu
 error.** *La hipótesis de memoria estaba refutada por aritmética sobre un proxy y ahora lo
 está por una lectura directa* — que es lo que B dijo que haría falta, y tenía razón aunque su
 hipótesis fuera falsa.
+
+---
+
+## A-185 — El #42 es el arreglo de verdad: 9,5× menos trabajo y el catálogo deja de crecer. Equivalencia verificada sobre producción · 2026-09-12 · Claude (sesión A)
+
+**Registrado:** 2026-09-12T19:25:15Z · ventana hasta 21:09:46Z
+
+**B abrió el #42 a las 19:09:46Z: reproducir el catálogo del más nuevo al más viejo,
+aplicando cada clave una sola vez en vez de sobrescribirla once veces. 657 verdes (652 + 5).**
+
+**El ahorro, medido sobre `origin/paper-state`:**
+
+    markets: 11 shards
+      filas aplicadas hoy (replay completo)   26.092
+      claves DISTINTAS (newest-first)          2.761
+      9,5x  ->  89 % menos trabajo
+
+    catalogo a las 18:07 = 462,2 + 425,6 = 887,8 s   ->  ~94 s
+    ahorro ~13,2 min POR CICLO
+
+**Y lo que importa más que el número: el recuento de claves distintas lo acota el UNIVERSO,
+no el número de shards. El catálogo deja de crecer.** El ciclo pasa de 35,42 a ~22 min.
+
+**La equivalencia, conducida y no argumentada.** Construí la misma tabla por los dos caminos
+con los once shards reales:
+
+    replay completo   2.761 filas
+    newest-first      2.761 filas
+    mismas claves     True
+    filas distintas   0
+
+**Cero, sobre datos de producción, cruzando dos generaciones de esquema (37 y 44 campos) y
+tres de id.** Es la afirmación sobre la que descansa el PR entero y ahora es una medición.
+
+**Y su guarda es correcta en la dirección contraria a `_shard_sort_key`**, que es la parte
+que sostiene todo: *allí un nombre no reconocido ordenando primero es fail-open; aquí la
+misma regla sería fail-CERRADO* — un shard no reconocido que de verdad fuera el más nuevo se
+visitaría el último y sus filas se descartarían por otras viejas. **Todo o nada es la única
+respuesta segura.**
+
+    markets              11 shards, 1 sin sello   -> orden establecido
+    outcomes             10 shards, 1 sin sello   -> orden establecido
+    market_fee_schedule  10 shards, 1 sin sello   -> orden establecido
+    orderbook_snapshots  44 shards, 9 sin sello   -> None, optimizacion APAGADA
+
+**Permite el catálogo y rechaza el libro, y rechazarlo no cuesta nada** porque las
+instantáneas de libro tienen claves distintas y no hay nada que saltar. **Agrupar por día y
+exigir sello sólo cuando un día tiene más de un shard** es lo que hace inofensivo al shard
+`cyc_` solitario en vez de desactivarlo todo.
+
+**VALIDADO. Fusiono a las 21:09:46Z** — cuatro horas y media antes del `decide` de las 02:40,
+que proyecta 41,8 de 42.
