@@ -13884,3 +13884,35 @@ de a la carrera.
 mide con la puerta viva en los dos extremos. Si el delta baja de ~2,1 a ~1,4-1,6, el modelo
 aguanta; si se queda en 2,1, la puerta no está ahorrando lo medido y vuelve el escenario
 pesimista.
+
+---
+
+## A-180 — El #41 revalidado tras el rebase: el recuento no cuadró y por eso sirvió · 2026-09-12 · Claude (sesión A)
+
+**Registrado:** 2026-09-12T16:23:41Z
+
+**Predije 635 + 4 = 639 y salieron 640.** Un recuento que no cuadra hay que explicarlo, y la
+explicación es mejor que la predicción: **son CINCO tests nuevos**, y el quinto es la
+respuesta de B a mi hallazgo de revisión.
+
+    test_the_available_field_carries_the_INSTANT_it_was_read_at   <- nuevo
+
+**Y nada se perdió en la resolución del conflicto** —comparados los nombres de test contra
+`main` en los dos sentidos, cero eliminados—. **Ése era el riesgo del #24↔#25 y no ocurrió.**
+
+**B resolvió mi hallazgo mejor de lo que yo lo propuse.** Yo ofrecí *renombrar o documentar*;
+él hizo las dos y lo amarró:
+
+    mem_available_at_params_bytes             <- el significado viaja en el NOMBRE
+    assert "mem_available_bytes" not in out   <- y un renombrado futuro no lo puede soltar
+
+> *Un número cuyo significado no viaja con él.* **Poner el significado donde no se puede
+> separar del valor es más fuerte que un docstring: un docstring se puede leer por encima,
+> un nombre no.** Y la aserción NEGATIVA es lo que lo hace duradero.
+
+**Y añadió la parte que yo no había resuelto:** comparar `rss_peak_bytes` contra
+`mem_total_bytes`, siendo `available` una cota de **lo demás que corría**. *Yo sólo había
+dicho que el par que se iba a comparar era el equivocado; él dijo cuál es el bueno.*
+
+**#41 VALIDADO. 640 verdes verificados sobre `e9f920ef`. Fusiono a las 17:31:42Z**, cuando
+venza la ventana del rebase.
