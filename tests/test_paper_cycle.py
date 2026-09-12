@@ -2267,9 +2267,35 @@ def test_a_failing_catalogue_gate_dumps_anyway_AND_says_so(con, tmp_path,
 #
 # `store.read_shard` returns what JSON can carry and `db.query` returns what
 # DuckDB typed, so any non-NULL TIMESTAMP column differs from itself, forever,
-# on every row. Nothing changed and the gate said "changed". JSON and DOUBLE
-# columns round-trip clean — `source_timestamps` and `tick_size` both come back
-# equal — so TIMESTAMP is the whole of it.
+# on every row. Nothing changed and the gate said "changed".
+#
+# AND THE GATE READS THE WRONG SIDE, which is a separate defect measured on a
+# real box shard through the real `load_shards`: 2 200 of 2 200 rows differ, on
+# seven columns of THREE type families.
+#
+#     discovered_at · available_at · open_time          str   vs datetime
+#     ingestion_timestamp · source_timestamp            str   vs datetime
+#     source_timestamps                                 dict  vs cadena JSON
+#     tag_ids                                           lista vs cadena JSON
+#
+# The last two are not a type problem at all. `store.export_rows` — which is
+# what `stage_dump` writes THROUGH — deliberately parses JSON columns back into
+# nested objects, "so the shard carries a real nested object rather than a
+# string containing JSON". The gate then reads the shard with `read_shard` and
+# the table with `db.query`, comparing the two sides of a transformation the
+# dump applies on purpose. Comparing the SYMMETRIC side instead:
+#
+#     read_shard vs db.query      2 200 filas difieren, 7 columnas, 3 familias
+#     read_shard vs export_rows   2 200 filas difieren, 5 columnas, 1 familia
+#
+# `tag_ids` and `source_timestamps` stop differing with no normalisation at all.
+# What survives is TIMESTAMP, and only that needs one.
+#
+# This corrects an earlier draft of this comment, which said "JSON and DOUBLE
+# round-trip clean, so TIMESTAMP is the whole of it". That was measured on a
+# shard written FROM the database, where both sides already carry the string
+# form — the one direction in which the defect cannot appear. Session A caught
+# it by loading a database FROM a shard, which is the direction the box runs.
 #
 # AND UNDERNEATH THAT, A SECOND DEFECT the first one hides. Measured on
 # `origin/paper-state`, over the two consecutive catalogue pairs the box has
@@ -2317,6 +2343,10 @@ def _box_market(market_id, *, updated_at, seen_at=None, tick_size=0.01, v6=True)
     row = {"market_id": market_id, "dataset_version": "ds1", "record_version": 1,
            "event_id": f"e{market_id}", "question": f"q{market_id}",
            "tick_size": tick_size,
+           # Las TRES familias de tipo, no nulas. La de TIMESTAMP es el defecto
+           # que sobrevive a todo; las de JSON y lista son las que aparecen solo
+           # si el shard se planta por donde `stage_dump` lo planta.
+           "tag_ids": json.dumps(["84", "101757"]),
            "ingestion_timestamp": seen_at,
            "source_timestamps": json.dumps({"createdAt": "2026-09-09T12:56:42Z",
                                             "updatedAt": updated_at},
@@ -2329,10 +2359,13 @@ def _box_market(market_id, *, updated_at, seen_at=None, tick_size=0.01, v6=True)
 def _plant(con, root, rows, *, run_id, when, via_db=True):
     """Write `rows` to a shard the way the code that wrote it did.
 
-    `via_db=True` goes through the table, which is what `stage_dump` does and
-    the only way to get the values the gate will actually compare against: a
-    shard built from the dicts carries Python's idea of each field, and the
-    round trip through DuckDB is precisely where the two representations part.
+    `via_db=True` goes through `store.dump_table`, which is the call
+    `stage_dump` makes — NOT `write_shard` over `db.query`. The difference is
+    the point: `dump_table` writes through `export_rows`, which parses JSON
+    columns back into nested objects on the way out. A fixture that skipped
+    that would plant a shard carrying JSON as a string, and the gate would
+    compare string against string and never show the defect that a real shard
+    on the box does show.
 
     `via_db=False` writes the dicts straight out, which is how a shard from an
     OLDER BINARY exists at all. `SELECT *` can only ever return today's column
@@ -2345,8 +2378,7 @@ def _plant(con, root, rows, *, run_id, when, via_db=True):
     con.execute("DELETE FROM markets")
     for r in rows:
         db_mod.upsert(con, "markets", r, _KEY)
-    store.write_shard(db_mod.query(con, "SELECT * FROM markets"),
-                      table="markets", run_id=run_id, root=root, when=when)
+    store.dump_table(con, "markets", run_id=run_id, root=root, when=when)
 
 
 _DIA = datetime(2026, 9, 11, 21, 7, tzinfo=timezone.utc)
@@ -2434,9 +2466,13 @@ def test_the_catalogue_fixture_has_the_shape_the_box_has(con, tmp_path):
         "los dos shards declaran las mismas columnas: la segunda condicion de "
         "la puerta —la migracion de esquema— ya no se ejerce")
 
-    # (3) DOS poblaciones, medidas donde la puerta mira: shard contra base
+    # (3) DOS poblaciones, medidas por el lado SIMETRICO: `export_rows` es por
+    # donde `stage_dump` escribio el shard, y comparar contra `db.query` mete la
+    # asimetria JSON/lista delante -- con ella, TODAS las filas difieren y las
+    # dos poblaciones dejan de ser distinguibles. Esa asimetria se comprueba
+    # aparte, en (5), en vez de contaminar esta.
     previo = {r["market_id"]: r for r in filas[reciente]}
-    ahora = {r["market_id"]: r for r in db_mod.query(con, "SELECT * FROM markets")}
+    ahora = {r["market_id"]: r for r in store.export_rows(con, "markets")}
     movidas = [k for k in ahora if k in previo
                and any(previo[k].get(c) != ahora[k].get(c) for c in _PROV_COLS)]
     quietas = [k for k in ahora if k in previo
@@ -2457,6 +2493,25 @@ def test_the_catalogue_fixture_has_the_shape_the_box_has(con, tmp_path):
             f"{k} cambia {sorted(distintas - set(_PROV_COLS))}: el fixture "
             "representa un ciclo en el que el universo SI cambio, y entonces "
             "volcar es correcto y la prueba no demuestra nada")
+
+    # (5) y el shard lleva las TRES familias de tipo no nulas, que es lo que
+    # separa al defecto de tipos del de lado. Medido en la caja: contra
+    # `db.query` difieren 7 columnas de 3 familias; contra `export_rows`, 5 de
+    # una sola. Un fixture con las columnas JSON y de lista a NULL no notaria
+    # la diferencia, que es la version de «todo a NULL» que dejo pasar la puerta.
+    una = filas[reciente][0]
+    assert isinstance(una.get("source_timestamps"), dict), (
+        "el shard lleva `source_timestamps` como cadena: se planto sin pasar "
+        "por `export_rows`, que es justo la transformacion que la puerta ignora")
+    assert isinstance(una.get("tag_ids"), list), (
+        "el shard lleva `tag_ids` como cadena: falta la familia de lista")
+    crudo = {r["market_id"]: r for r in db_mod.query(con, "SELECT * FROM markets")}
+    asimetricas = {c for k in crudo for c in set(previo.get(k, {})) | set(crudo[k])
+                   if k in previo and previo[k].get(c) != crudo[k].get(c)}
+    assert {"source_timestamps", "tag_ids"} <= asimetricas, (
+        f"comparar contra `db.query` no reproduce la asimetria JSON/lista "
+        f"({sorted(asimetricas)}): sin ella el fixture no puede demostrar que "
+        "el defecto de lado y el de tipos son dos cosas distintas")
 
 
 @pytest.mark.xfail(strict=True, reason=(
