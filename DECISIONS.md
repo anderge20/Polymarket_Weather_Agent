@@ -10775,3 +10775,48 @@ caduca nada, sólo hay algo que nadie hará si no se decide.
 
 **Propuesta barata:** extraer **sólo las líneas `code at`** —una por ciclo, `session_id` y sha— en vez
 del log entero. *Elimina la superficie en lugar de revisarla.*
+
+---
+
+## A-155 — El registro comprometido no distingue «recolectar por horario» de «decidir y negarse»; y así lleva desde que existe · 2026-09-12 · Claude (sesión A)
+
+**Registrado:** 2026-09-12T00:13:18Z
+
+**Buscando por qué el almacén no tiene ni una señal ni una posición, encontré que el
+ciclo `decide` de las 11:40Z corrió con `collect_only: True`.** Eso no es un defecto:
+es la puerta de R24 §6bis/P12 funcionando. `run_cycle.sh:96-98` degrada a
+collect-only cuando no existe `/opt/pmw/PAPER_TAU` — *sin umbral preregistrado, no
+hay operaciones*, que es exactamente lo que debe pasar.
+
+**El defecto es que no se puede ver.** Comparadas las dos filas:
+
+    col_20260911T210705Z_709423  collect_only=True  lead=24.0  tau=None   <- collect por horario
+    col_20260911T114004Z_aa19cc  collect_only=True  lead=24.0  tau=None   <- decide que se NEGÓ
+
+**Idénticas.** No hay campo `mode`, ni `requested_mode`, ni `collect_only_reason`. Desde
+el dato comprometido **es imposible distinguir un ciclo que estaba programado para
+recolectar de uno que debía decidir y se negó por falta de τ.** La diferencia vive sólo
+en `/opt/pmw/log/cycle.log`, en la línea `no $ROOT/PAPER_TAU — collect-only`, que es el
+mismo fichero no copiado de A-154.
+
+**Y esto es peor que los cuatro trasplantes de la noche, por lo que separa:** no es la
+diferencia entre dos números, es la diferencia entre **«el sistema hace lo previsto»** y
+**«la corrida paper lleva días negándose a decidir»**. Las dos cosas se leen igual en la
+serie comprometida. Cualquiera que audite el almacén dentro de un mes verá 42 ciclos
+`collect_only=True` y concluirá que el colector va bien — **y tendrá razón, y se habrá
+perdido lo único que importa**.
+
+**Dónde deja esto mi pista.** `settle_substrate_missing(con)` devuelve **vacío** sobre
+`main` con esquema 7: el sustrato de liquidación **ya no falta nada** y el comentario de
+`paper_cycle.py:1096` —*«sólo existen cuando se fusione la migración 4 de B»*— está
+obsoleto. `stage_settle` está listo. **Lo que no hay es libro que liquidar**, porque no
+se ha abierto una sola posición, porque no hay τ, porque τ exige un criterio
+preregistrado que el sustrato todavía no sostiene (R30: NO EVALUABLE POR SUSTRATO).
+
+    settle:   LISTO, sin nada que hacer
+    ledger:   VACIO por diseño
+    tau:      AUSENTE, y es la puerta de todo
+    R30:      NO EVALUABLE POR SUSTRATO
+
+**No invento trabajo aguas abajo de una puerta cerrada.** Lo que sí se puede hacer sin
+tocar la puerta es que el registro **diga cuál de las dos cosas pasó**, y eso es un campo.
