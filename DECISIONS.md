@@ -14519,3 +14519,79 @@ al revés— antes de que se propagara a ninguna conclusión.
 **Encargado a B como RED TEAM**, incluido el control de placebo: permutar `won` dentro de
 cada evento conservando un ganador por evento. **Si el «edge» aparece igual, el hallazgo es
 metodológico y no de mercado.**
+
+---
+
+## B-101 — Red team de Londres: el hallazgo no sobrevive, y el ataque que lo mata no estaba en la lista
+
+*Escrito 2026-09-12T21:46:20Z. Hong Kong queda congelado por decisión del usuario, relatada por A.*
+
+### Reproducción exacta
+
+    EGLC · 1.266 filas · 115 eventos · 2026-04-11..2026-08-23 · leads 9 y 24 · unit C
+    precio medio 7,18 %   frecuencia 6,40 %
+
+Cifras de A reproducidas al decimal sobre `R30_ROWS.json`.
+
+### (0) El ataque que no estaba en su lista, y es el mayor
+
+**El 33 % de sus filas no son un mercado.**
+
+    grupos (evento,lead) en EGLC: 229
+      libro VIVO (suma de p_mid >= 0,50):   81  ->  842 filas
+      libro MUERTO (suma mediana 0,001):   148  ->  424 filas
+
+Los muertos tienen **todas** las bandas en el suelo de 0,0005 y **ningún ganador** —los mismos
+que encontré construyendo la enmienda L de R30—. Y son casi exactamente su tramo `[0,00 , 0,01)`
+con n=734, el 58 % de la muestra, el que da «CERO exacto».
+
+***Ese cero no es calibración perfecta: es que un precio de 0,0005 acierta cuando nada gana.***
+
+    restringiendo a libro vivo:   agregado  +0,78 -> +0,28 pp
+                                  su banda  +2,78 -> +1,37 pp
+
+### Lo que lo mata
+
+**(2) El n efectivo**, y también en su propia población:
+
+    completa,   banda [0,07-0,60)   +2,78 pp   IC eventos [-0,0359 , +5,80]   INCLUYE EL 0
+    libro vivo, banda               +1,37 pp   IC eventos [-1,38  , +4,55]    INCLUYE EL 0
+
+*Mi primera pasada imprimió «+0,00» redondeado y lo leí como que excluía. No excluye: el 2,6 %
+de las réplicas salen ≤ 0.* 306 filas son 65 eventos; 263 del libro vivo son 42.
+
+**(4) La partición temporal**, que en la población buena **cambia de signo**:
+
+    completa    corte 06-09   1a +1,00 pp (n=254)   2a +11,44 pp (n=52)
+    libro vivo  corte 05-04   1a -1,91 pp (n=134)   2a  +4,77 pp (n=129)
+
+**(5) Placebo** —un ganador por grupo ∝ `p_mid`, 2.000 réplicas, libro vivo—: **p = 0,1109**.
+
+### Lo que va en contra del red team, y se dice igual
+
+**(1) La selección post-hoc no es el problema aquí.** Otras dos elecciones *a priori*
+perfectamente defendibles dan MÁS que la suya: `0,05-0,95` da +3,03 y `0,10-0,90` da +3,13
+contra su +2,78. **Eligió post-hoc y le salió conservador.**
+
+**(3) El spread de Londres es más barato, no más caro:**
+
+    semidiferencial EGLC    n=54     mediana 0,0050   media 0,0052
+    resto de estaciones     n=2266   mediana 0,0080   media 0,0100
+
+Con eso el umbral es 0,52 + 0,94 (fee D19 a p=0,25) = **1,46 pp**, y el +1,37 pp del libro vivo
+**no lo cubre**. *Su sospecha era que el coste mataría el neto; el coste es menor de lo que
+temía y aun así lo mata, porque el efecto cayó más.*
+
+### Veredicto
+
+**En la única población operable el sobreprecio es +1,37 pp, su IC por eventos incluye el cero,
+cambia de signo entre mitades, el placebo no se rechaza y no cubre el coste medido en la propia
+estación. Cuatro de cuatro.**
+
+### UNKNOWN
+
+    UNKNOWN  el semidiferencial de EGLC en la ventana del backtest. Los 54 datos son de
+             SEPTIEMBRE; orderbook_snapshots en pmw.duckdb tiene CERO filas y los shards solo
+             cubren septiembre. Es una medicion, no la que hace falta.
+    UNKNOWN  el n efectivo exacto. Uso el evento como bloque, que es conservador; la
+             correlacion intra-evento no la he estimado.
