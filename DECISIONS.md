@@ -13440,3 +13440,58 @@ la frase que sigue siendo verdad.*
 conviene decirlo porque el registro está lleno de los que aciertan. **Un refutador que sólo
 apunta sus éxitos mide mal su propia tasa de acierto** — y esa tasa es lo que dice cuánto
 vale su siguiente objeción.
+
+---
+
+## B-95 — El síntoma ha ocurrido: el `collect` de las 12:07 arrancó 135 segundos tarde
+
+*Escrito 2026-09-12T12:44:05Z. Observado, no proyectado.*
+
+    col_20260912T114005Z_e79a6c   inicio 11:40:05Z   fin 12:09:12Z   29,12 min   decide 24
+    col_20260912T120919Z_a45c6d   inicio 12:09:19Z   fin 12:40:23Z   31,07 min   collect
+
+    ranura de cron del collect   12:07:05Z
+    arranque real                12:09:19Z          retraso 135 s
+
+**El `decide` de las 11:40 se pasó del hueco de 27 minutos por 2,1, y el `collect` siguiente
+arrancó siete segundos después de que el `flock` se liberara.** No saltó —los 15 minutos de
+`PMW_LOCK_WAIT` cubren de sobra 2,25— pero el mecanismo que llevamos toda la noche
+proyectando **ya está corriendo, y tiene fecha y hora.**
+
+*Hasta ahora el plazo era una probabilidad sobre un suceso futuro. Desde las 12:09:19Z es la
+primera observación de una serie.*
+
+### La posición actual
+
+    deltas post-#31   +1,91  +1,99  +1,51  +3,58  -0,24  +3,33  +1,95
+                      media +2,00 min/ciclo   sd 1,26   (n=7)
+
+Desde el ciclo de las 12:09 —31,07 min, 131.926 filas—:
+
+    ciclo                       n    total ±1sd      P(retrasa el collect)   P(lo hace SALTAR)
+    decide 02:40 del 13-sep     3    37,1 ± 2,2            100 %                   1,2 %
+    decide 11:40 del 13-sep     7    45,1 ± 3,3            100 %                  82,4 %
+    decide 02:40 del 14-sep    11    53,1 ± 4,2            100 %                  99,6 %
+
+**Los dos `decide` que quedan antes del cruce ya retrasan su `collect` con certeza.** Lo que
+está en juego no es si se retrasa sino cuándo el retraso supera los 15 minutos y la ranura de
+libro **se pierde**, que es irrecuperable porque no existe endpoint que devuelva un libro
+pasado.
+
+**El `decide` de las 11:40 del 13 de septiembre lo hace saltar con probabilidad 0,82.** Y el
+arreglo del #39 —medido en el 27 %, no en el 100 %— **no lo evita**: baja el crecimiento de
+2,00 a ~1,63 y ese ciclo sigue cruzando.
+
+### Lo que esto cambia en la decisión
+
+Nada de lo que hay abierto lo resuelve. El #39 es correcto y hay que fusionarlo, **pero no es
+la respuesta al plazo**: compra como mucho un día. La respuesta está en las dos vías que
+llevo sin adjudicar desde B-87 y B-88, y ahora tienen un plazo encima:
+
+    no recargar lo que ya se cargo       persistir DuckDB entre ciclos      (B-87, tercera via)
+    no volcar 2.200 filas por 66 tokens  deltas + instantanea periodica     (B-94, 65 a 1)
+
+**Ninguna de las dos se decide de madrugada y ya no es de madrugada: son las 12:5xZ.** Pero
+las dos cambian el diseño del almacén, y eso es exactamente lo que dije que se decide
+despierto y con revisión. Queda planteado para A con el plazo delante, no adjudicado por mí
+solo.
