@@ -1529,6 +1529,85 @@ def code_commit() -> str | None:
         return None
 
 
+def machine_stats() -> dict:
+    """What the cycle cost the MACHINE, which nothing here has ever recorded.
+
+    WHY, and it is dated. Between 03:07 and 06:07 on 2026-09-12 the per-row load
+    cost jumped from 13,37 to 21,8 ms MARGINAL on a row delta that was flat
+    (+8 367 then +8 471), after four cycles pinned at 13,4-13,5 ms. Two
+    hypotheses fit that equally:
+
+      * the cost is superlinear in store size -- an algorithmic property, and the
+        cycle just gets slower;
+      * the BOX is running out of memory. It has 3 819 MB and ZERO SWAP, and the
+        cycle rebuilds the whole store in `:memory:` every run.
+
+    They differ in the failure mode, not in degree. The first ends in a cycle
+    that misses its 42-minute budget and skips ONE book slot. The second ends in
+    an OOM kill, which takes the cycle out mid-write with no log line and no
+    shard. NOTHING IN THIS REPOSITORY COULD TELL THEM APART: there is no
+    `getrusage`, no `/proc/meminfo`, no `psutil` anywhere in `src`, `scripts` or
+    `ops`. The store measures itself in rows and bytes and never measures the
+    machine it did not fit into.
+
+    UNITS ARE DECLARED AND CONVERTED, because `ru_maxrss` is the trap: it is
+    KILOBYTES on Linux and BYTES on macOS/BSD. The box is Linux and development
+    is macOS, so a field written without the conversion would be wrong by 1 024x
+    exactly where it matters and right where it is read.
+
+    Anything unavailable comes back None and never 0: "not measured" and
+    "measured zero" are different facts, and the whole point of this field is to
+    be believed on the day it reports a small number.
+
+    AND THE TWO NUMBERS DO NOT MEASURE THE SAME INSTANT, which is why one of
+    them carries its instant in its name. Session A's finding:
+
+        rss_peak_bytes                 getrusage: the MAXIMUM over the whole
+                                       process, so during the load that
+                                       dominates the cycle
+        mem_available_at_params_bytes  /proc: an INSTANT, read here, in
+                                       `stage_params`, after the peak was
+                                       released
+
+    Side by side in one row they read as comparable and they are not. A reader
+    seeing `rss_peak 280 MB` next to `available 3,4 GB` would conclude "plenty
+    of room", having compared a maximum against a reading taken at the calmest
+    moment of the cycle. THE QUESTION ABOUT PRESSURE IS ANSWERED BY
+    `rss_peak_bytes` AGAINST `mem_total_bytes`; `available` bounds what ELSE was
+    running, not what this cycle had to fit into.
+
+    It is the same class as the `ru_maxrss` unit trap -- a number whose meaning
+    does not travel with it -- so the fix is the same: put the meaning in the
+    name, where it cannot be separated from the value.
+    """
+    import resource
+
+    try:
+        peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        # Linux reports KiB; macOS and the BSDs report bytes.
+        rss = int(peak) * (1024 if sys.platform.startswith("linux") else 1)
+    except (OSError, ValueError):                      # pragma: no cover
+        rss = None
+
+    available = total = None
+    try:
+        with open("/proc/meminfo", encoding="ascii") as fh:
+            for line in fh:
+                name, _, rest = line.partition(":")
+                if name in ("MemAvailable", "MemTotal"):
+                    kib = int(rest.strip().split()[0])
+                    if name == "MemAvailable":
+                        available = kib * 1024
+                    else:
+                        total = kib * 1024
+    except (OSError, ValueError, IndexError):
+        pass                                  # no /proc: not Linux, or restricted
+
+    return {"rss_peak_bytes": rss,
+            "mem_available_at_params_bytes": available,
+            "mem_total_bytes": total}
+
+
 def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
                  dataset_version: str, quantile_provenance: dict | None = None) -> dict:
     """Persist the parameters this cycle actually ran with.
@@ -1637,6 +1716,11 @@ def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
         # family: a value that reaches the stage and not the shard. And the
         # test could not catch it, because the test read the STAGE too.
         "store_rows_resident": int(_resident),
+        # AND THE MACHINE, which no field has ever carried. `stage_params` runs
+        # after `stage_dump`, so the peak covers the whole cycle including the
+        # load that dominates it. See `machine_stats` for why this exists and
+        # why every value may be None.
+        **machine_stats(),
         # `at_s` is relative to the start of the cycle, so without this the
         # series has no absolute anchor. On Hetzner it can be recovered from the
         # `session_id`; on Actions the id carries the run id instead and it
