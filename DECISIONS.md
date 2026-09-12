@@ -11386,3 +11386,30 @@ registro, ahora. El código se arregla con luz — el plazo son días.
 
 **Lo escribo yo porque el defecto es mío.** B lo encontró, me ofreció hacerlo y le digo
 que no: es mi fichero, mi ventana y mi error.
+
+### A-158 (addendum, 2026-09-12T00:33:54Z) — A-158 invalida mi propia preinscripción de A-157, y hay que decirlo ANTES de las 03:07
+
+**A-157, escrita hace media hora, decía:**
+
+    dump:markets   AUSENTE o SKIPPED (catalogue_unchanged)   <- ESTA es la prueba del #35
+
+**Con A-158 eso ya no puede pasar.** La puerta no salta nunca, así que a las 03:07
+`dump:markets` **volcará**. Si no lo corrigiera aquí, a las 03:07 tendría una
+preinscripción fallada que en realidad **ya sabía falsa a las 00:35**, y «se me olvidó»
+no es una categoría.
+
+**Preinscripción vigente para las 03:07 (sustituye a la de A-157):**
+
+    dump:markets   VUELVE A VOLCAR              <- consecuencia de A-158, no sorpresa
+    load:markets   ~114 s (5.500 filas)         <- sigue valiendo: subir es lo CORRECTO
+    tras el ciclo  4 shards de markets, 7.700 filas
+
+**Y la de las 06:07, que es la que ahora mide algo:** con cuatro shards, `load:markets`
+≈ **159 s**, y `load:*` cruzando los 21-22 min. **Ésa es la progresión que el arreglo
+verdadero tiene que romper**, y no se romperá sola.
+
+**Lo que sigue en pie de A-157 y no depende de esto:** la tasa es lineal (68,22 s sobre
+3.300 filas, 20,67 ms/fila), las dos bandas acertaron, y la prueba de un gate de
+contenido está en la etapa `dump` y no en la `load`. **Eso lo confirma A-158 por la vía
+dura:** la `load` subirá exactamente igual con gate y sin gate, porque el gate no
+existe operativamente.
