@@ -16458,3 +16458,62 @@ B propone añadir **«¿esto está medido sobre libro vivo?»** a la lista fija,
 haría esto imposible de violar?»*. **Adoptada.** Cuatro veces en una noche ha cambiado la
 lectura: mató el edge, reforzó el Brier, deshizo su alarma sobre la localización del soporte, y
 separó el veredicto de Brier del de ordenación.
+
+---
+
+## B-114 — El ciclo vivo y el backtest corren modelos distintos, y el vivo es el retirado
+
+*Escrito 2026-09-13T01:32:29Z. No bloquea ningún PR de la cola; es ortogonal.*
+
+### Las dos rutas
+
+    quien escribe forecast_p10..p90 y bajo que preregistro:
+      fit_m2_v3.py     PREREG_SHA       = 11c2c69f8cc73b49   = PREREG_M2_ERROR_v3.md
+      paper_cycle.py   m2.PREREG_SHA_V2 = b2b168d4cddb65c4   = PREREG_M2_ERROR_v2.md
+
+    artifacts/m2_quantiles.json   prereg_sha256 = b2b168d4...        <- v2
+      estratos: lead 24 scope=POOLED n=1348 · lead 9 scope=POOLED n=1347
+
+    fit_m2_v3.py, linea 7, literal:
+      «v2 is withdrawn: it calibrated in aggregate while 43 of 45 stations
+       were miscalibrated, because opposite station biases cancel (B-11).»
+
+### La cadena
+
+1. `stage_forecasts` carga el artefacto y pide sus cuantiles con `prereg_sha256 =
+   m2.PREREG_SHA_V2`.
+2. **La guarda `R_PREREG_MISMATCH` PASA** — porque los dos lados coinciden en v2. *La guarda
+   funciona; apunta al documento retirado.*
+3. El artefacto es **POOLED** en sus dos estratos: sin estratificación por estación.
+4. `stage_forecasts` escribe `forecast_p10..p90` desde esos cuantiles agrupados, y en el tramo
+   leído no hay término de desplazamiento por estación.
+5. Mientras tanto `fit_m2_v3` escribe **las mismas columnas** para la población del backtest,
+   bajo v3, con el shift por estación encogido.
+
+**Así que el modelo que el backtest evalúa —sobre el que hemos medido R21, R22 y todo Londres—
+no es el que el ciclo vivo produciría.** El vivo es v2 POOLED: exactamente el método retirado
+por ocultar que 43 de 45 estaciones están mal calibradas porque los sesgos opuestos se cancelan.
+
+### Por qué es latente y no una pérdida
+
+`collect_only = True` en **37 de 37** ciclos y `tau_signal = None` en **37 de 37**. *El ciclo vivo
+nunca ha producido una señal, así que nada se ha operado con el modelo retirado.* **Es un defecto
+dormido, y lo que lo despertaría es exactamente lo que falta para operar: que exista
+`PAPER_TAU`.**
+
+### Lo que no verifico y lo digo
+
+He trazado `stage_forecasts` y **no he auditado si alguna otra ruta aplica el shift por estación
+antes de escribir**. Si la hay, esto se cae. *Es lo primero que atacaría yo.*
+
+### Y un segundo hallazgo del mismo tirón
+
+`code_sha256` del artefacto es el sha de **`error_model.py`** —el código que **ajusta**— y está
+declarado *«written and reported, never used to refuse»*. **`probability.py`, que CONSUME los
+cuantiles y los convierte en probabilidad de banda, no está en ningún hash ni en ninguna
+guarda.** El #33 lo cambia: el artefacto seguirá validando idéntico mientras los números
+derivados de él pasan del 50,5 % de ceros al 8,3 %.
+
+*No es un argumento contra el #33 —el cambio es correcto—. Es que el artefacto no puede
+distinguir «los mismos cuantiles» de «los mismos cuantiles leídos de otra manera», y R21/R22
+quedan sin reproducir sin que nada lo diga.*
