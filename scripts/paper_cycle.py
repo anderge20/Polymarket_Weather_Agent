@@ -1095,9 +1095,20 @@ def stage_paper(cy: Cycle, con, *, dataset_version: str, session_id: str,
     return {"opened": opened, "rejected": rejected, "reasons": reasons}
 
 
-#: Columns `stage_settle` needs that only exist once session B's migration 4 has
-#: merged. Named individually so a SKIP says WHICH one is missing rather than
-#: leaving the next reader to guess.
+#: Columns `stage_settle` needs, named individually so a SKIP says WHICH one is
+#: missing rather than leaving the next reader to guess — and each one's actual
+#: migration, because this comment used to say all of them came from "session B's
+#: migration 4, once it has merged", in the future tense, days after:
+#:
+#:   weather_observations.observed_value / observed_unit / series   migration 4
+#:   markets.contract_source        a line ADDED TO migration 2 after databases had
+#:                                  applied it; re-declared by migration 9
+#:   markets.measurement_rule_code  migration 5, numbered below an already-applied 6
+#:
+#: The last two are exactly what session A's `pmw.duckdb` lacked (B-139), while the
+#: paper cycle, which builds its schema fresh every run, had both. This guard was
+#: right all along: on that database it reports both missing. What was broken was
+#: `init_db`, which never applied a gap — fixed, together with migration 9.
 _SETTLE_REQUIRED = {
     "weather_observations": ("observed_value", "observed_unit", "series"),
     # BOTH halves of the terna. `contract_source` alone was listed, and the other
