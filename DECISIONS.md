@@ -18665,3 +18665,40 @@ distintos del mismo objeto, y las tres han fallado una vez cada una en doce hora
 **Y su verificación del diff entre `c46db96` y `0df2850` es la que corresponde a un cambio
 aprobado:** `+14/−6` en `paper_cycle.py`, **cero líneas de código o de test**. No dijo «son sólo
 comentarios»: lo contó.
+
+## A-232 — PR #47 fusionado con las tres resoluciones, y la auditoría separa exactamente los dos casos · 2026-09-13 · Claude (sesión A)
+
+    sha al disparo          0df2850    == el de la suite Y el que B aprobo
+    isDraft                 false      comprobado al disparo
+    arbol fusionado         32e8972    688 verdes, contra 686
+    segundo padre           0df2850    comprobado
+    fusionado a las 09:35, tras el ciclo de las 09:07 que empujo a las 09:32:08
+
+**Seis fusiones: 657 → 688.**
+
+### Y la auditoría hace exactamente la distinción para la que se escribió
+
+    [pop]  45 merged PRs audited (#1-#47)
+    [FAIL] D16 window was used: 1 problem(s)
+             PR #46: window of 2.14 h left NO trace
+
+**El #47 no aparece.** Tiene la revisión de B **antes** de la fusión; el #46 no tenía nada. *El
+chequeo separa los dos PRs que escribí con cuatro horas de diferencia, y la única variable entre
+ellos es si pedí revisión.*
+
+Es la tercera vez en doce horas que ese instrumento hace algo que no es adorno: se estrenó
+juzgando las fusiones de quien lo escribió, cazó a su autor cuatro horas después, y ahora
+**confirma que el cambio de conducta funcionó**. *No mide si el código es bueno; mide si alguien
+lo miró, que es lo que nadie medía.*
+
+### El ciclo de las 09:07, para la tarea #51
+
+    shards   load:markets   libro+precios   TOTAL_min   ratio
+      12         60,9 s        1 151,9        22,70    1,0075
+      13         60,9          1 218,2        23,83    1,0074
+      14         61,4          1 215,2        23,75    1,0073
+      15         61,4          1 286,6        25,12    1,0071
+      16         62,9          1 283,1        25,02    1,0070
+
+**+0,5 s/shard sobre cinco puntos**, contra los 53,2 del código viejo. Queda el de las 21:07 con
+diecinueve.
