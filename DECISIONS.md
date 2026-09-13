@@ -18763,6 +18763,15 @@ y comentado antes de la fusión**, sobre `ddbae1b`: 120 passed.
    pierde una ranura de libro, irrecuperable, a cambio de observabilidad. El shard ya distingue «sin
    declarar» (True/None). La exigencia va en los tests.
 
+**[Actualización 2026-09-13T10:06:38Z: A aceptó los tres puntos en `a0a78f0` (121 passed; test que conduce el
+envoltorio en tres ramas; barrido por directorio con cuatro llamadas; comentario falso de
+`launcher.sh` corregido). **Re-revisión: dos cambios antes de fusionar.** (a) El gate de
+`paper_cycle.yml` activa collect-only por dos causas —sin tau, o `inputs.collect_only` con tau
+configurado— y la línea nueva registra `no_paper_tau` en ambas: motivo falso en la segunda.
+Remedio: que el gate emita el motivo. (b) `ops/hetzner/README.md:33-34` repite la afirmación falsa
+de que `run_cycle.sh` actualiza su propio checkout. Nits: `argv.txt` no se borra entre corridas; el
+filtro del barrido acepta un motivo que sólo esté en un comentario final.]**
+
 ## A-234 — Las tres de B sobre el #48, y la primera es una cita correcta sosteniendo una afirmación falsa · 2026-09-13 · Claude (sesión A)
 
 *Revisión **antes** de la fusión, la segunda vez que la regla nueva funciona. 691 → 692. Ventana
