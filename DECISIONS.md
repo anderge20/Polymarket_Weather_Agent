@@ -19874,3 +19874,59 @@ reingesta de mercados, las cinco comprobaciones, y reejecución sin tocar el cri
 eventos, mercados y peticiones pendientes por estación y mes sin hacer ninguna; puertas de
 `backfill_markets` y `backfill_weather` por evento (sólo entran eventos con todos sus mercados con
 precio y los demás se cuentan por motivo). Valores por defecto pendientes del universo que fije A.
+
+---
+
+## A-247 — REFUTO LA SEGUNDA MITAD DE MI PROPIA A-246, y lo que la refuta no es el arreglo: es la VENTANA. 19 aciertos y 1 fallo · 2026-09-13 · Claude (sesión A)
+
+**A-246 predijo dos cosas. La primera se cumple; la segunda la refuto yo mismo, con datos
+que ya tenía, antes de que nadie la use.**
+
+Crucé el raw de B-133 (`evidence/B-133/raw_iem_55_estaciones.tgz`, EGLC, sin una sola
+petición nueva) contra **la banda ganadora declarada** en los 147 días con evento completo
+cubiertos por las dos series:
+
+    3 dentro / 3+4 dentro   127
+    3 FUERA  / 3+4 dentro    19     <- lo que arregla el #49
+    3 dentro / 3+4 FUERA      1     <- el caso que yo dije que lo refutaría
+    3 FUERA  / 3+4 FUERA      0
+
+**Escribí: «ninguna de las 104 se sale, y si alguna se sale es defecto del #49».** Una se
+sale. **Y mi regla de lectura era incorrecta**, que es el error más interesante de los dos:
+
+    2026-05-26  rt34  max 34,00 C  13:20 local    <- dia de 34 grados
+    2026-05-27  rt3   max 24,00 C  00:50 local
+    2026-05-27  rt34  max 25,00 C  00:20 local    <- el pico del DIA CIVIL
+    2026-05-27  banda ganadora declarada: 24 C
+
+El 26 hizo 34 °C y la noche no se fue: a las **00:20 del 27** quedaban 25, a las 00:50 ya
+24, y el máximo **diurno** del 27 fue 24. **El máximo del día civil local del 27 es el
+calor sobrante del 26.** El tipo 3 acertó por accidente —no tiene lectura a :20 y la de
+:50 ya había bajado—, así que **el arreglo no causa este fallo: lo DESTAPA.**
+
+**No es un defecto de la serie. Es `WINDOW_LOCAL_CIVIL_DAY`**, que incluye 00:00–01:00
+local, contra una fuente que evidentemente no contó esa lectura.
+
+**Dimensionado, para no inflarlo:** de 151 días, el máximo cae en la hora 00 local en
+**3 (2 %)** —05-04 (15,0), 05-27 (25,0), 09-06 (17,0)— **y los tres a :20**, que es
+exactamente la población que el tipo 3 no puede ver. Sólo el 05-27 choca hoy con una
+resolución.
+
+**Qué queda en pie y qué no.** El #49 sigue aprobado y no se toca: 19 a 1, y el 1 no es
+suyo. Lo que cae es la frase *«el conjunto 3+4 contiene al de tipo 3, luego el máximo sólo
+puede subir, luego siempre está al menos tan bien»*: **subir puede pasarse**, y la
+diferencia entre «contiene» y «acierta» es precisamente un día como este.
+
+**Y es la primera observación SEPARADORA que tenemos sobre la ventana** frente a una
+resolución real. La auditoría del núcleo dejó la ventana como `NO_SEPARABLE_EN_MUESTRA` en
+el estrato en Fahrenheit (`H_LOCAL = H_UTC` en 6/6); aquí hay un día que la separa en
+Celsius. Va a mi pista de liquidación, no al #49, y **no se toca el núcleo congelado por
+un n=1**: se registra, se busca en las demás estaciones cuando haya corpus, y hasta
+entonces es una hipótesis con una observación.
+
+**La lección de método, que es la de ayer otra vez:** escribí una predicción con dos
+mitades y **una regla de lectura para cada desenlace**, que es lo correcto. Lo que no hice
+fue preguntarme si el desenlace «sale una de las 104» tenía **más de una causa posible**.
+Tenía dos —el arreglo se pasa, o la ventana no es la del mercado— y las colapsé en la
+primera porque era la que estaba mirando. *Una predicción falsable con una sola
+interpretación asignada de antemano no es más rigurosa: es más frágil.*
