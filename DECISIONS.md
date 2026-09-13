@@ -16494,6 +16494,10 @@ separó el veredicto de Brier del de ordenación.
 no es el que el ciclo vivo produciría.** El vivo es v2 POOLED: exactamente el método retirado
 por ocultar que 43 de 45 estaciones están mal calibradas porque los sesgos opuestos se cancelan.
 
+**[PASO 5 REFUTADO por A y reproducido por mí — ver B-115. `fit_m2_v3` NO escribió las columnas
+del backtest: hay UN offset por (fecha, issue_time) sobre 29 estaciones. Las dos rutas corren el
+MISMO modelo, v2 POOLED, y v3 no está en ninguna. La conclusión es mayor, no menor.]**
+
 ### Por qué es latente y no una pérdida
 
 `collect_only = True` en **37 de 37** ciclos y `tau_signal = None` en **37 de 37**. *El ciclo vivo
@@ -16589,3 +16593,56 @@ leídos de otra manera».*
 
 El #33 sigue debiendo fusionarse: arregla el consumidor, y el consumidor está roto en las dos
 rutas por igual. Lo de v3 es una tarea nueva, no una objeción.
+
+### B-115 — No son dos modelos: es uno, retirado, y v3 no está desplegado en ninguna parte
+
+*Añadido 2026-09-13T01:56:59Z. Mi paso 5 refutado por A; su versión es mayor que la mía.*
+
+### La prueba de A, reproducida
+
+    fecha        filas  offsets distintos  estaciones
+    2026-08-23      29          1              29
+    sobre TODA la tabla: 2.617 filas, 46 offsets distintos
+
+**Un solo offset por (fecha, issue_time) sobre 29 estaciones.** Si `fit_m2_v3` hubiera escrito
+esas columnas, dos estaciones del mismo día tendrían offsets distintos. **No los tienen.** Los 46
+offsets varían por fecha —refit por condición de disponibilidad, que es `fit_m2.py`— y no por
+estación.
+
+### Y v3 no degenera: sus desplazamientos son grandes
+
+Medido con mis propios números, idénticos a los suyos:
+
+    lead  9h  n=1347  45 estaciones  44 no nulos  -1,050 .. +1,824  mediana +0,298  w=0,744
+    lead 24h  n=1348  45 estaciones  44 no nulos  -1,118 .. +1,689  mediana +0,352  w=0,704
+
+### Lo que queda, y es mayor
+
+    ciclo VIVO   v2 POOLED, artefacto congelado del 2026-09-09
+    BACKTEST     v2 POOLED, refit por disponibilidad (fit_m2.py)
+    v3           implementado, 44 de 45 shifts no nulos, y NO ESTA EN NINGUNA DE LAS DOS
+
+**No es que el vivo y el backtest corran modelos distintos: corren el mismo, y es el que su
+propio sucesor declara retirado.** R21, R22 y Londres entero descansan ahí.
+
+### La magnitud, que es lo que yo añado
+
+    el shift maximo a 24 h        +1,689 C
+    la anchura de banda            1 C
+    el soporte de la distribucion  SEIS grados (B-110)
+
+**El desplazamiento que v3 corregiría y nadie aplica es de casi dos bandas enteras en la estación
+peor, y casi un tercio del soporte.** No es un ajuste fino: *es mover la distribución entera de
+banda.* En un mercado de once bandas con seis de soporte, 1,7 °C decide qué bandas reciben
+probabilidad y cuáles reciben cero exacto.
+
+**Y eso une dos hilos que teníamos sueltos:** parte de las 425 filas con `p_model = 0` pueden
+serlo no porque la cola sea corta **sino porque la distribución entera está desplazada**. El #33
+arregla la cola; el shift que falta desplazaría **cuál** de las bandas cae dentro. *Dos defectos
+que producen el mismo síntoma, y sólo uno se está arreglando.*
+
+### Lo que la tarea tiene que preguntar
+
+No es «aplicar v3». Es **por qué hay un v3 implementado, validado y sin desplegar, y quién decidió
+que no.** Esa respuesta está en algún sitio o no está — y si no está, eso es lo que hay que
+registrar.
