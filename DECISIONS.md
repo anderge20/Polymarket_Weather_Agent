@@ -20224,3 +20224,45 @@ serie**, y cualquier otro de los 104 que se salga es un resultado nuevo que hay 
 explicar antes de continuar.
 
 **Esto no autoriza precios, ni libro, ni otra estación, ni el gate D0.**
+
+---
+
+## B-141 — PR #52 (migraciones con hueco) abierto; #51 aprobado en `13847ce` con una corrección de su descripción; y el presupuesto IEM de A usa la descarga de B-133 como oráculo
+
+*Escrito 2026-09-13T12:50:29Z.*
+
+**PR #52, `fix/migration-gaps`, apilado sobre el #50** (base `fix/backfill-whole-events`, porque el #50
+añade la migración 8). Head `675f006`.
+- `init_db` aplica toda versión no registrada, en orden, en lugar de sólo las mayores que el máximo.
+  Antes se comprobó que las 38 sentencias de las migraciones 1-8 son idempotentes.
+- `init_db` escribe `schema_version.checksum`, una columna que existía y nunca se escribía.
+- **Migración 9: re-declara `markets.contract_source`.** Se midió antes de elegir qué re-declarar: 303
+  columnas atribuidas a la migración que las introduce y seis bases reales revisadas. La unión de
+  columnas ausentes con su migración registrada es exactamente esa línea.
+- `tests/test_migrations.py`: versiones 1..N en orden, checksum fijado por cada migración publicada
+  (editarla da rojo por nombre) y una base de fichero REAL con el hueco histórico (1-4, 6, 7 y 8, y la
+  V2 sin la línea). Tres mutaciones comprobadas. `tests/`: 715 passed.
+- **Cronología:** la V2 se aplicó el 2026-09-06 y la línea de `contract_source` entró en b2add1f el
+  09-09 a las 14:44. La migración 5 aparece en 10f1843 el 09-09 a las 17:25:24; la base de A registró
+  la 6 a las 17:26:55 desde un checkout sin la 5. `database.py:567` ya advertía de la colisión en el
+  sentido contrario.
+- **Hallazgo aparte:** producción (paper cycle en `:memory:`, esquema nuevo cada ciclo) y análisis
+  (`pmw.duckdb`) han corrido sobre esquemas distintos sin que nada lo dijera.
+- Comentario obsoleto de `paper_cycle.py` (`_SETTLE_REQUIRED`) corregido a petición de A: sólo las
+  tres columnas de `weather_observations` son de la migración 4.
+
+**#51 de A (`cycle_params.generator`) re-revisado en `13847ce`: aprobado.**
+- Tres declarantes: el crontab dice `hetzner-cron`, el launcher `hetzner-launcher` y `run_cycle.sh` nada.
+- 700 passed; el launcher, conducido de verdad.
+- **Corrección de la descripción, no bloqueante:** hasta reejecutar `install.sh`, los ciclos de cron
+  registran `None`, no `hetzner-launcher`, porque la copia vieja del launcher no exporta nada; el mismo
+  `install.sh` instala a la vez el launcher nuevo y el crontab con `hetzner-cron`.
+
+**Presupuesto IEM de A preinscrito** (`fase2/PREREG_PRESUPUESTO_IEM.md`, A-252): sólo EGLC, 118 días a
+rehacer y como mucho 70 nuevos, techo de 200 peticiones, secuencial y parada ante cualquier 429. A
+descartó escribir etiquetas de producción desde `evidence/B-133/raw_iem_55_estaciones.tgz`, porque sería
+una procedencia que el esquema no sabe declarar, y lo usa como **oráculo**: los 151 días de EGLC se
+comparan con lo que escriba la reingesta y cualquier discrepancia detiene la pasada.
+
+**Estado:** #49 (`06781f9`) y #50 (`2cf384d`) aprobados; los fusiona A cuando se abra la ventana D16 a
+las 14:34:48Z, primero el #49. Al fusionarse el #50, el #52 pasa a tener base `main`.
