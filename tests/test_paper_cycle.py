@@ -704,8 +704,10 @@ def test_settle_closes_against_a_row_THE_INGESTER_WROTE(con, monkeypatch):
     assert dh.tmax_c == 17.0 and dh.n_obs == 24
     row = db_mod.query(con, "SELECT observed_unit, observed_value, series "
                             "FROM weather_observations")[0]
+    # The series a Celsius station's row carries NOW: built from report types 3+4
+    # (B-131). `SERIES_1C` only names labels written from type 3 alone.
     assert (row["observed_unit"], row["observed_value"], row["series"]) == \
-        ("C", 17.0, obs_mod.SERIES_1C)
+        ("C", 17.0, obs_mod.SERIES_1C_RT34)
 
     out = paper_cycle.stage_settle(_cycle(), con, dataset_version="ds1")
     assert out["settled"] == 1, out
@@ -1101,7 +1103,14 @@ def test_the_label_is_fetched_only_once_the_station_local_day_has_ended(con, mon
 
 
 def test_a_label_already_in_the_table_is_not_fetched_again(con, monkeypatch):
+    """A label OF THE STATION'S CURRENT SERIES is not fetched again.
+
+    The row used to be inserted with no `series` at all and still counted as "had".
+    Since the check filters by the current series (B-131), such a row no longer
+    blocks a fetch — which is the point — so the row here names the series a
+    Celsius station now carries."""
     from weather_agent import observations as obs
+    _with_b_substrate(con)
     calls = []
     monkeypatch.setattr(obs, "ingest_daily_high",
                         lambda con, i, d, tz, dsv: calls.append(i))
@@ -1109,14 +1118,40 @@ def test_a_label_already_in_the_table_is_not_fetched_again(con, monkeypatch):
     _open_position(con)
     con.execute(
         "INSERT INTO weather_observations (station, source, observation_time, "
-        "tmax_observed, ingestion_timestamp, dataset_version, record_version) "
-        "VALUES (?,?,?,?,?,?,?)",
+        "tmax_observed, series, ingestion_timestamp, dataset_version, record_version) "
+        "VALUES (?,?,?,?,?,?,?,?)",
         ["EGLC", "METAR", datetime(2026, 9, 10, 14, tzinfo=timezone.utc), 21.0,
-         T0, "ds1", 1])
+         obs.SERIES_1C_RT34, T0, "ds1", 1])
     out = paper_cycle.stage_observations(
         _cycle(), con, dataset_version="ds1",
         now=datetime(2026, 9, 12, tzinfo=timezone.utc))
     assert calls == [] and out["ingested"] == 0
+
+
+def test_a_label_of_a_SUPERSEDED_series_does_not_block_the_corrected_one(con, monkeypatch):
+    """"The row exists, skip it" is how a wrong label becomes permanent.
+
+    A station-day already holding an `IEM_ASOS_METAR_1C` label — built from report
+    type 3 alone, which drops the half-hourly routine METARs (B-131) — must still
+    get the corrected label fetched. Nothing is overwritten: the old row stays, and
+    the new one lands beside it under its own series."""
+    from weather_agent import observations as obs
+    _with_b_substrate(con)
+    calls = []
+    monkeypatch.setattr(obs, "ingest_daily_high",
+                        lambda con, i, d, tz, dsv: calls.append(i))
+    monkeypatch.setattr("weather_agent.stations.timezone_of", lambda i: "Europe/London")
+    _open_position(con)
+    con.execute(
+        "INSERT INTO weather_observations (station, source, observation_time, "
+        "tmax_observed, series, ingestion_timestamp, dataset_version, record_version) "
+        "VALUES (?,?,?,?,?,?,?,?)",
+        ["EGLC", "METAR", datetime(2026, 9, 10, 14, tzinfo=timezone.utc), 16.0,
+         obs.SERIES_1C, T0, "ds1", 1])
+    out = paper_cycle.stage_observations(
+        _cycle(), con, dataset_version="ds1",
+        now=datetime(2026, 9, 12, tzinfo=timezone.utc))
+    assert calls == ["EGLC"] and out["ingested"] == 1
 
 
 def test_observations_stop_on_a_rate_limit_and_never_retry_through(con, monkeypatch):
@@ -3246,6 +3281,107 @@ def test_the_frozen_cores_raise_sites_are_pinned_BY_COUNT():
     assert cuenta["R_SERIES_MISMATCH"] == 3, (
         "el caso que motivo `reason_details`: serie, unidad y quantization=NONE "
         "bajo un unico codigo de razon")
+
+
+# ------------------------------------------------------- report types (B-131, real payload)
+_IEM_FIXTURES = Path(__file__).resolve().parent / "fixtures"
+_EGLC_DAY = date(2026, 4, 14)
+
+
+def _iem_served_by_report_type(monkeypatch):
+    """Serve the RECORDED IEM body matching the `report_type` values the query asks for.
+
+    Both fixtures are verbatim responses to the query `fetch_metar` builds for EGLC
+    on 2026-04-14 (window 2026-04-13 .. 04-16), one with `report_type=3&report_type=4`
+    and one with `report_type=3`. Patched at `urlopen`, so the query building, the
+    CSV parsing and the conversion are all the code under test, and a query asking
+    for any OTHER combination has no body to receive and fails loudly."""
+    import io
+    import urllib.parse
+
+    bodies = {
+        ("3", "4"): (_IEM_FIXTURES / "iem_eglc_20260414_rt34.csv").read_text(),
+        ("3",): (_IEM_FIXTURES / "iem_eglc_20260414_rt3.csv").read_text(),
+    }
+    requests = []
+
+    class _Response(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    def urlopen(req, *a, **k):
+        url = getattr(req, "full_url", req)
+        qs = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)
+        types = tuple(qs.get("report_type", []))
+        requests.append((qs["station"][0], types, qs["day1"][0], qs["day2"][0]))
+        return _Response(bodies[types].encode())
+
+    monkeypatch.setattr("urllib.request.urlopen", urlopen)
+    return requests
+
+
+def _settle_the_real_eglc_day(con):
+    _with_b_substrate(con)
+    tid = _settleable_market(con, band="17°C", outcome="Yes", write_obs=False)
+    con.execute("UPDATE paper_trades SET target_date = ? WHERE paper_trade_id = ?",
+                [_EGLC_DAY, tid])
+    dh = obs_mod.ingest_daily_high(con, "EGLC", _EGLC_DAY, "Europe/London", "ds1")
+    row = con.execute("SELECT observed_value, observed_unit, series FROM weather_observations "
+                      "WHERE station = 'EGLC'").fetchall()
+    out = paper_cycle.stage_settle(_cycle(), con, dataset_version="ds1")
+    paid = con.execute("SELECT settlement FROM paper_trades WHERE paper_trade_id = ?",
+                       [tid]).fetchone()[0]
+    return dh, row, out, paid
+
+
+def test_a_real_EGLC_day_whose_high_is_at_20_settles_to_the_band_the_market_paid(con, monkeypatch):
+    """SETTLEMENT FIRST, on a real payload: the day that made B-131 visible.
+
+    On 2026-04-14 EGLC's high was 17 C, reported at :20 — a half-hourly ROUTINE METAR
+    that IEM files as type 4. The market (Wunderground) paid the 17 C band. With the
+    Celsius series built from types 3+4 the chain from the recorded IEM response to
+    `stage_settle` pays exactly that band. The other half of the pair is the next
+    test: the same day with type 3 alone."""
+    requests = _iem_served_by_report_type(monkeypatch)
+    dh, row, out, paid = _settle_the_real_eglc_day(con)
+
+    assert requests == [("EGLC", ("3", "4"), "13", "16")], requests
+    assert dh.tmax_c == pytest.approx(17.0) and dh.when_utc.minute == 20, dh
+    assert row == [(17.0, "C", obs_mod.SERIES_1C_RT34)], row
+    assert out["settled"] == 1, out
+    assert paid == 1.0
+
+
+def test_the_same_real_day_with_type_3_alone_pays_the_WRONG_band(con, monkeypatch):
+    """The other half of the pair, and the defect itself: same day, same market, same
+    position, and the only variable is the report types.
+
+    Type 3 alone never sees the :20 report, so the day's high comes out 16 C at :50,
+    the 17 C position loses, and the ledger records a loss the market never booked.
+    Driven through the superseded series on purpose, which also pins that labels
+    already stored under `IEM_ASOS_METAR_1C` stay settleable — and stay low."""
+    monkeypatch.setitem(obs_mod.STATION_SERIES, "EGLC", (obs_mod.SERIES_1C, "C", 1.0))
+    requests = _iem_served_by_report_type(monkeypatch)
+    dh, row, out, paid = _settle_the_real_eglc_day(con)
+
+    assert requests == [("EGLC", ("3",), "13", "16")], requests
+    assert dh.tmax_c == pytest.approx(16.0) and dh.when_utc.minute == 50, dh
+    assert row == [(16.0, "C", obs_mod.SERIES_1C)], row
+    assert out["settled"] == 1, out
+    assert paid == 0.0
+
+
+def test_a_fahrenheit_station_still_asks_for_type_3_only(monkeypatch):
+    """Not an omission: on six measured days adding type 4 puts a US station's NEW
+    maximum off the whole-F grid (B-133), which would turn a label that is low into a
+    refusal. What the resolver does with such a SPECI is to be measured first."""
+    requests = _iem_served_by_report_type(monkeypatch)
+    obs_mod.fetch_metar("KATL", datetime(2026, 4, 13, tzinfo=timezone.utc),
+                        datetime(2026, 4, 14, 23, tzinfo=timezone.utc))
+    assert [r[1] for r in requests] == [("3",)], requests
 
 
 def test_the_shard_says_WHY_it_is_collect_only(con, tmp_path, monkeypatch):
