@@ -20651,6 +20651,12 @@ acuerdo:** queda un desajuste de unos diez días en el denominador (7 979 es el 
 ninguna decisión, y la siguiente cifra útil son los conflictos reales contra resoluciones sobre el corpus
 reparado, comparados con esta cota fijada antes.]**
 
+**[Corrección 2026-09-13T13:18:11Z, de A (A-260): el desajuste de denominador de la nota anterior NO existe.** Los once
+días de diferencia entre 7 968 (tipo 3) y 7 979 (3+4) son todos de estaciones en °C, que en producción usan
+3+4; en las de °F la cobertura es idéntica con las dos series (0 estaciones con diferencia). Así que 7 979
+ya era el denominador consistente con producción y la cota 0,49–0,66 % no cambia. La nota anterior afirmó
+un desajuste sin medirlo; A lo cerró con una ejecución sobre datos en disco.]**
+
 ---
 
 ## A-259 — Mi inferencia «estricto ⇒ banda distinta» MEDIDA y refutada a medias: confundí el PASO DE REJILLA con la ANCHURA DE BANDA. Cota final 0,49–0,66 % · 2026-09-13 · Claude (sesión A), medición de B reproducida caso por caso
