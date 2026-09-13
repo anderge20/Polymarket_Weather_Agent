@@ -22798,3 +22798,77 @@ siendo una hipótesis operacional NO validada externamente y no se modifica retr
 (tarea #75).
 
     L1.3 = CLOSED        siguiente: L1.4 — WALK-FORWARD OOS
+
+## A-289 — `L1.4 = CLOSED`. Sólo `B4` bate a un control que no mira datos, y mi benchmark preinscrito resultó ser PEOR que el azar · 2026-09-13 · Claude (sesión A)
+
+`LOCK_L1_4.md` espejado a las 20:38:43Z (`cee4255`) **antes** de ejecutar. No se busca edge,
+precio ni PnL, no se optimizan umbrales, no se activa trading, no se toca producción.
+**No se emite el veredicto de Level 1**: requiere L1.5-L1.7. `D0-P` = BLOCKED.
+
+### La métrica primaria, tal como estaba bloqueada
+
+Brier por evento, apareado contra `B0_clima`, bootstrap **clusterizado por evento**, 10 000
+remuestreos, semilla 20260913, escalera 11, leads separados.
+
+                    lead 24                                  lead 9
+    B1 - B0   +0,05348 [+0,04071,+0,06548] PEOR        +0,05790 [+0,04592,+0,06873] PEOR
+    B2 - B0   +0,02286 [+0,00507,+0,04046] PEOR        +0,01434 [-0,00407,+0,03317] INCLUYE CERO
+    B3 - B0   +0,01903 [+0,00030,+0,03713] PEOR        +0,02003 [+0,00141,+0,03804] PEOR
+    B4 - B0   -0,03041 [-0,03732,-0,02349] MEJORA      -0,03585 [-0,04259,-0,02899] MEJORA
+
+### EL CAVEAT QUE DOMINA, y va antes que el titular
+
+El control estructural `p = 1/11` vale **0,08264** y no mira ni un dato. **`B0_clima`, el
+benchmark primario que yo mismo bloqueé, vale 0,10154 y 0,10119: es PEOR que no mirar nada**, con
+IC que excluye el cero en los dos leads.
+
+    delta contra el uniforme    B0 +0,0189 PEOR · B1 +0,0724 PEOR · B2 +0,0418 PEOR
+                                B3 +0,0379 PEOR · B4 -0,0115 y -0,0173  MEJORA
+
+> **De los cinco modelos, sólo `B4` bate al control estructural.** Y eso descompone el titular:
+> del `−0,030` de `B4` frente a `B0`, **+0,019 son `B0` siendo peor que el azar**, y sólo
+> **−0,0115** es margen genuino sobre el nulo. **El margen honesto es entre un tercio y la mitad
+> del que sugiere la comparación preinscrita.**
+
+**Declarado sin adornos: el diagnóstico contra el uniforme lo añadí DESPUÉS de ver que `B0`
+quedaba por debajo.** No es un modelo nuevo —`(n−1)/n²`, aritmética pura, en el corpus desde
+A-280— pero **no estaba en el lock**, y el lector debe poder descontarlo. **No** cambié `B0`,
+**no** cambié su ventana y **no** sustituí el benchmark: `B0` se reporta tal cual.
+
+**Por qué falla `B0`, y es meteorología, no un bug:** la climatología de 30 días va **por detrás
+de la estación** en una ventana que sube de abril a agosto. Su calibración lo enseña —
+`p ∈ [0,50, 1,01)`: predicho **0,7353**, observado **0,0741**.
+
+### RANKING ≠ CALIBRACIÓN, y aquí se ve entero
+
+                       top-1        rango medio ganadora      Brier
+    B2 / B3        0,316-0,365          4,50-4,76         0,115-0,124  (peor que el uniforme)
+    B4             0,302-0,316          2,34-2,71         0,065-0,071
+    azar                0,091               6,00              0,083
+
+**Los deterministas aciertan la banda ganadora entre 3,3 y 4 veces más que el azar y aun así
+puntúan peor que no saber nada.** No es falta de señal: es **exceso de confianza**. *El
+pronóstico tiene ranking skill; lo que los deterministas no tienen es calibración.* Y `B4`
+**pierde** en top-1 contra `B2` a lead 9 (0,302 contra 0,365) mientras gana de largo en rango
+medio. **Se registra el split sin elegir**; L1.5 lo separa formalmente.
+
+### Diagnóstico temporal, sin selección
+
+`B4` mejora en la segunda mitad en los dos leads — **y `B0` también**. Que mejoren los dos a la
+vez apunta a que la segunda mitad es **más fácil**, no a que el modelo aprenda.
+
+### Red-team ejecutado antes de interpretar
+
+Leakage (prueba ejecutable con poder verificado) · look-ahead (95/95 y 96/96, con la convención
+de `available_at` aún **no validada externamente**) · timestamps · dependencia intra-evento
+(clúster por evento, leads nunca agregados) · escalera (un solo estrato; 7 y 9 con cero eventos,
+dicho) · **confusión estacional: presente y nombrada, es la causa del fallo de `B0`** ·
+clipping/epsilon (Brier ≤3e-3; el LL de los deterministas no se usa) · **calibración medida
+sobre el propio test: los pronósticos son OOS pero la CURVA no está validada fuera de muestra**
+· **missingness comprobada**: los 22/21 excluidos son **contiguos desde el inicio**, el arranque
+de la ventana expansiva — más fríos (17,3 contra 24,3 °C), **estacionalidad del calendario, no
+selección por resultado**, pero el test **no cubre abril**.
+
+    L1.4 = CLOSED        siguiente: L1.5 — CALIBRACION + RANKING
+
+**Nada se ha cambiado tras ver estos números.**
