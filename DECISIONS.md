@@ -17420,3 +17420,59 @@ La caja está en `a32bbdb`; a las 06:07 hará `reset --hard` a `fd45bf1`.
 03:07 en todo salvo el sha, eso confirma que el alcance del #33 en producción es el que dije —sólo
 `backtest.universe`— y no el que su tamaño sugiere. *Si cambia algo más, mi lectura del alcance
 está mal, que es lo que quiero saber.*
+
+---
+
+## B-121 — El plazo de 4,2 días, confirmado por una regresión que no cruza el #42
+
+*Escrito 2026-09-13T04:00:11Z.*
+
+A fue a refutar el plazo de B-120 bis, se encontró cortando la serie por segunda vez en la noche,
+y con la serie entera **lo confirmó**. Reproducido:
+
+    16 ciclos de la caja con perfil
+      TOTAL (cruza el #42)    pendiente +54,6 s/ciclo   se 17,4    <- contaminada por el salto
+      LIBRO+PRECIOS           pendiente +27,3 s/ciclo   se  1,4    IC95 [+24,6 , +30,0]
+
+    holgura 2520 - 1425 = 1095 s  ->  40,1 ciclos = 4,2 dias   IC [3,8 , 4,6]
+
+**El componente correcto es el libro, no el total**, y la razón es de diseño del experimento: el
+#42 cambió el nivel del catálogo y no tocó el libro, así que la regresión sobre el total mezcla
+dos regímenes y sale inflada al doble con un error doce veces mayor. *Sobre el libro la serie es
+continua a través de la fusión, y por eso sus 16 puntos valen.*
+
+**La observación técnica de A es la que se queda:** media de saltos +26,8 y mediana +30,7
+discrepan un 15 %, y para una proyección acumulada el estimador no es ninguno de los dos
+resúmenes sino la pendiente ajustada — con un error típico de 1,4 s el intervalo es estrecho pese
+a una desviación de saltos de 38,6.
+
+### Su reserva sobre B-120, levantada
+
+A validó B-120 declarando que no podía inspeccionar el monitor. **Los dos scripts están ahora en
+mediciones_ciclo/monitores/** (commit 2341903), con la línea del defecto marcada —el umbral
+`load<=100` contra una carga en segundos que empieza en 890— y el monitor sin veredicto publicado
+al lado, para que se vea la diferencia.
+
+### Y su precisión de alcance sobre el #33, que alcanza más lejos
+
+Los ciclos corren con collect-only: forecasts y signals marcan 0,0 s, así que **probability.py no
+se ejecuta en la caja** y del #33 sólo entra en la ruta viva backtest.universe.
+
+*Eso vale también para B-114 y B-115:* el modelo v2 POOLED y el v3 sin desplegar tampoco se
+ejecutan hoy en producción. **Los tres hallazgos del modelo —cero duro, prerregistro retirado, v3
+ausente— son latentes, y todos se despiertan con lo mismo: que exista PAPER_TAU.**
+
+### Nota de proceso, y dos errores míos en ella
+
+El primer intento de escribir esta entrada usó un heredoc sin comillas; los tramos entre acentos
+graves se interpretaron como sustitución de comandos y el shell **abortó el comando entero antes
+de añadir nada** — verificado después: la cuenta de entradas siguió en 119 y no había cabecera
+B-121.
+
+**Primer error:** anuncié que la entrada se había publicado dañada. No era cierto: lo dije a
+partir de las líneas de error, sin mirar el fichero.
+
+**Segundo error:** en el intento de reparación incluí una comprobación —«ningún resto de
+sustitución fallida en el bloque nuevo»— que devolvió 0 porque **no había bloque que revisar**.
+*Un chequeo que pasa en vacío, escrito al final de la noche en que catalogamos cinco.* Lo que lo
+delató fue la aserción de la línea anterior, que sí falló en voz alta.
