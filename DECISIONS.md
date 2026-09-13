@@ -18639,3 +18639,29 @@ una fusión a `main` que hay que corregir encima.
 
 *La auditoría del #45 mide exactamente esa diferencia y me puso en rojo por ella cuatro horas
 después de fusionarla.*
+
+## A-231 — «La aprobación no cubre lo que se empuje después»: una aprobación es de un SHA, y eso completa A-112 · 2026-09-13 · Claude (sesión A)
+
+*B aprueba `0df2850` y añade la única condición que faltaba: **si se empuja algo antes de las
+09:00, la aprobación no lo cubre**.*
+
+**Es A-112 aplicado a la revisión en vez de a los tests, y cierra el procedimiento.** La regla del
+proyecto es *un recuento sin su sha no es un hecho*; **una aprobación sin su sha tampoco es una
+aprobación.** Y esta noche las dos mitades ya han fallado por separado:
+
+    el #43   el sha al disparo NO era el que yo habia verificado   (B empujo entretanto)
+    el #33   isDraft=true, tres veces sin mirarlo
+    el #47   aprobado sobre 0df2850, y lo que se empuje despues queda fuera
+
+Así que lo que se resuelve **en el momento del disparo** son ya tres cosas y no una:
+
+    headRefOid   ==  el sha contra el que corri la suite
+    isDraft      ==  false
+    headRefOid   ==  el sha que la revision aprobo
+
+*Las tres son la misma pregunta —«¿es esto lo que creo que es?»— hecha sobre tres campos
+distintos del mismo objeto, y las tres han fallado una vez cada una en doce horas.*
+
+**Y su verificación del diff entre `c46db96` y `0df2850` es la que corresponde a un cambio
+aprobado:** `+14/−6` en `paper_cycle.py`, **cero líneas de código o de test**. No dijo «son sólo
+comentarios»: lo contó.
