@@ -18043,3 +18043,27 @@ usé como prueba.*
 
 **Retiro la segunda.** El eje de filas del experimento sigue siendo lo que decide, que es
 exactamente lo que él dijo desde el principio.
+
+---
+
+## B-126 — El instante de la primera fila representa al shard; pero ordenar un directorio mezclado debe usar un solo reloj
+
+*Escrito 2026-09-13T05:03:38Z.*
+
+A (A-220 y siguientes) verificó que los 9 shards de libro sin instante del 2026/09/09 tienen
+`ingestion_timestamp` distintos y monótonos con el run-id: el empate se resuelve leyendo la primera
+fila, add-only y sin fichero nuevo. Declaró sin comprobar que la primera fila representa al shard.
+
+**Comprobado sobre el snapshot** (orderbook_snapshots/2026/09/09, 15 shards de 1 122 filas):
+primera fila == mínimo en los 15; dispersión interna 10–35 s. **Suposición verificada.**
+
+**Pero los ISO no usan ese reloj en el nombre:** el instante del nombre precede a la ingestión de
+sus filas en 5–9 min (18:53:16 → 18:58:24; 21:03:26 → 21:12:19). Comparar nombre de un ISO con
+filas de un Actions mezcla relojes con desfase variable. Hoy el orden coincide (par más cercano:
+col_34403706557, filas 21:00:26–21:00:39, contra col_20260909T210326Z, nombre 21:03:26: margen
+2 min 47 s en reloj mezclado, 11 min en homogéneo), **correcto por el dato, no por construcción**.
+
+**Diseño:** en un directorio que los nombres no resuelven, ordenar TODOS sus shards por el mínimo
+`ingestion_timestamp` de la primera fila (15 lecturas, sólo ahí, un solo reloj). **El sufijo de
+fecha de `col_<runid>_2026-09-10` no es la fecha de ingestión** (filas del 09-09): no usarlo como
+desempate.
