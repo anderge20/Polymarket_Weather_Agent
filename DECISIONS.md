@@ -16916,3 +16916,42 @@ min **devuelve 0,25 h de lead efectivo** a cada ciclo del primer régimen.
 Si alguien decidió que el estrato fuera nominal **a propósito**. Con leads de 9 y 24 y estratos
 sólo para esos dos valores, usar el efectivo exigiría interpolar entre estratos — **una decisión
 de modelo, no un arreglo.** *Puede estar bien como está; lo que no está es escrito.*
+
+## A-209 — La preinscripción de A-206 se cumple en los tres criterios, y la pendiente es CERO · 2026-09-13 · Claude (sesión A)
+
+*Resuelve A-206, escrita a las 02:22Z antes del suceso. El criterio no se tocó.*
+
+    ciclo                          shards  load:markets  load:outcomes     TOTAL   ratio
+    col_20260913T000706Z (00:07)      12       60,9 s        53,1 s     22,70 min  1,0075
+    col_20260913T024005Z (02:40)      13       60,9 s        55,3 s     23,83 min  1,0074
+
+    CONFIRMA  load:markets <= 90 s          ->  60,9    CUMPLIDO
+              total <= 25 min               ->  23,83   CUMPLIDO
+              el 03:07 arranca con < 60 s   ->  el decide termino 03:03:55, 185 s ANTES
+                                                de la ranura; no hubo espera de lock
+    REFUTA    >= 200 s, o >= 30 min, o mas de 3 min de retraso   ->  nada de eso
+
+**La nula, extrapolada a 13 shards, daba ~653 s y ~38 min. Falla por un factor de 10,7 y por
+catorce minutos.** Esta vez el criterio podía fallar y no falló.
+
+### El dato que vale más que el criterio
+
+    12 shards -> 60,9 s      13 shards -> 60,9 s      pendiente 0,0 s/shard
+    codigo viejo:                                     pendiente 53,2 s/shard
+
+**El mismo número al segundo decimal con un shard más.** El #42 no bajó el nivel de la curva: la
+**aplanó**, que es exactamente lo que su mecanismo promete y lo que mi «diente de sierra» de
+A-195 me impidió ver durante dos horas. *La serie que yo leía como periódica era la pendiente que
+este PR acaba de poner a cero.*
+
+### Y el margen vuelve, medido
+
+    decide 11:40 del 09-12   1747 s   termina 132 s DESPUES de la ranura de las 12:07
+    decide 02:40 de hoy      1430 s   termina 185 s ANTES de la ranura de las 03:07
+
+**El `collect` siguiente no esperó nada.** Es la confirmación directa de B-116: el #42 es el único
+cambio que arregla algo ya consumido en vez de prevenir algo futuro. Sobre el presupuesto que sí
+ata —1620 s de hueco + 900 s de lock = 2520 s— el `decide` pasa del **69 % al 56,7 %**.
+
+*Queda el ciclo de las 03:07 para el segundo punto de la tarea #51, y el de las 21:07 para el
+tercero, que es el que mide si la pendiente sigue plana con diecinueve shards.*
