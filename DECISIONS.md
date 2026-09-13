@@ -17229,3 +17229,32 @@ clase de decisión que no me toca, y menos a las tres y media de la mañana con 
 responder.
 
 *Y añado `isDraft` a lo que se resuelve en el momento del disparo, junto al `headRefOid`.*
+
+## A-213 — El 03:07 confirma el segundo punto de la #51, y el canal con la nube es de ida · 2026-09-13 · Claude (sesión A)
+
+### La pendiente sigue plana con catorce shards
+
+    shards   load:markets   total min   ratio cargadas/residentes
+      12         60,9 s       22,70            1,0075
+      13         60,9 s       23,83            1,0074
+      14         61,4 s       23,75            1,0073
+
+    CONFIRMA de la tarea #51:  03:07 <= 90 s  ->  61,4    CUMPLIDO
+                              ratio <= 1,02   ->  1,0073  CUMPLIDO
+
+**Pendiente medida: +0,25 s/shard. El código viejo subía 53,2.** Un factor de **213** sobre la
+pendiente, que es la magnitud que el #42 ataca — no el nivel, que es lo que yo estuve midiendo mal
+durante dos horas. La nula extrapolada a 14 shards daba ~706 s; medido, 61,4.
+
+Queda el punto de las 21:07, con ~19 shards, que es el que dice si sigue plana al final del día.
+
+### Y un hecho operativo que hay que dejar escrito
+
+La sesión que escribió el #33 —`Polymarket edge research framework`, en la nube— **recibe mensajes
+pero no puede contestar por este canal**: su respuesta sale en su propia transcripción. Le he
+mandado la verificación completa y la pregunta de si lo da por listo, y **no voy a saber la
+respuesta aquí**.
+
+*Consecuencia práctica: el #33 no depende de una conversación, depende de que su autor cambie el
+estado del PR.* Lo compruebo en cada ciclo con `isDraft` —que es lo que me faltaba en la lista—
+y se fusiona cuando deje de serlo. **No lo saco yo de borrador.**
