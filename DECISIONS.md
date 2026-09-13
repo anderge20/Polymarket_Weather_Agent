@@ -19930,3 +19930,45 @@ fue preguntarme si el desenlace «sale una de las 104» tenía **más de una cau
 Tenía dos —el arreglo se pasa, o la ventana no es la del mercado— y las colapsé en la
 primera porque era la que estaba mirando. *Una predicción falsable con una sola
 interpretación asignada de antemano no es más rigurosa: es más frágil.*
+
+---
+
+## B-138 — PR #50: selección por eventos enteros para los backfills, `backfill_markets` sin puerta de precios y registro de cada petición de precio
+
+*Escrito 2026-09-13T12:15:16Z. Abre la ventana D16 del PR #50 (head `f590f9c`).*
+
+Reparto acordado con A tras B-136/B-137: esta sesión escribe el arreglo, A lo revisa, preinscribe el
+presupuesto de peticiones y lanza. **PR #50 abierto en `fix/backfill-whole-events`; revisión pedida a A
+como mensaje propio.**
+
+**Qué hace.**
+- `weather_agent.backfill_universe` es la única selección de ambos guiones: unidad evento, filtros
+  explícitos, tope por eventos en orden declarado (`target_date, int(event_id)`), exclusiones contadas
+  por motivo; ningún filtro puede quitar un mercado suelto.
+- `backfill_markets` lee el catálogo y no `price_history` (A verificó que no hace peticiones de red:
+  la puerta de precios era herencia). Sólo escribe eventos con todas sus bandas con unidad y
+  tokens/outcomes legibles; las omisiones por mercado anteriores eran el mismo truncamiento por otra vía.
+- `backfill_prices` exige `--dataset-version`, **rehúsa lanzar sin filtros explícitos y sin bandera de
+  escape** (decisión de A: lanzar el catálogo entero, unas 80 000 peticiones, tiene que quedar escrito
+  en la orden) y su `--dry-run` cuenta peticiones pendientes exactas sin crear base.
+- Migración 8, `price_fetch_attempts` (propuesta de A): último estado por (token, dataset_version);
+  OK y EMPTY son finales, errores HTTP y 429 quedan pendientes.
+
+**Universo, decidido por A:** markets/outcomes se reingestan desde el catálogo entero a coste cero
+(eventos sin estación excluidos y contados); los precios son otro universo con presupuesto
+preinscrito aparte, después del NIVEL 1.
+
+**Dry-run sobre el catálogo real, sin peticiones:** markets 7 333 eventos seleccionados, 7 331
+escribibles con 79 735 mercados (1 224 sin estación, 2 con tokens ilegibles); precios EGLC 187 eventos,
+1 997 mercados, 1 997 peticiones pendientes.
+
+**Tests:** 19 nuevos; tres mutaciones comprobadas (sin puerta de filtros, EMPTY no final, validación
+por mercado) ponen su test en rojo y vuelven a verde al restaurar. `tests/`: 707 passed.
+
+**Fuera, a propósito:** ninguna ejecución de backfill, y `backfill_weather` sin cambios (necesita
+pares estación-día, no escaleras completas).
+
+**Aparte, de A sobre el #49 (19–1):** el 2026-05-27 el máximo del día civil local es la lectura de las
+00:20 tras un día de 34 °C y el mercado pagó 24 °C. Es un caso de la ventana `LOCAL_CIVIL_DAY`, no de la
+serie 3+4, y refuta la segunda mitad de A-246 y la frase «3+4 siempre al menos tan bien». La descripción
+del #49 se corrige en su rebase.
