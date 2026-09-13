@@ -22124,3 +22124,92 @@ sus `sha256`, que estaban citados en `N075_REPRODUCIBILIDAD.md`**. Reemitidos ah
 de dejar una cita muerta; los anteriores quedan en el commit `b148cef`.
 
 **Level 1 NO se abre.** Gate D0 abajo, producción sin tocar.
+
+## A-281 — `labels.py` no tiene UN defecto: tiene CUATRO, tres sin nombrar. Y la enumeración que A-245 dejó pendiente sale completa: son exactamente dos fronteras · 2026-09-13 · Claude (sesión A)
+
+Tarea #62. A-245 nombró **uno** —el `series` crudo— y dejó escrita la regla que no aplicó:
+*«cuando un arreglo traduce entre dos vocabularios, enumerar los sitios que hablan los dos
+idiomas antes de dar el arreglo por completo»*. Al enumerar de verdad salieron tres más.
+
+### Los cuatro, MEDIDOS ejecutando el módulo, no leyéndolo
+
+**1. `context_for` pasa la PROSA donde el núcleo espera el CÓDIGO** — y esto NO estaba en
+A-245:
+
+    labels.context_for(mk, ...).measurement_rule_code
+      -> "highest reading under the NOAA 'Temp' column for all times on this day (...)"
+    el codigo real                     -> 'P_NOAA_TempColumn'
+    select_operator con lo que pasa labels -> SettlementUnavailable:
+                                              terna outside the 11-class partition
+    select_operator con el codigo          -> SettlementOperator P_NOAA_TempColumn
+
+`market.get("measurement_rule")` en vez de `measurement_rule_code`. **Es exactamente el
+defecto que el fixture de `test_paper_cycle.py:562` documenta como ya arreglado en la otra
+frontera**, intacto en ésta. `select_operator` levantaría en TODOS los mercados.
+
+**2. `observations_for` pasa el `series` crudo** (el de A-245). Intersección medida:
+
+    lo que escriben los ingestores  IEM_ASOS_METAR_1C · IEM_ASOS_METAR_1C_RT34
+                                    IEM_ASOS_TMPF_1F  · IEM_ASOS_TMPF_0.1F
+    lo que exige el nucleo          metar_body_c · metar_tgroup_tmpf · hko_clmmaxt
+    interseccion                    VACIA
+
+**3. `REQUIRED_COLUMNS` nombra la columna equivocada**: pide
+`('contract_source', 'measurement_rule', 'unit', 'station_identifier')`. El núcleo parte por
+`contract_source` + `measurement_rule_code`. **Pide la columna que no hace falta y no pide la
+que sí.**
+
+**4. `missing_substrate()` sólo mira `column_names`**, sin población — el mismo falso OK que
+`settle_substrate_missing` de la tarea #68, en el segundo comprobador de sustrato del
+proyecto. *Dos comprobadores de sustrato para el mismo núcleo congelado, y los dos ciegos de
+la misma forma.*
+
+**Sumados: `labels.py` refutaría todos los mercados por dos vías independientes mientras su
+propio comprobador dice READY.** Hoy no liquida nada mal por una sola razón: **no lo llama
+nadie**.
+
+### La enumeración que faltaba, hecha y COMPLETA
+
+Por AST sobre `src/` y `scripts/`, no por memoria ni por `grep`:
+
+    MarketContext(   labels.py:169   ·  paper_cycle.py:1511
+    Observation(     labels.py:136   ·  paper_cycle.py:1544
+
+**Exactamente dos fronteras. A-245 dijo «son dos» y ahora está verificado, no afirmado.** Y
+`grep` no servía: `observations.py` contiene `NoObservation(`, que lleva dentro la cadena
+`Observation(` y no es una frontera. *Un recuento que no distingue esas dos cosas es el mismo
+defecto que esto vigila, un nivel abajo.*
+
+### LA CAUSA ESTRUCTURAL, que ahora se puede nombrar
+
+`SERIES_CORRESPONDENCE` vive en **`scripts/paper_cycle.py`**. Es un script. `labels.py` es un
+módulo de librería y **no puede alcanzarla sin importar desde `scripts/`**. La traducción
+entre el vocabulario de los ingestores y el del núcleo congelado **está en la capa
+equivocada**, y por eso la segunda frontera no podía heredarla aunque quisiera.
+
+**Arreglo propuesto y NO implementado:** subir la traducción a la librería —`observations.py`
+es el sitio natural, ya es dueño de `SERIES_SOURCE` y `station_series`; `settlement.py` no,
+está congelado por sha— y que las dos fronteras la llamen. Eso quita la CLASE, no la
+instancia, que es lo que A-245 pedía y no hizo.
+
+### PR #54: lo que sí se ha hecho, y lo que deliberadamente no
+
+**No se toca `labels.py`.** Es código de liquidación y §34 del encargo de FASE 2 pide revisión
+independiente; B lleva sin responder desde ~15:00Z.
+
+Lo que entra son **dos guardas, sin cambio de comportamiento**, sobre `0d518a3`, **749 verdes
+(main 747 + 2, predicho antes de correr)** y **cinco mutaciones en rojo**:
+
+1. las fronteras son exactamente las declaradas — una tercera se nombra el día que nace;
+2. **`labels.py` sigue sin llamador en producción** — lo que hace inocuos los cuatro defectos
+   no es un arreglo, es una propiedad del repositorio que cae en tres líneas. El día que
+   alguien lo cablee, rojo, con las tres traducciones nombradas en el mensaje.
+
+### Y un cuarto test que escribí, se puso rojo con razón, y retiré
+
+Afirmaba `measurement_rule_code ∈ REQUIRED_COLUMNS`. **Rojo, correctamente.** Lo había
+justificado con «se deja en rojo a propósito para que la deuda no se olvide» — y eso choca de
+frente con la regla de no fusionar sin tests verdes, y deja la suite rota para todos los
+demás. *La deuda se acuerda en la tarea y en este registro, que es donde vive; una suite no es
+un bloc de notas.* Retirado, y dicho en un comentario del fichero para que nadie lo reescriba
+dentro de un mes.
