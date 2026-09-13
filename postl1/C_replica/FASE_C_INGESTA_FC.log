@@ -1,0 +1,7 @@
+RKSI · tz Asia/Seoul · modelo icon_seamless · L_MAX 4.76 h
+ventana 2026-05-21 -> 2026-08-23 · dias 95 · peticiones a emitir 190 · techo 200 · ya ingestadas 0
+con oraculo 73 · sin oraculo 117
+  ... 25 peticiones · ultima 2026-06-02 06-01 06z tmax 29.0
+  2026-06-11 run 06-10 18z (lead 9h) ERROR WeatherIngestError: icon_seamless rejected at (37.469,126.451) run 2026-06-10T18:00Z: The requested model run is not available. Model: dwd_icon, run: 2026-06-10T18:00Z
+PARADA DURA: no se rodea un fallo de proveedor (regla de cuota).
+peticiones emitidas: 44
