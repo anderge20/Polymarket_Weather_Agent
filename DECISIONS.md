@@ -23080,3 +23080,72 @@ los dos que salieron hoy: **el titular pre-registrado sobrestima ×4/×2,7** y *
 heterogéneo entre mitades**.
 
     L1.7 = CLOSED     siguiente: L1.8 — VEREDICTO DE LEVEL 1
+
+## A-293 — `L1.8 = INCONCLUSIVE`. Hay señal, pero no hemos demostrado predictive power: hemos demostrado un CANDIDATO · 2026-09-13 · Claude (sesión A)
+
+`~/pmw-e2/l1/L1_8_VERDICTO.md`, formato completo de diez secciones. **No se abre L2. No se
+cierra Londres.** `D0-P` = BLOCKED; el gate de dinero real sigue siendo exclusivamente del
+usuario. Veredicto científico, no operativo.
+
+### La frase
+
+> Hay una señal real, temporalmente alineada y robusta a los controles que construimos — pero su
+> tamaño **se ha dividido por 4 cada vez que hemos encontrado un benchmark estructural mejor**,
+> descansa entera sobre una **convención de disponibilidad que nunca hemos verificado**, y sólo
+> existe en **una ciudad, una estación y cuatro meses**.
+
+### El efecto honesto, con sus tres deflaciones
+
+                          lead 24    lead 9     que descuenta
+    B4 - B0               -0,0304    -0,0359    nada: B0 resulto PEOR QUE EL AZAR
+    B4 - uniforme         -0,0115    -0,0173    lo malo que es B0
+    B4 - CTRL_escalera    -0,0076    -0,0134    ademas, el centrado de la escalera
+                           9,2 %     16,2 %     del nulo uniforme
+    razon efecto/MDE        1,13       2,14
+    eventos ganados        59/95      79/96
+
+**Y `CTRL_escalera` sigue siendo un suelo bajo**: usa sólo el *centro* de la escalera, la lectura
+más pobre posible de lo que el mercado sabe.
+
+### Por qué INCONCLUSIVE y no GO
+
+Las **cuatro** categorías que el encargo nombra como motivo para serlo tienen **todas** una
+objeción viva:
+
+    availability   convencion no verificada; margen 1,24 h a lead 24 -> si falla, lead 24 es look-ahead
+    temporalidad   lead 24 heterogeneo: diferencia entre mitades +0,01056 [+0,00231,+0,01914]
+    muestra        una ciudad, una estacion, cuatro meses, sin abril. CERO replicas independientes
+    benchmark      deflacion MONOTONA x4,0 y x2,7 sin suelo conocido
+
+**Cuatro de cuatro.** Y la razón obs/MDE del lead 24 contra el benchmark exigente es **1,13**:
+apenas por encima del mínimo detectable, ganando en 62 % de los eventos.
+
+### Por componente, sin seleccionar retrospectivamente
+
+    lead 24   INCONCLUSIVE   MDE 1,13 · heterogeneo · margen 1,24 h · geometria 33,9 %
+    lead  9   GO como componente   MDE 2,14 · estable · margen 4,24 h · geometria 22,6 %
+
+El lead 9 gana en las seis columnas, **pero el veredicto global no se emite sobre el lead 9
+solo**: los dos estaban pre-registrados y los dos se reportan.
+
+### Lo que NO se ha demostrado, dicho sin rodeos
+
+**`corr(centro de la escalera, observación) = +0,957`** contra +0,973/+0,979 de nuestro
+pronóstico; MAE 1,26 contra 1,01/0,89. **El mercado, con sólo la geometría de sus bandas, ya
+alcanza 0,957.** Los precios llevan mucha más. *L1 midió nuestra ventaja sobre la lectura más
+pobre de la información de mercado; L2 tendría que medirla contra la más rica.* Es el hallazgo
+de R21 —Strategy A NO OPERABLE porque el mercado estaba mejor calibrado que el modelo—
+reapareciendo una capa más arriba.
+
+### Qué resolvería la incertidumbre, en orden de coste
+
+1. **Validar `available_at` hacia delante** (tarea #75). Coste: esperar. Resuelve el riesgo alto
+   nº 1.
+2. **Réplica en otra ciudad y/o otra estación.** Única forma de atacar el riesgo dominante.
+   **Sin esto, ninguna cantidad de análisis adicional sobre Londres cambia el veredicto** — ocho
+   IC sobre los mismos 95 eventos **no son ocho pruebas**.
+3. **Un benchmark estructural mejor que `CTRL_escalera`**: la geometría completa, no sólo el
+   centro. Coste bajo, sin datos nuevos.
+
+**Abrir L2 ahora sería estudiar si un precio está equivocado usando una señal cuyo tamaño real
+no conocemos con un factor de 4 de incertidumbre.**
