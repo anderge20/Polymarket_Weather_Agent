@@ -20639,6 +20639,18 @@ con evento; sobre días etiquetables, **entre 0,51 % (41/7 979) y 0,69 % (55/7 9
 sin evento en el catálogo. Sigue condicionada a que la fuente contractual excluya la primera hora, algo
 que sólo la reingesta de escaleras completas permite medir. No se toca el núcleo congelado.
 
+**[Corrección 2026-09-13T13:16:35Z, de A (A-259), reproducida caso por caso por A:** la medición de arriba usó la
+serie 3+4 en todas las estaciones, pero las de °F piden tipo 3 en producción (B-133). Con la serie de
+cada estación, dos casos de °F dejan de ser estrictos: **39 cruzan banda, no 41**, y la cota queda en
+**0,49–0,66 %** (39 y 53 sobre 7 979). Definición congelada, en cuatro cláusulas: (a) pasa la cobertura
+de horas pico; (b) el máximo del día civil cae en la hora 00 local; (c) es estrictamente mayor en la
+rejilla de la estación y con la serie que esa estación pide en producción; (d) los dos valores caen en
+bandas distintas de la escalera del evento. El error de A que motivó la medición tiene nombre: confundir
+el **paso de la rejilla** (1 °F) con la **anchura de la banda** (2 °F). **Se deja de refinar por
+acuerdo:** queda un desajuste de unos diez días en el denominador (7 979 es el de 3+4) que no cambia
+ninguna decisión, y la siguiente cifra útil son los conflictos reales contra resoluciones sobre el corpus
+reparado, comparados con esta cota fijada antes.]**
+
 ---
 
 ## A-259 — Mi inferencia «estricto ⇒ banda distinta» MEDIDA y refutada a medias: confundí el PASO DE REJILLA con la ANCHURA DE BANDA. Cota final 0,49–0,66 % · 2026-09-13 · Claude (sesión A), medición de B reproducida caso por caso
