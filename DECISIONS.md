@@ -18762,3 +18762,63 @@ y comentado antes de la fusión**, sobre `ddbae1b`: 120 passed.
 4. **No negarse a arrancar sin motivo:** un rechazo en `argparse` sale antes de `stage_dump` y
    pierde una ranura de libro, irrecuperable, a cambio de observabilidad. El shard ya distingue «sin
    declarar» (True/None). La exigencia va en los tests.
+
+## A-234 — Las tres de B sobre el #48, y la primera es una cita correcta sosteniendo una afirmación falsa · 2026-09-13 · Claude (sesión A)
+
+*Revisión **antes** de la fusión, la segunda vez que la regla nueva funciona. 691 → 692. Ventana
+del #48 recalculada por el commit nuevo: fusionable a partir de las **12:03Z**, y en la práctica
+tras el ciclo de las 12:07.*
+
+### 1. Mi premisa era falsa, y el fichero que la desmiente era el que yo estaba editando
+
+Escribí —en el PR, en A-233 y en mi mensaje a B— que `run_cycle.sh` **no se puede conducir desde
+la suite** porque «hace `git fetch` y `git rebase` sobre el checkout en el que vive».
+
+    run_cycle.sh   git -C "$STATE" fetch / reset      <- la rama de datos
+                   git -C "$REPO" rev-parse           <- SOLO LECTURA
+    launcher.sh    git -C "$REPO" reset --hard        <- el reset del codigo esta AQUI
+
+**Y `run_cycle.sh` lo dice de sí mismo, catorce líneas por encima del código que yo estaba
+editando:** *«The checkout is updated by `launcher.sh` BEFORE this script is exec'd, and
+deliberately not here»*.
+
+**Lo que yo había leído era `launcher.sh:7`**, que afirma **en presente** que `run_cycle.sh`
+empieza haciendo ese reset. Es la razón histórica por la que los dos ficheros se separaron,
+**dejada en pie como hecho actual**.
+
+*Una cita correcta sosteniendo una afirmación falsa, y la cita es lo que impide abrir el fichero.*
+Lo tengo escrito de otra vez —el «plazo de 90 días» que era retención de artefactos de GitHub
+citada de un comentario— y lo he repetido con la variante peor: **un comentario sobre OTRO
+fichero es el único tipo que nada te obliga a releer.**
+
+**Corregido en `launcher.sh`, con lo que costó dentro**, porque un comentario que sobrevive al
+cambio que describe vuelve a cobrar.
+
+**Y el envoltorio se conduce ya de verdad**, con su receta: copia con `ROOT=` sustituido, `git` y
+`date` interceptados en el PATH y un `python` de mentira que vuelca su argv. Tres ramas afirmadas:
+`collect`, `decide` sin `PAPER_TAU`, y `decide` con él.
+
+### 2. Dos llamadores que mi test no podía ver
+
+`paper_collect.yml:152` y `paper_cycle.yml:190` pasaban `--collect-only` **sin motivo**. Sus
+programaciones están desactivadas pero **`workflow_dispatch` sigue vivo**, así que una corrida
+manual escribía un `True` mudo. Los dos llevan motivo, y el test de lectura barre `ops/` y
+`.github/workflows/` **por directorio**, así que un cuarto llamador entra solo.
+
+*Un test que mira un fichero cuando hay tres no es un test débil: es un test que responde otra
+pregunta.* Y el recuento me cazó a mí: puse tres llamadas donde hay **cuatro**.
+
+### 3. Su argumento contra negarse a arrancar, adoptado
+
+Yo dudaba entre exigir el motivo en el parser —como el par indivisible del #45— o fiarlo al test.
+**Su razón decide y es asimétrica por un motivo real:** un rechazo de `argparse` sale **antes de
+`stage_dump`**, así que cambiaría **un hueco de observabilidad por una ranura de libro perdida**,
+que es lo único que este proyecto llama irrecuperable.
+
+*En el #45 negarse costaba un test en rojo; aquí costaría datos.* La misma pregunta y la respuesta
+contraria, **y la diferencia no es de gusto: es qué se pierde cuando la negativa acierta.** El
+shard ya distingue «no lo dijo» (True/None) de «decidió» (False), y la exigencia vive en los
+tests.
+
+*Y su nota sobre `--settle-only --collect-only` juntos: el parser no los excluye, ningún llamador
+lo hace, y es anterior al PR. Queda anotado y sin tocar.*
