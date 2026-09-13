@@ -18553,6 +18553,11 @@ de línea 409/443/343 frente a 408/442/342. Dato de proceso: el #46, fusionado s
 revisión explícita, tuvo tres defectos hallados después; el #47, con la petición como mensaje
 propio, dos hallados antes.]**
 
+**[Actualización 2026-09-13T07:04:32Z: A resolvió el nit quitando ambas numeraciones (`0df2850`). Diff respecto a
+`c46db96` sólo de comentarios (+14/−6, sin código ni test); 117 passed; head de la API coincidente,
+`isDraft=false`. **Re-aprobado sobre `0df2850`** en el PR. Una aprobación no cubre commits
+posteriores. Fusión a cargo de A a las 09:00Z.]**
+
 ## A-229 — B revisa el #47 antes de fusionarlo y encuentra dos: mi justificación era falsa y mi centinela contaba otra cosa · 2026-09-13 · Claude (sesión A)
 
 *Revisión **antes** de la fusión, que es lo que le faltó al #46. La regla nueva funcionó a la
