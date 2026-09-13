@@ -22872,3 +22872,79 @@ selección por resultado**, pero el test **no cubre abril**.
     L1.4 = CLOSED        siguiente: L1.5 — CALIBRACION + RANKING
 
 **Nada se ha cambiado tras ver estos números.**
+
+## A-290 — `L1.5 = CLOSED`. `B4` está bien calibrado… y esa calibración es CASI TAUTOLÓGICA. La señal vive en el ranking, no en la calibración · 2026-09-13 · Claude (sesión A)
+
+`LOCK_L1_5.md` espejado a las 20:50:03Z (`5c87024`) antes de ejecutar, con la **integridad del
+lock previo verificada por `sha256`** — `LOCK_L1_4.md`, `PREREG_LEVEL1.md`, `l1_2_baselines.py`
+y `l1_4_walkforward.py` idénticos en local y en el espejo. **Ningún cambio de modelo ni de
+metodología.** `D0-P` = BLOCKED. No se emite «hay edge» ni «no hay edge».
+
+### Calibración de `B4`: prácticamente perfecta
+
+    ajuste logistico sobre p>0 (la version honesta: el recorte de 1e-6 domina los ceros)
+      lead 24   intercepto +0,003 [-0,368,+0,464]   pendiente +1,040 [+0,801,+1,359]
+      lead  9   intercepto +0,171 [-0,181,+0,583]   pendiente +1,177 [+0,891,+1,550]
+
+**Los cuatro IC95 contienen el ideal (0, 1).** Desvíos de la curva de fiabilidad: +0,0045 ·
+−0,0006 · −0,0135 · +0,0194 · −0,0357. No está sobreconcentrado: `p > 0,5` en **2 contratos de
+1 045** y **nunca** `p = 1`. Pone `p = 0` a la ganadora en sólo **4/95** y **3/96** eventos
+(`B0` 23 %, `B2`/`B3` 63-68 %).
+
+### LA OBJECIÓN MÁS FUERTE, Y ME LA PONGO YO
+
+> `B4` asigna a cada banda la **frecuencia empírica** de `round(f + e)` sobre los errores del
+> train. **Si la distribución de error es estacionaria, `B4` está calibrado POR CONSTRUCCIÓN.**
+> Que salga bien calibrado **no es evidencia independiente de habilidad predictiva**: es
+> evidencia de que la distribución de error es **estable** entre train y test.
+>
+> Lo no tautológico —donde vive la señal— es que el **pronóstico puntual** esté centrado cerca
+> de la banda ganadora: eso se mide en el **ranking** (rango medio 2,34-2,71 contra 6,0) y en el
+> **Brier contra el uniforme**, no en la calibración.
+
+### `B0`: la pendiente de calibración CONTIENE EL CERO
+
+    B0  pendiente +0,081 [-0,261,+0,216] (lead 24)   +0,089 [-0,280,+0,207] (lead 9)
+
+**Las probabilidades del benchmark pre-registrado casi no llevan información sobre el
+resultado.** Fiabilidad: `p ∈ [0,50, 1,01)` predicho **0,7353**, observado **0,0741**. La
+jerarquía se mantiene: `B0` sigue siendo el benchmark primario y **no se modifica**; el uniforme
+sigue etiquetado como control estructural ex-post.
+
+### Ranking ≠ calibración, con una advertencia que impide una comparación falsa
+
+`B2`/`B3` aciertan la ganadora 3,5-4 veces más que el azar y puntúan **peor que el uniforme**:
+exceso de confianza, no falta de señal. **Y top-2/top-3 no se puede comparar entre
+deterministas y probabilísticos**: un determinista que falla deja a la ganadora empatada con
+los diez ceros, rango `1+(10+1)/2 = 6,5`, así que **`top-1 = top-2 = top-3` por construcción**.
+Los deterministas son **estructuralmente incapaces** de expresar top-k.
+
+Y `B4` **no es «`B2` con dispersión»**: su argmax coincide con la banda de `B2` en el 69,5 % y
+65,6 %, y con la de `B3` en el 76,8 % y **52,1 %**.
+
+### Red-team: el resultado AGUANTA
+
+    B4 mejor que el uniforme en 4 de 4 meses, en los dos leads
+    quitando los 20 eventos MAS favorables: -0,00446  IC95 [-0,00850,-0,00078]  sigue excluyendo el cero
+    quitando los mas DESfavorables el delta EMPEORA (-0,0120 -> -0,0139): no vive de una cola
+    reparto: mejor en 65 eventos, peor en 30 · mediana -0,01551 MAS favorable que la media -0,01151
+    ECE estable al binning: 0,00970 / 0,00953 / 0,00498
+
+### Defectos
+
+**Bloqueantes: NINGUNO. Requieren corrección: NINGUNO.** Documentables: `available_at` sin
+validar externamente; la curva de calibración **no es OOS entrenada**; **el test no cubre
+abril**; `B0` peor que el uniforme siendo el benchmark; la calibración de `B4` casi tautológica;
+una estación, una ciudad, cuatro meses.
+
+**Y un defecto de mi instrumento, encontrado y corregido en la etapa**: el ajuste logístico
+reventaba con `OverflowError` sobre `B0` (logits de ±13,8 por el recorte). Era del ajuste, no de
+los datos. **No cambia ningún modelo.**
+
+### Hipótesis para validación futura — NO implementadas, NO son resultados
+
+Corrección de sesgo **condicional** a la temperatura (L1.1 midió −0,55 °C bajo 15 y +0,37 entre
+25 y 30) · calibración OOS entrenada con walk-forward propio · cuantiles del proveedor como
+distribución alternativa · el dominio del lead 9 sobre el 24.
+
+    L1.5 = CLOSED     RECOMENDACION: continuar a L1.6 — INFERENCE

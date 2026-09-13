@@ -1,0 +1,103 @@
+
+====================================================================================================
+LEAD 24 h · 95 eventos
+====================================================================================================
+  B4 - B0        -0.03041  IC95 (-0.037264144408845415, -0.02335977216158264)
+  B4 - uniforme  -0.01151  IC95 (-0.015774741024454586, -0.007061908692021297)
+
+----------------------------------------------------------------------------------------------------
+1. BLOQUES MENSUALES (descriptivo; NO se selecciona periodo)
+----------------------------------------------------------------------------------------------------
+  mes          n        B4        B0      unif     B4-B0   B4-unif
+  2026-05     29   0.07577   0.11337   0.08264  -0.03761  -0.00688
+  2026-06     22   0.07284   0.09823   0.08264  -0.02539  -0.00981
+  2026-07     25   0.06730   0.09784   0.08264  -0.03054  -0.01535
+  2026-08     19   0.06712   0.09220   0.08264  -0.02507  -0.01552
+  -> B4 mejor que el uniforme en 4 de 4 meses
+
+----------------------------------------------------------------------------------------------------
+2. INFLUENCIA (descriptivo): quitar los k eventos MAS favorables a B4
+----------------------------------------------------------------------------------------------------
+  quitando los  0 mas favorables: n= 95  delta  -0.01151  IC95 [-0.01577, -0.00698]  sigue MEJOR
+  quitando los  1 mas favorables: n= 94  delta  -0.01076  IC95 [-0.01501, -0.00644]  sigue MEJOR
+  quitando los  3 mas favorables: n= 92  delta  -0.00985  IC95 [-0.01411, -0.00566]  sigue MEJOR
+  quitando los  5 mas favorables: n= 90  delta  -0.00916  IC95 [-0.01314, -0.00518]  sigue MEJOR
+  quitando los 10 mas favorables: n= 85  delta  -0.00755  IC95 [-0.01141, -0.00345]  sigue MEJOR
+  quitando los 20 mas favorables: n= 75  delta  -0.00446  IC95 [-0.00850, -0.00078]  sigue MEJOR
+  quitando los  1 mas DESfavorables: delta  -0.01200   (simetria: el resultado no vive de la cola mala)
+  quitando los  3 mas DESfavorables: delta  -0.01300   (simetria: el resultado no vive de la cola mala)
+  quitando los  5 mas DESfavorables: delta  -0.01388   (simetria: el resultado no vive de la cola mala)
+
+----------------------------------------------------------------------------------------------------
+3. REPARTO EVENTO A EVENTO
+----------------------------------------------------------------------------------------------------
+  B4 mejor que el uniforme en 65 eventos · peor en 30 · igual en 0
+  mediana del delta -0.01551 · media -0.01151
+  -> si la media fuera de unos pocos casos, mediana y media divergirian
+
+----------------------------------------------------------------------------------------------------
+4. BINNING ALTERNATIVO (red-team del diagnostico de calibracion)
+----------------------------------------------------------------------------------------------------
+  predefinido    bins= 6   ECE de B4 = 0.00970
+  deciles fijos  bins=11   ECE de B4 = 0.00953
+  grueso         bins= 3   ECE de B4 = 0.00498
+  -> ECE es SECUNDARIA por preinscripcion; se muestra su sensibilidad al binning
+
+====================================================================================================
+LEAD 9 h · 96 eventos
+====================================================================================================
+  B4 - B0        -0.03585  IC95 (-0.04259656380247868, -0.028910047855564024)
+  B4 - uniforme  -0.01731  IC95 (-0.021206460022490138, -0.013125742548181898)
+
+----------------------------------------------------------------------------------------------------
+1. BLOQUES MENSUALES (descriptivo; NO se selecciona periodo)
+----------------------------------------------------------------------------------------------------
+  mes          n        B4        B0      unif     B4-B0   B4-unif
+  2026-05     30   0.06498   0.11317   0.08264  -0.04819  -0.01766
+  2026-06     22   0.07029   0.09687   0.08264  -0.02658  -0.01235
+  2026-07     25   0.06607   0.09778   0.08264  -0.03170  -0.01657
+  2026-08     19   0.05919   0.09175   0.08264  -0.03256  -0.02346
+  -> B4 mejor que el uniforme en 4 de 4 meses
+
+----------------------------------------------------------------------------------------------------
+2. INFLUENCIA (descriptivo): quitar los k eventos MAS favorables a B4
+----------------------------------------------------------------------------------------------------
+  quitando los  0 mas favorables: n= 96  delta  -0.01731  IC95 [-0.02144, -0.01310]  sigue MEJOR
+  quitando los  1 mas favorables: n= 95  delta  -0.01671  IC95 [-0.02066, -0.01249]  sigue MEJOR
+  quitando los  3 mas favorables: n= 93  delta  -0.01603  IC95 [-0.01972, -0.01217]  sigue MEJOR
+  quitando los  5 mas favorables: n= 91  delta  -0.01548  IC95 [-0.01963, -0.01124]  sigue MEJOR
+  quitando los 10 mas favorables: n= 86  delta  -0.01421  IC95 [-0.01810, -0.00995]  sigue MEJOR
+  quitando los 20 mas favorables: n= 76  delta  -0.01164  IC95 [-0.01572, -0.00746]  sigue MEJOR
+  quitando los  1 mas DESfavorables: delta  -0.01784   (simetria: el resultado no vive de la cola mala)
+  quitando los  3 mas DESfavorables: delta  -0.01892   (simetria: el resultado no vive de la cola mala)
+  quitando los  5 mas DESfavorables: delta  -0.01998   (simetria: el resultado no vive de la cola mala)
+
+----------------------------------------------------------------------------------------------------
+3. REPARTO EVENTO A EVENTO
+----------------------------------------------------------------------------------------------------
+  B4 mejor que el uniforme en 80 eventos · peor en 16 · igual en 0
+  mediana del delta -0.02118 · media -0.01731
+  -> si la media fuera de unos pocos casos, mediana y media divergirian
+
+----------------------------------------------------------------------------------------------------
+4. BINNING ALTERNATIVO (red-team del diagnostico de calibracion)
+----------------------------------------------------------------------------------------------------
+  predefinido    bins= 6   ECE de B4 = 0.01653
+  deciles fijos  bins=11   ECE de B4 = 0.02198
+  grueso         bins= 3   ECE de B4 = 0.00471
+  -> ECE es SECUNDARIA por preinscripcion; se muestra su sensibilidad al binning
+
+====================================================================================================
+5. LA OBJECION MAS FUERTE CONTRA B4, Y ES ESTRUCTURAL
+====================================================================================================
+  B4 asigna a cada banda la FRECUENCIA EMPIRICA de round(f + e) sobre los errores
+  del train. Si la distribucion de error es estacionaria, B4 esta calibrado POR
+  CONSTRUCCION: es un estimador de frecuencia de la misma cantidad que luego se mide.
+
+  -> que B4 salga bien calibrado NO es evidencia independiente de habilidad predictiva.
+     Es evidencia de que la distribucion de error es ESTABLE entre train y test.
+
+  Lo que NO es tautologico, y es donde vive la señal:
+     que el pronostico PUNTUAL este centrado cerca de la banda ganadora. Eso es lo que
+     hace que la masa caiga donde tiene que caer, y se mide en el ranking (rango medio
+     2,34-2,71 contra 6,0 del azar) y en el Brier contra el uniforme.
