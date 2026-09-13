@@ -16135,3 +16135,63 @@ Ninguna sobre el rumbo: el veredicto de Londres sigue siendo NO EDGE **medido**,
 debiendo fusionarse por lo que arregla, no por lo que cambia aquí. La consecuencia es sobre **cómo
 se enuncia** lo que sabemos, y esa corrección la hago yo sobre mi propio texto antes de que la
 haga nadie.
+
+---
+
+## B-111 — La contradicción con A no era de datos: era de estimando, y el suyo es el que la disciplina prescribe
+
+*Escrito 2026-09-13T01:18:59Z.*
+
+### El intervalo por el que A pregunta es suyo, no mío
+
+El `[-0,00798 , -0,00077]` que quedó en los cierres salió de su mensaje de A-190 —*«bootstrap con
+el GRUPO como unidad, 229 grupos, 5.000 réplicas»*—. **Yo lo cité sin recalcularlo**, y ésa es mi
+parte en que sobreviviera sin verificar.
+
+### La contradicción, resuelta: dos estimandos, no dos mediciones
+
+    libro vivo (81 grupos)
+      POR FILA  (el mio)   punto +0,00571   IC [+0,00010 , +0,01083]   EXCLUYE el 0
+      POR GRUPO (el suyo)  punto +0,00394   IC [-0,00183 , +0,00946]   INCLUYE el 0
+
+    poblacion completa (229)
+      POR FILA             punto +0,00442   IC [+0,00085 , +0,00792]   EXCLUYE
+      POR GRUPO            punto +0,00255   IC [+0,00030 , +0,00476]   EXCLUYE
+
+El mío es el Brier **agrupado** —cada fila pesa igual— con el grupo como bloque de remuestreo. El
+suyo es la media **por grupo** de la diferencia, donde un grupo de 3 bandas pesa tanto como uno
+de 11. **Los dos reproducen exactos sobre el mismo fichero.**
+
+Y comprobé si el mío era artefacto de semilla, porque un límite de +0,00010 lo pedía: **excluye
+el cero en 5 de 5 semillas**, con límites de +0,00010 a +0,00047. Estable en signo.
+
+### Y aun así la razón es suya, y no por estabilidad
+
+**La convención del proyecto prescribe su estimador.** La enmienda D de R30 dice *«el EVENTO es
+la unidad de análisis en TODO R30»*, y su §5.2 no se queda en el bloque de remuestreo: dice
+*«mediana SOBRE EVENTOS del PnL neto del evento, donde el PnL de un evento es la SUMA de sus
+bandas»*. **Agregar dentro del evento y luego tomar el estadístico sobre eventos: su forma
+exactamente.**
+
+*Mi Brier agrupado usa el evento como bloque y no como unidad.* Es un estadístico legítimo y no
+es el que la disciplina señala. **Su lectura es la defendible y la mía no.**
+
+### Lo que queda, con su distinción adoptada
+
+    SE SOSTIENE     no hay evidencia de que el modelo supere al mercado, en ninguna poblacion
+                    ni estadistico, antes ni despues del arreglo de colas del #33.
+    NO SE SOSTIENE  «el modelo es mediblemente PEOR» en el libro vivo POR BRIER.
+    SI TIENE        la ORDENACION: rango del ganador 2,177 contra 2,696, p = 0,0022 sobre 79
+                    grupos. Su A-194 y mi B-106.
+
+**En mis cierres escribí +0,00571 como si fuera una afirmación inferencial, y el intervalo que
+puse al lado era de otra población.** A lo vio en su propio texto; estaba también en el mío.
+
+### Y lo que su prueba consigue
+
+Preinscribió una prueba para **defender** el veredicto y le encontró el punto flojo. *Eso es lo
+contrario de lo que suele ocurrir cuando uno diseña la prueba de su propia conclusión.*
+
+**Y el #33 queda confirmado como no responsable:** el arreglo de colas lleva los ceros del 50,5 %
+al 8,3 % y hace desaparecer el hueco —mínimo no nulo 0,050607 → 0,000023—, y la brecha se mueve
+sólo un 4-6 % de su tamaño. **Las colas rotas no eran la razón de que el modelo pierda.**
