@@ -18889,3 +18889,84 @@ mencionado en un comentario ya no cuenta como pasado.
 Al partir la llamada nueva en dos líneas, **se convirtió en un llamador mudo a ojos de un test que
 va por línea, y falló**. Lo dejo en una línea con el porqué escrito al lado: *el test no es
 frágil por ir por línea; lo que sería frágil es que no lo dijera.*
+
+## A-236 — LONDRES FASE 2, §1: auditoría del dataset. Cinco de los treinta y tantos apartados del encargo NO SON COMPUTABLES con este sustrato, y lo digo antes de modelar · 2026-09-13 · Claude (sesión A)
+
+*Reconstruido desde el código y el almacén, no desde `LONDON_CANDIDATES.json`. Estado del árbol:
+`main` = `32e89729`, limpio, 688 verdes. **La caja corre `9f64f10`** —un commit por detrás, el #47
+entra en el ciclo de las 12:07—: GitHub correcto ≠ producción correcta, comprobado y no supuesto.*
+
+### Lo que hay
+
+    tabla                    filas        lo que aporta
+    markets                   6 143       807 de EGLC
+    outcomes                 12 286       638 tokens EGLC en la muestra
+    price_history        16 165 636       2025-12-28 .. 2026-09-04   <- precio
+    weather_forecasts         2 727       236 de EGLC, 118 dias, p10..p90
+    weather_observations      1 348       118 de EGLC = el MAXIMO diario
+    orderbook_snapshots           0       <- VACIA
+    trades / features / predictions / signals / paper_trades / backtest_results  0
+
+    unidades    1 266 filas · 115 eventos · 229 event x lead · 638 mercados · leads {9, 24}
+    target      winning_outcome, con uma_resolution_status='resolved' en 806 de 807
+                49 Yes / 758 No  ->  tasa base 6,07 %
+
+**El target NO es una reconstrucción nuestra.** Lo comprobé porque era mi sospecha principal:
+`backtest.py:255` lee `winning_outcome` y `universe()` exige `uma_resolution_status='resolved'`.
+*Es la resolución real del mercado.* (`settlement_timestamp` está a NULL en las 807, lo que me
+hizo temer lo contrario; el campo que manda es otro.)
+
+### Los cinco apartados que este sustrato NO puede responder
+
+**1. NO HAY LIBRO EN EL PERIODO.** `orderbook_snapshots` está vacía en el duckdb, y en
+`paper-state` el libro va del **2026-09-09 al 09-13** mientras el backtest va del **04-11 al
+08-23**: ***solapamiento nulo.*** El esquema tiene `best_bid`, `best_ask`, `spread`,
+`bid_depth_1/5/10`, `imbalance`, `book_snapshot` — y ni una fila en la ventana estudiada.
+
+    §5 libro muerto por ausencia de bid/ask   NO COMPUTABLE
+    §6 precio ejecutable                      NO COMPUTABLE
+    §22 net EV con spread y slippage          NO COMPUTABLE
+    §23 liquidez, profundidad, fill           NO COMPUTABLE
+
+***Los niveles 4 y 5 del objetivo están fuera de alcance con estos datos.*** No es una dificultad:
+es una ausencia, y es el cuello de botella que el §45 pide nombrar.
+
+**2. UN SOLO MODELO METEOROLÓGICO.** `weather_forecasts.model` = `icon_seamless` en las 2 727
+filas. **§12 (ensemble, desacuerdo entre modelos) no es computable**: no hay con quién discrepar.
+
+**3. LA REVISIÓN EXISTE, PERO SÓLO A LEAD 9.** Dos emisiones por día objetivo —06z y 18z del día
+anterior— y `available_at = issue_time + 4,75 h` **constante en las 2 727 filas**:
+
+    lead 24  t_asof = D-1 12:00   ->  disponible SOLO el 06z (10:45)      118 de 236
+    lead  9  t_asof = D   03:00   ->  disponibles AMBOS (10:45 y 22:45)   236 de 236
+
+**§11 es testable únicamente a lead 9, con UNA revisión por evento.** A lead 24 no hay revisión
+que medir. *Y el 4,75 h es una asunción uniforme (L_MAX), no una medición de publicación:
+conservadora en dirección —retrasa la disponibilidad— pero declarada como lo que es.*
+
+**4. NO HAY OBSERVACIÓN INTRADÍA.** 118 filas EGLC para 116 días: una por día, que es el máximo.
+`fetch_metar` sí descarga la serie horaria, pero `daily_high` guarda sólo el máximo. **§13
+requeriría re-ingerir IEM.**
+
+*Y aunque se re-ingiriera, la estructura de leads casi la vacía de contenido:* ambos instantes de
+decisión —D-1 12:00 y D 03:00 UTC— **preceden a las horas cálidas del día objetivo**. A lead 9 son
+las 04:00 locales.
+
+**5. NO SE PUEDE OPERAR EL LADO CORTO.** Del docstring del propio motor: *«The priced token is the
+YES in all 6 143 markets and no NO series exists; `1 − p` is a price identity, not a plan of
+execution (D19)»*. **La mitad «candidato NO» de la regla del §21 no es ejecutable.**
+
+### Y una precisión sobre el precio que cambia lo que se puede afirmar
+
+`price_history.price_semantics` = **`MIDPOINT_ESTIMATED`**, columna `indicative_price`, fuente
+`CLOB_PRICES_HISTORY`. *El propio campo se llama indicativo.* Sirve para el análisis predictivo
+(§7-§19, que el encargo permite explícitamente sobre `p_mid`) y **no** para afirmar nada
+ejecutable, que es justo lo que el §6 separa.
+
+### Consecuencia para el plan
+
+Los niveles **1, 2 y 3** del objetivo son atacables con lo que hay. El **4** sólo en bruto y sin
+coste real. El **5** no.
+
+*Lo digo ahora y no en el apartado 23, porque descubrir en el paso final que no había libro sería
+haber gastado el trabajo entero para llegar a un UNKNOWN que ya estaba medido en el paso uno.*
