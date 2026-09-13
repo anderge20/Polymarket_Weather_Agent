@@ -21216,3 +21216,43 @@ acabas de escribir y ejecutarlo.*
 
 **Estado del #53:** siete mutaciones en rojo, suite en verde, y la refutación hostil hecha y
 registrada. La ventana D16 corre desde esta entrada.
+
+---
+
+## A-269 — VERIFICADO EN PRODUCCIÓN: los dos campos nuevos salen como se predijo, y la predicción estaba escrita antes · 2026-09-13 · Claude (sesión A)
+
+Ciclo `col_20260913T150706Z_415af2`, commiteado a las 15:32:34Z. **Primer ciclo de la caja
+que puede llevar los dos campos.** Lo predicho estaba escrito en A-256 y en la tarea #64
+**antes** de que el ciclo existiera:
+
+    predicho                            leido en el shard
+    collect_only_reason "mode_collect"  'mode_collect'      ✔
+    generator           None            None                ✔
+    (None en el reason seria DEFECTO)   (None en generator es la transicion)
+
+**Y un tercer dato que no había pedido y que verifica otra cosa:**
+
+    code_commit  22ba210d96491ee591934179309188c1271177e7
+
+**La caja está corriendo `main` con las cuatro fusiones de esta tarde dentro** (#49, #50,
+#51, #52). O sea que el `run_cycle.sh` del #51 **ya está vivo** y es él quien pasa
+`PMW_GENERATOR` vacío, que `paper_cycle.py` convierte en `None`. La transición funciona
+exactamente como se diseñó.
+
+**Por qué los dos valores distintos importan, y por qué había que escribirlos antes.**
+`collect_only_reason` **no depende del launcher** —lo pasa `run_cycle.sh`, que viene del
+checkout y se actualiza cada ciclo—, así que un `None` ahí habría sido un defecto real.
+`generator` **sí depende del launcher**, y `/opt/pmw/bin/launcher.sh` es todavía la copia
+anterior al #51, que no exporta nada. **Dos campos nuevos en el mismo shard, con valores
+esperados distintos y una causa de confusión compartida:** sin la distinción escrita de
+antemano, un `None` en cualquiera de los dos se habría explicado con «es el launcher», y en
+uno de los dos casos eso habría sido mentira.
+
+**#48 queda VERIFICADO EN PRODUCCIÓN**, no sólo en la suite: el campo existe, lleva el valor
+correcto, y por primera vez un ciclo `collect` es distinguible en los datos de un `decide`
+que cerró en falso. Hasta hoy `collect_only` era True en 37 de 37 y `tau_signal` None en 37
+de 37 — tres campos que parecían discriminadores y eran constantes.
+
+**Queda una mitad por observar:** el `decide 9` de mañana a las 02:40 debe traer
+`collect_only_reason == "no_paper_tau"`. Es la otra rama de la misma puerta y **no se supone;
+se lee.**
