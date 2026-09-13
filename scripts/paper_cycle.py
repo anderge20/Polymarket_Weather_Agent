@@ -1657,8 +1657,19 @@ def _profile_entry(entry: dict) -> dict:
     """
     out = {k: v for k, v in entry.items() if k != "traceback"}
     err = out.get("error")
-    if isinstance(err, str) and len(err) > _PROFILE_ERROR_MAX:
-        out["error"] = (err[:_PROFILE_ERROR_MAX]
+    if err is not None:
+        # `str()` PRIMERO, Y ESTO LO ENCONTRE ATACANDO MI PROPIO PARCHE. La version
+        # anterior topaba solo si `isinstance(err, str)`, asi que un `error` no-str se
+        # saltaba el tope entero -- y acababa en el shard por `default=str`, sin
+        # limite: medido, 5 000 caracteres contra un tope declarado de 300. Los dos
+        # mecanismos tenian que componer y no componian: el tope corria ANTES de la
+        # conversion, asi que justo los valores para los que existe `default=str` eran
+        # los que lo esquivaban. Hoy todos los llamadores pasan `repr(exc)`, que ya es
+        # str; el agujero era para el de manana, que es para quien se escribe un tope
+        # al serializar en vez de en cada llamada.
+        err = err if isinstance(err, str) else str(err)
+        out["error"] = (err if len(err) <= _PROFILE_ERROR_MAX else
+                        err[:_PROFILE_ERROR_MAX]
                         + f"... (+{len(err) - _PROFILE_ERROR_MAX} car)")
     return out
 

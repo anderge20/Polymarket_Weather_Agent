@@ -3901,6 +3901,19 @@ def test_a_truncated_error_SAYS_that_it_was_truncated():
     corto = "y" * 10
     assert paper_cycle._profile_entry({"stage": "x", "error": corto})["error"] == corto
 
+    # Y UN `error` QUE NO ES `str`. Atacando mi propio parche: la primera version
+    # topaba solo bajo `isinstance(err, str)`, asi que un objeto se saltaba el tope y
+    # entraba entero por `default=str` -- 5 000 caracteres contra un tope de 300.
+    # Los dos mecanismos tenian que componer y no componian.
+    class _Gordo:
+        def __str__(self):
+            return "z" * 5000
+
+    salida = paper_cycle._profile_entry({"stage": "x", "error": _Gordo()})["error"]
+    assert isinstance(salida, str)
+    assert len(salida) < 5000, "un error no-str esquiva el tope"
+    assert salida.endswith(f"(+{5000 - paper_cycle._PROFILE_ERROR_MAX} car)")
+
 
 def test_an_unserialisable_detail_costs_a_FIELD_and_never_the_shard(tmp_path, monkeypatch):
     """`stage_params` corre bajo un `try` que sólo tiene `finally`, sin `except`: una
