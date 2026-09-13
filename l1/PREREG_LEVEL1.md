@@ -278,3 +278,30 @@ OOS → `L1.5` calibración + ranking → `L1.6` inferencia → `L1.7` red-team 
 
 **Parada tras cada etapa si aparece un defecto metodológico. No se optimiza después de ver
 resultados. No se introducen modelos nuevos para rescatar resultados negativos.**
+
+---
+
+## ENMIENDA DE TRAZABILIDAD — 2026-09-13T22:45Z · el sha de `n075_poblacion.py` ha cambiado
+
+    citado arriba    f4511b9623b6d23a…
+    vigente ahora    ed86e4e104591f83…
+
+**Causa (A-298, Fase C):** `poblacion()` calculaba el corte del día civil del desempate
+con `Europe/London` **fijo** para cualquier estación — el hermano del defecto que
+D11/A-285 arregló doce líneas más arriba, en `observaciones()` de la misma función. Ahora
+usa `stations.timezone_of(station)`.
+
+**Ninguna cifra de este preregistro se mueve, y está medido, no supuesto.** Corriendo
+`poblacion(con, "markets_v2", "EGLC")` con el corte en `Europe/London` y con el corte en
+la zona de la estación:
+
+    fechas elegidas   185  vs  185
+    eventos distintos   0
+
+EGLC **es** `Europe/London`, así que las dos ramas coinciden por construcción; y la única
+fecha con desempate del corpus resuelve igual con las dos. El arreglo sólo puede cambiar
+algo en estaciones fuera del huso de Londres — que es exactamente la razón por la que el
+defecto era invisible mientras Londres fue la única ciudad.
+
+*Esta nota existe porque un sha citado que ya no corresponde a ningún fichero es peor que
+no citarlo: parece verificable y no lo es.*
