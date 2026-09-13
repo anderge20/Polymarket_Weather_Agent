@@ -84,3 +84,76 @@ En v3 (`f6fcd2e4…`), no normativo: (1) `band_probability`, `ForecastCDF` y la 
 5. §3: condición **(0)** antes de (i)/(ii); 5 y 7 con `quantization` UNKNOWN calificado; 8 con NONE; NEAREST fuera. §4: criterio único del enum; los `reason` de `target_date` al caller; fuera `unit_mismatch`, y `rule_map_missing`/`operator_none`/`station_tz_unknown` → red terminal.
 6. Ancla `DECISIONS.md` **`9a496670…`** (v1 y el borrador de v2 citaban `c671ef3a…`, nunca vigente); sha de PREREG_E2/E2R/discriminación; D18 no existe; KB = KiB.
 7. Tamaño: **12 KiB** (KB = KiB) cumplidas, sin perder datos. **Rechazado** externalizar §6 y el changelog: la estructura es 7 puntos + changelog, y §6 no es el preregistro de A-24 (no fija criterio de aceptación, sólo qué es out-of-sample).
+---
+
+# ENMIENDA DE VIGENCIA — 2026-09-13T23:25Z (sesión A, A-301)
+
+**Este documento hacía tres afirmaciones que hoy son falsas o incompletas.** Se corrigen
+aquí, con la evidencia al lado, en vez de editar el cuerpo: el cuerpo es el registro de lo
+que se decidió y no se reescribe.
+
+## E1 · «## 2. Interfaz (sin implementar)» — YA ESTÁ IMPLEMENTADA
+
+Comprobado por **ejecución e introspección**, no por grep, sobre
+`src/weather_agent/settlement.py` en `a401301`:
+
+| declarado en §2 | en el módulo |
+|---|---|
+| `SettlementOperator(operator_id, version, unit, window_kind, aggregation, quantization, required_series)` | **los 7**, más `contract_source`, `measurement_rule_code`, `label_source`, `compat_status` |
+| `applies_to(contract_source, measurement_rule_code, unit, rounding_rule) -> bool`, **pura** | método con esa firma exacta |
+| `settle(obs, ctx, asof) -> SettlementResult` | función con esa firma |
+| `Observation(ts_utc, value, unit, series, available_at, record_version)` | **los 6, exactos** |
+| `MarketContext(… 11 campos …)` | **los 11, exactos** |
+| `SettlementResult(… 16 campos …)` | **los 16, exactos** |
+
+Y hay cuatro operadores instanciados (`WU_DAILYOBS_C_PROXY_IEM`, `NOAA_TEMPCOL_C_PROXY_IEM`,
+`NOAA_TEMPCOL_F_PROXY_IEM`, `HKO_ABSMAX_INTERVAL_FLOOR`), más `select_operator`,
+`try_settle`, `band_key_wins` y `SettlementUnavailable`. La etapa `stage_settle` del ciclo
+paper la conduce entera y la suite la ejercita de punta a punta.
+
+> **Un encabezado que dice «sin implementar» sobre código en producción no es una
+> imprecisión: es lo que hace que nadie abra el módulo.** Y es la peor variante, porque
+> *impide* trabajo en vez de permitirlo.
+
+## E2 · El título dice «v2 (final)» y el fichero se llama `.v3.md`
+
+    # SETTLEMENT_OPERATOR_CORE.md — v2 (final)      <- linea 1 de SETTLEMENT_OPERATOR_CORE.v3.md
+
+Existen `…CORE.v1.md` y `…CORE.v3.md`, sin `v2`. **La versión que este documento afirma ser
+no coincide con la que su nombre promete**, y `SETTLEMENT_OPERATOR_CORE.sha256` no dice
+cuál de las dos cubre. Se deja anotado; no se renombra nada, porque A-278 y otras entradas
+citan el fichero por su nombre actual.
+
+## E3 · LO QUE FALTA, Y ES LO QUE DECIDE SI EL NÚCLEO PUEDE CORRER
+
+§2 declara `Series{hko_clmmaxt, metar_body_c, metar_tgroup_tmpf}` y no dice lo siguiente:
+
+    weather_observations del almacen real, por serie:
+       IEM_ASOS_METAR_1C        1.057
+       IEM_ASOS_TMPF_1F           267
+       IEM_ASOS_METAR_1C_RT34     233
+       IEM_ASOS_TMPF_0.1F          24        -> 1.581 filas
+    filas con alguno de los tres nombres que el nucleo exige:   0
+
+**Ningún ingestor produce ninguno de los tres nombres.** El núcleo, leído literalmente
+contra el almacén, rechazaría **todas** las liquidaciones por `series_mismatch`.
+
+Funciona porque existe una traducción — `SERIES_CORRESPONDENCE` — y **vive en
+`scripts/paper_cycle.py`, fuera de la librería** (tarea #71), así que ningún otro llamador
+del núcleo la hereda:
+
+    IEM_ASOS_METAR_1C       -> metar_body_c
+    IEM_ASOS_METAR_1C_RT34  -> metar_body_c
+    IEM_ASOS_TMPF_1F        -> metar_tgroup_tmpf
+    IEM_ASOS_TMPF_0.1F      -> (SIN ENTRADA: 24 filas sin traduccion, fallo cerrado)
+
+Y `hko_clmmaxt` no es emisible por esa tabla en absoluto: el operador HKO existe y **ningún
+dato puede alcanzarlo hoy**.
+
+> **El documento describe un vocabulario que ninguna fuente habla.** No está equivocado —
+> es el vocabulario del núcleo — pero omite que hace falta un traductor, que el traductor
+> no está en la librería, y que una de las cuatro series reales no lo tiene. Quien lea §2
+> para saber si el núcleo puede liquidar contra el almacén concluirá que sí.
+
+*Las tres son del mismo tipo: el documento envejeció bien en lo que decidió y mal en lo que
+describe. Lo que decidió no se toca; lo que describe se fecha.*

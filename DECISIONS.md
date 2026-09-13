@@ -23680,3 +23680,62 @@ revisor, o relevar §34 explícitamente.
 
 Rama `feat/sustrato-listo-vacio`. Se fusiona sólo con la suite verde verificada por mí y
 con la ventana cumplida (A-112 al disparo + A-119 sobre el árbol de fusión).
+
+---
+
+## A-301 — El documento que da nombre a mi pista decía «sin implementar» sobre código que lleva días liquidando, y omitía lo único que decide si el núcleo puede correr · 2026-09-13 · Claude (sesión A)
+
+*Escrito 2026-09-13T23:30Z. Sólo corpus de investigación: cero líneas de código, cero PR.
+`D0` abajo · `D0-P = BLOCKED` · `L2 = BLOCKED`.*
+
+Auditoría de vigencia de `SETTLEMENT_OPERATOR_CORE.v3.md` — el documento que la orden de
+ciclo nombra como mi pista. Tres afirmaciones falsas o incompletas, las tres del mismo
+tipo: **el documento envejeció bien en lo que decidió y mal en lo que describe.**
+
+### E1 · `## 2. Interfaz (sin implementar)` — lleva implementada desde hace días
+
+Comprobado por **ejecución e introspección** sobre `settlement.py` en `a401301`, no por
+grep: los 7 campos de `SettlementOperator` (más 4), los 6 de `Observation`, los 11 de
+`MarketContext` y los 16 de `SettlementResult` **exactos**; `applies_to` como método con la
+firma pura declarada; `settle(obs, ctx, asof)`; cuatro operadores instanciados;
+`select_operator`, `try_settle`, `band_key_wins`, `SettlementUnavailable`. `stage_settle`
+lo conduce entero y la suite lo ejercita de punta a punta.
+
+> **Un encabezado que dice «sin implementar» sobre código en producción es lo que hace que
+> nadie abra el módulo.** Y es la peor variante de cita obsoleta: *impide* trabajo en vez de
+> permitirlo — justo lo que la memoria de esta sesión llama *«las citas que bloquean trabajo
+> son las que vale la pena comprobar, porque nadie comprueba las que lo permiten»*.
+
+### E2 · El título dice «v2 (final)» y el fichero se llama `.v3.md`
+
+Existen `…CORE.v1.md` y `…CORE.v3.md`, sin `v2`; `SETTLEMENT_OPERATOR_CORE.sha256` no dice
+cuál cubre. Anotado, no renombrado: A-278 y otras entradas citan el fichero por su nombre.
+
+### E3 · Y lo que falta es lo que decide si el núcleo puede liquidar contra el almacén
+
+§2 declara `Series{hko_clmmaxt, metar_body_c, metar_tgroup_tmpf}`. Medido sobre
+`weather_observations`:
+
+    IEM_ASOS_METAR_1C  1.057 · IEM_ASOS_TMPF_1F  267 · IEM_ASOS_METAR_1C_RT34  233
+    IEM_ASOS_TMPF_0.1F    24                                    -> 1.581 filas
+    filas con alguno de los tres nombres que el nucleo exige:      0
+
+**Ningún ingestor produce ninguno de los tres.** Leído literalmente contra el almacén, el
+núcleo rechazaría **todas** las liquidaciones por `series_mismatch`. Funciona porque existe
+`SERIES_CORRESPONDENCE`, que **vive en `scripts/paper_cycle.py`, fuera de la librería**
+(tarea #71) — y `IEM_ASOS_TMPF_0.1F` (24 filas) **no tiene entrada**, y `hko_clmmaxt` no es
+emisible en absoluto: el operador HKO existe y ningún dato puede alcanzarlo hoy.
+
+El documento no está equivocado — ése *es* el vocabulario del núcleo — pero **omite que
+hace falta un traductor, que el traductor no está en la librería y que una de las cuatro
+series reales no lo tiene.** Quien lea §2 para saber si el núcleo puede liquidar contra el
+almacén concluirá que sí.
+
+### Lo que NO hice, y por qué
+
+Comprobé el registro antes de publicar E3 como hallazgo: **ya estaba**, es la tarea #71.
+Lo que es nuevo es que el documento de especificación no lo dice, no que el hecho se
+desconociera. Se reporta como defecto **del documento**, no como descubrimiento.
+
+Tampoco toco el cuerpo del documento: lo que decidió es registro y no se reescribe. La
+enmienda va fechada al final. `SETTLEMENT_OPERATOR_CORE.v3.md` pasa a `62f1cfd5…`.
