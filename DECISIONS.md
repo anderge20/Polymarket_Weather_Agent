@@ -21450,3 +21450,83 @@ febrero, 11 desde marzo — y **marzo lleva las dos**. Un problema de 9 bandas y
 son el mismo problema de predicción, y **un Brier promediado sobre ambos mezcla dos escalas**.
 No lo arreglo aquí ni cambio nada: lo dejo escrito **antes** de la reejecución, porque es
 justo el tipo de cosa que después se usa para explicar un resultado que no gustó.
+
+---
+
+## A-273 — NIVEL 0.75: los 36 NO son de EGLC, los `arch-` son TRES DÍAS, y mi propia regla de A-272 habría borrado 93 días-estación · 2026-09-13 · Claude (sesión A)
+
+### 0. Corrección de premisa, antes de auditar nada
+
+El encargo pide auditar «los 36 casos EGLC». **Los 36 no son de EGLC.** De los 44 pares
+(estación, día) que tienen evento archivado y vivo a la vez, **exactamente 1 es de EGLC** —y
+ése es de los que tienen **la MISMA banda ganadora**, no de los 36 que difieren. Los 36
+están repartidos por otras estaciones, una por estación. Lo digo antes de la tabla porque
+auditar «36 casos EGLC» habría sido inventar una población.
+
+### 1. Los `arch-` son un episodio de TRES DÍAS, no un fenómeno difuso
+
+    dias con eventos arch:   2026-05-17 (49)   2026-05-18 (50)   2026-05-19 (50)
+    total eventos arch: 149 · con estacion: 137
+    dias con gemelo VIVO: solo el 2026-05-19 (44 de 50 estaciones)
+
+**Polymarket archivó tres días de eventos y sólo reemitió el 19.** El 17 y el 18 existen
+**únicamente** como archivados — y resueltos.
+
+### 2. MI REGLA DE A-272 ERA INCORRECTA Y LA RETIRO
+
+Escribí: *«se excluye todo evento cuyo slug empiece por `arch-`»*. Medido:
+
+    eventos arch con estacion:            137
+    de ellos SIN gemelo vivo:              93
+
+**Excluir todo `arch-` borraría 93 días-estación de la población** — y en EGLC borraría el
+**2026-05-17** y el **2026-05-18**, cuyos únicos eventos son archivados, resueltos y con
+ganadora declarada (`18 °C` y `16 °C`). *Eliminación arbitraria, que es exactamente lo que el
+encargo prohíbe.*
+
+**REGLA CORREGIDA, declarada antes de reejecutar nada:**
+
+> Para cada `(station, target_date)`: si existe **más de un evento**, se toma el que **no**
+> lleva el marcador de archivo. Si el archivado es el **único** evento, **se conserva**. La
+> unidad primaria es `event_id`; la fecha es una dimensión, nunca una clave.
+
+### 3. La tabla de los 44 pares, con las ocho comprobaciones
+
+`fase2/N075_AUDITORIA_ARCH_44_PARES.txt`. Resumen:
+
+    eventos realmente distintos (event_id)        44 de 44
+    ambos resolved                                43 de 44
+    solapamiento de market_id                      0 de 44   <- conjuntos DISJUNTOS
+    escaleras distintas                           42 de 44
+    misma banda ganadora                           6
+    banda ganadora distinta                       36
+    solo uno resuelto                              2
+
+**Cero solapamiento de `market_id`**: no son duplicados del mismo mercado, son **productos
+distintos sobre el mismo día**. Y las escaleras no difieren por un grado: EDDM `11..21`
+contra `5..15`; ZUUU `25..35` contra `16..26`. **Desplazamientos de seis a nueve grados.** Por
+eso 36 ganadoras difieren: *el ganador es el mismo tiempo leído en dos reglas distintas.*
+
+EGLC es el caso más benigno de los 44: `12..22` contra `13..23`, un grado, y la misma
+ganadora `18 °C` en los dos.
+
+### 4. UN DESEMPATE QUE NO DEPENDE DE INTERPRETAR EL PREFIJO
+
+El encargo condiciona la exclusión a que el significado de `arch-` esté **confirmado**. No lo
+está por el proveedor, así que busqué una señal independiente:
+
+    EGLC 2026-05-19   ARCH  closedTime 2026-05-25 15:05Z   (seis dias despues)
+                      VIVO  closedTime 2026-05-20 00:12Z   (la noche siguiente, lo normal)
+
+    en los 44 pares:  el arch cierra DESPUES en 43 de 44
+
+**El evento vivo liquida en el plazo normal; el archivado liquida con cinco o seis días de
+retraso.** La regla «preferir el no archivado» queda corroborada por el **calendario de
+liquidación**, que es observable y no requiere creerse un prefijo. *Eso es lo que la
+convierte en defendible en vez de arbitraria.*
+
+### 5. Lo que NO se hace aquí
+
+Ni un modelo, ni un umbral, ni una reejecución. `LONDRES = NO EDGE MEDIDO` y el `D —
+INCONCLUSO` siguen intactos, y lo de ayer se sigue llamando **`DATASET CORRECTION
+VALIDATED`**.

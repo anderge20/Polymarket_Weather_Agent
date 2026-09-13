@@ -1,0 +1,53 @@
+fecha       est   evA(arch) evB(vivo) escalera A             escalera B             ganA       ganB       res     mids  esc 
+---------------------------------------------------------------------------------------------------------------------------------------
+2026-05-19  CYYZ  493656    503569    22°C or below..32°C or higher 27°C or below..37°C or higher 29°C       30°C       si      disj  dist
+2026-05-19  EDDM  493666    503634    11°C or below..21°C or higher 5°C or below..15°C or higher 11°C or below 15°C or higher si      disj  dist
+2026-05-19  EFHK  493691    503666    13°C or below..23°C or higher 5°C or below..15°C or higher 23°C or higher 15°C or higher si      disj  dist
+2026-05-19  EGLC  493651    503460    12°C or below..22°C or higher 13°C or below..23°C or higher 18°C       18°C       si      disj  dist
+2026-05-19  EHAM  493690    503665    10°C or below..20°C or higher 7°C or below..17°C or higher 17°C       17°C or higher si      disj  dist
+2026-05-19  EPWA  493674    503642    12°C or below..22°C or higher 6°C or below..16°C or higher 17°C       16°C or higher si      disj  dist
+2026-05-19  FACT  493696    503670    15°C or below..25°C or higher 10°C or below..20°C or higher None       20°C or higher NO      disj  dist
+2026-05-19  KATL  493660    503612    79°F or below..98°F or higher 89°F or below..108°F or higher 96-97°F    89°F or below si      disj  dist
+2026-05-19  KAUS  493681    503656    71°F or below..90°F or higher 83°F or below..102°F or higher 90°F or higher 90-91°F    si      disj  dist
+2026-05-19  KBKF  493682    503657    55°F or below..74°F or higher 45°F or below..64°F or higher 55°F or below 48-49°F    si      disj  dist
+2026-05-19  KDAL  493659    503602    73°F or below..92°F or higher 77°F or below..96°F or higher 73°F or below 84-85°F    si      disj  dist
+2026-05-19  KHOU  493683    503658    71°F or below..90°F or higher 85°F or below..104°F or higher 88-89°F    88-89°F    si      disj  dist
+2026-05-19  KLAX  493684    503659    55°F or below..74°F or higher 65°F or below..84°F or higher 74°F or higher 74-75°F    si      disj  dist
+2026-05-19  KLGA  493658    503590    81°F or below..100°F or higher 95°F or below..114°F or higher 90-91°F    95°F or below si      disj  dist
+2026-05-19  KMIA  493661    503624    77°F or below..96°F or higher 79°F or below..98°F or higher 77°F or below 86-87°F    si      disj  dist
+2026-05-19  KORD  493662    503629    65°F or below..84°F or higher 75°F or below..94°F or higher 72-73°F    78-79°F    si      disj  dist
+2026-05-19  KSFO  493685    503660    47°F or below..66°F or higher 73°F or below..92°F or higher 66°F or higher 80-81°F    si      disj  dist
+2026-05-19  LEMD  493673    503641    20°C or below..30°C or higher 12°C or below..22°C or higher 20°C or below 22°C or higher si      disj  dist
+2026-05-19  LFPB  493652    503494    12°C or below..22°C or higher 8°C or below..18°C or higher 15°C       17°C       si      disj  dist
+2026-05-19  LIMC  493672    503640    17°C or below..27°C or higher 8°C or below..18°C or higher 17°C or below 18°C or higher si      disj  dist
+2026-05-19  LTAC  493663    503631    14°C or below..24°C or higher 5°C or below..15°C or higher 22°C       15°C or higher si      disj  dist
+2026-05-19  MMMX  493688    503663    15°C or below..25°C or higher 21°C or below..31°C or higher 25°C or higher 29°C       si      disj  dist
+2026-05-19  MPMG  493692    503667    23°C or below..33°C or higher 26°C or below..36°C or higher 26°C       34°C       si      disj  dist
+2026-05-19  NZWN  493664    503632    8°C or below..18°C or higher 8°C or below..18°C or higher 16°C       16°C       si      disj  =   
+2026-05-19  OEJN  493695    503669    34°C or below..44°C or higher 28°C or below..38°C or higher 43°C       38°C or higher si      disj  dist
+2026-05-19  OPKC  493722    503673    27°C or below..37°C or higher 23°C or below..33°C or higher 36°C       33°C or higher si      disj  dist
+2026-05-19  RCSS  493675    503643    24°C or below..34°C or higher 19°C or below..29°C or higher 28°C       29°C or higher si      disj  dist
+2026-05-19  RJTT  493668    503636    17°C or below..27°C or higher 16°C or below..26°C or higher 27°C or higher 26°C or higher si      disj  dist
+2026-05-19  RKPK  493689    503664    23°C or below..33°C or higher 11°C or below..21°C or higher 31°C       21°C or higher si      disj  dist
+2026-05-19  RKSI  493655    503558    18°C or below..28°C or higher 23°C..25°C or higher   21°C       23°C       si      disj  dist
+2026-05-19  RPLL  493723    503674    29°C or below..39°C or higher 22°C or below..32°C or higher 34°C       32°C or higher si      disj  dist
+2026-05-19  SAEZ  493654    503547    11°C or below..21°C or higher 11°C or below..21°C or higher 11°C or below 18°C       si      disj  =   
+2026-05-19  SBGR  493653    503528    11°C or below..21°C or higher 11°C or below..11°C or below 12°C       None       si      disj  dist
+2026-05-19  VILK  493665    503633    42°C or below..52°C or higher 30°C or below..40°C or higher 42°C or below 40°C or higher si      disj  dist
+2026-05-19  WMKK  493693    503668    28°C or below..38°C or higher 19°C or below..29°C or higher 34°C       29°C or higher si      disj  dist
+2026-05-19  WSSS  493671    503639    27°C or below..37°C or higher 23°C or below..33°C or higher 33°C       33°C or higher si      disj  dist
+2026-05-19  ZBAA  493677    503645    21°C or below..31°C or higher 12°C or below..22°C or higher 28°C       22°C or higher si      disj  dist
+2026-05-19  ZGGG  493697    503671    25°C or below..35°C or higher 19°C or below..29°C or higher 27°C       27°C       si      disj  dist
+2026-05-19  ZGSZ  493680    503655    23°C or below..33°C or higher 20°C or below..30°C or higher 27°C       26°C       si      disj  dist
+2026-05-19  ZHHH  493678    503646    16°C or below..26°C or higher 15°C or below..25°C or higher 23°C       23°C       si      disj  dist
+2026-05-19  ZSPD  493670    503638    17°C or below..27°C or higher 16°C or below..26°C or higher 27°C or higher 26°C or higher si      disj  dist
+2026-05-19  ZSQD  493699    503672    14°C or below..24°C or higher 11°C or below..21°C or higher 20°C       20°C       si      disj  dist
+2026-05-19  ZUCK  493676    503644    20°C or below..30°C or higher 14°C or below..24°C or higher 28°C       24°C or higher si      disj  dist
+2026-05-19  ZUUU  493679    503654    25°C or below..35°C or higher 16°C or below..26°C or higher 33°C       26°C or higher si      disj  dist
+---------------------------------------------------------------------------------------------------------------------------------------
+  misma ganadora         6 de 44
+  distinta               36 de 44
+  solo uno resuelto      2 de 44
+  mids solapan           0 de 44
+  escaleras iguales      2 de 44
+  ambos resolved         43 de 44
