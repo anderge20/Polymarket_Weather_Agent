@@ -505,11 +505,75 @@ def test_settle_names_the_substrate_it_is_missing(con, monkeypatch):
     assert any("weather_observations.observed_value" in m for m in missing)
 
 
-def test_settle_reports_ready_on_a_complete_substrate(con, monkeypatch):
-    """The other half, and the one that actually matters going forward."""
+def test_settle_reports_ready_once_the_COLUMNS_are_declared(con, monkeypatch):
+    """The other half of the guard: it stops naming what it can now see.
+
+    RENAMED, and the old name was the problem. It read
+    `..._on_a_complete_substrate`, and what it exercises is a substrate that is
+    complete in exactly one sense -- the columns are DECLARED -- while holding
+    zero populated rows. `_with_b_substrate` issues `ALTER TABLE ADD COLUMN` and
+    inserts nothing, so the word "complete" was making a promise the fixture never
+    kept, in the name of a test, which is the one place nobody re-reads.
+
+    What "ready" would have to mean, and does not yet, is pinned one test below.
+    Task #68.
+    """
     _with_b_substrate(con)
     _fake_stations(monkeypatch)
     assert paper_cycle.settle_substrate_missing(con) == []
+
+
+def test_la_guarda_dice_LISTO_con_la_terna_ENTERAMENTE_NULA(con, monkeypatch):
+    """CARACTERIZACION DE UN DEFECTO VIVO. Cuando se arregle, esta prueba cambia.
+
+    `settle_substrate_missing` pregunta a `db.column_names`: si la columna esta
+    DECLARADA, la da por buena. Nunca pregunta si tiene valor. Asi que sobre un
+    almacen con la terna entera a NULL devuelve `[]` -- "listo para liquidar" --
+    y la etapa siguiente no liquida nada.
+
+    NO ES HIPOTETICO. Medido sobre el almacen de produccion (A-278,
+    `N075_SUSTRATO_LIQUIDACION.md`): `contract_source` y `measurement_rule_code`
+    no nulos en **0 de 85.878 filas**, y la guarda devolvia `[]`.
+
+    LA INVARIANTE QUE ESTO ROMPE, y que hay que poder afirmar:
+        *si el comprobador devuelve vacio y la ruta se niega despues,
+         el defecto es del comprobador.*
+    Hoy esa frase es falsa, y hasta ahora lo era solo en prosa. Aqui es ejecutable.
+
+    Por que se caracteriza en vez de arreglarse: el arreglo toca la guarda, que es
+    codigo de liquidacion, y el encargo del usuario dijo **no modificar produccion
+    todavia**. Una prueba que observa no cambia ningun comportamiento.
+    """
+    _with_b_substrate(con)
+    _fake_stations(monkeypatch)
+    _settleable_market(con)
+    # El estado EXACTO de las 85.878 filas de produccion: columnas declaradas,
+    # terna vacia. No se toca nada mas del sustrato.
+    con.execute("UPDATE markets SET contract_source = NULL, "
+                "measurement_rule_code = NULL")
+
+    # (1) la guarda dice LISTO
+    assert paper_cycle.settle_substrate_missing(con) == []
+
+    # (2) y la etapa siguiente, sobre una posicion abierta real, no liquida nada
+    cy = _cycle()
+    out = paper_cycle.stage_settle(cy, con, dataset_version="ds1")
+    assert out["positions_open"] == 1, out
+    assert out["settled"] == 0, "con la terna vacia no se puede liquidar nada"
+    assert out["refusals"] == {"no_measurement_rule_code": 1}, out
+
+    # (2b) Y COMO QUEDA ESCRITO EN EL LIBRO MAYOR, que es lo que alguien lee luego:
+    # `status` es **OK**, no SKIPPED. No miente -- la etapa corrio, y `refused` y
+    # `reasons` llevan la verdad -- pero quien barra el ledger buscando SKIPPED
+    # vera verde. Se fija aqui como HECHO, no como defecto: el numero que informa
+    # es `refused`, nunca `status`.
+    fila = next(e for e in cy.stages if e["stage"] == "settle")
+    assert fila["status"] == "OK"
+    assert fila["refused"] == 1 and fila["settled"] == 0
+
+    # (3) la posicion sigue abierta: ni se adivina un ganador ni se cierra
+    fila = con.execute("SELECT exit_time, settlement FROM paper_trades").fetchone()
+    assert fila[0] is None and fila[1] is None
 
 
 def test_settle_is_a_noop_with_no_open_positions(con):
