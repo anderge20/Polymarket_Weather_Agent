@@ -1868,6 +1868,39 @@ def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
         "market_sum_min": args.market_sum_min,
         "market_sum_max": args.market_sum_max,
         "collect_only": bool(args.collect_only),
+        # WHY, WHICH THE SHARD COULD NOT SAY. `collect_only=True` in 37 of 37
+        # cycles means one of TWO things and they are not the same event:
+        #
+        #   the cron fired `collect`        -> the launcher asked for books only
+        #   the cron fired `decide`, and `run_cycle.sh:97` added `--collect-only`
+        #   because `$ROOT/PAPER_TAU` does not exist -- a decide that did not
+        #   decide, which is the only kind of cycle that could ever open a
+        #   position
+        #
+        # Six of the 34 attributable cycles are the second kind and NOTHING in
+        # the store distinguished them: the session id prefix is `col_` in 34 of
+        # 34, `collect_only` is True in 37 of 37 and `tau_signal` is None in 37
+        # of 37. Three fields that look like discriminators and are constants.
+        #
+        # THE REASON WAS NEVER MISSING, ONLY UNTRANSPORTED. The shell already
+        # logs it verbatim -- `no /opt/pmw/PAPER_TAU -- collect-only
+        # (fail-closed, R24 P12)` -- on a box with no logrotate, which is the
+        # surface this project has twice had to rescue by hand. `paper_cycle.py`
+        # never sees that it was launched as a decide, so it is not that the
+        # program declines to record the fact: it does not have it. The wrapper
+        # passes it now.
+        # `or None`, NO SOLO EL TERNARIO. La cadena vacia y `None` son valores
+        # distintos en el shard y el lector no puede saber si `""` significa «no
+        # lo dijo» o «lo dijo en blanco» -- que es exactamente la conflacion que
+        # este campo existe para quitar, un nivel mas abajo.
+        #
+        # Y no es hipotetico: el llamador de `paper_cycle.yml` interpola
+        # `${{ steps.gate.outputs.collect_only_reason }}`, que sale VACIO si
+        # alguien anade una tercera rama a la puerta y olvida el `echo`. El
+        # barrido de lectura no lo veria: veria un motivo presente. Es el mismo
+        # agujero que la sesion B encontro en la puerta, una capa mas abajo.
+        "collect_only_reason": ((args.collect_only_reason or None)
+                                if args.collect_only else None),
         "code_commit": code_commit(),
         "run_id": os.environ.get("GITHUB_RUN_ID"),
         # B's second condition: the cycle records WHICH artifact it used. The id
@@ -2172,6 +2205,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--max-pages", type=int, default=20)
     p.add_argument("--collect-only", action="store_true",
                    help="Books only: skip signals, paper and settlement.")
+    p.add_argument("--collect-only-reason", default=None,
+                   help="WHY this cycle is collect-only. `collect_only=True` has "
+                        "meant two different things in 37 of 37 cycles and the "
+                        "shard could not tell them apart -- see the field's note "
+                        "in `cycle_params`.")
     p.add_argument("--settle-only", action="store_true",
                    help="THE SETTLEMENT TAIL (R24 §5). Ingest the labels that open "
                         "positions wait on and settle them; discover nothing, "
