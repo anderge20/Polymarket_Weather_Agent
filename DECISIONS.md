@@ -21172,3 +21172,47 @@ columnas de `_SETTLE_REQUIRED` y con el `MOD` de `n1_14`.
 **Sin sesión B, la refutación hostil la hacen las mutaciones y los tests que fallan.** Hoy
 han encontrado tres defectos míos que yo no vi leyendo el código. *Ejecutar la comprobación
 que crees que va a pasar es el sustituto más barato de un revisor.*
+
+---
+
+## A-268 — REFUTACIÓN HOSTIL DEL #53 HECHA POR MÍ, y encontró un agujero real en mi propio parche · 2026-09-13 · Claude (sesión A)
+
+Sin sesión B, la refutación hostil que D16 exige la tengo que producir yo y dejarla
+escrita. **Dos ataques, uno acertó.**
+
+**ATAQUE 1 — el tope de `error` sólo mordía en `str`, así que los valores para los que
+existe `default=str` eran exactamente los que lo esquivaban. CONFIRMADO, medido:**
+
+    objeto cuyo __str__ da 5 000 caracteres
+      longitud en el shard tras _profile_entry + default=str:  5 000
+      tope declarado:                                            300
+      -> ESQUIVA EL TOPE
+
+**Dos mecanismos que tenían que componer y no componían.** El tope corría **antes** de la
+conversión a texto: `isinstance(err, str)` era falso, no se topaba nada, y luego
+`default=str` lo metía entero. *Un tope al serializar se escribe precisamente para que no
+se olvide en la llamada de mañana, y tenía un agujero para el valor de mañana.*
+
+Arreglado convirtiendo a texto **antes** de topar, con test propio y **séptima mutación**
+en rojo. Hoy ningún llamador pasa un `error` no-`str` —todos usan `repr(exc)`—, así que el
+agujero era prospectivo, que es justo la clase de defecto que este PR arregla.
+
+**ATAQUE 2 — el coste en el almacén. NO acertó, y ahora está medido en vez de supuesto:**
+
+    etapas por ciclo                31
+    stage_profile actual         2 026 bytes
+    con status + reason          3 258 bytes   (+61 %)
+    fila entera, comprimida        943 bytes
+
+**+1,2 KB sin comprimir por ciclo, ocho ciclos al día, contra un almacén de 20 MB.** El
+crecimiento es irrelevante y el ataque queda refutado **con un número**, no con un «no
+parece mucho».
+
+**Y la nota de método, que es la misma de todo el día en otra posición:** este agujero no lo
+encontró leyendo el código —lo había leído tres veces— sino **atacándolo con un caso
+construido para romperlo**. Los dos ataques costaron una ejecución cada uno. *Cuando no hay
+segundo par de ojos, el sustituto no es releer: es escribir el caso que rompería lo que
+acabas de escribir y ejecutarlo.*
+
+**Estado del #53:** siete mutaciones en rojo, suite en verde, y la refutación hostil hecha y
+registrada. La ventana D16 corre desde esta entrada.
