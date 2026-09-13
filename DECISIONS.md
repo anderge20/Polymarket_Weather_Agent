@@ -16195,3 +16195,53 @@ contrario de lo que suele ocurrir cuando uno diseña la prueba de su propia conc
 **Y el #33 queda confirmado como no responsable:** el arreglo de colas lleva los ceros del 50,5 %
 al 8,3 % y hace desaparecer el hueco —mínimo no nulo 0,050607 → 0,000023—, y la brecha se mueve
 sólo un 4-6 % de su tamaño. **Las colas rotas no eran la razón de que el modelo pierda.**
+
+## A-202 — PR #45: la auditoría abría con 24 fallos que nadie podía arreglar · 2026-09-13 · Claude (sesión A)
+
+*Abierto 2026-09-13T01:20Z. Ventana D16 desde este registro: fusionable a partir de las
+**03:20Z**. Resuelve la tarea #46. 657 → 664, verificado en los dos árboles.*
+
+### El defecto
+
+`process_audit.py` abría **cada corrida con 24 fallos permanentes** —9 ventanas cortas del 09-09
+y 09-11, 15 fusiones sin ninguna huella—. **Esas ventanas se acabaron; ninguna acción las
+cambia.** Y reimprimirlas a diario es cómo un chequeo deja de leerse: el mismo modo de fallo que
+este repositorio ya tiene escrito sobre el marcador `-dirty`, *no deja de funcionar, deja de
+leerse*.
+
+Es la tercera cara del mismo problema en dos días. La forma permisiva es un criterio que no puede
+fallar; la forma del instrumento muerto es un chequeo apuntado a algo que ya no existe; **ésta es
+un chequeo que no puede dejar de fallar, y las tres acaban igual: nadie lo mira.**
+
+### Lo que hace
+
+    [med]  4 of 39 merged PRs carry a formal review; a review here means only that
+           somebody submitted one, never that it was adversarial
+    [med]  15 of 39 PRs merged before 2026-09-13 left no trace at all
+    [med]   9 of 39 PRs merged before 2026-09-13 merged INSIDE the 2 h window
+    [ok]   D16 merge window      [ok]   D16 window was used
+
+Las filas heredadas pasan a **mediciones**, una línea cada una, en todas las corridas. Los
+chequeos fallan **sólo sobre lo que todavía podían evitar**.
+
+### Lo que impide que esto sea, otra vez, la forma permisiva
+
+**El pin.** `LEGACY_SHORT = 9` y `LEGACY_SILENT = 15` están clavados: si cualquiera se mueve, o se
+reescribió la historia o el pin está obsoleto, y el chequeo **lo dice y falla**. Una décima
+fusión corta falla. Una fusión muda de hoy falla. *Sacar algo de la lista de fallos sólo es
+honesto si se clava el recuento.*
+
+### Y dos decisiones que no son de estilo
+
+**Los dos chequeos o ninguno.** Hacérselo sólo al de la huella —que es lo que pedía la tarea #46—
+no habría conseguido nada: la auditoría seguiría abriendo con nueve fallos permanentes y el
+lector seguiría saltando al final. *Media reparación de este defecto es ninguna.*
+
+**La política se pasa en el punto de entrada.** `enforced_from=None` significa *toda época se
+exige*: quien olvide el argumento obtiene la versión **estricta**. Un defecto indulgente habría
+metido la forma permisiva una capa más abajo, donde nadie la busca. Y hay un test que **conduce
+`main`** para comprobar que la política llega — porque ese defecto vive en la llamada y ninguna
+prueba de unidad lo vería.
+
+*Ventanas abiertas esta noche: #43 (de B) a las 02:40Z, #44 a las 02:50Z, #33 a las 03:03Z,
+#45 a las 03:20Z.*
