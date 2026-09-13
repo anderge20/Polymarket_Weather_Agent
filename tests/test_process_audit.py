@@ -359,16 +359,14 @@ def test_without_a_policy_every_era_is_enforced():
 
 def test_a_short_window_before_the_cutoff_is_legacy_and_not_a_failure():
     viejo = [_pr(4, "2026-09-09T10:28:28Z", "2026-09-09T10:28:38Z")]
-    out = process_audit.check_d16(merged=viejo, enforced_from=dt.date(2026, 9, 13),
-                                  legacy_short=1)
+    out = process_audit.check_d16(merged=viejo, legacy=(dt.date(2026, 9, 13), 1))
     assert out == [], out
 
 
 def test_a_short_window_ON_the_cutoff_day_still_fails():
     """La frontera es `<`, no `<=`: el día que se empieza a exigir, se exige."""
     hoy = [_pr(99, "2026-09-13T10:00:00Z", "2026-09-13T10:30:00Z")]
-    out = process_audit.check_d16(merged=hoy, enforced_from=dt.date(2026, 9, 13),
-                                  legacy_short=0)
+    out = process_audit.check_d16(merged=hoy, legacy=(dt.date(2026, 9, 13), 0))
     assert len(out) == 1 and "PR #99" in out[0], out
 
 
@@ -379,19 +377,18 @@ def test_the_legacy_pin_fails_when_the_count_drifts():
     queda clavado: si cambia, o se reescribió la historia o el pin está obsoleto,
     y las dos cosas necesitan a alguien."""
     viejo = [_pr(4, "2026-09-09T10:28:28Z", "2026-09-09T10:28:38Z")]
-    out = process_audit.check_d16(merged=viejo, enforced_from=dt.date(2026, 9, 13),
-                                  legacy_short=7)
+    out = process_audit.check_d16(merged=viejo, legacy=(dt.date(2026, 9, 13), 7))
     assert len(out) == 1 and "legacy baseline moved" in out[0] and "pinned at 7" in out[0]
 
 
 def test_a_silent_window_before_the_cutoff_is_legacy_and_the_pin_still_bites():
     mudo = [_pr_traza(4, "2026-09-09T08:00:00Z", "2026-09-09T12:00:00Z")]
     assert process_audit.check_objection_window_was_used(
-        merged=mudo, enforced_from=dt.date(2026, 9, 13), legacy_silent=1) == [
+        merged=mudo, legacy=(dt.date(2026, 9, 13), 1)) == [
             "0 formal reviews across 1 merged PRs: whatever review happens is in "
             "the comment stream, and no check but this one looks there"]
     drift = process_audit.check_objection_window_was_used(
-        merged=mudo, enforced_from=dt.date(2026, 9, 13), legacy_silent=0)
+        merged=mudo, legacy=(dt.date(2026, 9, 13), 0))
     assert any("legacy baseline moved" in x for x in drift), drift
 
 
@@ -408,10 +405,28 @@ def test_the_measurements_state_the_frozen_debt_even_when_nothing_fails():
     assert "1 of 2 PRs merged before 2026-09-13 merged INSIDE" in lineas[2]
 
 
-def test_main_hands_the_checks_the_pin_and_not_only_the_cutoff(monkeypatch, capsys):
-    """CABLEADO, no existencia. Una política que se define y no se pasa deja los
-    dos chequeos en su modo estricto o en su modo sin pin según el descuido, y
-    ninguna prueba de unidad lo vería: el defecto vive en la llamada."""
+def test_the_cutoff_cannot_be_taken_without_the_pin():
+    """EL HALLAZGO DE B SOBRE LA PRIMERA VERSIÓN DE ESTE FICHERO.
+
+    Con dos parámetros, `enforced_from` sin `legacy_short` daba la exclusión sin
+    el pin: nueve filas fuera de la lista de fallos y nada comprobando el
+    recuento. El test de cableado nombraba ese modo de fallo y lo guardaba
+    probando al llamador de HOY — un llamador futuro se lleva la mitad
+    indulgente en silencio.
+
+    Dos parámetros hacían el estado malo REPRESENTABLE. Un par no, y lo que
+    queda representable —media tupla— se niega en voz alta."""
+    viejo = [_pr(4, "2026-09-09T10:28:28Z", "2026-09-09T10:28:38Z")]
+    with pytest.raises(ValueError, match="without the pin"):
+        process_audit.check_d16(merged=viejo, legacy=(dt.date(2026, 9, 13), None))
+    with pytest.raises(ValueError, match="without the pin"):
+        process_audit.check_objection_window_was_used(
+            merged=viejo, legacy=(dt.date(2026, 9, 13), None))
+
+
+def test_main_hands_the_checks_the_frozen_debt_as_one_object(monkeypatch, capsys):
+    """CABLEADO, no existencia: el defecto vive en la llamada y ninguna prueba de
+    unidad lo vería."""
     visto = {}
     monkeypatch.setattr(process_audit, "merged_prs",
                         lambda limit: [_pr_traza(4, "2026-09-09T10:00:00Z",
@@ -423,7 +438,5 @@ def test_main_hands_the_checks_the_pin_and_not_only_the_cutoff(monkeypatch, caps
     monkeypatch.setattr(process_audit, "check_mainline", lambda since: [])
     monkeypatch.setattr(process_audit, "check_collector", lambda: [])
     process_audit.main([])
-    assert visto["d16"]["enforced_from"] == process_audit.ENFORCED_FROM
-    assert visto["d16"]["legacy_short"] == process_audit.LEGACY_SHORT
-    assert visto["win"]["enforced_from"] == process_audit.ENFORCED_FROM
-    assert visto["win"]["legacy_silent"] == process_audit.LEGACY_SILENT
+    assert visto["d16"]["legacy"] == process_audit.LEGACY_SHORT_WINDOWS
+    assert visto["win"]["legacy"] == process_audit.LEGACY_TRACE

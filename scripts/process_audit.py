@@ -120,16 +120,42 @@ def merged_prs(limit: int = DEFAULT_LIMIT, runner=_run) -> list[dict]:
 #: So the legacy rows become a MEASUREMENT, stated on every run, and the check
 #: fails only on a silent merge it could still have prevented. What stops that
 #: from being the permissive form -- a check that can no longer fail -- is the
-#: PIN: if the legacy count ever differs from `LEGACY_SILENT`, history was
+#: PIN: if the legacy count ever differs from the one in `LEGACY_TRACE`, history was
 #: rewritten and that IS a failure, reported as one.
 ENFORCED_FROM = dt.date(2026, 9, 13)
-LEGACY_SILENT = 15
-LEGACY_SHORT = 9
+
+#: THE CUTOFF AND THE COUNT TRAVEL TOGETHER OR NOT AT ALL, and they are one
+#: object for exactly that reason. The first version of this file took them as
+#: two parameters, and session B's review found the hole in ninety seconds:
+#: `enforced_from` without `legacy_short` gives the EXCLUSION WITHOUT THE PIN --
+#: nine rows leave the failure list and nothing checks the count. Nothing in the
+#: signature stopped it.
+#:
+#: What made it a finding rather than a nit is that the wiring test's own
+#: docstring named that failure mode -- "su modo estricto o su modo sin pin
+#: segun el descuido" -- and then guarded it by testing TODAY'S caller. `main`
+#: passes both and the test proves it; a future caller gets the lenient half
+#: alone, silently. Two parameters made the bad state REPRESENTABLE. One pair
+#: does not, which is the difference between detecting a mistake and not having
+#: somewhere to put it.
+LEGACY_TRACE = (ENFORCED_FROM, 15)
+LEGACY_SHORT_WINDOWS = (ENFORCED_FROM, 9)
+
+
+def _legacy(legacy) -> "tuple[dt.date | None, int | None]":
+    """Unpack the frozen-debt policy, refusing the half of it that would be lax."""
+    if legacy is None:
+        return None, None
+    corte, cuenta = legacy
+    if corte is None or cuenta is None:
+        raise ValueError(
+            "legacy=(cutoff, count): a cutoff without a count is the exclusion "
+            "without the pin, and that combination is what this refuses to have")
+    return corte, cuenta
 
 
 def check_d16(limit: int = DEFAULT_LIMIT, runner=_run, merged=None,
-              enforced_from: "dt.date | None" = None,
-              legacy_short: "int | None" = None) -> list[str]:
+              legacy: "tuple[dt.date, int] | None" = None) -> list[str]:
     """Every merged PR must show >= 2 h between opening and merging.
 
     `createdAt` is a PROXY and it is the permissive one. D16 dates the window from
@@ -144,26 +170,27 @@ def check_d16(limit: int = DEFAULT_LIMIT, runner=_run, merged=None,
     exists that changes them. Doing this to one check and not the other would
     have achieved nothing -- the audit would still open with nine permanent
     failures and the reader would still learn to skip to the bottom. The pin
-    (`LEGACY_SHORT`) is what keeps it a gate: a tenth short merge fails, and so
+    (`LEGACY_SHORT_WINDOWS`) is what keeps it a gate: a tenth short merge fails, and so
     does the count drifting.
     """
     merged = merged if merged is not None else merged_prs(limit, runner)
+    enforced_from, legacy_short = _legacy(legacy)
 
-    violations, legacy = [], 0
+    violations, heredadas = [], 0
     for r in sorted(merged, key=lambda r: -r["number"]):
         waited = _utc(r["mergedAt"]) - _utc(r["createdAt"])
         if waited >= D16_WINDOW:
             continue
         if enforced_from is not None and _utc(r["mergedAt"]).date() < enforced_from:
-            legacy += 1
+            heredadas += 1
             continue
         short = (D16_WINDOW - waited).total_seconds() / 60
         violations.append(
             f"PR #{r['number']}: waited {waited.total_seconds()/3600:.2f} h, "
             f"{short:.0f} min short (opened {r['createdAt']}, merged {r['mergedAt']})")
-    if legacy_short is not None and legacy != legacy_short:
+    if legacy_short is not None and heredadas != legacy_short:
         violations.append(
-            f"legacy baseline moved: {legacy} short windows before "
+            f"legacy baseline moved: {heredadas} short windows before "
             f"{enforced_from}, pinned at {legacy_short} -- either history was "
             f"rewritten or the pin is stale, and both need a human")
     return violations
@@ -171,8 +198,7 @@ def check_d16(limit: int = DEFAULT_LIMIT, runner=_run, merged=None,
 
 def check_objection_window_was_used(limit: int = DEFAULT_LIMIT, runner=_run,
                                     merged=None,
-                                    enforced_from: "dt.date | None" = None,
-                                    legacy_silent: "int | None" = None) -> list[str]:
+                                    legacy: "tuple[dt.date, int] | None" = None) -> list[str]:
     """D16 is a window for OBJECTIONS. `check_d16` can only see the clock.
 
     A PR that waits 2 h 00 and merges with nothing written on it satisfies
@@ -207,8 +233,9 @@ def check_objection_window_was_used(limit: int = DEFAULT_LIMIT, runner=_run,
     comment stream, where no tooling looks for it.
     """
     merged = merged if merged is not None else merged_prs(limit, runner)
+    enforced_from, legacy_silent = _legacy(legacy)
 
-    silent, legacy, formales = [], 0, 0
+    silent, heredadas, formales = [], 0, 0
     for r in sorted(merged, key=lambda r: -r["number"]):
         fin = _utc(r["mergedAt"])
         revs = [v for v in (r.get("reviews") or [])
@@ -219,7 +246,7 @@ def check_objection_window_was_used(limit: int = DEFAULT_LIMIT, runner=_run,
         if revs or coms:
             continue
         if enforced_from is not None and fin.date() < enforced_from:
-            legacy += 1
+            heredadas += 1
             continue
         esperado = (fin - _utc(r["createdAt"])).total_seconds() / 3600
         silent.append(
@@ -228,9 +255,9 @@ def check_objection_window_was_used(limit: int = DEFAULT_LIMIT, runner=_run,
 
     out = list(silent)
     # The pin. Without it the split above would be a way of never failing again.
-    if legacy_silent is not None and legacy != legacy_silent:
+    if legacy_silent is not None and heredadas != legacy_silent:
         out.append(
-            f"legacy baseline moved: {legacy} silent merges before "
+            f"legacy baseline moved: {heredadas} silent merges before "
             f"{enforced_from}, pinned at {legacy_silent} -- either history was "
             f"rewritten or the pin is stale, and both need a human")
     if formales == 0:
@@ -383,16 +410,15 @@ def main(argv: list[str] | None = None) -> int:
     # the lenient version -- the permissive form, one layer down. The functions
     # compute violations; WHICH ERA IS ENFORCED is a decision, and a decision
     # belongs at the entry point where it can be read.
-    politica = dict(enforced_from=ENFORCED_FROM)
     for name, fn in (("D16 merge window",
-                      lambda: check_d16(merged=poblacion, legacy_short=LEGACY_SHORT,
-                                        **politica)),
+                      lambda: check_d16(merged=poblacion,
+                                        legacy=LEGACY_SHORT_WINDOWS)),
                      # Deliberately adjacent to the clock check, and deliberately
                      # after it: the pair is the finding. The first says the rule
                      # was kept, the second says whether it did anything.
                      ("D16 window was used",
                       lambda: check_objection_window_was_used(
-                          merged=poblacion, legacy_silent=LEGACY_SILENT, **politica)),
+                          merged=poblacion, legacy=LEGACY_TRACE)),
                      ("mainline integrity", lambda: check_mainline(args.since)),
                      ("collector freshness", check_collector)):
         try:
