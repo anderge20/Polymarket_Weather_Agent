@@ -23395,3 +23395,109 @@ negativa de potencia insuficiente clasificada como INCONCLUSIVE, jamás como NOT
 sin buscar otra ciudad si ésta falla con potencia suficiente.
 
     FASE C = LOCKED     ciudad congelada · metodologia congelada · datos pendientes
+
+---
+
+## A-298 — FASE C = CLOSED. `lead 9` **REPLICATED** en RKSI, `lead 24` INCONCLUSIVE, y el gate de timezone encontró el hermano del defecto de D11 · 2026-09-13 · Claude (sesión A)
+
+*Escrito 2026-09-13T22:40Z. `D0` abajo · `D0-P = BLOCKED` · `L2 = BLOCKED`. Cero precios,
+cero EV, cero PnL, cero ejecución, cero dinero real.*
+
+**Réplica ex-ante en `RKSI` (Incheon/Seúl, `Asia/Seoul`), ciudad congelada en `aed9482`
+antes de tocar un dato. Metodología importada, no reescrita.**
+
+### El resultado
+
+    lead    B4 - S3      IC95                    n    efecto/MDE   Londres
+      24   -0,00485   [-0,00940, -0,00042]      73       0,74     -0,00614
+       9   -0,00892   [-0,01378, -0,00438]      74       1,33     -0,01181
+
+Misma dirección en los dos leads, magnitud **0,76-0,79×** la de Londres, los dos IC
+excluyen el cero. Por el criterio de `LOCK_FASE_C.md` §6, escrito antes de ver nada:
+**`lead 9 = REPLICATED`**, **`lead 24 = INCONCLUSIVE`** por potencia (0,74 < 1).
+
+**El eco estructural es lo que no estaba garantizado:** el lead que cae es el mismo en
+las dos ciudades. Londres descartó el 24 en la Fase A con 0,87; RKSI lo descarta con 0,74.
+
+### Y la réplica es MÁS FRÁGIL que el original, medido con las pruebas predefinidas
+
+    influencia   RKSI  lead 9  muere quitando 10 eventos
+                 EGLC  lead 9  aguanta quitando 20
+    estabilidad  RKSI  lead 9  1a mitad -0,00302 [incluye el cero] · 2a -0,01482
+                 EGLC  lead 9  1a mitad -0,01089 · 2a -0,01272   (las dos excluyen)
+
+En estabilidad, el lead 9 de RKSI se parece más al lead 24 de Londres — descartado — que
+al lead 9 de Londres. **No convierto eso en un criterio nuevo**: endurecer la regla al ver
+el número está tan prohibido como relajarla. Va como limitación reportada, primero en el
+§9 del informe y otra vez en el §12.
+
+Y una honestidad más: `MIN_TRAIN` crece monótonamente a favor (−0,0089 → −0,0131) y
+**no cuenta como confirmación independiente**, porque subir `MIN_TRAIN` elimina justo los
+eventos tempranos de la mitad floja. Dos pruebas que miden lo mismo son una.
+
+### El gate de timezone encontró un defecto real ANTES de puntuar
+
+`n075_poblacion.poblacion()` calculaba el corte del día civil del desempate con
+`Europe/London` **fijo**, para cualquier estación. Es el **hermano** del defecto que
+D11/A-285 arregló doce líneas más arriba, en `observaciones()` de la misma función:
+arreglar uno dejó el otro en pie.
+
+**Impacto medido: CERO.** RKSI tiene 0 desempates y EGLC tiene 1 que resuelve igual con
+las dos zonas. Un defecto latente, corregido, que no movió un número — y se cuenta así,
+sin inflarlo.
+
+Lo que lo encontró no fue leer el fichero: fue exigir que la **mutación** de
+`stations.timezone_of` cambiara la salida. La comprobación pedida por el encargo
+(*"un test que falle si se usa una timezone fija"*) es la que lo destapó.
+
+### Availability: para RKSI la cota es DIRECTA — y eso deja a Londres peor
+
+    ARCH_AUDIT_SEAMLESS.json   RKSI -> ICON-GLOBAL ~13km    EGLC -> ICON-D2 ~2.2km
+    F3-CLOSURE-REPORT.md       dwd_icon  n=78  MAX = 4,76 h
+    el proveedor, en RKSI      "Model: dwd_icon"
+
+`L_MAX['icon_seamless'] = 4,76 h` es una medición de **`dwd_icon`**, el modelo que sirve a
+RKSI: para la réplica **no hay traslación**. Para **Londres sí la había** y nadie lo había
+dicho: EGLC lo sirve ICON-D2 y se le aplicó un número de ICON-GLOBAL. La dirección es
+conservadora (D2 publica antes, así que la cota retrasa `available_at` y hace *perder*
+información), pero es una traslación no declarada. Queda contra la tarea #75 y contra la
+Fase B.
+
+### Ingesta y presupuesto — techos respetados, ninguno movido
+
+    observaciones   95 / 100   0 fallos   0 429   95 de 95 dias
+    pronosticos    191 / 200   1 fallo    0 429   189 filas de 190
+
+El fallo es un hueco del archivo (`2026-06-10T18:00Z`, `dwd_icon`), **no** cuota. Mi guion
+paraba en seco ante cualquier error, que es lo correcto para IEM y **incorrecto** para el
+pronóstico: producción (`backfill_weather.py`) distingue cuota de hueco y sólo para ante
+la primera. **ENMIENDA 2** alineó el guion con producción y declaró un techo de 20 fallos
+**antes** de reanudar. Se gastó 1.
+
+Dos oráculos independientes, **cero discrepancias los dos**: el tarball horario de B-133
+para las 95 observaciones, y las **73 pasadas** que la ingesta de producción ya tenía para
+RKSI — mismo `(model, issue_time, target_date)`, mismo `forecast_tmax`.
+
+### §13: 20 de 20 casillas antes de calcular un solo Brier
+
+`faseC_gate_timezone.py` (9 bloques, mutación incluida) y `faseC_gate_integridad.py`
+(§5, §7, §10, §11, §12 + checklist) salen los dos con código 0. `faseC_datos.equivalencia()`
+demuestra sobre EGLC que la capa de lectura de la Fase C — que sólo añade un filtro por
+`dataset_version` — devuelve **exactamente** lo que devuelven las lecturas congeladas.
+
+De paso, `resolution.band_integrity` (producción) coincide con `particion()` en los 186
+eventos de RKSI, 0 desacuerdos: para RKSI eso cierra la duda de la tarea #70.
+
+### DECISIÓN
+
+> **`PREPARAR ANÁLISIS CONJUNTO`. `L2` sigue BLOCKED. `D0` sigue abajo.**
+
+§18-A es explícito: una réplica positiva **no abre L2**. Lo que se abre es el diseño de un
+análisis combinado Londres + RKSI, declarado antes de ejecutarlo, que tendrá que
+justificar cómo se juntan dos ventanas distintas, dos modelos ICON distintos y dos
+regímenes climáticos distintos. **No se busca una tercera ciudad** (§23): la réplica no
+falló, así que buscarla sería city shopping.
+
+Artefactos: `postl1/C_replica/FASE_C_RESULTADO.md`, `FASE_C_SCORING.txt`,
+`FASE_C_GATES.txt`, `FASE_C_GATE_TIMEZONE.txt`, `ENMIENDA_FALLO_DE_PASADA.md`,
+`faseC_{datos,gate_timezone,gate_integridad,scoring}.py`.

@@ -1,0 +1,113 @@
+====================================================================================================
+FASE C · REPLICA EX-ANTE · RKSI · Asia/Seoul · ventana 2026-05-21 -> 2026-08-23
+   dataset replica_rksi_v1 · semilla 20260913 · bootstrap 10000 · MIN_TRAIN 20 · eps 1e-06
+====================================================================================================
+
+====================================================================================================
+LEAD 24 h · 73 eventos · escaleras {11: 73}
+====================================================================================================
+  historial ex-ante para S3: min 111 · mediana 147 · max 183 eventos
+
+  serie                     Brier/evento   vs uniforme
+  S2 uniforme (control)          0.08264      -0.00000
+  S1 interior                    0.08164      -0.00101
+  S3 posicion empirica           0.07813      -0.00452
+  B0 climatologia                0.08856      +0.00591
+  B4 (el modelo)                 0.07327      -0.00937
+
+  --- §14 · LAS TRES COMPARACIONES DE REGISTRO ---
+      B4 - S3          -0.00485  IC95 [-0.00940, -0.00042]  B4 MEJOR   <-- PRIMARIO
+      B4 - uniforme    -0.00937  IC95 [-0.01332, -0.00540]  B4 MEJOR
+      B4 - B0          -0.01528  IC95 [-0.02064, -0.00978]  B4 MEJOR
+
+  --- §19 · POTENCIA ---
+      gana en 41/73 eventos · sd 0.01988 · MDE(80%) 0.00652 · efecto/MDE 0.74
+
+  --- §17.1 · informacion que lleva la escalera SOLA (red-team 1) ---
+      posicion de la ganadora: {-2: 3, -1: 5, 0: 10, 1: 12, 2: 25, 3: 8, 4: 7, 5: 3}
+      |desviacion| media 1.92 bandas (uniforme daria 2.73)
+      entropia empirica 1.8492  (uniforme sobre 11: 2.3979)
+
+  --- §17.2 · sensibilidad a MIN_TRAIN (red-team 3) ---
+      MIN_TRAIN 20  n= 73   -0.00485  [-0.00931, -0.00023]  excluye el cero
+      MIN_TRAIN 30  n= 63   -0.00666  [-0.01176, -0.00189]  excluye el cero
+      MIN_TRAIN 40  n= 53   -0.00833  [-0.01398, -0.00269]  excluye el cero
+      MIN_TRAIN 50  n= 43   -0.01008  [-0.01672, -0.00346]  excluye el cero
+
+  --- §17.3 · influencia de eventos (red-team 4) ---
+      quitando los  0 mas favorables: n= 73   -0.00485  [-0.00952, -0.00024]  sigue excluyendo
+      quitando los  5 mas favorables: n= 68   -0.00168  [-0.00548, +0.00219]  YA NO
+      quitando los 10 mas favorables: n= 63   +0.00052  [-0.00315, +0.00422]  YA NO
+      quitando los 20 mas favorables: n= 53   +0.00427  [+0.00073, +0.00777]  YA NO
+      mediana -0.00532 · media -0.00485
+
+  --- §17.4 · estabilidad temporal (mitades de la ventana) ---
+      primera mitad ( 36 eventos, corte 2026-07-18):  -0.00052  [-0.00602, +0.00469]
+      segunda mitad ( 37 eventos, corte 2026-07-18):  -0.00907  [-0.01615, -0.00224]
+
+====================================================================================================
+LEAD 9 h · 74 eventos · escaleras {11: 74}
+====================================================================================================
+  historial ex-ante para S3: min 111 · mediana 148 · max 184 eventos
+
+  serie                     Brier/evento   vs uniforme
+  S2 uniforme (control)          0.08264      -0.00000
+  S1 interior                    0.08163      -0.00102
+  S3 posicion empirica           0.07811      -0.00454
+  B0 climatologia                0.08803      +0.00538
+  B4 (el modelo)                 0.06919      -0.01346
+
+  --- §14 · LAS TRES COMPARACIONES DE REGISTRO ---
+      B4 - S3          -0.00892  IC95 [-0.01378, -0.00438]  B4 MEJOR   <-- PRIMARIO
+      B4 - uniforme    -0.01346  IC95 [-0.01727, -0.00940]  B4 MEJOR
+      B4 - B0          -0.01884  IC95 [-0.02418, -0.01323]  B4 MEJOR
+
+  --- §19 · POTENCIA ---
+      gana en 47/74 eventos · sd 0.02068 · MDE(80%) 0.00673 · efecto/MDE 1.33
+
+  --- §17.1 · informacion que lleva la escalera SOLA (red-team 1) ---
+      posicion de la ganadora: {-2: 3, -1: 5, 0: 10, 1: 13, 2: 25, 3: 8, 4: 7, 5: 3}
+      |desviacion| media 1.91 bandas (uniforme daria 2.73)
+      entropia empirica 1.8481  (uniforme sobre 11: 2.3979)
+
+  --- §17.2 · sensibilidad a MIN_TRAIN (red-team 3) ---
+      MIN_TRAIN 20  n= 74   -0.00892  [-0.01363, -0.00422]  excluye el cero
+      MIN_TRAIN 30  n= 64   -0.00931  [-0.01463, -0.00416]  excluye el cero
+      MIN_TRAIN 40  n= 54   -0.01152  [-0.01771, -0.00559]  excluye el cero
+      MIN_TRAIN 50  n= 44   -0.01314  [-0.01992, -0.00651]  excluye el cero
+
+  --- §17.3 · influencia de eventos (red-team 4) ---
+      quitando los  0 mas favorables: n= 74   -0.00892  [-0.01371, -0.00431]  sigue excluyendo
+      quitando los  5 mas favorables: n= 69   -0.00565  [-0.00962, -0.00167]  sigue excluyendo
+      quitando los 10 mas favorables: n= 64   -0.00305  [-0.00653, +0.00069]  YA NO
+      quitando los 20 mas favorables: n= 54   +0.00090  [-0.00254, +0.00442]  YA NO
+      mediana -0.00805 · media -0.00892
+
+  --- §17.4 · estabilidad temporal (mitades de la ventana) ---
+      primera mitad ( 37 eventos, corte 2026-07-18):  -0.00302  [-0.00834, +0.00215]
+      segunda mitad ( 37 eventos, corte 2026-07-18):  -0.01482  [-0.02229, -0.00782]
+
+====================================================================================================
+§17.5 · ¿S3 tiene fuga del futuro?
+====================================================================================================
+  eventos anteriores al corte 2026-07-18: 36
+  S3 identico prohibiendo ademas todo lo posterior: 36/36
+  -> NO hay fuga
+
+====================================================================================================
+§17.6 · missingness y disponibilidad
+====================================================================================================
+  observacion: 0 de 95 dias sin observacion en la ventana
+  pronostico : 1 pasada ausente del archivo (2026-06-10T18:00Z, dwd_icon).
+    el lector congelado retrocede solo a la pasada anterior: 1 fechas con lead 9 servidas por una pasada mas vieja [datetime.date(2026, 6, 11)]
+    lead 24 quitando esas fechas: n=73  -0.00485 [-0.00942, -0.00038]
+    lead  9 quitando esas fechas: n=73  -0.00916 [-0.01405, -0.00457]
+
+====================================================================================================
+§20 · COMPARACION CON LONDRES (solo ahora, con RKSI ya cerrado)
+====================================================================================================
+   lead   Londres B4-S3    RKSI B4-S3                  IC95 RKSI    n  efecto/MDE
+     24        -0.00614      -0.00485   [-0.00940, -0.00042]   73        0.74
+        direccion: MISMA · magnitud RKSI/Londres +0.79x
+      9        -0.01181      -0.00892   [-0.01378, -0.00438]   74        1.33
+        direccion: MISMA · magnitud RKSI/Londres +0.76x

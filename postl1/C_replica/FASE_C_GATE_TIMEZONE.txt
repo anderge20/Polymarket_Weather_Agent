@@ -1,0 +1,72 @@
+============================================================================================
+FASE C · GATE DE TIMEZONE · RKSI · zona declarada Asia/Seoul
+============================================================================================
+
+T1 · conversion UTC -> zona de la estacion
+  OK  stations.timezone_of('RKSI') == Asia/Seoul
+        Asia/Seoul
+  OK  Asia/Seoul es UTC+09:00 TODO el anyo (sin horario de verano)
+        [datetime.timedelta(seconds=32400)]
+  OK  Europe/London y Asia/Seoul NO coinciden en la ventana (la mutacion puede morder)
+
+T2 · la clave de agrupacion es la FECHA LOCAL, no la UTC
+  OK  observaciones_banda agrupa por fecha LOCAL (95 dias)
+  OK  y NO por fecha UTC — los dos conjuntos difieren
+        local 95 dias, utc 91 dias, solo-utc 0, solo-local 4
+
+T3 · observaciones cerca de la medianoche UTC (el caso que discrimina)
+  OK  la serie horaria tiene 380 lecturas a +-1 h de medianoche UTC (de 4562 en la ventana)
+  OK  y 190 caen en una FECHA distinta al pasar a Asia/Seoul
+        2026-05-20 23:00Z -> 2026-05-21 08:00 KST; 2026-05-20 23:30Z -> 2026-05-21 08:30 KST; 2026-05-21 23:00Z -> 2026-05-22 08:00 KST
+  OK  para el contraste: el MAXIMO diario cae cerca de medianoche UTC 1 veces de 95
+        por eso la comprobacion se hace sobre la serie horaria y no sobre la tabla diaria
+
+T4 · no se desplaza un dia: maximo diario contra el oraculo independiente
+  OK  95 dias locales en la ventana congelada (95)
+  OK  0 discrepancias contra el tarball sobre 95 dias
+  OK  y el MISMO oraculo agrupado por Europe/London discrepa en 2 de 95 dias
+        prueba de que el dia local NO es indiferente en RKSI
+
+T5 · pronostico y observacion pertenecen al MISMO target date
+  OK  pares (fecha,lead) 190 sobre 95 fechas objetivo
+  OK  toda fecha con pronostico tiene observacion local (0 sin)
+        []
+  OK  ninguna fecha objetivo se sale de la ventana congelada
+        []
+
+T6 · t_asof, expresado en hora LOCAL de la estacion
+  OK  lead 24 h -> t_asof 2026-08-22 12:00Z = 2026-08-22 21:00 KST
+  OK  lead  9 h -> t_asof 2026-08-23 03:00Z = 2026-08-23 12:00 KST
+  OK  el ancla end_date 12:00Z son las 21:00 KST del MISMO dia objetivo
+        el dia civil de Seul acaba 15:00Z, asi que el ancla cae DESPUES del cierre local
+
+T7 · los dos leads, con la pasada que la regla congelada selecciona
+  OK  lead 24 h: 95 fechas con pronostico disponible en t_asof
+  OK  lead  9 h: 95 fechas con pronostico disponible en t_asof
+  OK  available_at <= t_asof en las 190 lecturas (0 look-ahead)
+        []
+  OK  las pasadas ingestadas son exactamente 06z y 18z
+        ['06z', '18z']
+
+T8 · MUTACION — si la zona estuviera clavada, estas comprobaciones FALLARIAN
+  OK  [Europe/London] observaciones_banda CAMBIA al mutar la zona
+        dias 95 -> 91, valores distintos 0
+  OK  [Europe/London] observaciones_c CAMBIA al mutar la zona
+  OK  [Europe/London] la zona devuelta es la mutada, no una fija
+  OK  [Europe/London] poblacion: las FECHAS no dependen de la zona (vienen de end_date)
+  OK  [UTC] observaciones_banda CAMBIA al mutar la zona
+        dias 95 -> 91, valores distintos 0
+  OK  [UTC] observaciones_c CAMBIA al mutar la zona
+  OK  [UTC] la zona devuelta es la mutada, no una fija
+  OK  [UTC] poblacion: las FECHAS no dependen de la zona (vienen de end_date)
+  OK  poblacion(): el corte del dia civil usa zona_estacion, no la constante LON
+
+T9 · la INGESTA tambien uso la zona de la estacion (no solo el analisis)
+  OK  tmax_from_series depende de la zona sobre filas REALES
+        Asia/Seoul 28.00 (49 h) vs Europe/London 28.00 (48 h)
+  OK  73 pasadas comunes con la ingesta de PRODUCCION, 0 discrepancias
+        las dos rutas tomaron la MISMA ventana local; `ingest_run` recibe `stations.timezone_of(icao)` en las dos
+
+============================================================================================
+GATE DE TIMEZONE: PASA — todas las comprobaciones, incluida la mutacion
+============================================================================================

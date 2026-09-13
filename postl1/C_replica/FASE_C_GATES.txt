@@ -1,0 +1,93 @@
+============================================================================================
+FASE C · GATES DE INTEGRIDAD · RKSI · ventana 2026-05-21 -> 2026-08-23
+============================================================================================
+
+§5 · INTEGRIDAD DE INGESTA — PRONOSTICO
+  OK  filas de pronostico: 189 (190 planeadas - 1 pasada ausente)
+  OK  un solo modelo
+        {'icon_seamless'}
+  OK  una sola fuente
+        {'OPEN_METEO_SINGLE_RUNS'}
+  OK  0 forecast_tmax nulos
+  OK  issue_time y available_at llevan zona
+  OK  available_at - issue_time == L_MAX en TODAS las filas: [4.76] h
+  OK  toda pasada esta dentro de las 36 h previas al ancla
+  OK  0 duplicados por (station, model, issue_time, target_date): 0
+  OK  continuidad temporal: 95 fechas objetivo, 2026-05-21 -> 2026-08-23, sin huecos
+        huecos: [datetime.date(2026, 8, 24)]
+
+§5 · INTEGRIDAD DE INGESTA — OBSERVACION
+  OK  filas de observacion: 95
+  OK  una sola serie
+        {'IEM_ASOS_METAR_RT34'}
+  OK  unidad C en todas
+        {'C'}
+  OK  0 nulos en valor ni en tmax
+  OK  un registro por dia LOCAL (max 1)
+  OK  cobertura completa de la ventana: 0 dias sin observacion (missingness = 0)
+
+§7 · OBSERVACIONES — dos columnas, dos usos, y la puerta de unidad
+  OK  exige_celsius() PASA para RKSI (markets y observaciones en C)
+  OK  observed_value == tmax_observed en los 95 dias (0 difieren)
+        RKSI es Celsius nativo: la distincion A-283 esta activa pero no muerde aqui
+
+§10 · AUDITORIA DE ESCALERAS
+  OK  fechas elegibles: 186   escaleras {7: 2, 9: 26, 11: 158}
+  OK  particion completa, sin huecos ni solapes, en las 186 (0 malas)
+  OK  exactamente una banda ganadora por evento: {1: 186}
+  OK  resolution.band_integrity (PRODUCCION): particion en las 186 (0 no)
+        []
+  OK  0 desacuerdos entre band_integrity y particion() sobre 186 eventos (0)
+        cierra para RKSI la duda abierta de la tarea #70
+  OK  redondeo: las bandas interiores son enteros sueltos en C (regla parse_band)
+        tamanos presentes [7, 9, 11]; se estratifica SIEMPRE por n (A-280)
+
+§11 · POBLACIONES — separadas, y la unidad es el EVENTO
+     A · objetivo (fechas elegibles, todo el catalogo)      186
+     B · dentro de la ventana congelada                      95
+     C · con observacion (dia local)                         95
+     D · con pronostico lead 24                              95
+     D · con pronostico lead  9                              95
+     E · con observacion Y pronostico l24                    95
+     E · con observacion Y pronostico l09                    95
+     F · PUNTUABLE lead 24 (MIN_TRAIN=20)                    73
+     F · PUNTUABLE lead  9 (MIN_TRAIN=20)                    74
+  OK  N puntuable >= 30 en los dos leads (l24 73, l9 74)
+     contratos (NO son observaciones independientes): l24 803, l9 814
+     escaleras puntuables lead 24: {11: 73}
+     escaleras puntuables lead  9: {11: 74}
+
+§12 · AVAILABILITY — la evidencia tiene que ser de ESTE modelo, no de Londres
+  OK  L_MAX['icon_seamless'] = 4.76 h, sin tocar
+  OK  el proveedor nombro el modelo en RKSI: `Model: dwd_icon`
+        mensaje de error del run ausente 2026-06-10T18:00Z, coordenadas (37.469,126.451)
+  OK  ARCH_AUDIT_SEAMLESS.json: RKSI -> ICON-GLOBAL ~13km · EGLC -> ICON-D2 ~2.2km
+  OK  F3-CLOSURE-REPORT.md: la cota 4,76 h es de `dwd_icon`, n=78, MAX=4,76
+        es decir: para RKSI la cota NO se traslada, es la del modelo que sirve a RKSI. Para Londres SI se trasladaba (ICON-D2 medido por un numero de ICON-GLOBAL)
+  OK  margen minimo t_asof - available_at sobre las 190 lecturas: 1.240 h
+
+============================================================================================
+§13 · CHECKLIST ANTES DEL SCORING
+============================================================================================
+  [x] RKSI congelada                     LOCK_FASE_C.md · aed9482 · antes de tocar un dato
+  [x] timezone Asia/Seoul                faseC_gate_timezone.py: 9 bloques, mutacion incluida
+  [x] no modificacion de metodologia     equivalencia con las lecturas congeladas sobre EGLC: identica
+  [x] dataset nuevo                      replica_rksi_v1 · 0 filas existentes tocadas
+  [x] presupuesto respetado              fc 191/200 · obs 95/100
+  [x] no 429 bypass                      0 respuestas 429; parada dura preparada y no ejercida
+  [x] forecast timestamps validos        
+  [x] observations validas               
+  [x] unidades validas                   C en markets y en observaciones
+  [x] ladders validas                    {7: 2, 9: 26, 11: 158}
+  [x] settlement valido                  winning_outcome del mercado, una sola 'Yes' por evento
+  [x] target contractual correcto        winning_outcome, no la observacion
+  [x] no leakage                         available_at <= t_asof, 190/190
+  [x] no look-ahead                      entrenamiento filtrado por label_av(d) <= t_asof
+  [x] t_asof correcto                    end_date 12:00Z - lead; 21:00 y 12:00 KST
+  [x] availability documentada           dwd_icon, n=78, MAX 4,76 h — el modelo de RKSI
+  [x] MIN_TRAIN = 20                     BL.MIN_TRAIN=20
+  [x] ambos leads                        
+  [x] B0-B4 identicos                    se importan de l1_2_baselines, no se reescriben
+  [x] S3 identico                        se importa de faseA_benchmark, no se reescribe
+============================================================================================
+GATES: CERRADOS — 20 de 20 casillas. El scoring queda AUTORIZADO.

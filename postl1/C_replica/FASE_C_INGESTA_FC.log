@@ -5,3 +5,14 @@ con oraculo 73 · sin oraculo 117
   2026-06-11 run 06-10 18z (lead 9h) ERROR WeatherIngestError: icon_seamless rejected at (37.469,126.451) run 2026-06-10T18:00Z: The requested model run is not available. Model: dwd_icon, run: 2026-06-10T18:00Z
 PARADA DURA: no se rodea un fallo de proveedor (regla de cuota).
 peticiones emitidas: 44
+RKSI · tz Asia/Seoul · modelo icon_seamless · L_MAX 4.76 h
+ventana 2026-05-21 -> 2026-08-23 · dias 95 · peticiones a emitir 147 · techo 156 · ya ingestadas 43
+con oraculo 62 · sin oraculo 85
+  2026-06-11 run 06-10 18z (lead 9h) SIN PASADA [1]: icon_seamless rejected at (37.469,126.451) run 2026-06-10T18:00Z: The requested model run is not available. Model: dwd_icon, run: 2026-06-10T18:00Z
+  ... 25 peticiones · ultima 2026-06-23 06-22 18z tmax 29.0
+  ... 50 peticiones · ultima 2026-07-06 07-05 06z tmax 26.1
+  ... 75 peticiones · ultima 2026-07-18 07-17 18z tmax 27.0
+  ... 100 peticiones · ultima 2026-07-31 07-30 06z tmax 29.8
+  ... 125 peticiones · ultima 2026-08-12 08-11 18z tmax 31.2
+HECHO peticiones=147 (techo 156) discrepancias=0 pasadas_ausentes=1 (techo 20)
+  AUSENTE 2026-06-11 run 2026-06-10T18:00Z lead 9h :: icon_seamless rejected at (37.469,126.451) run 2026-06-10T18:00Z: The requested model run is not available. Model: dwd_icon, run: 2026-06-10T18:00Z
