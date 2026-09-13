@@ -20701,3 +20701,29 @@ una ha quitado casos que no podían producir conflicto. La siguiente cifra que v
 no sale de afinar la definición sino de **contar conflictos reales contra resoluciones**, y
 eso necesita el corpus reparado. *Seguir puliendo una cota que no se puede contrastar es
 trabajo que se parece al progreso.*
+
+---
+
+## A-260 — El único defecto que quedaba en la cota no existe: medido, cuesta cero · 2026-09-13 · Claude (sesión A)
+
+B señaló, y decidió deliberadamente **no** medirlo, un defecto en el denominador de A-259:
+los 7.979 días etiquetables salen de la cobertura con 3+4, mientras que para las estaciones
+en Fahrenheit correspondería su cobertura con tipo 3. Lo estimó en «unos diez días, mueve el
+segundo decimal» y lo dejó por aplicar nuestra propia regla de parada.
+
+**Era la decisión correcta por el criterio y resulta que además el defecto no existe:**
+
+    dias etiquetables con tipo 3 en TODAS    7 968
+    dias etiquetables con 3+4  en TODAS      7 979
+    estaciones en F donde la cobertura DIFIERE entre las dos series:  0
+
+**Los once días de diferencia son todos de estaciones en Celsius**, que en producción usan
+3+4 de todos modos. Para las de Fahrenheit la cobertura es **idéntica** con las dos series —
+lo cual tiene sentido: el tipo 4 añade lecturas a :20 y la regla de cobertura exige *horas*
+de pico, no lecturas. **El denominador de A-259 ya era el consistente con producción y
+`39/7.979 = 0,489 %` no se toca.**
+
+*Lo anoto porque la objeción es de las que reaparecen: quien lea A-259 dentro de un mes la
+haría igual, y ahora está contestada con un número en vez de con una estimación.* Costó una
+ejecución sobre datos que ya estaban en disco; parar de refinar no es lo mismo que dejar
+abierta una pregunta que se cierra gratis.
