@@ -23595,3 +23595,88 @@ y plataforma (Polymarket), así que un fallo en cualquiera de los dos se vería 
 este análisis no lo distinguiría de una señal.
 
 Artefactos: `postl1/D_conjunto/{PREREG_ANALISIS_CONJUNTO.md, d_conjunto.py, D_RESULTADO.md, D_SALIDA.txt}`.
+
+---
+
+## A-300 — El test que certificaba «sustrato completo» sobre una base vacía: renombrado, y el defecto de la tarea #68 convertido en prueba ejecutable · 2026-09-13 · Claude (sesión A)
+
+*Escrito 2026-09-13T23:05Z. **Ventana D16 de objeción: no se fusiona antes de las
+2026-09-14T01:05Z.** Cambio SÓLO de tests. Cero líneas de producción.
+`D0` abajo · `D0-P = BLOCKED` · `L2 = BLOCKED`.*
+
+### Por qué esto y no el arreglo
+
+La tarea #68 tiene el arreglo redactado y **el usuario lo gateó**: *«NO modificar
+producción ni implementar todavía el cambio»*. Se respeta. Pero la misma tarea nombra otro
+remedio que no está gateado y que es de test:
+
+> *«`test_settle_reports_ready_on_a_complete_substrate` certifica hoy como "sustrato
+> completo" una base con las columnas declaradas y CERO filas — **eso es lo que habría que
+> arreglar en el test, no en la guarda**.»*
+
+### 1 · El nombre prometía lo que el fixture nunca puso
+
+`_with_b_substrate` emite `ALTER TABLE ADD COLUMN` y **no inserta ni una fila**. El test
+se llamaba `..._on_a_complete_substrate`. «Completo» en un sentido — las columnas están
+**declaradas** — presentado como completo a secas.
+
+    test_settle_reports_ready_on_a_complete_substrate
+      -> test_settle_reports_ready_once_the_COLUMNS_are_declared
+
+Sin cambiar ni una aserción: lo que cambia es **la afirmación que la suite hace**. Un
+nombre de test es el sitio donde una promesa falsa sobrevive más tiempo, porque nadie
+vuelve a leerlo.
+
+### 2 · La prueba nueva: la invariante rota, ejecutable
+
+`test_la_guarda_dice_LISTO_con_la_terna_ENTERAMENTE_NULA` monta el estado **exacto** de
+producción — columnas declaradas, `contract_source` y `measurement_rule_code` a NULL — con
+una posición abierta real, y conduce el mecanismo entero:
+
+    (1) settle_substrate_missing(con) == []          <- la guarda dice LISTO
+    (2) stage_settle(...)  positions_open=1  settled=0
+        refusals == {"no_measurement_rule_code": 1}
+    (3) la posicion sigue abierta: exit_time y settlement NULL
+
+Hasta hoy esta frase existía sólo en prosa:
+
+> *si el comprobador devuelve vacío y la ruta se niega después, el defecto es del
+> comprobador.*
+
+**Ahora es falsable por una prueba.** Y no es hipotética: A-278 la midió sobre el almacén
+real, `0 de 85.878` filas con la terna poblada.
+
+### 3 · Y de paso, cómo queda escrito en el libro mayor
+
+    [OK     ] settle  positions_open=1 settled=0 refused=1 reasons={"no_measurement_rule_code": 1}
+
+`status` es **`OK`**, no `SKIPPED`. **No miente** — la etapa corrió, y `refused` y
+`reasons` llevan la verdad — pero quien barra el ledger buscando `SKIPPED` verá verde. Se
+fija como **hecho**, no como defecto, y con la regla al lado: *el número que informa es
+`refused`, nunca `status`.* No lo inflo: nadie ha liquidado nada mal por esto, porque no
+hay posiciones abiertas en producción.
+
+### 4 · §34: mi juicio, dicho en voz alta para que sea revisable
+
+§34 pide revisión independiente **si se toca código de liquidación**. Esto **no lo toca**:
+cambia un nombre de test y añade un test que *observa*. Cero cambios de comportamiento,
+cero líneas fuera de `tests/`. Por eso lo llevo a PR sin §34 — y lo escribo aquí en vez de
+decidirlo en silencio, porque el juicio es mío y tiene que poder revertirse.
+
+### 5 · EL BLOQUEO DE FONDO, que no puedo resolver yo
+
+    D09-4 context_for pasa prosa por codigo        B
+    D09-5 build_label deja pasar NaT               B
+    D09-6 series fuera de la libreria              B
+    D10-7 backfill_markets omite la terna          B
+    #62   labels.py, cuatro defectos               B
+
+**Los cinco esperan la revisión independiente de §34, y el revisor era B.** La sesión
+`codex mcp integration [3b138c]` **ya no figura en el roster**: no está parada, ha
+desaparecido. No me nombro revisor independiente de mí mismo — eso vacía §34 de contenido
+— así que **los cinco siguen congelados** y lo dejo escrito en vez de dejar que se
+confundan con trabajo pendiente por hacer. Hace falta una decisión del usuario: otro
+revisor, o relevar §34 explícitamente.
+
+Rama `feat/sustrato-listo-vacio`. Se fusiona sólo con la suite verde verificada por mí y
+con la ventana cumplida (A-112 al disparo + A-119 sobre el árbol de fusión).
