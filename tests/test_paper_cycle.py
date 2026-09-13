@@ -14,6 +14,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
+from unittest import mock
 
 from weather_agent import database, database as db_mod, store
 from weather_agent import observations as obs_mod
@@ -535,7 +536,27 @@ def test_settle_skips_loudly_rather_than_guessing_a_winner(con, monkeypatch):
     assert row[0] is None and row[1] is None      # untouched, not guessed
 
 
-def _settleable_market(con, *, band="17°C", outcome="Yes", token="t1"):
+def _hand_built_observation(con):
+    """The row as the settle fixtures have always written it: BY HAND.
+
+    Kept exactly as it was so the tests that used it do not change, and
+    named so the contrast with `_ingested_observation` is visible from the
+    call site."""
+    con.execute(
+        "INSERT INTO weather_observations (station, observation_time, tmax_observed, "
+        "observed_value, observed_unit, series, source, ingestion_timestamp, "
+        "dataset_version, record_version) VALUES (?,?,?,?,?,?,?,?,?,?)",
+        ["EGLC", datetime(2026, 9, 10, 14, tzinfo=timezone.utc), 17.0, 17.0, "C",
+         # What the INGESTER writes, not what the frozen core requires. The old
+         # fixture wrote `metar_body_c` — a value no ingester has ever produced —
+         # so the suite could not see that every real settlement was refused for
+         # `series_mismatch`. Fifth fixture today certifying a world that is not
+         # the one the code runs in.
+         obs_mod.SERIES_1C, "IEM", T0, "ds1", 1])
+
+
+def _settleable_market(con, *, band="17°C", outcome="Yes", token="t1",
+                       write_obs=True):
     from weather_agent.polymarket import resolution as res
     # The CODE in `measurement_rule_code` and the PROSE in `measurement_rule` —
     # which is what live discovery writes. The old fixture put the P_* code in
@@ -556,17 +577,8 @@ def _settleable_market(con, *, band="17°C", outcome="Yes", token="t1"):
         "INSERT INTO outcomes (market_id, token_id, band_label, outcome_label, "
         "ingestion_timestamp, dataset_version, record_version) VALUES (?,?,?,?,?,?,?)",
         ["m1", token, band, outcome, T0, "ds1", 1])
-    con.execute(
-        "INSERT INTO weather_observations (station, observation_time, tmax_observed, "
-        "observed_value, observed_unit, series, source, ingestion_timestamp, "
-        "dataset_version, record_version) VALUES (?,?,?,?,?,?,?,?,?,?)",
-        ["EGLC", datetime(2026, 9, 10, 14, tzinfo=timezone.utc), 17.0, 17.0, "C",
-         # What the INGESTER writes, not what the frozen core requires. The old
-         # fixture wrote `metar_body_c` — a value no ingester has ever produced —
-         # so the suite could not see that every real settlement was refused for
-         # `series_mismatch`. Fifth fixture today certifying a world that is not
-         # the one the code runs in.
-         obs_mod.SERIES_1C, "IEM", T0, "ds1", 1])
+    if write_obs:
+        _hand_built_observation(con)
     from weather_agent import paper as _paper
     fill = _paper.Fill(shares=100.0, notional=50.0, vwap=0.5, fee=0.6,
                        outlay=50.6, executable=True)
@@ -634,6 +646,106 @@ def test_a_refused_settlement_leaves_the_position_open_with_its_reason(con, monk
     assert out["refusals"].get("no_settlement_operator:by_forecast") == 1
     assert con.execute("SELECT exit_time FROM paper_trades WHERE paper_trade_id = ?",
                        [tid]).fetchone()[0] is None
+
+
+def _ingested_observation(con, *, tmax_c, icao="EGLC", day=TD_TEST, tz="Europe/London"):
+    """Write `weather_observations` THE WAY PRODUCTION WRITES IT.
+
+    Everything below the network is the real chain: `daily_high` picks the day's
+    maximum, `detect_grid` decides the unit and snaps the value to the station's
+    grid, `to_row` shapes the row and `db.upsert` puts it in the table. Only
+    `fetch_metar` is replaced, and it is replaced by something with its declared
+    return type — `(UTC instant, °C)` pairs — not by a stub of the row.
+
+    WHY THIS EXISTS. Every settle test in this file hands `stage_settle` a row the
+    TEST built, so what the suite verifies is the shape its author believes the
+    ingester writes. That belief has been wrong twice in this very file, both
+    times with the suite green: `metar_body_c`, a series no ingester has ever
+    emitted, and the P_* code placed in the prose column. A fixture cannot catch
+    a divergence it is the source of.
+    """
+    from zoneinfo import ZoneInfo
+
+    from weather_agent import weather as _weather
+
+    start, end = _weather.target_day_window(day, tz)
+    zone = ZoneInfo(tz)
+
+    def fetcher(_icao, _start, _end):
+        out, t = [], start
+        while t < end:            # every local hour, so the peak-hours guard passes
+            hot = t.astimezone(zone).hour == 14
+            out.append((t, tmax_c if hot else tmax_c - 4.0))
+            t += timedelta(hours=1)
+        return out
+
+    return obs_mod.ingest_daily_high(con, icao, day, tz, "ds1", fetcher=fetcher)
+
+
+def test_settle_closes_against_a_row_THE_INGESTER_WROTE(con, monkeypatch):
+    """The end of the chain, on the population that is 78 % of the store.
+
+    `test_a_real_ingested_row_is_refused_by_settlement_and_says_why` already
+    drives a real payload into the boundary — but through KBKF, whose series is
+    left undeclared on purpose, so it can only ever assert a REFUSAL. The Celsius
+    path is the one 1 057 of the 1 348 rows in the real store take, it is the one
+    every non-US market settles on, and nothing has ever driven it end to end.
+
+    Unit and value are asserted BEFORE the settlement: if `detect_grid` ever
+    stopped returning °C for a Celsius station, `stage_settle` would refuse on a
+    unit mismatch and this test would fail with `settled == 0` — true, and it
+    would not say why.
+    """
+    _with_b_substrate(con); _fake_stations(monkeypatch)
+    tid = _settleable_market(con, band="17°C", outcome="Yes", write_obs=False)
+
+    dh = _ingested_observation(con, tmax_c=17.0)
+    assert dh.tmax_c == 17.0 and dh.n_obs == 24
+    row = db_mod.query(con, "SELECT observed_unit, observed_value, series "
+                            "FROM weather_observations")[0]
+    assert (row["observed_unit"], row["observed_value"], row["series"]) == \
+        ("C", 17.0, obs_mod.SERIES_1C)
+
+    out = paper_cycle.stage_settle(_cycle(), con, dataset_version="ds1")
+    assert out["settled"] == 1, out
+    assert con.execute("SELECT settlement FROM paper_trades WHERE paper_trade_id = ?",
+                       [tid]).fetchone()[0] == 1.0
+
+
+def test_an_off_grid_observation_never_settles(con, monkeypatch):
+    """`detect_grid` refuses to snap a value off the station's grid and writes
+    `UNKNOWN` rather than a plausible number. THAT REFUSAL HAS TO SURVIVE THE
+    JOURNEY, and nothing checked that it did.
+
+    What stops it is one line in the frozen core — `any(o.unit != op.unit ...)` —
+    whose own comment calls the case "unreachable through `applies_to`". It is
+    reachable: not by choosing the wrong operator, but by an observation that
+    never got a unit in the first place. Pinned here as an executable claim, the
+    way the source-daily-row guard is, because the alternative is settling a
+    contract against a temperature the ingester declined to vouch for.
+    """
+    _with_b_substrate(con); _fake_stations(monkeypatch)
+    tid = _settleable_market(con, band="17°C", outcome="Yes", write_obs=False)
+
+    _ingested_observation(con, tmax_c=17.5)      # half a degree off a 1 °C grid
+    row = db_mod.query(con, "SELECT observed_unit, observed_value "
+                            "FROM weather_observations")[0]
+    assert row["observed_unit"] == "UNKNOWN" and row["observed_value"] == 17.5
+
+    out = paper_cycle.stage_settle(_cycle(), con, dataset_version="ds1")
+    assert out["settled"] == 0, out
+    assert con.execute("SELECT settlement, exit_time FROM paper_trades "
+                       "WHERE paper_trade_id = ?", [tid]).fetchone() == (None, None)
+
+    # AND THE LEDGER CALLS IT THE WRONG THING — asserted as it IS, not as it
+    # should be. The core raises `R_SERIES_MISMATCH` for BOTH the series check and
+    # the unit check, distinguishing them only in `detail`, which `try_settle`
+    # drops on the floor. So a cycle whose observations were perfectly named comes
+    # back reading `series_mismatch`, and whoever reads that summary goes looking
+    # for a naming bug that is not there. Recorded here so the day it is fixed
+    # this assertion has to change on purpose.
+    assert out["refusals"] == {"series_mismatch": 1}, out["refusals"]
+
 
 
 # --------------------------------------------------------------------------- forecasts
@@ -1814,3 +1926,1200 @@ def test_host_events_without_a_queue_is_a_skip_not_a_crash(tmp_path):
                                         queue_path=str(tmp_path / "absent.ndjson"),
                                         root=str(tmp_path), session_id="cyc")
     assert out["rows"] == 0
+
+
+def test_the_profile_contains_the_dump_it_used_to_end_before(con, tmp_path,
+                                                             monkeypatch):
+    """Session B, reviewing the merged PR #23: the profile could not contain the
+    stage that writes it.
+
+    `stage_profile` is snapshotted inside `stage_params`, which ran BEFORE
+    `stage_dump`. So the dump — the stage whose cost most plausibly grows with
+    the store, which is the whole question the profile exists to answer — was
+    absent. And absent SILENTLY: the entries that were there still summed to a
+    plausible whole, with nothing saying one was missing, so its cost would have
+    been attributed to no one on the day we finally read the series.
+
+    The fix is the order, not a new mechanism. What stays outside is
+    `stage_params` itself, which is irreducible, so the row DECLARES it rather
+    than leaving the next reader to notice.
+
+    Drives `main`, because the defect is in the call site — the stage was never
+    wrong."""
+    monkeypatch.setattr(paper_cycle, "stage_discover",
+                        lambda cy, *a, **k: cy.stage("discover", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_collect",
+                        lambda cy, *a, **k: cy.stage("collect:books", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_venue_coverage",
+                        lambda cy, *a, **k: cy.stage("venue_coverage", paper_cycle.OK))
+
+    store_root = tmp_path / "store"
+    rc = paper_cycle.main([
+        "--target-date", "2026-09-10", "--dataset-version", "ds1",
+        "--store-root", str(store_root), "--db", str(tmp_path / "t.duckdb"),
+        "--collect-only", "--summary-json", str(tmp_path / "s.json")])
+    assert rc == 0
+
+    shards = store.iter_shards(store_root, "cycle_params")
+    rows = [r for sh in shards for r in store.read_shard(sh)]
+    assert len(rows) == 1, "one cycle, one params row"
+    row = rows[0]
+
+    profile = {e["stage"]: e for e in json.loads(row["stage_profile"])}
+    assert "dump" in profile, (
+        "the dump is the stage the profile exists to measure and it was the one "
+        "stage the profile could never contain")
+    assert profile["dump"]["elapsed_s"] is not None
+
+    # The irreducible omission is declared, not inferred.
+    assert row["stage_profile_excludes"] == "params"
+    assert "params" not in profile
+
+    # And the series has an absolute anchor. `at_s` is relative to the start of
+    # the cycle; on Actions the session_id carries the run id, not a timestamp,
+    # so without this field the point cannot be placed in time at all.
+    assert row["cycle_started_at"], "at_s without an anchor is not a series"
+    datetime.fromisoformat(row["cycle_started_at"])
+
+    # And the store's own size, which was computed every cycle and discarded.
+    # B's third finding of this family: `store_stats` reached `cy.stage()` and
+    # stopped there, so it lived in a file outside `paper_state` that nobody
+    # commits — while its docstring said it existed so the growth would be
+    # "visible in the run log before it becomes a problem".
+    #
+    # It is not curiosity. The store only grows, the cycle rebuilds it in memory
+    # every run, and the host has no swap: exhausting RAM does not raise, the
+    # kernel kills the process, and none of the exception machinery can see it.
+    assert "store_total_bytes" in row and "store_rows_loaded" in row
+
+
+
+def test_the_store_size_reaches_the_shard_and_is_not_always_zero(con, tmp_path,
+                                                                 monkeypatch):
+    """`>= 0` would have passed on a store that is always empty.
+
+    Asserting that the FIELDS EXIST is not asserting they carry the measurement.
+    So the store is seeded with real rows first and the cycle must report them:
+    if the field were decorative this reads 0 and the test says so.
+
+    The first draft of this test ran the cycle twice and expected the second to
+    load what the first left. It FAILED — with every stage mocked, the first
+    cycle dumps no state rows, so the store really was empty and the premise was
+    mine, not the code's. Written down because a test that fails on a false
+    premise looks exactly like a test that found a defect.
+    """
+    monkeypatch.setattr(paper_cycle, "stage_discover",
+                        lambda cy, *a, **k: cy.stage("discover", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_collect",
+                        lambda cy, *a, **k: cy.stage("collect:books", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_venue_coverage",
+                        lambda cy, *a, **k: cy.stage("venue_coverage", paper_cycle.OK))
+
+    store_root = tmp_path / "store"
+    seeded = [{"market_id": f"m{i}", "dataset_version": "ds1", "record_version": 1,
+               "event_id": "e1", "question": f"q{i}"} for i in range(3)]
+    store.write_shard(seeded, table="markets", run_id="seed", root=str(store_root))
+
+    assert paper_cycle.main([
+        "--target-date", "2026-09-10", "--dataset-version", "ds1",
+        "--store-root", str(store_root), "--db", str(tmp_path / "t.duckdb"),
+        "--collect-only", "--summary-json", str(tmp_path / "s.json")]) == 0
+
+    rows = [r for sh in store.iter_shards(store_root, "cycle_params")
+            for r in store.read_shard(sh)]
+    assert len(rows) == 1
+    row = rows[0]
+
+    assert row["store_rows_loaded"] == len(seeded), (
+        "the store size never reaches the shard, or counts something else")
+    assert row["store_total_bytes"] > 0
+
+    # It is the same number the load stages of this cycle reported, not a
+    # coincidence of magnitude.
+    summary = json.loads((tmp_path / "s.json").read_text())
+    loaded = sum(st.get("rows", 0) for st in summary["stages"]
+                 if st["stage"].startswith("load:")
+                 and st["stage"] != "load:store_stats")
+    assert row["store_rows_loaded"] == loaded
+# --------------------------------------------------------------------------- #
+# THE ONE THING THAT MAKES `stage_settle`'S OBSERVATION QUERY SAFE, PINNED HERE
+#
+# That query asks for a station's WHOLE history — every row for (station,
+# dataset_version), with no predicate on the day — and hands it to the frozen
+# core. That is correct for a LOCAL_CIVIL_DAY operator, which windows the rows
+# itself against `ctx.target_date`. It is WRONG for a SOURCE_DAILY_ROW operator:
+# the core applies no temporal predicate there ("the row the caller hands over IS
+# the source's row for target_date") and then aggregates with `max`. Handing it
+# several days of history would settle a position against the maximum of the run
+# so far — a plausible number, no refusal, and biased upward by construction,
+# growing worse the longer the run lasts.
+#
+# Today that cannot happen, and NOT because of anything at the call site: the only
+# SOURCE_DAILY_ROW operator requires `SERIES_HKO`, and `SERIES_CORRESPONDENCE` is
+# structurally incapable of emitting that name. The safety lives three modules
+# away from the query it protects, which is precisely why it is pinned here
+# instead of merely argued in a comment: the day someone adds a daily-summary
+# operator over a METAR series — the natural unblock for strata 5, 7 and 8 — this
+# test fails and names it, instead of the run quietly settling against the wrong
+# day.
+# --------------------------------------------------------------------------- #
+def _wide_history_offenders(operators, core_series_names):
+    """Operators that would receive a multi-day history and not window it."""
+    from weather_agent import settlement as _s
+    return sorted(op.operator_id for op in operators
+                  if op.required_series in core_series_names
+                  and op.window_kind != _s.WINDOW_LOCAL_CIVIL_DAY)
+
+
+def test_no_declared_series_reaches_a_source_daily_row_operator():
+    from weather_agent import settlement
+
+    declared = set(paper_cycle.SERIES_CORRESPONDENCE.values())
+    assert declared, "the correspondence map is empty — the premise is gone"
+
+    # THE SAME THESIS ONE LEVEL UP, and session B caught it on review: the check
+    # below passes over an EMPTY operator registry, and so does the test written
+    # to prove it can fail. That test shows the predicate FIRES; it says nothing
+    # about the population being non-empty. Demonstrated by running: with
+    # `OPERATORS = ()` all three assertions still held.
+    #
+    # The sharp form is not `len(OPERATORS) > 0` — the filter is equally vacuous
+    # if the table is full of operators and NONE of them uses a series this
+    # boundary can emit. So the population asserted here is the one the check is
+    # actually about.
+    reachable = [op.operator_id for op in settlement.OPERATORS
+                 if op.required_series in declared]
+    assert reachable, (
+        "no operator requires a series `SERIES_CORRESPONDENCE` can emit, so the "
+        "check below filters an empty set and would pass on anything")
+
+    assert _wide_history_offenders(settlement.OPERATORS, declared) == [], (
+        "stage_settle hands the station's whole history to the core. An operator "
+        "that does not window by target_date would settle against the max of "
+        "every day ingested so far. Either window the query in stage_settle or "
+        "refuse this terna at the call site."
+    )
+
+
+def test_the_offender_check_can_actually_fail():
+    """The check above is worthless if it cannot see the case it denies.
+
+    A test that passes because it looks at nothing passes forever. This one
+    builds the hypothetical operator — a daily-summary product over the METAR
+    series the cycle really does emit — and requires the check to name it."""
+    from dataclasses import replace
+
+    from weather_agent import settlement
+
+    declared = set(paper_cycle.SERIES_CORRESPONDENCE.values())
+    hazardous = replace(
+        settlement.OP_HKO_ABSMAX,
+        operator_id="HYPOTHETICAL_DAILY_SUMMARY_OVER_METAR",
+        required_series=next(iter(declared)),
+    )
+    assert hazardous.window_kind == settlement.WINDOW_SOURCE_DAILY_ROW
+    assert _wide_history_offenders(
+        settlement.OPERATORS + (hazardous,), declared
+    ) == ["HYPOTHETICAL_DAILY_SUMMARY_OVER_METAR"]
+
+
+def test_a_collect_only_cycle_persists_the_catalogue(con, tmp_path, monkeypatch):
+    """The universe is not recoverable, so it cannot live only in RAM.
+
+    `dump_catalogue` used to be `deciding or args.dump_catalogue`, reasoned
+    entirely about REPLAY: a cycle that decided nothing has no decision to
+    reproduce, so it needs no catalogue pinned against it. That is correct, and
+    it missed what the catalogue also is — the only record of WHICH MARKETS
+    EXISTED.
+
+    Every cycle since 2026-09-09 has been collect-only, so `markets` was rebuilt
+    each run from one frozen shard plus live discovery IN RAM, and the live part
+    was never written. Two rows stamped `is_final: True` for the same target,
+    lead and cutoff disagreed — 561 bands, then 539 — because the two events
+    discovered after the freeze evaporated when their markets closed.
+
+    Gamma's `closed=false` feed does not return what has closed. So this is the
+    one thing this project treats as unrecoverable, arriving through the
+    catalogue instead of through the book.
+
+    Drives `main` with `--collect-only`, which is the path that was losing it.
+    """
+    monkeypatch.setattr(paper_cycle, "stage_collect",
+                        lambda cy, *a, **k: cy.stage("collect:books", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_venue_coverage",
+                        lambda cy, *a, **k: cy.stage("venue_coverage", paper_cycle.OK))
+
+    def _discover(cy, con, **kw):
+        db_mod.upsert(con, "markets",
+                      {"market_id": "m1", "dataset_version": "ds1",
+                       "record_version": 1, "event_id": "e1", "question": "q"},
+                      ("market_id", "dataset_version", "record_version"))
+        cy.stage("discover", paper_cycle.OK)
+    monkeypatch.setattr(paper_cycle, "stage_discover", _discover)
+
+    store_root = tmp_path / "store"
+    assert paper_cycle.main([
+        "--target-date", "2026-09-10", "--dataset-version", "ds1",
+        "--store-root", str(store_root), "--db", str(tmp_path / "t.duckdb"),
+        "--collect-only", "--summary-json", str(tmp_path / "s.json")]) == 0
+
+    rows = [r for sh in store.iter_shards(store_root, "markets")
+            for r in store.read_shard(sh)]
+    assert rows, (
+        "a collect-only cycle discovered a market and did not persist it — the "
+        "universe existed only in RAM and the feed will not return it once the "
+        "market closes")
+    assert rows[0]["market_id"] == "m1"
+
+    summary = json.loads((tmp_path / "s.json").read_text())
+    dump = next(s for s in summary["stages"] if s["stage"] == "dump")
+    assert dump["catalogue"] == "dumped"
+
+
+def test_rows_resident_does_not_count_a_duplicate_shard_twice(con, tmp_path,
+                                                              monkeypatch):
+    """`rows_loaded` and `rows_resident` must diverge, and by the copy.
+
+    Dumping the catalogue every cycle (this PR) means the store holds many
+    copies of the same market rows. Each copy loads as its OWN batch, so
+    `upsert_many` — which deduplicates only WITHIN a batch — returns its full
+    size again, and `rows_loaded` counts it again. That number is correct about
+    the work done and wrong for the RAM projection, which needs DISTINCT rows.
+
+    Session B caught it on review of this PR. Without this test the two fields
+    would be equal in every fixture and nothing would show the difference.
+    """
+    monkeypatch.setattr(paper_cycle, "stage_discover",
+                        lambda cy, *a, **k: cy.stage("discover", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_collect",
+                        lambda cy, *a, **k: cy.stage("collect:books", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_venue_coverage",
+                        lambda cy, *a, **k: cy.stage("venue_coverage", paper_cycle.OK))
+
+    store_root = tmp_path / "store"
+    fila = [{"market_id": "m1", "dataset_version": "ds1", "record_version": 1,
+             "event_id": "e1", "question": "q"}]
+    # THE SAME row in three separate shards — exactly what a per-cycle catalogue
+    # dump produces.
+    for run in ("a", "b", "c"):
+        store.write_shard(fila, table="markets", run_id=run, root=str(store_root))
+
+    assert paper_cycle.main([
+        "--target-date", "2026-09-10", "--dataset-version", "ds1",
+        "--store-root", str(store_root), "--db", str(tmp_path / "t.duckdb"),
+        "--collect-only", "--summary-json", str(tmp_path / "s.json")]) == 0
+
+    summary = json.loads((tmp_path / "s.json").read_text())
+    st = next(s for s in summary["stages"] if s["stage"] == "load:store_stats")
+
+    assert st["rows_loaded"] == 3, "three shards, three batches, three counted"
+    assert st["rows_resident"] == 1, (
+        "one distinct market row occupies memory once — if this reads 3 the "
+        "ceiling projection is inflated by every duplicate copy")
+
+    # AND IT HAS TO REACH THE SHARD, which is where the first version of this
+    # test did not look. It asserted on the STAGE, so it passed while
+    # `stage_params` never wrote the field — the value stopped exactly where PR
+    # #23 taught us values stop, and the test was standing at the same place.
+    row = [r for sh in store.iter_shards(store_root, "cycle_params")
+           for r in store.read_shard(sh)][0]
+    assert row["store_rows_loaded"] == 3
+    assert row["store_rows_resident"] == 1, (
+        "the resident count reached the stage and not the row — a reader dating "
+        "the RAM ceiling from the committed series would find the field absent")
+
+def test_an_identical_catalogue_is_not_dumped_twice(con, tmp_path, monkeypatch):
+    """Two cycles over the same universe must leave ONE catalogue shard.
+
+    Counted in the STORE, not asserted on the stage. That is the lesson PR #34
+    cost us: `rows_resident` reached `cy.stage()` and never the row, and the test
+    that should have caught it was reading the stage too — standing in the same
+    place as the error, so it confirmed it instead of detecting it.
+
+    The cost this prevents is dated: a catalogue row loads in 21.3 ms on the box,
+    the snapshot is 2 200 rows, and ten dumps a day put `load:*` past the
+    42-minute budget between day +2 and +3 — after which the `flock` makes the
+    next cycle skip, and what it skips is a book slot.
+    """
+    monkeypatch.setattr(paper_cycle, "stage_collect",
+                        lambda cy, *a, **k: cy.stage("collect:books", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_venue_coverage",
+                        lambda cy, *a, **k: cy.stage("venue_coverage", paper_cycle.OK))
+
+    def _discover(cy, con, **kw):
+        db_mod.upsert(con, "markets",
+                      {"market_id": "m1", "dataset_version": "ds1",
+                       "record_version": 1, "event_id": "e1", "question": "q"},
+                      ("market_id", "dataset_version", "record_version"))
+        cy.stage("discover", paper_cycle.OK)
+    monkeypatch.setattr(paper_cycle, "stage_discover", _discover)
+
+    store_root = tmp_path / "store"
+
+    def _run(tag):
+        assert paper_cycle.main([
+            "--target-date", "2026-09-10", "--dataset-version", "ds1",
+            "--store-root", str(store_root), "--db", str(tmp_path / f"{tag}.duckdb"),
+            "--collect-only", "--summary-json", str(tmp_path / f"{tag}.json")]) == 0
+
+    _run("first")
+    tras_uno = len(store.iter_shards(store_root, "markets"))
+    _run("second")
+    tras_dos = len(store.iter_shards(store_root, "markets"))
+
+    assert tras_uno == 1, "el primer ciclo debe escribir el catalogo"
+    assert tras_dos == 1, (
+        "el segundo ciclo vio el MISMO universo y volvio a volcarlo: cada copia "
+        "cuesta 21,3 ms por fila en todos los replays posteriores")
+
+
+def test_a_changed_catalogue_is_dumped_again(con, tmp_path, monkeypatch):
+    """And the skip must not be a ban: a universe that GREW has to be written.
+
+    Without this the previous test passes on a `stage_dump` that never dumps the
+    catalogue at all — which would re-create the defect PR #31 exists to fix, and
+    the shard count alone cannot tell the two apart."""
+    monkeypatch.setattr(paper_cycle, "stage_collect",
+                        lambda cy, *a, **k: cy.stage("collect:books", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_venue_coverage",
+                        lambda cy, *a, **k: cy.stage("venue_coverage", paper_cycle.OK))
+
+    store_root = tmp_path / "store"
+    vistos = {"n": 0}
+
+    def _discover(cy, con, **kw):
+        vistos["n"] += 1
+        for i in range(vistos["n"]):          # 1 mercado, luego 2
+            db_mod.upsert(con, "markets",
+                          {"market_id": f"m{i}", "dataset_version": "ds1",
+                           "record_version": 1, "event_id": "e1", "question": "q"},
+                          ("market_id", "dataset_version", "record_version"))
+        cy.stage("discover", paper_cycle.OK)
+    monkeypatch.setattr(paper_cycle, "stage_discover", _discover)
+
+    def _run(tag):
+        assert paper_cycle.main([
+            "--target-date", "2026-09-10", "--dataset-version", "ds1",
+            "--store-root", str(store_root), "--db", str(tmp_path / f"{tag}.duckdb"),
+            "--collect-only", "--summary-json", str(tmp_path / f"{tag}.json")]) == 0
+
+    _run("first")
+    _run("second")
+    assert len(store.iter_shards(store_root, "markets")) == 2, (
+        "el universo crecio de 1 a 2 mercados y el segundo volcado NO se escribio: "
+        "el salto se ha convertido en una prohibicion")
+
+
+def test_a_failing_catalogue_gate_dumps_anyway_AND_says_so(con, tmp_path,
+                                                           monkeypatch):
+    """Fail-open is half the requirement; the other half is not being silent.
+
+    Session B named the case: `CONFLICT_COLS[table]` raising `KeyError` the day a
+    catalogue table is added without declaring its keys is PERMANENT. A silent
+    fail-open would return False forever, the catalogue would go back to 2 200
+    rows a cycle, and the 2-3 day budget crossing this stage removes would come
+    back through the error path with nothing in any log.
+
+    So the dump must still happen AND the failure must reach the profile — which
+    is where someone looks in three days asking why the cycle grew again."""
+    monkeypatch.setattr(paper_cycle, "stage_collect",
+                        lambda cy, *a, **k: cy.stage("collect:books", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_venue_coverage",
+                        lambda cy, *a, **k: cy.stage("venue_coverage", paper_cycle.OK))
+
+    def _discover(cy, con, **kw):
+        db_mod.upsert(con, "markets",
+                      {"market_id": "m1", "dataset_version": "ds1",
+                       "record_version": 1, "event_id": "e1", "question": "q"},
+                      ("market_id", "dataset_version", "record_version"))
+        cy.stage("discover", paper_cycle.OK)
+    monkeypatch.setattr(paper_cycle, "stage_discover", _discover)
+
+    def _boom(*a, **k):
+        raise KeyError("no conflict cols for this table")
+    monkeypatch.setattr(paper_cycle, "catalogue_is_unchanged", _boom)
+
+    store_root = tmp_path / "store"
+    assert paper_cycle.main([
+        "--target-date", "2026-09-10", "--dataset-version", "ds1",
+        "--store-root", str(store_root), "--db", str(tmp_path / "t.duckdb"),
+        "--collect-only", "--summary-json", str(tmp_path / "s.json")]) == 0
+
+    assert store.iter_shards(store_root, "markets"), (
+        "the gate raised and the dump did not happen — fail-open is the whole "
+        "point: a spurious dump costs seconds, a skipped one loses the universe")
+
+    stages = {st["stage"]: st for st in
+              json.loads((tmp_path / "s.json").read_text())["stages"]}
+    gate = stages.get("dump:markets:gate")
+    assert gate is not None, (
+        "the gate failed and nothing recorded it — a permanent failure would "
+        "restore the per-cycle dump with no line anywhere")
+    assert gate["status"] == paper_cycle.STOPPED
+    assert "no conflict cols" in gate["error"]
+
+
+# ---------------------------------------------------------------------------
+# The catalogue fixture, shaped by what the box actually writes
+# ---------------------------------------------------------------------------
+#
+# The gate tests above pass over a market of five fields —
+# `{market_id, dataset_version, record_version, event_id, question}`. Every
+# other column of `markets` is left NULL, and that is not a simplification: it
+# is the single property that makes those tests pass. `None == None` holds for
+# any two representations of nothing, so a fixture that sets no typed column
+# cannot see a gate that compares two representations of something.
+#
+# THE GATE IS A CONSTANT `False`, and it takes one row to show it:
+#
+#     una fila, escrita al shard DESDE la base, comparada contra esa misma base
+#       ingestion_timestamp   shard='2026-09-09T15:16:32+00:00'   (str)
+#                              base= datetime(2026, 9, 9, 15, 16, 32, tzinfo=UTC)
+#       catalogue_is_unchanged -> False
+#
+# `store.read_shard` returns what JSON can carry and `db.query` returns what
+# DuckDB typed, so any non-NULL TIMESTAMP column differs from itself, forever,
+# on every row. Nothing changed and the gate said "changed".
+#
+# AND THE GATE READS THE WRONG SIDE, which is a separate defect measured on a
+# real box shard through the real `load_shards`: 2 200 of 2 200 rows differ, on
+# seven columns of THREE type families.
+#
+#     discovered_at · available_at · open_time          str   vs datetime
+#     ingestion_timestamp · source_timestamp            str   vs datetime
+#     source_timestamps                                 dict  vs cadena JSON
+#     tag_ids                                           lista vs cadena JSON
+#
+# The last two are not a type problem at all. `store.export_rows` — which is
+# what `stage_dump` writes THROUGH — deliberately parses JSON columns back into
+# nested objects, "so the shard carries a real nested object rather than a
+# string containing JSON". The gate then reads the shard with `read_shard` and
+# the table with `db.query`, comparing the two sides of a transformation the
+# dump applies on purpose. Comparing the SYMMETRIC side instead:
+#
+#     read_shard vs db.query      2 200 filas difieren, 7 columnas, 3 familias
+#     read_shard vs export_rows   2 200 filas difieren, 5 columnas, 1 familia
+#
+# `tag_ids` and `source_timestamps` stop differing with no normalisation at all.
+# What survives is TIMESTAMP, and only that needs one.
+#
+# This corrects an earlier draft of this comment, which said "JSON and DOUBLE
+# round-trip clean, so TIMESTAMP is the whole of it". That was measured on a
+# shard written FROM the database, where both sides already carry the string
+# form — the one direction in which the defect cannot appear. Session A caught
+# it by loading a database FROM a shard, which is the direction the box runs.
+#
+# AND UNDERNEATH THAT, A SECOND DEFECT the first one hides. Measured on
+# `origin/paper-state`, over the two consecutive catalogue pairs the box has
+# written:
+#
+#     markets   21:07 -> 00:07   1 067 filas solo-reloj   tick_size en 33
+#               00:07 -> 02:40   1 066 filas solo-reloj   tick_size en 34
+#     outcomes  21:07 -> 00:07   2 200 filas solo-reloj   NADA de contenido
+#               00:07 -> 02:40   2 200 filas solo-reloj   NADA de contenido
+#
+# Two populations share each table: half the rows are open and get re-ingested
+# every cycle, which moves two clocks and nothing else —
+#
+#     ingestion_timestamp            nuestro   — cuando miramos
+#     source_timestamps.updatedAt    suyo      — cuando Polymarket lo toco
+#
+# — while the other half are frozen, resolved markets still carrying their
+# 2026-09-09 stamps. So even after the types are made comparable the gate still
+# never fires, because provenance is not content. That `updatedAt` is
+# provenance the store proves rather than asserts: it moved on all 1 100 open
+# markets between 00:07 and 02:40 while exactly 34 of them changed any term. If
+# it meant "this market changed", 1 100 markets changed and no other column
+# recorded it.
+#
+# The two defects are pinned SEPARATELY below, because a test that carries both
+# fails for the first and says nothing about the second — which is how the
+# five-field fixture came to certify a gate that never fires.
+
+_PROV_COLS = ("ingestion_timestamp", "source_timestamps")
+
+# Added by SCHEMA_VERSION 6. An older shard predates them, and the gate's second
+# condition — the column set — exists for exactly this.
+_V6_COLS = ("end_date", "fee_rate", "fee_exponent", "fee_taker_only",
+            "fees_enabled", "measurement_rule_code", "uma_resolution_status")
+
+_KEY = ("market_id", "dataset_version", "record_version")
+
+
+def _box_market(market_id, *, updated_at, seen_at=None, tick_size=0.01, v6=True):
+    """One catalogue row in the shape the box writes them.
+
+    `seen_at` defaults to NULL so a caller can exercise the provenance defect
+    without the TIMESTAMP one standing in front of it.
+    """
+    row = {"market_id": market_id, "dataset_version": "ds1", "record_version": 1,
+           "event_id": f"e{market_id}", "question": f"q{market_id}",
+           "tick_size": tick_size,
+           # Las TRES familias de tipo, no nulas. La de TIMESTAMP es el defecto
+           # que sobrevive a todo; las de JSON y lista son las que aparecen solo
+           # si el shard se planta por donde `stage_dump` lo planta.
+           "tag_ids": json.dumps(["84", "101757"]),
+           "ingestion_timestamp": seen_at,
+           "source_timestamps": json.dumps({"createdAt": "2026-09-09T12:56:42Z",
+                                            "updatedAt": updated_at},
+                                           sort_keys=True)}
+    if v6:
+        row.update({c: None for c in _V6_COLS})
+    return row
+
+
+def _plant(con, root, rows, *, run_id, when, via_db=True):
+    """Write `rows` to a shard the way the code that wrote it did.
+
+    `via_db=True` goes through `store.dump_table`, which is the call
+    `stage_dump` makes — NOT `write_shard` over `db.query`. The difference is
+    the point: `dump_table` writes through `export_rows`, which parses JSON
+    columns back into nested objects on the way out. A fixture that skipped
+    that would plant a shard carrying JSON as a string, and the gate would
+    compare string against string and never show the defect that a real shard
+    on the box does show.
+
+    `via_db=False` writes the dicts straight out, which is how a shard from an
+    OLDER BINARY exists at all. `SELECT *` can only ever return today's column
+    set, so a pre-V6 shard cannot be produced through today's table — and a
+    fixture that tried would quietly have one schema generation instead of two.
+    """
+    if not via_db:
+        store.write_shard(rows, table="markets", run_id=run_id, root=root, when=when)
+        return
+    con.execute("DELETE FROM markets")
+    for r in rows:
+        db_mod.upsert(con, "markets", r, _KEY)
+    store.dump_table(con, "markets", run_id=run_id, root=root, when=when)
+
+
+_DIA = datetime(2026, 9, 11, 21, 7, tzinfo=timezone.utc)
+_DIA_ACTIONS = datetime(2026, 9, 9, 15, 16, tzinfo=timezone.utc)
+
+
+def _heterogeneous_catalogue(con, root, *, seen_before=None, seen_now=None,
+                             tick_now=0.01, mismo_dia=False):
+    """Plant the store the box has, and leave `con` holding the next cycle's state.
+
+    Two shards under two id generations and two schema generations — the frozen
+    2026-09-09 Actions snapshot (`cyc_…`, pre-V6 columns) and the box's first
+    one (`col_…`) — because the box's store has both and the five-field fixture
+    has neither.
+
+    `mismo_dia` puts them in ONE day directory, which is where `sorted()[-1]`
+    stops meaning "the most recent". Default OFF, and the default is the faithful
+    one: `markets` today has its `cyc_` shard in 2026/09/09 and its `col_` ones
+    in 09/11 and 09/12, so the hazard is real but latent THERE. It is live in
+    `cycle_params`, `orderbook_snapshots`, `price_history` and `venue_coverage`,
+    whose 2026/09/09 directories hold all three generations at once.
+
+    It is off by default because a fixture that carries every defect at once
+    proves only the first one. With the hazard on, the gate reads the frozen
+    2026-09-09 shard, fails on the key set, and never reaches the question about
+    clocks — which is exactly how this fixture was wrong on its first draft.
+
+    What `con` ends up holding is the current cycle: the open half with both
+    clocks advanced, the frozen half untouched, and no term changed anywhere.
+    """
+    congelado = dict(updated_at="2026-09-09T12:56:42Z")
+    viejo = [_box_market("m1", v6=False, **congelado)]   # binario pre-V6
+    previo = ([_box_market("m1", **congelado)]
+              + [_box_market(f"m{i}", seen_at=seen_before,
+                             updated_at="2026-09-12T00:22:45Z") for i in (2, 3)])
+    ahora = ([_box_market("m1", **congelado)]
+             + [_box_market(f"m{i}", seen_at=seen_now, tick_size=tick_now,
+                            updated_at="2026-09-12T02:58:45Z") for i in (2, 3)])
+
+    _plant(con, root, viejo, run_id="cyc_34369049661", via_db=False,
+           when=_DIA if mismo_dia else _DIA_ACTIONS)
+    _plant(con, root, previo, run_id="col_20260911T210705Z_709423", when=_DIA)
+    con.execute("DELETE FROM markets")
+    for r in ahora:
+        db_mod.upsert(con, "markets", r, _KEY)
+    return ahora
+
+
+def test_the_catalogue_fixture_has_the_shape_the_box_has(con, tmp_path):
+    """The fixture asserts its OWN properties, because it is the instrument.
+
+    A fixture that quietly loses a property does not fail. It makes every test
+    built on it weaker, silently, and those tests go on passing — which is how
+    the five-field market came to certify a gate that never fires. Nothing was
+    wrong with those tests except the world they ran in, and no assertion
+    anywhere described that world.
+
+    So this exercises no gate. It reads the fixture back out of the store, from
+    the same side the gate reads it, and checks the four properties are there.
+    """
+    root = tmp_path / "store"
+    _heterogeneous_catalogue(con, root, seen_before="2026-09-12T00:24:26Z",
+                             seen_now="2026-09-12T02:59:18Z", mismo_dia=True)
+    shards = sorted(store.iter_shards(root, "markets"))
+    filas = {p: list(store.read_shard(p)) for p in shards}
+    assert len(shards) == 2, "el fixture debe plantar DOS shards previos"
+    # nombrados, no indexados: `sorted` los ordena col_ < cyc_, que es justo la
+    # inversion que el cuarto test pone a prueba, y un indice aqui la heredaria
+    reciente = next(p for p in shards if "col_2026" in p.name)
+    antiguo = next(p for p in shards if "cyc_" in p.name)
+
+    # (1) dos generaciones de id conviviendo en el MISMO directorio-dia
+    assert len({p.parent for p in shards}) == 1, (
+        "los dos shards cayeron en directorios distintos: la fecha vuelve a "
+        "ordenarlos y la propiedad que #36 describe desaparece del fixture")
+    prefijos = {p.name.split("__")[1].split("_")[0] for p in shards}
+    assert prefijos == {"cyc", "col"}, (
+        f"una sola generacion de id ({prefijos}): el fixture ya no distingue "
+        "orden-de-ruta de orden-de-tiempo")
+
+    # (2) dos generaciones de ESQUEMA
+    cols_r = {c for r in filas[reciente] for c in r}
+    cols_a = {c for r in filas[antiguo] for c in r}
+    assert set(_V6_COLS) & (cols_r - cols_a), (
+        "los dos shards declaran las mismas columnas: la segunda condicion de "
+        "la puerta —la migracion de esquema— ya no se ejerce")
+
+    # (3) DOS poblaciones, medidas por el lado SIMETRICO: `export_rows` es por
+    # donde `stage_dump` escribio el shard, y comparar contra `db.query` mete la
+    # asimetria JSON/lista delante -- con ella, TODAS las filas difieren y las
+    # dos poblaciones dejan de ser distinguibles. Esa asimetria se comprueba
+    # aparte, en (5), en vez de contaminar esta.
+    previo = {r["market_id"]: r for r in filas[reciente]}
+    ahora = {r["market_id"]: r for r in store.export_rows(con, "markets")}
+    movidas = [k for k in ahora if k in previo
+               and any(previo[k].get(c) != ahora[k].get(c) for c in _PROV_COLS)]
+    quietas = [k for k in ahora if k in previo
+               and all(previo[k].get(c) == ahora[k].get(c) for c in _PROV_COLS)]
+    assert movidas and quietas, (
+        f"una sola poblacion (movidas={len(movidas)}, quietas={len(quietas)}): "
+        "con una sola, comparar procedencia y comparar contenido dan el mismo "
+        "resultado, y el fixture no distingue una puerta correcta de una que "
+        "no dispara nunca")
+
+    # (4) y los relojes son lo UNICO que se mueve
+    for k in ahora:
+        p = previo.get(k)
+        if p is None:
+            continue
+        distintas = {c for c in set(p) | set(ahora[k]) if p.get(c) != ahora[k].get(c)}
+        assert distintas <= set(_PROV_COLS), (
+            f"{k} cambia {sorted(distintas - set(_PROV_COLS))}: el fixture "
+            "representa un ciclo en el que el universo SI cambio, y entonces "
+            "volcar es correcto y la prueba no demuestra nada")
+
+    # (5) y el shard lleva las TRES familias de tipo no nulas, que es lo que
+    # separa al defecto de tipos del de lado. Medido en la caja: contra
+    # `db.query` difieren 7 columnas de 3 familias; contra `export_rows`, 5 de
+    # una sola. Un fixture con las columnas JSON y de lista a NULL no notaria
+    # la diferencia, que es la version de «todo a NULL» que dejo pasar la puerta.
+    una = filas[reciente][0]
+    assert isinstance(una.get("source_timestamps"), dict), (
+        "el shard lleva `source_timestamps` como cadena: se planto sin pasar "
+        "por `export_rows`, que es justo la transformacion que la puerta ignora")
+    assert isinstance(una.get("tag_ids"), list), (
+        "el shard lleva `tag_ids` como cadena: falta la familia de lista")
+    crudo = {r["market_id"]: r for r in db_mod.query(con, "SELECT * FROM markets")}
+    asimetricas = {c for k in crudo for c in set(previo.get(k, {})) | set(crudo[k])
+                   if k in previo and previo[k].get(c) != crudo[k].get(c)}
+    assert {"source_timestamps", "tag_ids"} <= asimetricas, (
+        f"comparar contra `db.query` no reproduce la asimetria JSON/lista "
+        f"({sorted(asimetricas)}): sin ella el fixture no puede demostrar que "
+        "el defecto de lado y el de tipos son dos cosas distintas")
+
+
+def test_a_catalogue_compared_against_ITSELF_is_unchanged(con, tmp_path):
+    """One row, written from the table, compared against that same table.
+
+    ERA UN XFAIL HASTA QUE LA PUERTA SE ARREGLO, y el `strict=True` es lo que
+    forzo quitar el marcador: en cuanto `catalogue_is_unchanged` empezo a
+    comparar representaciones comparables esto paso a XPASS y rompio la suite.
+    Antes devolvia False -- nada habia cambiado y la puerta decia que si."""
+    root = tmp_path / "store"
+    _plant(con, root, [_box_market("m1", seen_at="2026-09-09T15:16:32Z",
+                                   updated_at="2026-09-09T12:56:42Z")],
+           run_id="col_20260911T210705Z_709423", when=_DIA)
+
+    assert paper_cycle.catalogue_is_unchanged(con, "markets", str(root)), (
+        "el shard se escribio DESDE esta misma base y la puerta dice que el "
+        "catalogo cambio: no es una puerta, es un False constante, y el "
+        "volcado de 6 600 filas por ciclo que deberia evitar sigue entero")
+
+
+def test_a_catalogue_that_only_moved_its_clocks_is_not_dumped_again(con, tmp_path):
+    """Two clocks moving is not the universe changing.
+
+    EL ULTIMO DE LOS TRES OBSTACULOS EN SERIE, y el unico que se ve conduciendo
+    la puerta entera. Fue `xfail` mientras cualquiera de los otros dos estaba
+    delante -- el lado primero, los tipos despues -- y su mensaje nombraba cual
+    lo estaba tumbando cada vez, porque una prueba que conduce el mecanismo real
+    se topa con el primero que quede en pie y no puede aislar ninguno."""
+    root = tmp_path / "store"
+    # `seen_at` NULL en las dos rondas y `mismo_dia` apagado: los otros dos
+    # defectos quedan dormidos y esta prueba solo puede fallar por el suyo.
+    _heterogeneous_catalogue(con, root)
+
+    # NOMBRA el obstaculo que la esta tumbando, en vez de afirmar cual es. Lo
+    # que no puede hacer es exigir que sea uno concreto: eso fue el error del
+    # borrador anterior, y volveria a mentir cada vez que se arreglase uno.
+    previo = list(store.read_shard(sorted(store.iter_shards(root, "markets"))[-1]))
+    actual = db_mod.query(con, "SELECT * FROM markets")
+    ident = lambda r: tuple(str(r.get(c)) for c in _KEY)
+    assert {ident(r) for r in previo} == {ident(r) for r in actual}
+    assert {c for r in previo for c in r} == {c for r in actual for c in r}
+    pb = {ident(r): r for r in previo}
+    malas = {c for r in actual for c in pb[ident(r)] | r.keys()
+             if pb[ident(r)].get(c) != r.get(c)}
+    obstaculo = ("1, el LADO" if malas - set(_PROV_COLS) else
+                 "3, la PROCEDENCIA")
+    assert paper_cycle.catalogue_is_unchanged(con, "markets", str(root)), (
+        f"obstaculo {obstaculo}: difieren {sorted(malas)}. " + (
+        "ningun termino de mercado cambio y la puerta manda volcar igualmente: "
+        "filas escritas para registrar dos relojes, y cada copia se recarga en "
+        "todos los ciclos posteriores a 13,50 ms por fila"))
+
+
+def test_provenance_still_blocks_the_gate_once_the_side_and_the_types_are_fixed(
+        con, tmp_path):
+    """The third obstacle survives the other two, and this one PASSES.
+
+    THE SERIES IS THE FINDING, and it is what makes each fix insufficient alone:
+
+        1  el LADO          `db.query` donde tocaba `export_rows`   una llamada
+        2  los TIPOS        5 columnas TIMESTAMP, str vs datetime   un normalizador
+        3  la PROCEDENCIA   los abiertos mueven dos relojes         excluir columnas
+
+    The test above drives the real gate and therefore cannot isolate any of
+    them: it meets whichever comes first. So the claim that 3 OUTLIVES 1 and 2
+    is made here instead, on a local reference comparison that applies both
+    fixes — the symmetric side, and a timestamp normaliser — and then asks what
+    is left. If nothing were left, fixing 1 and 2 would be the whole job and the
+    provenance work would be wasted; that is the thing worth pinning.
+
+    A local normaliser and not the production one ON PURPOSE: there is no
+    production one yet. The day `catalogue_is_unchanged` grows a real fix, the
+    xfail above flips to XPASS and `strict=True` fails the suite, which is what
+    forces this test to be re-pointed at the real thing rather than left here
+    quietly measuring a copy.
+    """
+    root = tmp_path / "store"
+    _heterogeneous_catalogue(con, root, seen_before="2026-09-12T00:24:26Z",
+                             seen_now="2026-09-12T02:59:18Z")
+
+    def _norm(v):
+        # el arreglo 2: una marca de tiempo es la misma cosa en las dos formas
+        if isinstance(v, datetime):
+            return v.astimezone(timezone.utc).isoformat()
+        if isinstance(v, str):
+            try:
+                return datetime.fromisoformat(v.replace("Z", "+00:00")) \
+                    .astimezone(timezone.utc).isoformat()
+            except ValueError:
+                return v
+        return v
+
+    # el arreglo 1: se lee por el lado por el que `stage_dump` escribio
+    previo = {r["market_id"]: r
+              for r in store.read_shard(
+                  next(p for p in store.iter_shards(root, "markets")
+                       if "col_2026" in p.name))}
+    ahora = {r["market_id"]: r for r in store.export_rows(con, "markets")}
+
+    difs = {k: {c for c in set(previo[k]) | set(ahora[k])
+                if _norm(previo[k].get(c)) != _norm(ahora[k].get(c))}
+            for k in ahora if k in previo}
+
+    congelada = {k: d for k, d in difs.items() if not d}
+    movida = {k: d for k, d in difs.items() if d}
+    assert congelada, (
+        "ninguna fila queda limpia con el lado y los tipos arreglados: alguno "
+        "de los dos arreglos no es suficiente y esta prueba no puede hablar "
+        "del tercero")
+    assert movida, (
+        "TODAS las filas quedan limpias: arreglar el lado y los tipos bastaria "
+        "y el obstaculo 3 no existiria — que es justo lo contrario de lo que "
+        "origin/paper-state mide (2 200 de 4 400 outcomes por ciclo con cero "
+        "cambios de contenido)")
+    restante = set().union(*movida.values())
+    assert restante == set(_PROV_COLS), (
+        f"lo que sobrevive a los dos arreglos es {sorted(restante)}, y la serie "
+        f"afirma que es exactamente la procedencia, {sorted(_PROV_COLS)} — "
+        "LOS DOS relojes, el nuestro y el de Polymarket")
+    for k, d in movida.items():
+        antes = json.loads(previo[k]["source_timestamps"]
+                           if isinstance(previo[k]["source_timestamps"], str)
+                           else json.dumps(previo[k]["source_timestamps"]))
+        despues = json.loads(ahora[k]["source_timestamps"]
+                             if isinstance(ahora[k]["source_timestamps"], str)
+                             else json.dumps(ahora[k]["source_timestamps"]))
+        assert {c for c in set(antes) | set(despues)
+                if antes.get(c) != despues.get(c)} == {"updatedAt"}, (
+            f"{k}: dentro de source_timestamps cambia algo que no es updatedAt, "
+            "y entonces no es el reloj de Polymarket sino contenido")
+
+
+def test_the_three_fixes_do_not_suppress_a_REAL_term_change(con, tmp_path):
+    """A residue that still contains a genuine change is better evidence than a clean one.
+
+    The test above shows the fixes do not make the gate dump for NOTHING. On its
+    own that is half an argument, and it is the flattering half: a gate wired to
+    `return True` would pass it. This is the other half — with all three fixes
+    applied, a catalogue in which a market term actually moved must still come
+    out DIFFERENT.
+
+    `tick_size` is that term on the box, and it is not hypothetical. Measured
+    across every consecutive catalogue pair since PR #31 started dumping:
+
+        21:07 -> 00:07   1 067 filas solo-reloj   tick_size en 33
+        00:07 -> 02:40   1 066 filas solo-reloj   tick_size en 34
+        02:40 -> 03:07   1 089 filas solo-reloj   tick_size en 11
+
+    So a correct gate would have dumped `markets` on every cycle of the night,
+    and for the right reason. It is `outcomes` — 4 400 rows a cycle with zero
+    content changes in every pair — that a correct gate actually skips.
+
+    Session A's finding, and the correction that came with it: the residue this
+    branch reported as "exactly the two provenance columns" is a property of the
+    FIXTURE, which holds `tick_size` constant by construction. On the box the
+    residue also holds real changes. The clean residue is the one you would want
+    to see, which is the reason to distrust it.
+    """
+    root = tmp_path / "store"
+    _heterogeneous_catalogue(con, root, seen_before="2026-09-12T00:24:26Z",
+                             seen_now="2026-09-12T02:59:18Z",
+                             tick_now=0.001)        # 0,01 -> 0,001, el de la caja
+
+    previo = {r["market_id"]: r
+              for r in store.read_shard(
+                  next(p for p in store.iter_shards(root, "markets")
+                       if "col_2026" in p.name))}
+    ahora = {r["market_id"]: r for r in store.export_rows(con, "markets")}
+
+    def _norm(v):
+        if isinstance(v, datetime):
+            return v.astimezone(timezone.utc).isoformat()
+        if isinstance(v, str):
+            try:
+                return datetime.fromisoformat(v.replace("Z", "+00:00")) \
+                    .astimezone(timezone.utc).isoformat()
+            except ValueError:
+                return v
+        return v
+
+    # los TRES arreglos: lado simetrico, tipos normalizados, procedencia fuera
+    difs = {k: {c for c in set(previo[k]) | set(ahora[k])
+                if c not in _PROV_COLS
+                and _norm(previo[k].get(c)) != _norm(ahora[k].get(c))}
+            for k in ahora if k in previo}
+    cambiadas = {k: d for k, d in difs.items() if d}
+
+    assert cambiadas, (
+        "con los tres arreglos puestos, un catalogo en el que tick_size SI se "
+        "movio sale identico: la puerta habria saltado un volcado que debia "
+        "hacer, y el universo pierde un cambio real de forma permanente")
+    assert set().union(*cambiadas.values()) == {"tick_size"}, (
+        f"cambia {sorted(set().union(*cambiadas.values()))} y solo se movio "
+        "tick_size: el fixture arrastra algo mas y esta prueba no demuestra "
+        "que el cambio detectado sea el real")
+    limpias = {k for k, d in difs.items() if not d}
+    assert limpias, (
+        "TODAS las filas cambian: sin una mitad limpia esto no distingue "
+        "«detecta el cambio real» de «no sabe no detectar nada»")
+
+
+def test_the_gate_compares_against_the_most_recent_shard_and_not_the_last_by_name(
+        con, tmp_path):
+    """`sorted(shards)[-1]` is a claim about TIME, and the store refutes it.
+
+    THIS ONE HAD TO BE FIXED TOO, and only because the others were. While the
+    gate was a constant False the wrong baseline cost nothing. With the gate
+    live, a stale shard that happens to match current state while the true
+    latest differs makes the gate SKIP a dump it owes -- fail-CLOSED, losing a
+    catalogue the universe cannot be rebuilt without. Fixing the comparison
+    without fixing the selection would have created that.
+    """
+    root = tmp_path / "store"
+    _heterogeneous_catalogue(con, root, mismo_dia=True)
+    shards = store.iter_shards(root, "markets")
+
+    assert "cyc_" in sorted(shards)[-1].name, (
+        "el fixture ya no reproduce la inversion: 'cyc' ordena despues de 'col' "
+        "por alfabeto, y sin eso esta prueba no demuestra nada")
+    elegido = max(shards, key=paper_cycle._shard_sort_key)
+    assert "col_20260911T210705Z" in elegido.name, (
+        f"la puerta compara contra {elegido.name}: es el shard congelado del "
+        "2026-09-09, anterior al que el ciclo escribio, y sale el ultimo "
+        "porque 'cyc' ordena despues de 'col'")
+
+
+def test_an_actions_run_id_never_sorts_after_an_iso_stamp(tmp_path):
+    """'3' > '2', so a run id orders after any 2026 stamp — permanently.
+
+    `cyc_` sorting last is an accident of the alphabet that closed on
+    2026-09-09. `col_<runid>_<fecha>` is worse: Actions run ids only grow and
+    every ISO stamp of this century starts with '2', so that generation would
+    sort last for ever. 16 such shards are in the store today.
+    """
+    d = tmp_path / "markets" / "2026" / "09" / "09"
+    d.mkdir(parents=True)
+    nombres = ["markets__col_20260909T185316Z_77df77__0000.ndjson.gz",
+               "markets__col_34340664711_2026-09-09__0000.ndjson.gz",
+               "markets__cyc_34369049661__0000.ndjson.gz"]
+    for n in nombres:
+        (d / n).write_bytes(b"")
+    rutas = [d / n for n in nombres]
+
+    assert sorted(rutas)[-1].name.startswith("markets__cyc_"), (
+        "el orden alfabetico ya no invierte: la premisa de esta prueba cambio")
+    elegido = max(rutas, key=paper_cycle._shard_sort_key)
+    assert "20260909T185316Z" in elegido.name, (
+        f"elegido {elegido.name}: las dos generaciones de Actions tienen que "
+        "ordenar ANTES que cualquier marca del box, porque la recoleccion se "
+        "mudo a la caja el 2026-09-09 y Actions no ha escrito nada desde")
+
+
+def test_code_commit_is_asked_of_git_when_actions_is_not_there(tmp_path, monkeypatch):
+    """The sha must reach the ROW off Actions, which is where we now run.
+
+    `GITHUB_SHA` is an Actions variable and collection moved to the box on
+    2026-09-09, so this field has written None into every shard since -- six of
+    six on 2026-09-11. The project's own rule is that a count without its sha is
+    not a fact, and the box has been producing exactly those.
+
+    Asserted on the SHARD and not on the stage, for the reason PR #34 already
+    cost us once.
+    """
+    monkeypatch.delenv("GITHUB_SHA", raising=False)
+    monkeypatch.setattr(paper_cycle, "stage_discover",
+                        lambda cy, *a, **k: cy.stage("discover", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_collect",
+                        lambda cy, *a, **k: cy.stage("collect:books", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_venue_coverage",
+                        lambda cy, *a, **k: cy.stage("venue_coverage", paper_cycle.OK))
+
+    store_root = tmp_path / "store"
+    assert paper_cycle.main([
+        "--target-date", "2026-09-10", "--dataset-version", "ds1",
+        "--store-root", str(store_root), "--db", str(tmp_path / "t.duckdb"),
+        "--collect-only", "--summary-json", str(tmp_path / "s.json")]) == 0
+
+    row = [r for sh in store.iter_shards(store_root, "cycle_params")
+           for r in store.read_shard(sh)][0]
+    sha = row["code_commit"]
+    assert sha, "no sha in the row — the cycle recorded no code identity at all"
+    assert len(sha.split("-")[0]) == 40, f"not a full sha: {sha!r}"
+
+
+def test_code_commit_prefers_the_actions_variable_when_it_is_set():
+    """Running ON Actions must keep reporting what Actions says.
+
+    The repo checkout there is the code that runs, but `GITHUB_SHA` is the
+    authority for WHICH sha that is (for a pull_request run it is the merge
+    commit, which `rev-parse HEAD` would also give -- and if the two ever
+    disagree, the platform is right about its own run).
+    """
+    import os as _os
+    prev = _os.environ.get("GITHUB_SHA")
+    _os.environ["GITHUB_SHA"] = "deadbeef" * 5
+    try:
+        assert paper_cycle.code_commit() == "deadbeef" * 5
+    finally:
+        if prev is None:
+            _os.environ.pop("GITHUB_SHA", None)
+        else:
+            _os.environ["GITHUB_SHA"] = prev
+
+
+def test_code_commit_marks_a_dirty_tree_rather_than_naming_a_tree_that_did_not_run(
+        monkeypatch):
+    """A sha names a tree. If the working copy was edited, it names the wrong one.
+
+    A false fact is worse than a missing one: `<sha>-dirty` says the row cannot
+    be reproduced from that commit alone, which is the honest claim.
+    """
+    monkeypatch.delenv("GITHUB_SHA", raising=False)
+
+    class _Done:
+        def __init__(self, out):
+            self.returncode, self.stdout = 0, out
+
+    calls = []
+
+    def fake_run(cmd, **kw):
+        calls.append(cmd)
+        if "rev-parse" in cmd:
+            return _Done("a" * 40 + "\n")
+        return _Done(" M scripts/paper_cycle.py\n")
+
+    monkeypatch.setattr(paper_cycle.subprocess, "run", fake_run)
+    assert paper_cycle.code_commit() == "a" * 40 + "-dirty(1 modified, 0 untracked)"
+
+
+def test_dirty_says_WHAT_dirtied_it_because_the_two_cases_are_not_alike(monkeypatch):
+    """A stray artefact and a hand-placed source file are not the same finding.
+
+    Both used to produce the identical `-dirty`, and the harmless one is the one
+    that actually happens -- so the reader would learn to skip it, and the day it
+    meant something they would skip it too. B's objection, and the counts cost
+    nothing: `git status --porcelain` already returns the lines.
+    """
+    monkeypatch.delenv("GITHUB_SHA", raising=False)
+
+    class _Done:
+        def __init__(self, out):
+            self.returncode, self.stdout = 0, out
+
+    def fake_run(cmd, **kw):
+        if "rev-parse" in cmd:
+            return _Done("b" * 40 + "\n")
+        return _Done("?? scripts/hotfix.py\n?? notes.txt\n M src/weather_agent/paper.py\n")
+
+    monkeypatch.setattr(paper_cycle.subprocess, "run", fake_run)
+    assert paper_cycle.code_commit() == "b" * 40 + "-dirty(1 modified, 2 untracked)"
+
+
+def test_code_commit_degrades_to_none_instead_of_aborting_a_cycle(monkeypatch):
+    """No field is worth killing a cycle over -- least of all a bookkeeping one.
+
+    It runs after `stage_dump` (PR #25), so a throw could not lose a capture. It
+    could still end a cycle, and the failure it would be reacting to leaves us
+    exactly where we already are: no sha.
+    """
+    monkeypatch.delenv("GITHUB_SHA", raising=False)
+
+    def boom(cmd, **kw):
+        raise OSError("git not found")
+
+    monkeypatch.setattr(paper_cycle.subprocess, "run", boom)
+    assert paper_cycle.code_commit() is None
+
+
+# ---------------------------------------------------------------------------
+# The machine the cycle did not fit into
+# ---------------------------------------------------------------------------
+
+def test_ru_maxrss_is_converted_on_linux_and_not_on_macos():
+    """`ru_maxrss` is KiB on Linux and BYTES on macOS. The box is Linux.
+
+    Written as a test and not as a comment because the failure is silent and
+    exactly 1 024x: a field that reads 24 MB where the truth is 24 GB, or the
+    reverse, and nothing in the number says which. Development runs on macOS and
+    production on Linux, so whichever platform the author checked on would look
+    right.
+    """
+    class _Uso:
+        ru_maxrss = 1000
+
+    for plataforma, esperado in (("linux", 1000 * 1024), ("darwin", 1000)):
+        with mock.patch.object(paper_cycle.sys, "platform", plataforma), \
+             mock.patch("resource.getrusage", return_value=_Uso()):
+            assert paper_cycle.machine_stats()["rss_peak_bytes"] == esperado, (
+                f"en {plataforma} el pico sale mal por un factor de 1024")
+
+
+def test_meminfo_is_parsed_in_bytes_and_both_fields_come_out():
+    meminfo = ("MemTotal:        3911132 kB\n"
+               "MemFree:          128880 kB\n"
+               "MemAvailable:     402312 kB\n"
+               "Buffers:            1234 kB\n")
+    with mock.patch("builtins.open", mock.mock_open(read_data=meminfo)):
+        out = paper_cycle.machine_stats()
+    assert out["mem_total_bytes"] == 3911132 * 1024
+    assert out["mem_available_at_params_bytes"] == 402312 * 1024
+
+
+def test_an_unavailable_measurement_is_None_and_never_zero():
+    """"No lo medí" y "medí cero" son hechos distintos.
+
+    This field exists to be believed on the day it reports a small number. A 0
+    standing in for "there is no /proc here" would read as "no memory left",
+    which is the alarm it is meant to raise for real.
+    """
+    with mock.patch("builtins.open", side_effect=OSError("no /proc")):
+        out = paper_cycle.machine_stats()
+    assert out["mem_available_at_params_bytes"] is None
+    assert out["mem_total_bytes"] is None
+    assert out["rss_peak_bytes"] is not None, (
+        "getrusage sigue disponible: sin /proc se pierde la memoria libre, no el pico")
+
+
+def test_the_machine_fields_reach_the_SHARD_and_not_only_the_stage(
+        tmp_path, monkeypatch):
+    """The lesson PR #34 cost, applied before it costs it again.
+
+    `rows_resident` was computed, passed to `cy.stage()` and never written to the
+    row — and the test that should have caught it was reading the stage too,
+    standing in the same place as the error. So this asserts on the SHARD.
+    """
+    monkeypatch.delenv("GITHUB_SHA", raising=False)
+    for nombre in ("stage_discover", "stage_collect", "stage_venue_coverage"):
+        monkeypatch.setattr(paper_cycle, nombre,
+                            lambda cy, *a, **k: cy.stage("x", paper_cycle.OK))
+
+    store_root = tmp_path / "store"
+    assert paper_cycle.main([
+        "--target-date", "2026-09-10", "--dataset-version", "ds1",
+        "--store-root", str(store_root), "--db", str(tmp_path / "t.duckdb"),
+        "--collect-only", "--summary-json", str(tmp_path / "s.json")]) == 0
+
+    fila = [r for sh in store.iter_shards(store_root, "cycle_params")
+            for r in store.read_shard(sh)][0]
+    for campo in ("rss_peak_bytes", "mem_available_at_params_bytes",
+                  "mem_total_bytes"):
+        assert campo in fila, (
+            f"{campo} no llego a la fila: es el defecto del #23 otra vez, un "
+            "valor que se queda en la etapa")
+    assert fila["rss_peak_bytes"] and fila["rss_peak_bytes"] > 1_000_000, (
+        f"pico de {fila['rss_peak_bytes']!r} bytes: un proceso de Python no "
+        "cabe en eso, asi que o la unidad esta mal o no se midio")
+def test_an_UNRECOGNISED_shard_name_can_never_win_the_selection(tmp_path):
+    """The invariant that survives the history the ordering is built on.
+
+    `_shard_sort_key` orders Actions-era ids before box ids because collection
+    moved on 2026-09-09 and Actions has written nothing since. That premise is
+    history and could stop being true — a new collector, a backfill, a rename.
+
+    What must not depend on it: a name the key does not recognise sorts FIRST,
+    so it can never win `max()` while a recognised shard exists, and the worst
+    it can do is leave the baseline OLDER than the truth. An older baseline
+    makes the sets differ and the catalogue get dumped — fail-open, which costs
+    seconds of replay, against a wrongful skip, which loses a catalogue the
+    universe cannot be rebuilt without.
+
+    Session A found this by trying to break the key through its premise and
+    failing; pinned here so the property is asserted rather than argued.
+    """
+    d = tmp_path / "markets" / "2026" / "09" / "12"
+    d.mkdir(parents=True)
+    conocido = "markets__col_20260912T114005Z_e79a6c__0000.ndjson.gz"
+    for n in (conocido,
+              "markets__zzz_un_generador_futuro__0000.ndjson.gz",
+              "markets__cyc_34369049661__0000.ndjson.gz"):
+        (d / n).write_bytes(b"")
+    rutas = list(d.iterdir())
+
+    assert sorted(rutas)[-1].name.startswith("markets__zzz_"), (
+        "el nombre desconocido ya no ordena el ultimo por alfabeto: esta prueba "
+        "dejaria de demostrar que la clave lo corrige")
+    assert max(rutas, key=paper_cycle._shard_sort_key).name == conocido, (
+        "un nombre que la clave NO reconoce gano la seleccion: puede quedarse "
+        "con una base mas NUEVA que la que sabe fechar, y entonces un salto "
+        "indebido deja de ser imposible")
+
+
+def test_the_available_field_carries_the_INSTANT_it_was_read_at():
+    """The two numbers do not measure the same thing and sit in the same row.
+
+    `rss_peak_bytes` is a MAXIMUM over the process; the other is an INSTANT read
+    in `stage_params`, after the peak was released. Side by side they read as
+    comparable, and a reader would conclude "plenty of room" from a maximum set
+    against the calmest moment of the cycle.
+
+    Session A's finding, and the same class as the `ru_maxrss` unit trap: a
+    number whose meaning does not travel with it. So the meaning goes in the
+    NAME, where it cannot be separated from the value — asserted here so a
+    later rename cannot quietly drop it.
+    """
+    out = paper_cycle.machine_stats()
+    assert "mem_available_at_params_bytes" in out, sorted(out)
+    assert "mem_available_bytes" not in out, (
+        "el nombre corto volvio: se lee como comparable con un MAXIMO y no lo es")
+    assert "peak" in "rss_peak_bytes", "el maximo tiene que decir que es un maximo"

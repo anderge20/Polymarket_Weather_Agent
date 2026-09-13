@@ -302,6 +302,68 @@ def read_shard(path: str | os.PathLike) -> Iterator[dict]:
                 raise ValueError(f"{path}:{n}: malformed NDJSON line ({exc})") from exc
 
 
+
+_TIMESTAMP_EN_NOMBRE = re.compile(r"__col_(\d{8}T\d{6}Z)_")
+
+
+def shard_time(path) -> str | None:
+    """The instant a shard was written, read off its NAME, or None.
+
+    Only the box's own ids carry one. The two Actions generations -- `cyc_<runid>`
+    and `col_<runid>_<fecha>` -- do not, and neither will whatever writes next.
+    Returning None rather than guessing is what lets the caller refuse to use an
+    order it cannot establish.
+    """
+    m = _TIMESTAMP_EN_NOMBRE.search(Path(path).name)
+    return m.group(1) if m else None
+
+
+def _newest_first(shards) -> list | None:
+    """The shards newest-first, or None if their order cannot be established.
+
+    ALL OR NOTHING, AND THAT IS THE WHOLE SAFETY ARGUMENT. A replay that skips
+    keys it has already seen is only equivalent to a full replay if it visits the
+    shards in true reverse-chronological order; one shard out of place and the
+    skipping could keep an OLD row over a new one -- silently, and in the derived
+    state every later decision reads. So anything unresolvable disables the
+    optimisation for that table and the caller falls back to the full replay,
+    which is order-insensitive because upsert is last-write-wins.
+
+    NOT the rule `paper_cycle._shard_sort_key` uses, and the difference is the
+    direction of safety. There, an unrecognised name sorting FIRST is fail-open:
+    the gate gets an older baseline, the sets differ, the catalogue is dumped.
+    Here the same rule would be fail-CLOSED -- an unrecognised shard that really
+    was the newest would be visited last and its rows dropped for older ones.
+
+    ORDER COMES FROM THE DAY DIRECTORY, WHICH IS THE PART OF THE PATH THAT CAN BE
+    TRUSTED: zero-padded, written by the store itself, and never ambiguous. Only
+    a directory holding TWO OR MORE shards needs their filenames to carry an
+    instant, and only to break the tie inside it.
+
+    That distinction is what makes this usable at all. Requiring every filename to
+    parse would disable it on `markets`, because the store's oldest shard is
+    `markets__cyc_34369049661` -- an Actions id with no timestamp. It sits alone
+    in `2026/09/09`, so the directory settles it and nothing needs to be guessed
+    about the Actions era. The ledger tables, whose `2026/09/09` directories hold
+    three generations at once, fall back to the full replay -- which costs them
+    nothing, since a ledger never repeats a conflict key and nothing would be
+    skipped anyway.
+    """
+    por_dia: dict[str, list] = {}
+    for ruta in shards:
+        por_dia.setdefault(str(Path(ruta).parent), []).append(Path(ruta))
+    orden = []
+    for dia in sorted(por_dia, reverse=True):
+        dentro = por_dia[dia]
+        if len(dentro) > 1:
+            marcas = [shard_time(x) for x in dentro]
+            if any(m is None for m in marcas) or len(set(marcas)) != len(marcas):
+                return None             # empate irresoluble DENTRO de un dia
+            dentro = [x for _, x in sorted(zip(marcas, dentro), reverse=True)]
+        orden.extend(dentro)
+    return orden
+
+
 def load_shards(
     con,
     *,
@@ -314,7 +376,47 @@ def load_shards(
     populated database changes nothing (upsert on the table's primary key).
 
     This is the recovery path — the reason the operational DuckDB never needs to
-    be committed or backed up."""
+    be committed or backed up. It is also the HOT path: `paper_cycle` opens
+    `:memory:`, so every cycle rebuilds the entire store from scratch before it
+    can do anything, and the store only grows.
+
+    `rows_written` IS THE APPLIED COUNT, NOT THE OFFERED ONE. They differ only
+    when a shard repeats a conflict key, which no shard does today (measured over
+    the whole store: zero repeats in any replayed table) — but the two numbers
+    are different claims and this one is a fact about the table rather than about
+    what the caller sent. `rows_read` remains the offered count, so a divergence
+    between the two is visible rather than silent.
+
+    AND IT FEEDS A SERIES, which is why the change of meaning is written down
+    rather than left to be inferred. `stage_load_state` sums this field across
+    tables into `rows_loaded`, and that number is what a cycle reports as the
+    size of the store it just rebuilt — the quantity the RAM projection is
+    differenced from. So the series has a SEAM at this commit: points before it
+    are rows OFFERED, points after are rows APPLIED. They are equal on every
+    shard written so far (measured: zero repeated conflict keys anywhere in the
+    store), and `applied` is the better quantity for that purpose — what occupies
+    memory is what lands in the database, not what was read off disk. But a
+    series must never be differenced ACROSS the seam.
+
+    AND THERE IS NOW A SECOND SEAM, at the commit that added `newest_first`
+    below. In that mode the rows a newer shard already claimed are never offered
+    to `upsert_many`, so `rows_written` stops meaning "applied out of everything
+    the store holds" and starts meaning "applied out of what was not already
+    superseded". The two regimes are not off by a rounding error:
+
+        ciclo    rows_loaded  rows_resident  redundantes      sha
+        21:07        156 776         91 592       65 184   c424ea54
+        00:07         94 130         93 426          704   33f1eca9
+
+    Differencing that series across the merge reads as the store SHRINKING by
+    62 646 rows, which never happened: the shards are all still there and
+    `rows_read` still counts every one of them. What collapsed is the redundancy,
+    from 41,6 % to 0,7 %, and `rows_resident` — added by PR #34 for the RAM
+    projection, not for this — is what makes the two readings separable.
+
+    The seam is written here for the same reason the first one was: the field is
+    correct at every point and the SERIES is not continuous, and a reader who
+    differences it without knowing that gets a number that never occurred."""
     cols = tuple(conflict_cols) if conflict_cols else CONFLICT_COLS.get(table)
     if not cols:
         raise ValueError(
@@ -322,11 +424,123 @@ def load_shards(
         )
     shards = [Path(p) for p in paths] if paths is not None else iter_shards(root, table)
     summary = {"table": table, "shards": len(shards), "rows_read": 0, "rows_written": 0}
+
+    # NEWEST FIRST, SKIPPING KEYS ALREADY LOADED -- and it is the same table.
+    #
+    # `upsert` is last-write-wins, so after a full oldest->newest replay the row
+    # standing for a key is the one from the NEWEST shard that contains it. Going
+    # the other way and skipping keys already seen reaches that same row without
+    # writing the ones it would have overwritten. Verified against the real store
+    # rather than argued -- both tables came out IDENTICAL row for row:
+    #
+    #     markets    11 shards   26 092 upserts -> 2 761    -89 %
+    #     outcomes   10 shards   46 662 upserts -> 5 522    -88 %
+    #
+    # WHY IT MATTERS HERE AND NOT ELSEWHERE. The catalogue is a full snapshot, so
+    # every cycle re-writes all 2 200 rows and every later cycle re-applies them;
+    # `load:markets` went 109 s -> 462 s in sixteen hours and is the fastest
+    # growing stage of the cycle. A ledger table never repeats a conflict key, so
+    # nothing is skipped and this path costs it a set lookup per row.
+    #
+    # It DELETES NOTHING -- every shard stays where it is, and PR #31's guarantee
+    # that the universe is recoverable from one shard is untouched. What changes
+    # is only which rows are handed to the database.
+    orden = _newest_first(shards)
+    vistas: set | None = None
+    if orden is not None:
+        shards, vistas = orden, set()
+        summary["replay"] = "newest_first"
+    else:
+        summary["replay"] = "full"
+
     for shard in shards:
+        # ONE BATCH PER SHARD, not one statement per row — and PER SHARD rather
+        # than per table, which is a choice with a measured price on both sides.
+        #
+        # THE 39x IS NOT PRODUCTION'S NUMBER, and this is written before the
+        # rest so nobody reads the rest as an operational claim. It was measured
+        # on a machine where pandas exists, and `upsert_many` takes a fast
+        # `INSERT ... SELECT` path only when it can import pandas — which
+        # `requirements-paper.txt` deliberately excludes. On the host that runs
+        # the cycle this batching has NO DETECTABLE EFFECT. Measured 2026-09-11:
+        # `load:*` went 855.7 s -> 890.4 s across the merge, but the store grew
+        # by one shard in between (+3.1% of rows), so normalised the change is
+        # +0.9% — indistinguishable from zero. It is NOT "4% worse": that figure
+        # was the store growing, and attributing it to the code was comparing two
+        # cycles with different amounts of data.
+        #
+        # `executemany`, the fallback, beats the row-at-a-time loop by 1.10x on
+        # one shard and not by the 1.52x its own docstring records for a
+        # different workload. On a full table it runs at 0.96x of an empty one,
+        # so there is no quadratic in the conflict clause.
+        #
+        # AND ONE THING IS UNEXPLAINED, said rather than filled in: with pandas
+        # blocked LOCALLY the batching does improve — 1.09x overall, 1.35x on
+        # price_history — and on the host it does not. Same branch, same
+        # workload, opposite signs. DuckDB version, a different executemany
+        # backend, or something in `load:*` that the local loop does not do are
+        # all candidates and none has been measured.
+        #
+        # WHAT SURVIVES IS THE CORRECTNESS, NOT THE SPEED: identical conflict
+        # semantics, tests verified able to fail, and the column-set grouping
+        # below. The speed needs a path where Python never touches the rows —
+        # DuckDB reading the .gz shard itself — which is what the pandas branch
+        # was really buying: not pandas, but staying out of Python.
+        #
+        # Per table would be one statement instead of 32 and, WHERE THE FAST PATH
+        # EXISTS, would approach the ceiling: decompressing and parsing the whole
+        # store costs 1.64 s against the 19.86 s that path takes, so if the upsert
+        # were free the speedup would be 474x rather than 39x. (That 474 lands within
+        # 1% of the 478x `upsert_many`'s own docstring measured for the pure
+        # INSERT ... SELECT path, on a different workload years apart.) So there
+        # is a factor of 12 left on the table and it is left there deliberately.
+        #
+        # WHY IT IS LEFT: holding one table's rows at once costs 242 MB of peak
+        # Python heap for `orderbook_snapshots` against 8.3 MB per shard
+        # (measured with `tracemalloc` over the real store, two sessions
+        # agreeing within the difference of one shard). That is 8.6% of the
+        # ~2 827 MB free on a host with NO SWAP, where exhausting memory does not
+        # raise — the kernel kills the process, and `_non_fatal`, the try/except
+        # ladder and the rule that nothing may throw between `stage_collect` and
+        # `stage_dump` are all built on exceptions and cannot see it. Trading 20
+        # seconds for 8.6% of the one resource that kills silently is not a
+        # trade worth making.
+        #
+        # The first estimate of that cost was ~45 MB, from rows x uncompressed
+        # JSON bytes. It was short by more than 5x: `book_snapshot` is nested, and
+        # a parsed Python dict is far heavier than the text it came from.
+        # ESTIMATING PYTHON OBJECT MEMORY FROM TEXT SIZE UNDERSTATES, ALWAYS.
+        #
+        # `upsert_many`'s own docstring measured the three paths on this exact
+        # workload: one INSERT per row 24.99 s, executemany 16.47 s, and
+        # INSERT ... SELECT 0.05 s — 478x. The fast path has been in the same
+        # module all along and the replay was not using it, which is why the
+        # cycle's pre-collection time is dominated by rebuilding a store that
+        # only grows: `paper_cycle` opens `:memory:`, so EVERY cycle pays a full
+        # cold rebuild of every row ever written.
+        #
+        # Semantics are preserved rather than assumed: `upsert_many`
+        # deduplicates keeping the LAST occurrence, which is what row-by-row
+        # upserting does, and it does so BEFORE choosing its internal path.
+        #
+        # GROUPED BY COLUMN SET because `upsert_many` refuses a ragged batch —
+        # correctly, since it would bind values to the wrong parameters. No
+        # replayed table is ragged today (measured: the only two shard tables
+        # with more than one column set, `cycle_params` and `venue_coverage`,
+        # have no conflict columns and are never loaded). The grouping is here
+        # so that the day one of them gains a column, the replay keeps working
+        # instead of raising halfway through.
+        groups: dict[tuple, list] = {}
         for row in read_shard(shard):
             summary["rows_read"] += 1
-            db.upsert(con, table, row, cols)
-            summary["rows_written"] += 1
+            if vistas is not None:
+                clave = tuple(str(row.get(c)) for c in cols)
+                if clave in vistas:
+                    continue            # una mas nueva ya gano esta clave
+                vistas.add(clave)
+            groups.setdefault(tuple(row.keys()), []).append(row)
+        for batch in groups.values():
+            summary["rows_written"] += db.upsert_many(con, table, batch, cols)
     seq_start = restore_sequences(con, table=table)
     if seq_start is not None:
         summary["sequence_restarted_at"] = seq_start

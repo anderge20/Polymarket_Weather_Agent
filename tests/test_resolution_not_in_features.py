@@ -210,7 +210,12 @@ def test_feature_builds_weather_probability_from_outcome_band():
 
     assert row is not None
     assert row["weather_prob"] is not None
-    assert abs(row["weather_prob"] - 0.2777777778) < 1e-9
+    # 0.2777... was the value under the truncated tails, which declared everything
+    # past one degree from p10/p90 impossible and handed that mass to the centre.
+    # With tails that carry their own 10 %, the same band holds less. This test is
+    # about resolution data never reaching a feature; the exact mass is incidental
+    # to it, and is pinned only so a silent change cannot pass.
+    assert abs(row["weather_prob"] - 0.2500130636) < 1e-9
     assert row["no_lookahead_verified"] is True
 
     # Resolution information must still be absent.

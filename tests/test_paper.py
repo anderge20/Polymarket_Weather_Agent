@@ -444,3 +444,69 @@ def test_the_cycle_and_the_replay_call_the_same_selector():
         assert "paper.select_book(" in src, f"{name} must use the shared selector"
         assert "FROM orderbook_snapshots" not in src, \
             f"{name} must not hand-roll its own book query"
+
+
+# --------------------------------------------------------------------------- #
+# A BUY FILLS AGAINST A BOOK WITH NO BID, AND `taker_close` PRICES AN EXIT THAT
+# CANNOT HAPPEN.
+#
+# Measured over the 36,850 books collected 2026-09-09..11: 69.8% two-sided,
+# **15.1% ask-only**, 15.1% bid-only. The ask-only ones are precisely the books a
+# taker BUY walks. Nothing in `decide_and_fill` looked at the bid side — `paper.py`
+# named "bids" in exactly one place, the ladder-key selector.
+#
+# `hold_to_resolution` is unaffected and is the default: redemption needs no
+# counterparty. The refusal belongs only to the mode that plans to sell.
+# --------------------------------------------------------------------------- #
+def _ask_only_book():
+    return {"asks": [{"price": 0.40, "size": 500.0}], "bids": []}
+
+
+def _two_sided_book():
+    return {"asks": [{"price": 0.40, "size": 500.0}],
+            "bids": [{"price": 0.38, "size": 500.0}]}
+
+
+def test_taker_close_refuses_a_book_with_no_bid():
+    """The exit is impossible, so the position must not open — and must say why."""
+    params = paper.PaperParams(bankroll=1000.0, fixed_fraction=0.02, size_cap=0.02,
+                               tau_exec=0.001, exit_mode="taker_close", x_exec=0.0)
+
+    out = paper.decide_and_fill(signal="BUY", p_model=0.90,
+                                book_snapshot=_ask_only_book(),
+                                fee=FEE, params=params)
+
+    assert out["open"] is False
+    assert out["reason"] == "no_exit_liquidity", (
+        "an exit priced at the fill price on a book with no bid is not an "
+        "expensive exit, it is an impossible one")
+
+
+def test_the_same_book_opens_when_the_plan_is_to_hold():
+    """The guard must not be a blanket ban on thin books.
+
+    Redemption at resolution needs no counterparty, so a missing bid costs
+    nothing under `hold_to_resolution`. If this test fails the guard has stopped
+    being about the exit and started being about liquidity in general."""
+    params = paper.PaperParams(bankroll=1000.0, fixed_fraction=0.02, size_cap=0.02,
+                               tau_exec=0.001, exit_mode="hold_to_resolution",
+                               x_exec=0.0)
+
+    out = paper.decide_and_fill(signal="BUY", p_model=0.90,
+                                book_snapshot=_ask_only_book(),
+                                fee=FEE, params=params)
+
+    assert out["open"] is True, "hold_to_resolution never needed the bid"
+
+
+def test_taker_close_still_opens_when_a_bid_exists():
+    """And the guard must not refuse the case it was never about."""
+    params = paper.PaperParams(bankroll=1000.0, fixed_fraction=0.02, size_cap=0.02,
+                               tau_exec=0.001, exit_mode="taker_close", x_exec=0.0)
+
+    out = paper.decide_and_fill(signal="BUY", p_model=0.90,
+                                book_snapshot=_two_sided_book(),
+                                fee=FEE, params=params)
+
+    assert out["open"] is True
+    assert out["reason"] is None

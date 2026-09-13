@@ -15,6 +15,16 @@ def _validate_quantile(name: str, value: float | None) -> float:
     return value
 
 
+#: A2. The tail model. `TAIL_LINEAR_R21` is the linear one-degree ramp that
+#: produced the published R21 and R22 numbers, KEPT AND SELECTABLE so those
+#: results stay reproducible from code — the same reason `select_tau` keeps
+#: `OBJ_MEDIAN_R21` and `error_model` keeps its withdrawn v3. It is NOT the
+#: default and must not be: it assigns p = 0 to reachable outcomes, which is a
+#: claim no forecast can support. Use it to REPRODUCE, never to decide.
+TAIL_EXPONENTIAL = "exponential"
+TAIL_LINEAR_R21 = "linear_r21"
+
+
 def quantiles_to_distribution(
     *,
     p10: float | None,
@@ -22,6 +32,7 @@ def quantiles_to_distribution(
     p50: float | None,
     p75: float | None,
     p90: float | None,
+    tail_model: str = TAIL_EXPONENTIAL,
 ) -> dict[int, float]:
     """
     Convert forecast quantiles into a discrete integer-temperature
@@ -49,36 +60,134 @@ def quantiles_to_distribution(
         if current < previous:
             raise ValueError("quantiles must be non-decreasing")
 
-    # Extend the empirical CDF with conservative tails.
+    # TAIL MODEL — exponential, with a scale taken from the data (A2).
     #
-    # The quantiles describe the central part of the distribution.
-    # We use the nearest quantile spacing to define finite integer
-    # support around the observed forecast range.
+    # What was here: both tails ramped LINEARLY over exactly one degree past
+    # p10/p90 and assigned ZERO beyond. The `1.0` was a magic constant with no
+    # relation to the distribution it was extending, and it produced two errors at
+    # once, in opposite directions:
+    #
+    #   * it crushed the entire lower 10 % into a single degree. Measured on the
+    #     real M2 artifact (lead 9): the innermost tail bin came out 0.0968 against
+    #     an empirical 0.0408 — over-assigned by 2.37x (R21 published this);
+    #   * it declared everything past that one degree IMPOSSIBLE, where the
+    #     empirical error distribution holds 1.7-2.3 %. A band priced at 3 cents
+    #     that the model calls a strict zero is not a disagreement, it is a
+    #     misspecification — and p = 0 is a claim no forecast can support.
+    #
+    # The fix takes the tail scale FROM THE QUANTILES instead of hardcoding it.
+    # Between p10 and p25 sits 15 % of the mass over a known width, which fixes the
+    # density at p10; an exponential tail carrying the remaining 10 % with that
+    # density has decay length
+    #
+    #     lambda_lo = (p25 - p10) * 0.10 / 0.15
+    #
+    # and mirrors on the upper side. The result is continuous at p10/p90, strictly
+    # positive everywhere (no manufactured zeros), and it WIDENS when the forecast
+    # is uncertain and TIGHTENS when it is sharp — which the constant never did.
+    #
+    # Truncation: the support stops where the remaining tail mass falls below 1e-4
+    # (k = ln(0.10 / 1e-4) ~= 6.9 decay lengths). A discrete distribution needs
+    # finite support; cutting at a mass the integer grid cannot represent is a
+    # rounding decision, not a modelling one.
+    #
+    # THE TRADE-OFF THIS MAKES, NAMED — because choosing silently is the defect
+    # this project keeps finding. With a ONE-PARAMETER exponential you can have
+    # DENSITY CONTINUITY at p10/p90 or the CORRECT TAIL WEIGHT. Not both.
+    #
+    # Continuity is what is chosen here, and the reason is that lambda is then
+    # DERIVED rather than fitted: no free parameter is estimated on the data the
+    # model is then scored against. What it costs is that the tail comes out too
+    # LIGHT, because continuity pins the tail's initial slope to the interior of
+    # the distribution while the real tail decays more slowly.
+    #
+    # Measured by session A against the real training pairs (n = 1 348 at 24 h),
+    # reported here as their measurement — this session could not reach that
+    # substrate to reproduce it:
+    #
+    #     mass below p10      empirical   this model   the old linear tail
+    #       0.5 C beyond         5.71 %      4.35 %         5.00 %
+    #       1.0                  3.78 %      1.89 %         0.00 %
+    #       2.0                  1.48 %      0.36 %         0.00 %
+    #       4.0                  0.22 %      0.01 %         0.00 %
+    #
+    # The old model was wrong by INFINITY past one degree; this one is wrong by a
+    # factor of 2 to 20, growing with distance, in the same direction in all eight
+    # comparisons across both tails and both leads. That is a systematic residual,
+    # not noise. A maximum-likelihood lambda on the exceedances runs 1.65-1.92x
+    # larger than the continuity one and would put the mass beyond 2 C at 1.33 %
+    # against an empirical 1.48 %.
+    #
+    # AND THE 6.9-LAMBDA CUTOFF STILL CALLS IMPOSSIBLE THINGS THAT HAPPENED. The
+    # support at lead 24 is [-5.54, +6.90] C of error (verified here from the
+    # versioned artifact) and 5 of the 1 348 pairs — 0.37 % — fall outside it,
+    # with extremes at -5.94 and +10.00 C. Far better than before, and not zero.
+    #
+    # CHANGING LAMBDA IS NOT A CODE CHANGE, IT IS A MODELLING DECISION. An MLE
+    # lambda fitted on the same pairs the model is scored against is exactly what
+    # this project preregisters: it must be fixed on train, frozen, and evaluated
+    # out of sample walk-forward. Doing it inside a PR under review would smuggle
+    # a fitted parameter in through the back door.
+    #
+    # AND A BETTER TAIL IS NOT AN EDGE. Replacing a zero with a small correct
+    # number improves the model's Brier on those rows and says NOTHING about
+    # whether it beats the market. That is a different question, already measured,
+    # and the answer was no.
     values = [value for _, value in ordered]
 
-    minimum = math.floor(values[0])
-    maximum = math.ceil(values[-1])
+    #: 6.9 decay lengths — see the truncation note above.
+    TAIL_CUTOFF_LAMBDAS = 6.9
+
+    if tail_model not in (TAIL_EXPONENTIAL, TAIL_LINEAR_R21):
+        raise ValueError(f"unknown tail_model {tail_model!r}")
+
+    if tail_model == TAIL_LINEAR_R21:
+        # VERBATIM the pre-fix behaviour, including the `max(0.0, ...)` that
+        # stopped the lower tail returning negative values. Reproduction only.
+        minimum = math.floor(values[0])
+        maximum = math.ceil(values[-1])
+        if minimum == maximum:
+            return {minimum: 1.0}
+
+        def cdf_r21(x: float) -> float:
+            if x <= values[0]:
+                return max(0.0, 0.10 * (x - (values[0] - 1.0)) / 1.0)
+            for i in range(len(ordered) - 1):
+                p_left, x_left = ordered[i]
+                p_right, x_right = ordered[i + 1]
+                if x <= x_right:
+                    if x_right == x_left:
+                        return p_right
+                    fraction = (x - x_left) / (x_right - x_left)
+                    return p_left + fraction * (p_right - p_left)
+            return 0.90 + 0.10 * min(1.0, (x - values[-1]) / 1.0)
+
+        return _bin(cdf_r21, minimum, maximum)
+
+    span_lo = values[1] - values[0]   # p25 - p10
+    span_hi = values[-1] - values[-2]  # p90 - p75
+    lambda_lo = span_lo * 0.10 / 0.15
+    lambda_hi = span_hi * 0.10 / 0.15
+
+    # A zero scale means the sample gives no information about that tail's width;
+    # extending it would be inventing one, so the tail stops at the quantile.
+    reach_lo = TAIL_CUTOFF_LAMBDAS * lambda_lo
+    reach_hi = TAIL_CUTOFF_LAMBDAS * lambda_hi
+
+    minimum = math.floor(values[0] - reach_lo)
+    maximum = math.ceil(values[-1] + reach_hi)
 
     if minimum == maximum:
         return {minimum: 1.0}
 
-    # Build a CDF by piecewise-linear interpolation.
-    #
-    # THE TAILS ARE CLAMPED, and the lower one was not. Below `p10 - 1` the
-    # expression `0.10 * (x - (p10 - 1))` goes NEGATIVE — cdf(17.5) = -0.033 for a
-    # p10 of 18.83 — and `upper - lower` then adds that magnitude to the lowest
-    # integer bin instead of subtracting nothing. Measured on the real M2 artifact:
-    # the lowest bin came out 0.0968, of which 0.0333 — THIRTY-FOUR PER CENT of the
-    # bin — was manufactured by the negative branch, and the raw mass summed to
-    # 1.0333 before normalisation shrank everything to hide it.
-    #
-    # A CDF that returns a negative value is not a modelling choice, it is an
-    # arithmetic error, and the fix is not a tuning change: `max(0.0, ...)` on the
-    # way out cannot repair it because the damage is in the DIFFERENCE, not in
-    # either endpoint.
     def cdf(x: float) -> float:
         if x <= values[0]:
-            return max(0.0, 0.10 * (x - (values[0] - 1.0)) / 1.0)
+            if lambda_lo <= 0.0:
+                return 0.0
+            # 0.10 * exp((x - p10) / lambda). Strictly positive, never negative —
+            # the defect the previous lower tail had was a NEGATIVE cdf, whose
+            # magnitude was then added to the lowest bin by `upper - lower`.
+            return 0.10 * math.exp((x - values[0]) / lambda_lo)
 
         for i in range(len(ordered) - 1):
             p_left, x_left = ordered[i]
@@ -91,14 +200,21 @@ def quantiles_to_distribution(
                 fraction = (x - x_left) / (x_right - x_left)
                 return p_left + fraction * (p_right - p_left)
 
-        # Upper tail. Already clamped at 1.0 by the `min`, which is why only the
-        # lower one was wrong: the same bound was written on one side and not the
-        # other.
-        return 0.90 + 0.10 * min(
-            1.0,
-            (x - values[-1]) / 1.0,
-        )
+        if lambda_hi <= 0.0:
+            return 1.0
+        return 1.0 - 0.10 * math.exp(-(x - values[-1]) / lambda_hi)
 
+
+    return _bin(cdf, minimum, maximum)
+
+
+def _bin(cdf, minimum: int, maximum: int) -> dict[int, float]:
+    """Integer-grid mass from a CDF, normalised.
+
+    Shared by both tail models on purpose: they may differ in the TAIL and
+    nowhere else, and a second copy of the binning is how two implementations
+    drift apart while both look right.
+    """
     distribution: dict[int, float] = {}
 
     # Probability mass at integer t is approximated by the CDF
@@ -122,6 +238,7 @@ def quantiles_to_distribution(
         temperature: probability / total
         for temperature, probability in distribution.items()
     }
+
 
 
 def band_probability(

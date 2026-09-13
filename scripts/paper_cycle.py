@@ -34,7 +34,9 @@ from __future__ import annotations
 import argparse
 import fcntl
 import json
+import re
 import os
+import subprocess
 import sys
 import time
 import traceback
@@ -228,8 +230,35 @@ def stage_load_state(cy: Cycle, con, *, root: str) -> None:
         total += out["rows_written"]
         cy.stage(f"load:{table}", OK, shards=out["shards"], rows=out["rows_written"])
     stats = store.store_stats(root)
+    # TWO COUNTS, BECAUSE THEY STOPPED BEING THE SAME NUMBER IN THIS PR.
+    #
+    # `rows_loaded` sums what `upsert_many` returns, which is the batch's size
+    # AFTER deduplicating within that batch — a fact about the work this cycle
+    # did. Dumping the catalogue every cycle means the store now holds many
+    # copies of the same 1 100 market rows, each loaded as its OWN batch, so each
+    # returns its own 1 100. Nothing is wrong with that number; it is just not
+    # the one the RAM projection needs.
+    #
+    # `rows_resident` is. What occupies memory is DISTINCT rows in the database,
+    # and after this PR the two diverge by about 11 000 rows a day — roughly
+    # +57 % on the count, which applied to a per-row slope would move the
+    # projected ceiling from ~97 days to ~62. A false alarm planted inside the
+    # instrument built to raise real ones.
+    #
+    # Session B caught it on review, and it is the THIRD time this one field has
+    # turned up in an interaction between two PRs that are each correct alone
+    # (#25 with #26, now #25 with this one). Twelve `COUNT(*)` against an
+    # in-memory database, once per cycle.
+    #
+    # No `try/except` around the count: `init_db` creates every `STATE_TABLES`
+    # entry, this runs BEFORE `stage_collect` so nothing captured can be lost by
+    # raising here, and a swallowed exception would under-report residency —
+    # which is the alarmist direction for a ceiling projection, and silent.
+    resident = sum(int(db.query(con, f"SELECT count(*) AS n FROM {t}")[0]["n"])
+                   for t in STATE_TABLES)
     cy.stage("load:store_stats", OK, tables=len(stats.get("tables", {})),
-             total_bytes=stats.get("total_bytes", 0), rows_loaded=total)
+             total_bytes=stats.get("total_bytes", 0), rows_loaded=total,
+             rows_resident=resident)
 
 
 #: Tables `features.build_feature` and `strategy_a` read WITHOUT filtering by
@@ -1366,6 +1395,24 @@ def stage_settle(cy: Cycle, con, *, dataset_version: str) -> dict:
             rounding_rule=m.get("rounding_rule"), target_date=target,
             station_icao=icao, station_tz=_station_tz(icao),
         )
+        # NO PREDICATE ON THE DAY, AND THAT IS DELIBERATE: the window belongs to
+        # the operator, not to this query. A LOCAL_CIVIL_DAY operator needs the
+        # station-local day of `target_date`, whose UTC bounds depend on a
+        # timezone the core resolves — computing them here would be a second,
+        # divergent implementation of the core's own §4.
+        #
+        # The cost of that choice is that a SOURCE_DAILY_ROW operator, which
+        # applies NO temporal predicate and then aggregates with `max`, would
+        # settle against the maximum of every day ingested so far: a plausible
+        # number, no refusal, biased upward, and worse the longer the run lasts.
+        # That cannot happen today — the only such operator requires SERIES_HKO
+        # and `SERIES_CORRESPONDENCE` cannot emit that name — but the protection
+        # lives in `settlement.OPERATORS`, three modules from the query it
+        # guards, and would vanish silently the day a daily-summary operator over
+        # a METAR series is added. So it is pinned as an executable claim rather
+        # than left as an argument: `test_no_declared_series_reaches_a_source_
+        # daily_row_operator` fails, by name, before the wrong day is ever
+        # settled against.
         raw_obs = db.query(
             con,
             "SELECT observation_time, observed_value, observed_unit, series, "
@@ -1408,6 +1455,159 @@ def stage_settle(cy: Cycle, con, *, dataset_version: str) -> dict:
     return {"positions_open": n_open, "settled": settled, "refusals": refusals}
 
 
+def code_commit() -> str | None:
+    """Which code produced this row — asked of git when Actions is not there.
+
+    `GITHUB_SHA` IS AN ACTIONS VARIABLE AND WE LEFT ACTIONS ON 2026-09-09. It is
+    unset on the box, so `os.environ.get("GITHUB_SHA")` has returned None for every
+    cycle since -- six of six on 2026-09-11 alone -- and so has `GITHUB_RUN_ID`.
+    Every shard the box has written is a measurement with no record of the code
+    that made it, which is the one thing this project keeps insisting on: a count
+    without its sha is not a fact. The field was not wrong, it was pointed at a
+    host we no longer run on, exactly like the collector check that reported green
+    for two days after its workflow's schedules were removed.
+
+    THE DIRTY SUFFIX IS NOT DECORATION. A sha names a tree; if the working copy has
+    been edited, the sha names a tree that did NOT run, and a false fact is worse
+    than a missing one. The suffix says the row cannot be reproduced from that
+    commit alone.
+
+    AND IT CARRIES WHAT DIRTIED IT, not merely that something did. Session B's
+    objection: a stray build artefact and a hand-placed `.py` that changed what the
+    cycle DID would produce the identical string, the first is what happens and the
+    second is the entire reason for the field -- so the reader a month later gets a
+    bare `-dirty` and cannot tell which they are looking at. The counts cost
+    nothing, `git status --porcelain` already returns the lines, and they turn an
+    alarm into a diagnosis:
+
+        6232e71...-dirty(0 modified, 3 untracked)
+
+    THE MARKER ONLY MEANS ANYTHING WHILE IT STAYS RARE, and what keeps it rare is
+    `.gitignore`. `git status --porcelain` hides ignored files but lists untracked
+    ones, and the box runs cycles inside its own checkout -- so `__pycache__/`,
+    `*.pyc`, `*.duckdb` and `*.log` being ignored (lines 35-54) is the reason every
+    row does not come back `-dirty`. Delete those lines and this degrades from a
+    signal into decoration, which is the same failure as a check that shouts every
+    run: it does not stop working, it stops being read.
+
+    Session B narrowed the case this actually covers, and the narrower version is
+    the true one. `launcher.sh` does `git reset --hard` BEFORE the sha is read, so
+    the TRACKED tree is clean by construction on every scheduled cycle -- a
+    hand-edited tracked file never survives to be recorded. What is left is a
+    narrower gap, not no gap: `reset --hard` does not remove UNTRACKED files, so a
+    `.py` dropped in by hand does survive and does run; and anyone invoking
+    `run_cycle.sh` directly skips the reset altogether. One gap is enough, and this
+    closes it at no cost.
+
+    NEVER RAISES. It runs inside `stage_params`, which sits after `stage_dump`
+    since PR #25, so a throw here could not lose a capture -- but it would abort a
+    cycle over a bookkeeping field, and no field is worth that. Any failure (no
+    git, no repo, a timeout) degrades to None, which is exactly the state we are
+    already in.
+    """
+    env = os.environ.get("GITHUB_SHA")
+    if env:
+        return env
+    repo = Path(__file__).resolve().parents[1]
+    try:
+        sha = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"],
+                             capture_output=True, text=True, timeout=10)
+        if sha.returncode != 0:
+            return None
+        head = sha.stdout.strip()
+        if not head:
+            return None
+        dirty = subprocess.run(["git", "-C", str(repo), "status", "--porcelain"],
+                               capture_output=True, text=True, timeout=10)
+        if dirty.returncode == 0 and dirty.stdout.strip():
+            lines = [l for l in dirty.stdout.splitlines() if l.strip()]
+            untracked = sum(1 for l in lines if l.startswith("??"))
+            return (f"{head}-dirty({len(lines) - untracked} modified, "
+                    f"{untracked} untracked)")
+        return head
+    except Exception:
+        return None
+
+
+def machine_stats() -> dict:
+    """What the cycle cost the MACHINE, which nothing here has ever recorded.
+
+    WHY, and it is dated. Between 03:07 and 06:07 on 2026-09-12 the per-row load
+    cost jumped from 13,37 to 21,8 ms MARGINAL on a row delta that was flat
+    (+8 367 then +8 471), after four cycles pinned at 13,4-13,5 ms. Two
+    hypotheses fit that equally:
+
+      * the cost is superlinear in store size -- an algorithmic property, and the
+        cycle just gets slower;
+      * the BOX is running out of memory. It has 3 819 MB and ZERO SWAP, and the
+        cycle rebuilds the whole store in `:memory:` every run.
+
+    They differ in the failure mode, not in degree. The first ends in a cycle
+    that misses its 42-minute budget and skips ONE book slot. The second ends in
+    an OOM kill, which takes the cycle out mid-write with no log line and no
+    shard. NOTHING IN THIS REPOSITORY COULD TELL THEM APART: there is no
+    `getrusage`, no `/proc/meminfo`, no `psutil` anywhere in `src`, `scripts` or
+    `ops`. The store measures itself in rows and bytes and never measures the
+    machine it did not fit into.
+
+    UNITS ARE DECLARED AND CONVERTED, because `ru_maxrss` is the trap: it is
+    KILOBYTES on Linux and BYTES on macOS/BSD. The box is Linux and development
+    is macOS, so a field written without the conversion would be wrong by 1 024x
+    exactly where it matters and right where it is read.
+
+    Anything unavailable comes back None and never 0: "not measured" and
+    "measured zero" are different facts, and the whole point of this field is to
+    be believed on the day it reports a small number.
+
+    AND THE TWO NUMBERS DO NOT MEASURE THE SAME INSTANT, which is why one of
+    them carries its instant in its name. Session A's finding:
+
+        rss_peak_bytes                 getrusage: the MAXIMUM over the whole
+                                       process, so during the load that
+                                       dominates the cycle
+        mem_available_at_params_bytes  /proc: an INSTANT, read here, in
+                                       `stage_params`, after the peak was
+                                       released
+
+    Side by side in one row they read as comparable and they are not. A reader
+    seeing `rss_peak 280 MB` next to `available 3,4 GB` would conclude "plenty
+    of room", having compared a maximum against a reading taken at the calmest
+    moment of the cycle. THE QUESTION ABOUT PRESSURE IS ANSWERED BY
+    `rss_peak_bytes` AGAINST `mem_total_bytes`; `available` bounds what ELSE was
+    running, not what this cycle had to fit into.
+
+    It is the same class as the `ru_maxrss` unit trap -- a number whose meaning
+    does not travel with it -- so the fix is the same: put the meaning in the
+    name, where it cannot be separated from the value.
+    """
+    import resource
+
+    try:
+        peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        # Linux reports KiB; macOS and the BSDs report bytes.
+        rss = int(peak) * (1024 if sys.platform.startswith("linux") else 1)
+    except (OSError, ValueError):                      # pragma: no cover
+        rss = None
+
+    available = total = None
+    try:
+        with open("/proc/meminfo", encoding="ascii") as fh:
+            for line in fh:
+                name, _, rest = line.partition(":")
+                if name in ("MemAvailable", "MemTotal"):
+                    kib = int(rest.strip().split()[0])
+                    if name == "MemAvailable":
+                        available = kib * 1024
+                    else:
+                        total = kib * 1024
+    except (OSError, ValueError, IndexError):
+        pass                                  # no /proc: not Linux, or restricted
+
+    return {"rss_peak_bytes": rss,
+            "mem_available_at_params_bytes": available,
+            "mem_total_bytes": total}
+
+
 def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
                  dataset_version: str, quantile_provenance: dict | None = None) -> dict:
     """Persist the parameters this cycle actually ran with.
@@ -1419,6 +1619,16 @@ def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
     which tau a given cycle used. Writing the effective values into the shard store
     makes every cycle carry its own parameters, so a change shows up as a diff in
     an append-only, commit-timestamped record."""
+    # Read back from the stage that already measured it rather than measuring
+    # again: `store_stats` walks the store, and calling it a second time HERE
+    # would report the store AFTER this cycle's dump — a different quantity from
+    # the one that was loaded into memory, which is the one the RAM projection
+    # needs. Zero when the stage did not run (the settle-only tail), which is
+    # honest: nothing was loaded.
+    _loaded = next((e for e in cy.stages if e["stage"] == "load:store_stats"), {})
+    store_bytes = _loaded.get("total_bytes", 0)
+    store_rows = _loaded.get("rows_loaded", 0)
+    _resident = _loaded.get("rows_resident", 0)
     params = {
         "session_id": session_id,
         "dataset_version": dataset_version,
@@ -1434,9 +1644,89 @@ def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
         #
         # `cycle_params` is written on EVERY cycle including collect-only, so
         # this is ten points a day rather than two.
+        #
+        # AND THE PROFILE CANNOT CONTAIN THE STAGE THAT WRITES IT. Session B, on
+        # the merged version: the snapshot is taken INSIDE `stage_params`, so
+        # whatever runs after it is absent — and the danger is not the absence,
+        # it is that the parts would still SUM to a plausible whole with nothing
+        # saying a stage is missing. We would attribute its cost to no one, on
+        # the day we finally read the profile to find out where the time goes.
+        # `stage_params` now runs AFTER `stage_dump` so the dump is measured;
+        # what remains outside is this stage itself, which is irreducible and is
+        # therefore DECLARED rather than left to be inferred.
         "stage_profile": json.dumps(
             [{"stage": e["stage"], "at_s": e.get("at_s"),
               "elapsed_s": e.get("elapsed_s")} for e in cy.stages]),
+        "stage_profile_excludes": "params",
+        # THE SIZE OF THE STORE WAS COMPUTED EVERY CYCLE AND THROWN AWAY. Session
+        # B's third finding of this family: `store_stats` reaches `cy.stage()`
+        # and stops there, so it lands in `last_summary.json` — outside
+        # `paper_state`, overwritten every cycle, never committed — and
+        # `stage_profile` keeps three keys per stage, so it does not pick the
+        # detail up either. Its own docstring says it exists "so the store's
+        # growth is visible in the run log before it becomes a problem": visible
+        # in a log nobody keeps.
+        #
+        # WHAT THE SERIES IS FOR, and it is not curiosity. The store only grows —
+        # D0 forbids deleting — the cycle rebuilds it in memory every run, and
+        # the host has 3.8 GB and NO SWAP. Without swap, exhausting RAM does not
+        # raise: the kernel kills the process. `_non_fatal`, the try/except
+        # ladder and B's span rule are all built on exceptions and CANNOT SEE IT.
+        # So the one failure the span rule exists to prevent — losing a capture
+        # between `stage_collect` and `stage_dump` — can arrive by the one route
+        # the span rule cannot intercept. These two fields are what lets the
+        # crossing be dated from the repository itself instead of reconstructed
+        # from the shards by hand.
+        #
+        # THIS SERIES HAS A SEAM AT PR #26 and must not be differenced across
+        # it: that PR changes `rows_written` from rows OFFERED to rows APPLIED,
+        # and this field sums it. Offered and applied are equal on every shard
+        # written so far, and applied is the better quantity here — what occupies
+        # memory is what lands in the database, not what was read off disk.
+        #
+        # The full account lives in `store.load_shards`'s docstring, where the
+        # meaning is CHANGED, and is deliberately not repeated here: two copies
+        # of an explanation drift, and the one at the consumer would be the one
+        # nobody updates. What belongs here is that a reader of this field must
+        # go look. The rule the pair taught us: when you change what a number
+        # MEANS, hunt for who CONSUMES it, not who produces it — the change was
+        # declared at the producer and the consumer was two modules and one PR
+        # away.
+        # `store_total_bytes` IS NOT A RAM NUMBER, and after this PR it is not
+        # even a clean disk number. `store_stats` sums `st_size` over the
+        # shards, so it is (a) GZIPPED bytes and (b) inclusive of every
+        # duplicate catalogue copy. Session B measured the three magnitudes
+        # on the same store: 8.8 MB gzipped, 60.5 MB uncompressed, 239 MB of
+        # process RSS — a factor of 27 between the first and the last, and
+        # nowhere written down until now.
+        #
+        # So: use this to watch the STORE grow against 31 GB of free disk,
+        # which is what its docstring claims and what it is good for. Use
+        # `rows_resident` for the RAM ceiling. Anyone dating the ceiling from
+        # this field gets a compressed number, inflated by redundancy, and
+        # 27x too small.
+        "store_total_bytes": int(store_bytes),
+        "store_rows_loaded": int(store_rows),
+        # AND THE ONE THE PROJECTION ACTUALLY NEEDS, which stopped at the
+        # stage. `rows_resident` was computed, passed to `cy.stage()` and
+        # never written here — so the comment above pointed a reader at a
+        # field the row does not contain, which is worse than no pointer.
+        #
+        # It is PR #23's defect reappearing inside the fix for its own
+        # family: a value that reaches the stage and not the shard. And the
+        # test could not catch it, because the test read the STAGE too.
+        "store_rows_resident": int(_resident),
+        # AND THE MACHINE, which no field has ever carried. `stage_params` runs
+        # after `stage_dump`, so the peak covers the whole cycle including the
+        # load that dominates it. See `machine_stats` for why this exists and
+        # why every value may be None.
+        **machine_stats(),
+        # `at_s` is relative to the start of the cycle, so without this the
+        # series has no absolute anchor. On Hetzner it can be recovered from the
+        # `session_id`; on Actions the id carries the run id instead and it
+        # cannot. One field, and it matters the day the box falls over and we go
+        # back to `workflow_dispatch`.
+        "cycle_started_at": _iso(cy.started_at),
         "t_end": _iso(timing["t_end"]),
         "t_asof": _iso(timing["t_asof"]),
         "prediction_time": _iso(timing["prediction_time"]),
@@ -1455,7 +1745,7 @@ def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
         "market_sum_min": args.market_sum_min,
         "market_sum_max": args.market_sum_max,
         "collect_only": bool(args.collect_only),
-        "code_commit": os.environ.get("GITHUB_SHA"),
+        "code_commit": code_commit(),
         "run_id": os.environ.get("GITHUB_RUN_ID"),
         # B's second condition: the cycle records WHICH artifact it used. The id
         # is a sha over the artifact's canonical content, so it names the fit
@@ -1472,6 +1762,164 @@ def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
              tau_exec=args.tau_exec,
              bankroll=args.bankroll, x_exec=args.x_exec)
     return params
+
+
+#: Columns that record WHEN WE LOOKED, never what we saw. Measured on
+#: origin/paper-state over every consecutive catalogue pair the box has written:
+#: `ingestion_timestamp` moves on all 1 100 open markets every cycle, and inside
+#: `source_timestamps` exactly one key moves, `updatedAt` -- Polymarket's own
+#: write clock. Over the same pairs 33, 34 and 11 markets changed `tick_size`,
+#: which is a real term and MUST still force a dump.
+PROVENANCE_COLS = ("ingestion_timestamp",)
+PROVENANCE_KEYS = {"source_timestamps": ("updatedAt",)}
+
+
+def _shard_sort_key(path):
+    """Order shards by TIME, which is not the same as ordering them by name.
+
+    THE INVARIANT, FIRST, BECAUSE IT IS THE PART THAT CANNOT EXPIRE: a filename
+    this function does not recognise sorts BEFORE every one it does. So an
+    unrecognised generation can never win the selection while a recognised shard
+    exists, and the worst it can do is leave the baseline OLDER than the truth --
+    which makes the sets differ and the catalogue get dumped. Fail-open, and it
+    holds whoever writes the shard and whatever they name it.
+
+    Session A's review found this by trying to break the key through its history
+    and failing. The history below is why the ordering is currently what it is;
+    the invariant above is why it stays safe when the history stops being true.
+
+    The day directory is reliable (zero-padded), so only the filename inside it
+    needs care -- and inside it three id generations coexist in four directories
+    of `origin/paper-state`:
+
+        col_20260909T185316Z_77df77     ISO 8601, the box
+        col_34340664711_2026-09-09      Actions run id + date
+        cyc_34369049661                 Actions run id
+
+    `sorted()` puts `cyc_` last because 'o' < 'y', and puts `col_<runid>` after
+    any ISO stamp because '3' > '2' -- so the OLDEST generation sorts LAST, and
+    permanently: Actions run ids only grow, and every ISO stamp of this century
+    starts with '2'.
+
+    THIS BECAME DANGEROUS THE MOMENT THE GATE STARTED WORKING. While
+    `catalogue_is_unchanged` was a constant False the wrong baseline cost
+    nothing. With the gate live, comparing against a stale shard that happens to
+    match current state, while the true latest differs, makes the gate SKIP a
+    dump it owes -- fail-CLOSED, and what it loses is a catalogue the universe
+    cannot be rebuilt without. Fixing the comparison without fixing the
+    selection would have introduced that.
+
+    Actions-era ids sort BEFORE box ids within a directory because collection
+    moved to the box on 2026-09-09 at 18:53 and Actions has written nothing
+    since -- so in any directory holding both, the Actions shard is the older.
+    That premise is HISTORY and could stop being true; the invariant at the top
+    is what makes the failure harmless if it does.
+    """
+    m = re.search(r"__col_(\d{8}T\d{6}Z)_", path.name)
+    return (str(path.parent), 1, m.group(1)) if m else (str(path.parent), 0, path.name)
+
+
+def _comparable(value):
+    """One representation for a value that DuckDB and JSON disagree about.
+
+    `store.read_shard` returns what JSON can carry and DuckDB returns what it
+    typed, so every non-NULL TIMESTAMP column differs from itself. Measured on a
+    real box shard through the real `load_shards`: 2 200 of 2 200 rows differing
+    on five timestamp columns.
+    """
+    if isinstance(value, datetime):
+        return value.astimezone(timezone.utc).isoformat()
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(
+                value.replace("Z", "+00:00")).astimezone(timezone.utc).isoformat()
+        except ValueError:
+            return value
+    return value
+
+
+def _without_provenance(row):
+    """The row as a SNAPSHOT: what the market says, not when we asked it."""
+    out = {}
+    for col, value in row.items():
+        if col in PROVENANCE_COLS:
+            continue
+        drop = PROVENANCE_KEYS.get(col)
+        if drop and value is not None:
+            parsed = value
+            if isinstance(parsed, str):
+                try:
+                    parsed = json.loads(parsed)
+                except ValueError:
+                    parsed = None
+            if isinstance(parsed, dict):
+                value = {k: v for k, v in parsed.items() if k not in drop}
+        out[col] = _comparable(value)
+    return out
+
+
+def catalogue_is_unchanged(con, table: str, root: str) -> bool:
+    """Would this catalogue dump be byte-for-byte the previous one?
+
+    THE CATALOGUE IS A SNAPSHOT, NOT A LEDGER. Dumping an identical snapshot ten
+    times a day adds no information and costs replay time on every later cycle,
+    because `load_shards` reloads every shard. Measured on the box: a catalogue
+    row costs 21.3 ms to load, the snapshot is 2 200 rows, and ten dumps a day put
+    `load:*` past the 42-minute budget between day +2 and +3 — at which point the
+    `flock` makes the next cycle skip, and what it skips is a book slot.
+
+    THREE CONDITIONS, AND EACH ONE ALONE MISSES A CASE SEEN ON 2026-09-11:
+
+      * the conflict-key SET is identical  — alone it misses a schema migration
+        that adds columns without adding rows. `SCHEMA_VERSION 6` added seven
+        (`end_date`, `fee_rate`, `fee_exponent`, `fee_taker_only`, `fees_enabled`,
+        `measurement_rule_code`, `uma_resolution_status`), and the last of those
+        is what R30 §4.3 counts resolved events with;
+      * the KEY set of the rows is identical — alone it misses a changed value;
+      * no VALUE differs over those keys — alone it misses both of the above.
+
+    "Compare the content" is NOT a specification until it says which comparison:
+    on the same two shards, `dict != dict` reported 1 100 differing rows and a
+    field-by-field walk over the COMMON keys reported 0. Both are "content".
+
+    RAISES RATHER THAN SWALLOWING, and the CALLER fails open. The direction is
+    right -- a spurious dump costs seconds of replay, a skipped one re-creates the
+    defect PR #31 exists to fix, and this runs where a capture is still unwritten
+    -- but an `except` HERE would be silent, and session B named the case that
+    makes silence expensive: `CONFLICT_COLS[table]` raising `KeyError` the day a
+    catalogue table is added without declaring its keys is PERMANENT, not
+    transient. The gate would return False forever, the catalogue would go back to
+    2 200 rows a cycle, and the 2-3 day budget crossing this PR removes would come
+    back through the error path WITHOUT ONE LINE ANYWHERE. The defect prevented
+    here, reintroduced by the handler for it.
+
+    ONLY SKIPS AGAINST A COMPLETE SNAPSHOT. The comparison is against the most
+    recent shard; if that shard were a SUBSET of the real state -- as the frozen
+    2026-09-09 one was against tonight's -- the sets differ and the gate says
+    "changed". Fail-open again, and stated so nobody reads the skip as stronger
+    than it is."""
+    shards = store.iter_shards(root, table)
+    if not shards:
+        return False                          # nothing to compare against
+    previous = list(store.read_shard(max(shards, key=_shard_sort_key)))
+    # READ THE SAME SIDE THE SHARD WAS WRITTEN FROM. `stage_dump` writes through
+    # `store.export_rows`, which parses JSON columns back into nested objects on
+    # purpose; `db.query` returns them as strings. Comparing `read_shard`
+    # against `db.query` compares the two sides of a transformation the dump
+    # applies deliberately -- on a real box shard that alone accounted for two
+    # of the seven differing columns, `source_timestamps` and `tag_ids`, with no
+    # normalisation needed once the right side is read.
+    current = store.export_rows(con, table)
+    key = list(store.CONFLICT_COLS[table])
+
+    ident = lambda r: tuple(str(r.get(c)) for c in key)
+    if {ident(r) for r in previous} != {ident(r) for r in current}:
+        return False
+    if {k for r in previous for k in r} != {k for r in current for k in r}:
+        return False
+    prev_by = {ident(r): _without_provenance(r) for r in previous}
+    curr = [(ident(r), _without_provenance(r)) for r in current]
+    return all(prev_by[i] == r for i, r in curr)
 
 
 def stage_dump(cy: Cycle, con, *, root: str, session_id: str,
@@ -1504,13 +1952,32 @@ def stage_dump(cy: Cycle, con, *, root: str, session_id: str,
     shard. A criterion that fails for half the run on an artefact of the dump
     schedule is not a criterion.
 
-    COLLECT-ONLY CYCLES STILL SKIP IT, and that is the whole saving: the collector
-    fires 8 times a day and decides nothing, so its cycles have nothing for the
-    replay to reproduce (`replay` returns "trivially reproducible" for them). The
-    catalogue is dumped where it is needed and nowhere else."""
+    AND SINCE PR #31 EVERY CYCLE DUMPS IT, collect-only included — this paragraph
+    used to say the opposite and PR #31 left it saying so. The reason is not
+    replay: it is that the universe is not recoverable from the `closed=false`
+    feed, so a market discovered live and never written disappears when it closes.
+
+    WHAT IS SKIPPED NOW IS AN IDENTICAL SNAPSHOT, not a cycle. See
+    `catalogue_is_unchanged`: dumping the same 2 200 rows ten times a day costs
+    21.3 ms per row on every later replay and crosses the 42-minute budget in two
+    to three days."""
     tables = LEDGER_TABLES + (CATALOGUE_TABLES if dump_catalogue else ())
     total = 0
+    saltados = 0
     for table in tables:
+        if table in CATALOGUE_TABLES:
+            # Fail-open WITH A RECORD. The gate raising must not cost the dump,
+            # and it must not be invisible either: a permanent failure would
+            # silently restore the per-cycle dump this stage exists to avoid.
+            try:
+                unchanged = catalogue_is_unchanged(con, table, root)
+            except Exception as exc:
+                unchanged = False
+                cy.stage(f"dump:{table}:gate", STOPPED, error=repr(exc))
+            if unchanged:
+                saltados += 1
+                cy.stage(f"dump:{table}", SKIPPED, reason="catalogue_unchanged")
+                continue
         # The catalogue is a full snapshot (its rows are re-stamped every run, so a
         # `since` filter would either take everything or nothing); the ledger is
         # incremental.
@@ -1526,6 +1993,7 @@ def stage_dump(cy: Cycle, con, *, root: str, session_id: str,
     if not dump_catalogue:
         cy.stage("dump:catalogue", SKIPPED, reason="collect_only_nothing_to_replay")
     cy.stage("dump", OK, tables=len(tables), rows_written=total,
+             catalogue_tables_skipped=saltados,
              catalogue="dumped" if dump_catalogue else "skipped")
 
 
@@ -1654,14 +2122,17 @@ def main(argv: list[str] | None = None) -> int:
             stage_observations(cy, con, dataset_version=args.dataset_version,
                                now=_utcnow())
             stage_settle(cy, con, dataset_version=args.dataset_version)
+            # DUMP FIRST, PARAMS LAST — see `stage_params`. The profile is
+            # snapshotted inside `stage_params`, so anything after it is
+            # invisible; running it last is what puts `dump` in the series.
+            stage_dump(cy, con, root=args.store_root, session_id=session_id,
+                       dataset_version=args.dataset_version, since=cy.started_at,
+                       dump_catalogue=False)
             stage_params(cy, root=args.store_root, session_id=session_id, args=args,
                          quantile_provenance={}, timing=plan | {
                              "prediction_time": plan["t_asof"], "drift_h": 0.0,
                              "lead_effective_h": plan["lead_nominal_h"]},
                          dataset_version=args.dataset_version)
-            stage_dump(cy, con, root=args.store_root, session_id=session_id,
-                       dataset_version=args.dataset_version, since=cy.started_at,
-                       dump_catalogue=False)
             con.close()
             return _finish(cy, args)
 
@@ -1843,19 +2314,73 @@ def main(argv: list[str] | None = None) -> int:
                                now=_utcnow())
             stage_settle(cy, con, dataset_version=args.dataset_version)
 
-        stage_params(cy, root=args.store_root, session_id=session_id, args=args,
-                     quantile_provenance=quantile_provenance,
-                     timing=timing, dataset_version=args.dataset_version)
+        # DUMP FIRST, PARAMS LAST, and the order buys two things.
+        #
+        # (1) The profile covers the dump. It is snapshotted inside
+        #     `stage_params`, so a stage that runs after it is simply not in the
+        #     series — and `dump` is the stage whose cost most plausibly grows
+        #     with the store.
+        # (2) `stage_params` leaves the protected span. B's rule is that nothing
+        #     between `stage_collect` and `stage_dump` may throw, because that is
+        #     the only span where an exception destroys a capture that cannot be
+        #     re-fetched. Writing the params shard after the dump takes it out of
+        #     that span entirely, instead of arguing case by case that its
+        #     `json.dumps` cannot raise.
+        #
+        # WHAT IT COSTS, said plainly: a cycle whose dump raises no longer leaves
+        # a `cycle_params` row. That cycle has already lost its collection, which
+        # is the loss that matters; knowing which tau it would have used is not.
         stage_dump(cy, con, root=args.store_root, session_id=session_id,
                    dataset_version=args.dataset_version, since=cy.started_at,
                    # Every DECIDING cycle carries its own catalogue, so the
                    # replay reproduces it against the universe it actually
-                   # decided on. `--dump-catalogue` survives as an override for a
-                   # collect-only run someone wants snapshotted anyway.
-                   # `deciding`, not `not collect_only`: a cycle the guard
-                   # refused decided nothing, so there is no decision for a
-                   # replay to reproduce and no catalogue to pin it against.
-                   dump_catalogue=deciding or bool(args.dump_catalogue))
+                   # decided on.
+                   #
+                   # AND NOW ON EVERY CYCLE, BECAUSE THE UNIVERSE IS NOT
+                   # RECOVERABLE. The previous rule was `deciding or
+                   # args.dump_catalogue`, reasoned entirely about REPLAY: a
+                   # cycle that decided nothing has no decision to reproduce, so
+                   # it needed no catalogue pinned against it. That reasoning is
+                   # correct and it missed what the catalogue also is — the only
+                   # record of WHICH MARKETS EXISTED.
+                   #
+                   # Every cycle since 2026-09-09 has been collect-only (the
+                   # fail-closed `PAPER_TAU` gate), so `markets` was rebuilt each
+                   # run from ONE frozen shard plus whatever live discovery added
+                   # IN RAM — and the live part was never persisted. Measured on
+                   # that shard: it holds target 2026-09-10 (51 events) and
+                   # 2026-09-11 (49), and NOTHING for 09-12 onward. So the two
+                   # 09-11 events discovered later evaporated when their markets
+                   # closed, and two rows stamped `is_final: True` for the same
+                   # (target, lead, cutoff) disagreed: 561 bands, then 539.
+                   #
+                   # For 09-12 it is not two events, it is all 51: none of them
+                   # are in the shard. Gamma's `closed=false` feed does not return
+                   # what has closed, so after 12:00Z that universe is gone the
+                   # way an order book is gone. This is the ONE thing this
+                   # project treats as unrecoverable, arriving through the
+                   # catalogue instead of through the book.
+                   #
+                   # THE COST WAS COMPUTED AND IS NOT WHAT IT LOOKS LIKE. Ten
+                   # dumps a day is ~11 000 shard rows, which sounds like it
+                   # accelerates the RAM ceiling. It does not: `record_version`
+                   # is 1 on all 1 100 rows and the conflict key is
+                   # (market_id, dataset_version, record_version), so every copy
+                   # COLLAPSES to the same 1 100 rows on load. RAM cost: zero.
+                   # What grows is the store (~1 MB/day gzipped, against 31 GB
+                   # free) and the replay (~1 100 redundant upserts per copy) —
+                   # and the replay is exactly what PR #26 just made 39x faster.
+                   #
+                   # A daily dump was considered and REJECTED. It bounds the loss
+                   # window to 24 h, and the argument for it — "an event closing
+                   # inside the window is one for the target already in the
+                   # shard" — is the very reasoning that failed today: 09-10 held
+                   # only because its 51 events happened to be in the shard, and
+                   # that was luck, not a property.
+                   dump_catalogue=True)
+        stage_params(cy, root=args.store_root, session_id=session_id, args=args,
+                     quantile_provenance=quantile_provenance,
+                     timing=timing, dataset_version=args.dataset_version)
     finally:
         con.close()
 
