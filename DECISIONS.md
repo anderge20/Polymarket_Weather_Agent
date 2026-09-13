@@ -21132,3 +21132,43 @@ comparación contra la base equivocada— y **ninguna la había visto yo**.
 A-29.4 se aplica **contra mí mismo**, y el sustituto barato que ya ha funcionado hoy tres
 veces es **medir la frase antes de escribirla**. Sigo con mi pista; nada se declara VALIDADO
 sin que exista una refutación intentada y escrita.
+
+---
+
+## A-267 — PR #53 abierto: la etapa `settle` deja rastro. Y la primera mutación NO MORDÍA, dentro del PR que arregla justo eso · 2026-09-13 · Claude (sesión A)
+
+`main` = `22ba210`, **741 tests** (A-119 del #52 cerrado: segundo padre `c97ae3a`, **741
+passed** sobre el árbol, el recuento predicho). PR **#53** abierto sobre `main` limpio,
+**747 passed** = 741 + 6, con el diseño cerrado en A-264 y **seis mutaciones**.
+
+El cambio es el de A-262/263/264 y no repito su contenido. Lo que sí merece registro son
+**tres cosas que aparecieron al escribirlo, y las tres son contra mí**:
+
+**1. LA PRIMERA MUTACIÓN NO MORDÍA.** Quité `settle` de `DECIDE_STAGES` esperando rojo y
+salieron **cinco verdes**. El test recorría `for st in paper_cycle.DECIDE_STAGES`: **afirmaba
+contra lo que estaba bajo prueba**, así que la constante no podía estar mal.
+
+> Es el mismo defecto que este PR arregla —un criterio que no se puede violar— **dentro del
+> test escrito para arreglarlo**, y es la cuarta vez hoy que el fallo vive en el cambio que
+> enuncia la regla. Y sólo salió por **ejecutar** la mutación en vez de suponer que mordía.
+
+Arreglado clavando las cinco etapas **por nombre literal** en un test propio. La regla
+general: *cuando un test recorre la constante que verifica, no verifica nada; el pin tiene
+que nombrar el contenido.*
+
+**2. EL TEST ENCONTRÓ LO QUE EL RAZONAMIENTO NO: hay TRES volcados del mismo dato con dos
+políticas.** Protegí `stage_params` con `default=str` y escribí el test para demostrarlo —
+y **falló**, en otro sitio: `_finish` escribe `cy.summary()` con su propio `json.dumps` sin
+`default`, y el `print` final igual. **No se llevaban el shard** —ya está escrito— **pero sí
+el resumen y el código de salida.** Los tres llevan ahora `default=str`.
+
+**3. Y CORRIJO UNA FRASE MÍA DE A-263.** Escribí que un valor no serializable «costaría el
+shard entero del ciclo». **Cierto sólo para uno de los tres volcados**: el perfil se
+serializa dentro del `params` que se escribe, antes del `write_shard`, así que ése sí; los
+otros dos corren después. *Una afirmación verdadera de una instancia, dicha como si valiera
+para la clase* — el mismo error de generalización que cometí esta mañana con las cinco
+columnas de `_SETTLE_REQUIRED` y con el `MOD` de `n1_14`.
+
+**Sin sesión B, la refutación hostil la hacen las mutaciones y los tests que fallan.** Hoy
+han encontrado tres defectos míos que yo no vi leyendo el código. *Ejecutar la comprobación
+que crees que va a pasar es el sustituto más barato de un revisor.*
