@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""PISTA DE LIQUIDACION — ¿con que frecuencia el maximo del DIA CIVIL LOCAL cae en su
+"""SUPERSEDIDO POR `s02_ventana_estricta.py` Y A-258. El 3,56 % que sale aqui NO es la
+cota de conflicto: cuenta dias que el sistema NO PUEDE ETIQUETAR (falta la regla de
+cobertura de `daily_high`) y cuenta EMPATES, que liquidan igual con cualquier ventana.
+La cota real es 0,80 % de los dias etiquetables. Este guion se conserva porque su
+recuento es el denominador del que sale el desglose del s02.
+
+PISTA DE LIQUIDACION — ¿con que frecuencia el maximo del DIA CIVIL LOCAL cae en su
 PRIMERA HORA?
 
 POR QUE. `WINDOW_LOCAL_CIVIL_DAY` del nucleo congelado toma el maximo sobre el dia civil
