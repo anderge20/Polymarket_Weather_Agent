@@ -29,6 +29,11 @@ from statistics import median, mean
 _ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(_ROOT, "src"))
 from weather_agent import backtest as bt, costs
+
+#: A1 is FIXED in production now, so the default is the trimmed mean and this
+#: script would silently demonstrate nothing. It exists to show the DEFECT, so it
+#: asks for the objective that had it, by name.
+OBJECTIVE = bt.OBJ_MEDIAN_R21
 from datetime import date, datetime, timezone
 
 random.seed(11)
@@ -57,7 +62,8 @@ for tau in (0.04, 0.15):
     print(f"{tau:>6.2f} {len(sel):>6} {median([c.pnl for c in sel]):>+12.4f} "
           f"{mean([c.pnl for c in sel]):>+10.4f} {sum(c.pnl for c in sel):>+11.2f}  {which}")
 
-print(f"\nselect_tau picks tau = {bt.select_tau(pop)}")
+print(f"\nselect_tau picks tau = {bt.select_tau(pop, objective=OBJECTIVE)}"
+      f"   [objective={OBJECTIVE}]")
 print("\nThe tau that maximises the MEDIAN is the one that admits the CHEAP bucket,")
 print("because a 2-cent loser (-0.031) outranks a 16-cent loser (-0.166) on the median")
 print("even though the 16-cent bucket earns 5x more per trade in expectation.")
