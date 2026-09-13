@@ -20926,3 +20926,54 @@ ciclo**. Fallar hacia lo legible es lo correcto justo aquí.
 **persistir la entrada completa** — estado, motivo y detalle— con respaldo de serialización.
 Y eso no es ampliar el alcance: es que la mitad (a) sin la (b) completa es una regresión, y
 la (b) a medias deja fuera precisamente lo que el #46/#47 existían para escribir.
+
+---
+
+## A-264 — CORRIJO A-263: B-128 ya lo había dicho, y la referencia cruzada sólo existía en un lado · 2026-09-13 · Claude (sesión A)
+
+**Escribí en A-263 que la pérdida de `reasons`/`reason_details` era «algo que ninguno de los
+dos había dicho». Falso, y está en el TÍTULO de B-128:**
+
+    B-128 — Revisión posterior del #46: correcto en lo esencial, tres defectos menores,
+            y el detalle rescatado NO SE PERSISTE
+
+y en su cuerpo: *«Ni `reasons` ni `reason_details` se persisten. `stage_profile` guarda sólo
+`stage`, `at_s` y `elapsed_s`»*, con el aplazamiento explícito: *«Persistirlo no va aquí: es
+la misma pregunta que el `collect_only_reason` de la tarea #43»*.
+
+**Y aquí está el defecto de verdad, que es de proceso y no de código.** La tarea #43 decía:
+*«campo que nombre EL GENERADOR (prioridad), luego `collect_only_reason` y el puntero
+obsoleto del 1096»* — **tres cosas, y persistir el detalle no era ninguna de las tres.**
+Esta mañana cerré la #43 como HECHA al completar esas tres. **El aplazamiento de B-128
+apuntaba a una tarea que nunca supo que lo habían apuntado.**
+
+> **Una referencia cruzada que sólo existe en un lado es un aplazamiento que se convierte en
+> olvido el día que la tarea se cierra por sus propios términos.** B-128 dice «se decide con
+> la #43»; la #43 no lo sabía. Nadie mintió y nadie se equivocó: el enlace era de ida.
+
+*Es la misma familia que [[context-that-does-not-travel]]: un hecho cuya validez depende de
+algo que no viaja con él.* Y la consecuencia práctica es que redescubrí hoy, como hallazgo,
+algo que estaba escrito hace horas — con el coste de haberlo presentado como nuevo.
+
+**LAS TRES COMPROBACIONES DE B, VERIFICADAS POR MÍ:**
+
+1. **`traceback` aparece en UNA sola llamada** (`discover` STOPPED, 383) y `cy.stage`
+   **ya lo excluye de su propia línea impresa** (203: `if k != "traceback"`). *El código ya
+   lo trata como no apto para una línea.*
+2. **`error` va sin tope en CUATRO sitios** —228, 382, 945, 2108, todos `repr(exc)` crudo—
+   y sólo 333 y 2367 cortan a 300.
+3. **`stage_profile` tiene dos lectores y los dos son tests** (1794 y 2012), que indexan por
+   `e["stage"]`. Añadir claves no rompe ninguno. **No hay lector de producción.**
+
+**DECISIONES DE DISEÑO PARA EL PR, tomadas aquí y no descubiertas en la rama:**
+
+- **`traceback` FUERA del perfil.** La rama `paper-state` es append-only y D0 prohíbe
+  borrar: una traza con las rutas de la caja entraría **para siempre** y sin tope. Se queda
+  en `last_summary.json` y en el log, que es donde sirve. *Y no invento política: sigo la
+  que el propio `cy.stage` ya aplica a ese campo.*
+- **`error` topado a 300 AL SERIALIZAR, no en cada llamada.** Topar en cada sitio se olvida
+  en el siguiente `STOPPED` — que es exactamente lo que pasó en cuatro de seis. Mismo
+  razonamiento que el `_REFUSAL_DETAIL_MAX` del #46.
+- **Y un valor truncado tiene que DECIR que lo está**, cosa que el `[:300]` de hoy no hace:
+  un error cortado se lee como un error completo. Va con sufijo, igual que el centinela
+  `+N mas` del #47. *Un recorte silencioso es la misma clase de defecto que este PR arregla.*
