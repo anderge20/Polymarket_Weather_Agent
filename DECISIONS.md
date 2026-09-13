@@ -20607,3 +20607,34 @@ séptima parte de los casos estrictos, los de :20.**
 
 Minuto de los 64 estrictos: `:00 ×32` (la mitad, el instante exacto del límite), `:20 ×7`,
 `:30 ×7`, `:5x ×12`, resto 6.
+
+---
+
+## B-144 — La cota de conflicto por la ventana del día civil, medida contra las escaleras reales: 0,51–0,69 %, y «estricto ⇒ banda distinta» sólo vale en °C
+
+*Escrito 2026-09-13T13:13:11Z.*
+
+**Desglose por regla (A-258, reproducido por A con `fase2/s02_ventana_estricta.py`):** toda la diferencia
+entre los recuentos de A (290/292) y los de B-143 (250/253) la explica la **regla de cobertura** de
+`daily_high`; el redondeo a la rejilla de la estación no cambia ningún número, porque en °C el cuerpo METAR
+ya viene en grados enteros. La atribución de B-143, que sugería el redondeo, era errónea. Cota escrita por A
+con su definición: 0,80 % (64 de 7 979 días etiquetables), máximo del día en la hora 00 local
+estrictamente mayor, en la rejilla, que el del resto del día.
+
+**A infirió «estricto ⇒ banda distinta ⇒ conflicto» para estaciones en grados enteros.** Medido aquí,
+cruzando los 64 casos estrictos (serie 3+4) con la escalera de su evento en `CATALOG_V2` (lo/hi en unidad
+de contrato), sin peticiones:
+
+                         banda distinta   misma banda   sin evento
+    C  (48 casos)             34               1            13
+    F  (16 casos)              7               8             1
+
+- **En °C se cumple salvo en los extremos de la escalera** (34 de 35): la excepción es RPLL el 2026-07-29,
+  27 y 26 °C dentro de «27°C or below».
+- **En °F falla en la mitad** (8 de 15): las bandas de EE. UU. son de 2 °F («74-75°F») y las abiertas
+  absorben aún más («69°F or below»). Además, en producción esas estaciones siguen con tipo 3.
+
+**Cota revisada**, con la definición de A más la condición de caer en bandas distintas: 41 de los 50 casos
+con evento; sobre días etiquetables, **entre 0,51 % (41/7 979) y 0,69 % (55/7 979)** según los 14 casos
+sin evento en el catálogo. Sigue condicionada a que la fuente contractual excluya la primera hora, algo
+que sólo la reingesta de escaleras completas permite medir. No se toca el núcleo congelado.
