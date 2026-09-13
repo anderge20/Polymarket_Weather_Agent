@@ -140,7 +140,9 @@ def test_series_carries_resolution_not_only_scale():
     FLOOR stop being the same label for 97.7 F."""
     assert obs.station_series("KATL")[2] == 1.0
     assert obs.station_series("KBKF")[2] == 0.1
-    assert obs.station_series("EHAM") == (obs.SERIES_1C, "C", 1.0)
+    # The DEFAULT Celsius series is the one built from report types 3+4 (B-131);
+    # `SERIES_1C` only names labels already written from type 3 alone.
+    assert obs.station_series("EHAM") == (obs.SERIES_1C_RT34, "C", 1.0)
 
 
 def test_grid_is_a_property_of_the_station_not_the_value():
@@ -162,3 +164,24 @@ def test_off_grid_value_refuses_rather_than_rounding():
 def test_unknown_station_grid_falls_back_to_celsius_only_when_whole():
     assert obs.detect_grid("ZZZZ", 21.0, 69.8)[:2] == ("C", 21.0)
     assert obs.detect_grid("ZZZZ", 21.3, 70.34)[0] == "UNKNOWN"
+
+
+def test_celsius_is_built_from_types_3_and_4_and_fahrenheit_from_3_only():
+    """Type 3 alone drops the half-hourly ROUTINE METARs at Celsius stations (B-131),
+    so Celsius takes 3+4. Fahrenheit keeps 3 on purpose, not by omission: adding 4
+    there puts the new maximum off the whole-F grid on six measured days (B-133),
+    which would turn a low label into a refusal."""
+    assert obs.report_types("EGLC") == (3, 4)
+    assert obs.report_types("EHAM") == (3, 4)
+    assert obs.report_types("KATL") == (3,)
+    assert obs.report_types("KBKF") == (3,)
+
+
+def test_every_series_a_station_can_carry_declares_its_report_types():
+    """A series name is a promise about its contents: none may reach the fetcher
+    without saying which report types it is built from."""
+    carried = {s for s, _, _ in obs.STATION_SERIES.values()} | {obs.DEFAULT_SERIES[0]}
+    assert carried <= set(obs.SERIES_REPORT_TYPES), carried - set(obs.SERIES_REPORT_TYPES)
+    # And the superseded name keeps saying what its stored rows are.
+    assert obs.SERIES_REPORT_TYPES[obs.SERIES_1C] == (3,)
+

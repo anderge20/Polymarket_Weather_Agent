@@ -11,7 +11,8 @@ SOURCE: IEM's ASOS archive of METAR reports
 for non-US stations too (verified against EGLC, RKSI, ZBAA). Adopted for the
 historical label in D17 as `Y_final`, with the limitation that decision records:
 revision impact was measured as negligible **only for IEM/METAR** (0 of 578
-station-days change the maximum); for Wunderground — the contractual source of
+station-days change the maximum — REVISIONS, not report types: see
+`REPORT_TYPES_ALL`); for Wunderground — the contractual source of
 85.6 % of the catalogue — HKO and CWA it is UNKNOWN.
 
 UNITS: IEM reports Fahrenheit (`tmpf`). Forecasts from Open-Meteo are Celsius.
@@ -56,9 +57,38 @@ SOURCE = "IEM_ASOS_METAR"
 RETRIES = 4
 RETRY_BACKOFF_S = 2.0
 
-#: METAR routine reports only (report_type=3). Specials (SPECI) are excluded so
-#: the series is the regular hourly record the climate summaries are built from.
-REPORT_TYPE = 3
+#: WHICH IEM REPORT TYPES A SERIES IS BUILT FROM, and why it is no longer one constant.
+#:
+#: This used to be a single type-3 constant, commented "METAR routine reports only.
+#: Specials (SPECI) are excluded so the series is the regular hourly record the
+#: climate summaries are built from". The comment described an intention the filter
+#: did not meet: IEM does not file every ROUTINE METAR as type 3. At EGLC the
+#: half-hourly :20 reports come back only with type 4 — over 2026-04-13..05-20, types
+#: 3+4 return 886 reports at :20 and 886 at :50 with none carrying "SPECI", while type 3
+#: alone returns 886 at :50 and 1 at :20. So type 3 threw away half of the routine
+#: record at half-hourly stations, and the daily high came out low whenever the peak
+#: fell on a discarded report.
+#:
+#: Sized BEFORE changing anything (B-133: 55 stations, 2026-04-09..09-05): 578 of 7 968
+#: labelable station-days change their maximum with types 3+4, 525 of them in the 28
+#: half-hourly stations (13.0 % of their days). Checked against real settlement
+#: (B-134): 247 Wunderground-resolved Celsius station-days with a closed winning band —
+#: the full series matches 241, type 3 alone 223, and on the 18 days where the two
+#: differ the full series is right 18 times and type 3 never.
+#:
+#: WHY ONLY CELSIUS. In the Celsius stations no added report sits off the 1 C grid.
+#: In the ten US 1 F stations 387 added reports are off the whole-F grid, and on six
+#: changed days the NEW maximum itself is — so adding type 4 there would turn a label
+#: that is 1-4 F low into UNKNOWN, a refusal. What the resolver shows for such a SPECI
+#: is something to MEASURE, not to decide here: Fahrenheit (and KBKF's tenths) keep
+#: type 3, declared pending.
+#:
+#: STILL A PROXY. The Celsius operators are `*_PROXY_IEM`: the contract settles on a
+#: Wunderground page and IEM METAR stands in for it. Types 3+4 make the proxy agree
+#: more often; they do not make it the source. The 6 of those 247 days where both
+#: series agree and the market does not are a separate UNKNOWN, not absorbed here.
+REPORT_TYPES_ROUTINE = (3,)
+REPORT_TYPES_ALL = (3, 4)
 
 
 class ObservationError(RuntimeError):
@@ -102,19 +132,39 @@ def _is_int(x: float) -> bool:
 #: label for 97.7 F.
 SERIES_1F = "IEM_ASOS_TMPF_1F"
 SERIES_TENTH_F = "IEM_ASOS_TMPF_0.1F"
+#: Kept and still mapped at the settlement boundary, but NEVER written for new rows:
+#: every label already stored under it was built from type 3 only, and those rows
+#: stay where they are — nothing is overwritten. New Celsius rows carry the series
+#: below, whose name says what it is built from.
 SERIES_1C = "IEM_ASOS_METAR_1C"
+SERIES_1C_RT34 = "IEM_ASOS_METAR_1C_RT34"
 
 STATION_SERIES = {
     **{s: (SERIES_1F, "F", 1.0) for s in
        ("KATL", "KAUS", "KDAL", "KHOU", "KLAX", "KLGA", "KMIA", "KORD", "KSEA", "KSFO")},
     "KBKF": (SERIES_TENTH_F, "F", 0.1),
 }
-DEFAULT_SERIES = (SERIES_1C, "C", 1.0)
+DEFAULT_SERIES = (SERIES_1C_RT34, "C", 1.0)
+
+#: The report types each series is fetched with. A series NAME is a promise about its
+#: contents, so the types live with the name and not inside the fetcher: a series
+#: missing from this map raises instead of silently falling back to some default.
+SERIES_REPORT_TYPES = {
+    SERIES_1C: REPORT_TYPES_ROUTINE,
+    SERIES_1C_RT34: REPORT_TYPES_ALL,
+    SERIES_1F: REPORT_TYPES_ROUTINE,
+    SERIES_TENTH_F: REPORT_TYPES_ROUTINE,
+}
 
 
 def station_series(station: str) -> tuple[str, str, float]:
     """(series, unit, resolution) for a station. Celsius at 1 degree by default."""
     return STATION_SERIES.get((station or "").upper(), DEFAULT_SERIES)
+
+
+def report_types(station: str) -> tuple[int, ...]:
+    """The IEM report types the station's current series is built from."""
+    return SERIES_REPORT_TYPES[station_series(station)[0]]
 
 
 def detect_grid(station: str, tmax_c: float, tmax_f: float) -> tuple[str, float, str]:
@@ -161,9 +211,16 @@ def f_to_c(f: float) -> float:
 
 
 def fetch_metar(
-    icao: str, start: datetime, end: datetime, timeout: int = 90
+    icao: str, start: datetime, end: datetime, timeout: int = 90,
+    types: tuple[int, ...] | None = None,
 ) -> list[tuple[datetime, float]]:
-    """Routine METAR temperatures in [start, end], as (UTC instant, °C)."""
+    """METAR temperatures in [start, end], as (UTC instant, °C).
+
+    From the report types the station's series is built from (`report_types`) unless
+    `types` says otherwise — never a single global constant, see `REPORT_TYPES_ALL`."""
+    types = report_types(icao) if types is None else tuple(types)
+    if not types:
+        raise ValueError("fetch_metar needs at least one IEM report type")
     s, e = start.astimezone(timezone.utc), end.astimezone(timezone.utc)
     # IEM's day2 is EXCLUSIVE when it differs from day1 (measured: day1=20,
     # day2=21 returns only the 20th), yet day1=day2 returns that whole day. Rather
@@ -171,20 +228,22 @@ def fetch_metar(
     # timestamp below — the filter is exact regardless of how the server reads the
     # range.
     e_query = e + timedelta(days=1)
+    # A LIST OF PAIRS, not a dict: IEM takes one `report_type` parameter PER TYPE, and
+    # a dict can hold the key only once.
     q = urllib.parse.urlencode(
-        {
-            "station": icao.upper(),
-            "data": "tmpf",
-            "year1": s.year, "month1": s.month, "day1": s.day,
-            "year2": e_query.year, "month2": e_query.month, "day2": e_query.day,
-            "tz": "Etc/UTC",
-            "format": "onlycomma",
-            "missing": "empty",
-            "trace": "empty",
-            "latlon": "no",
-            "direct": "no",
-            "report_type": REPORT_TYPE,
-        }
+        [
+            ("station", icao.upper()),
+            ("data", "tmpf"),
+            ("year1", s.year), ("month1", s.month), ("day1", s.day),
+            ("year2", e_query.year), ("month2", e_query.month), ("day2", e_query.day),
+            ("tz", "Etc/UTC"),
+            ("format", "onlycomma"),
+            ("missing", "empty"),
+            ("trace", "empty"),
+            ("latlon", "no"),
+            ("direct", "no"),
+        ]
+        + [("report_type", t) for t in types]
     )
     # IEM is intermittently slow and returns 503 under load. Those are transient
     # and worth a bounded retry. A 429 is NOT: a rate limit is an instruction,
@@ -236,7 +295,11 @@ def fetch_metar(
 
 
 def daily_high(icao: str, target_date: date, tz: str, fetcher=fetch_metar) -> DailyHigh:
-    """The highest routine METAR temperature over the station-LOCAL target day.
+    """The highest METAR temperature over the station-LOCAL target day.
+
+    Over every report type the station's series is built from (`report_types`): at a
+    half-hourly Celsius station that is the :20 reports as well as the :50 ones, and
+    leaving either out makes the high low whenever the peak lands on it (B-131).
 
     The window is the same one the forecast uses (`weather.target_day_window`), so
     forecast and observation describe the same day — mismatching them would make
