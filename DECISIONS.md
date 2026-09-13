@@ -21992,3 +21992,30 @@ alojaba. Copiado a `~/pmw-e2/evidence/B-133/` y espejado, con `sha256` verificad
 etiquetado **no es la ventana: es la serie**, que es justo lo que viven la tarea #61 (la clave
 de `weather_observations` en tres sitios) y el `SERIES_1C_RT34` del #49. **La tarea #63 se
 cierra.**
+
+### A-279 bis — Y LA FUNCIÓN CORRECTA YA EXISTÍA EN PRODUCCIÓN, DOS DEFINICIONES MÁS ABAJO DE LA QUE YO IMPORTABA
+
+`resolution.band_integrity(labels, unit)` —línea 475 del **mismo módulo** del que mis guiones
+importan `parse_band` (línea 199)— comprueba solapes y huecos enteros entre intervalos
+consecutivos **sin suponer nada sobre la anchura de la banda**, y devuelve `is_partition`.
+
+Contrastado sobre los 7 331 eventos de `markets_v2`:
+
+    produccion  band_integrity.is_partition     7 329 si · 2 no
+    mia         particion_general               7 329 si · 2 no     discrepancias: 0
+    mia         particion   (la de n075)        5 477 si · 1 854 no
+
+**Cero discrepancias entre mi generalización y producción, y 1 854 eventos de diferencia
+contra la mía estrecha.** Escribí un instrumento peor que el que ya tenía delante, en el
+módulo que ya estaba importando.
+
+> No es que la función no estuviera documentada: es que **no la busqué**. Importé
+> `parse_band` de `resolution.py` y escribí a mano la partición sin leer qué más ofrecía ese
+> fichero. *La pregunta que faltó no es «¿es correcto lo que he escrito?» sino «¿esto ya
+> existe?».*
+
+Consecuencia práctica: todo lo nuevo debe llamar a `band_integrity`, no a una partición
+propia. Lo que NO se toca es `n075_poblacion.py`: su `sha256` está citado en
+`N075_REPRODUCIBILIDAD.md` y su resultado publicado en A-278, y en EGLC —Celsius, enteros
+sueltos— las tres funciones coinciden, así que **ninguna conclusión de A-278 se mueve**.
+Queda en la tarea #70 la decisión de sustituirlo y reemitir el registro con el sha nuevo.
