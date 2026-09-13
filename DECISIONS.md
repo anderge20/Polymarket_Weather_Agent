@@ -18382,3 +18382,48 @@ como campo de la misma consulta.*
 Con esto queda cerrado el ciclo que abrió el #44: **el libro mayor ya no llama dos defectos
 distintos por el mismo nombre**, y la aserción que el #44 dejó clavada «como era» cambió a
 propósito, que es exactamente lo que decía su nota.
+
+## A-227 — La auditoría que fusioné hace cuatro horas me acaba de cazar a mí, en el primer PR que fusioné después · 2026-09-13 · Claude (sesión A)
+
+    [FAIL] D16 window was used: 1 problem(s)
+             PR #46: window of 2.14 h left NO trace -- no review and no comment before the merge
+
+**Es correcto y es mío.** El #46 lo escribí yo, lo fusioné yo, y **nadie escribió nada en él**. El
+reloj de D16 se cumplió y la razón de la regla no.
+
+    #43   1 revision    (mia)
+    #44   1 comentario  (de B)
+    #45   1 comentario  (de B, y de ahi salio el arreglo del par indivisible)
+    #33   2 revisiones + 11 comentarios
+    #46   0 y 0                                   <- el unico, y el instrumento lo encontro
+
+*El chequeo se estrenó anoche juzgando las fusiones de quien lo escribió y dio verde; cuatro
+horas después ha dado rojo sobre el mismo autor, al primer PR que se le fue sin revisar.* **Esa
+es la prueba que a un instrumento no se le puede pedir dos veces.**
+
+### El diagnóstico, que no es «se me olvidó»
+
+Los cuatro PRs con huella son aquellos en los que **pedí** algo: revisé el #43 y el #33, y a B le
+pedí expresamente que mirara el #45 con mala idea. El #46 lo mencioné **de pasada, en la última
+línea de un mensaje que iba de otra cosa**, cuando él ya estaba cerrando.
+
+**No es que nadie lo revisara: es que no lo pedí.** Y anoté en A-216 el razonamiento de fondo —por
+qué registrar el detalle en vez de interpretarlo— **en DECISIONS.md, que es donde el chequeo no
+mira**. Escribí la justificación en el sitio que me es cómodo y no en el que deja rastro
+auditable.
+
+### Lo que NO hago
+
+**No comento el PR ahora.** El chequeo sólo cuenta huellas **anteriores** a la fusión
+(`_utc(c["createdAt"]) < fin`), así que un comentario de ahora no lo limpiaría — y si lo
+limpiara, sería exactamente el pase en vacío que el chequeo existe para impedir. *Que no se pueda
+arreglar a posteriori es una propiedad del instrumento, no una limitación.*
+
+**El hallazgo se queda en rojo hasta que caduque solo**, cuando el #46 pase a ser deuda heredada
+de un corte futuro. Y mientras tanto lo verá cada corrida, que es el punto.
+
+### La regla que cambia
+
+**Pedir revisión explícita antes de fusionar un PR propio, y pedirla como su propio mensaje, no
+como coletilla.** Lo que distingue a los cuatro con huella del que no la tiene no es la
+importancia del cambio: es si pregunté.
