@@ -23739,3 +23739,54 @@ desconociera. Se reporta como defecto **del documento**, no como descubrimiento.
 
 Tampoco toco el cuerpo del documento: lo que decidió es registro y no se reescribe. La
 enmienda va fechada al final. `SETTLEMENT_OPERATOR_CORE.v3.md` pasa a `62f1cfd5…`.
+
+---
+
+## A-302 — Barrido de la regla de A-299 sobre el corpus: cuatro constantes citadas, las cuatro correctas, y una esconde el `n` · 2026-09-13 · Claude (sesión A)
+
+*Escrito 2026-09-13T23:55Z. Sólo corpus. Cero código de producción, cero PR, cero cuota.
+Hallazgo PEQUEÑO y se cuenta como tal.*
+
+A-299 dejó la regla: *un número de partida que no se recalcula desde los datos antes de
+usarlo no es un dato, es una cita.* Barrido los guiones de análisis buscando literales con
+forma de resultado. **Cuatro, y las cuatro reproducen exactamente. Ningún número publicado
+se mueve.**
+
+    10/121                        Brier por contrato del uniforme      escrito como FRACCION
+    0.30464                       log-loss por contrato del uniforme   escrito como LITERAL
+    0.0073                        tasa de discrepancia proxy/resolucion (1/137)
+    -0.00605 / -0.01181 / ...     ya guardadas en d_conjunto.py (A-299)
+
+### Lo que sí tiene interés: el literal esconde la escalera
+
+`10/121` lleva el **`n = 11` a la vista**. `0.30464` lo lleva **escondido** — es
+`−(1/n)·ln(1/n) − ((n−1)/n)·ln(1−1/n)` con n = 11, y nada en el literal lo dice. Si alguna
+vez se puntuara una escalera de 9 o de 7, el primero se vería mal de un vistazo y el
+segundo no. A-280 hizo regla permanente *«estratificar SIEMPRE por n, no agregar nunca
+entre escaleras»*: **un literal que supone n = 11 en silencio es exactamente el peligro por
+el que esa regla existe.**
+
+Y un detalle pequeño del mismo tipo: en `l1_4_walkforward.py:87` el literal aparece como
+
+    math.log(11)*0 + 0.30464
+
+`math.log(11)*0` es **aritmética muerta** — vale cero y no deriva nada. Viste al literal de
+una procedencia que no tiene: la versión en miniatura de *una cita correcta sosteniendo una
+afirmación falsa*. (En `l1_5_calibracion.py:137` está el mismo literal, sin disfraz.)
+
+Y en `l1_3_probabilidades.py:188` se escribe `n_ev * 0.0073` **una línea después** de
+imprimir `100/137` correctamente derivado: la misma cantidad, derivada arriba y citada
+abajo.
+
+### Remedio: aditivo, no un parche
+
+**No se reescriben los guiones publicados.** `LOCK_L1_5.md` fija el `sha256` de
+`l1_4_walkforward.py` y `PREREG_LEVEL1.md` el de `n075_poblacion.py`; tocarlos por limpieza,
+sin que cambie un número, rompe trazabilidad a cambio de nada. Es la misma decisión que
+A-301 tomó con la especificación: *lo que decidió es registro y no se reescribe.*
+
+En su lugar, `l1/verifica_constantes.py`: deriva las cuatro desde su fórmula, con `N = 11`
+declarado arriba, y **sale 1 si alguna deja de coincidir**. Pasa hoy. Si algún día se
+puntúa otra escalera, ese guion es donde se ve.
+
+Cierra la tarea #79.
