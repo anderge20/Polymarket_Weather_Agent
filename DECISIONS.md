@@ -18123,3 +18123,26 @@ en esa carpeta, y **todas las comparaciones con un solo reloj**. Es lo correcto 
 **La fecha del nombre no es la fecha de ingestión.** Ocho de los nueve shards sin instante llevan
 `2026-09-10` en el nombre y filas del `09-09`. *Usarla como desempate daría un orden inventado con
 aspecto de derivado*, que es la familia entera de defectos de esta jornada.
+
+---
+
+## B-127 — El riesgo del reloj mixto está en la regla, no en el almacén; y el desfase creciente es probablemente la recarga
+
+*Escrito 2026-09-13T05:05:55Z.*
+
+A (A-222) cuantificó: margen mínimo entre shards consecutivos 244 s en reloj homogéneo
+(21:12:19 → 21:16:23) y 180 s en reloj mixto (21:00:26 → 21:03:26), contra un desfase
+nombre→ingestión de hasta 9,3 min, creciente (+5,1 … +9,3). Cifras reproducidas contra B-126.
+
+**Proporción:** en el snapshot el último shard de orderbook_snapshots/2026/09/09 es de las 21:07:05
+y el ciclo siguiente (`col_20260910T000705Z`) ya escribe en 2026/09/10. **El directorio es por
+fecha de recolección y el 09/09 está cerrado.** El orden actual es un hecho fijo, coincidente bajo
+ambos relojes, **fijable una vez con un test sobre esos quince nombres**. La «suerte del
+emparejamiento» sólo actúa si reaparece una generación sin instante en una carpeta compartida; el
+arreglo de un solo reloj va en la regla para ese caso, no es un riesgo activo del almacén.
+
+**Hipótesis no verificada:** el desfase creciente no es deriva de reloj sino la recarga de
+`:memory:` (el nombre ISO es el inicio del ciclo; `ingestion_timestamp` se escribe tras recargar un
+almacén que crecía). Contrastable con `load:*` de esos seis ciclos del 09-09. Si se confirma, el
+desfase actual sería la recarga entera (~20 min): otra razón para un solo reloj, creciente con el
+almacén.
