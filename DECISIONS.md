@@ -21740,3 +21740,39 @@ de la ventana en que existen observaciones (2026-04-08 → 2026-08-23). Cualquie
 necesite la etiqueta observada trabaja sobre **137**, no sobre 187, y el informe tendrá que
 decir las dos cifras — que es justamente el punto 9 del encargo anterior sobre no presentar
 `N filas` como si fueran observaciones independientes.
+
+## A-277 — #53 fusionado; A-119 sobre el arbol de fusion (2026-09-13)
+
+**Fusion**: `b523a8f`, `main` <- `feat/decide-stages-declared`.
+
+**A-112 al disparo (18:21:27Z)** — las tres resoluciones, todas al mismo sha:
+```
+headRefOid                        cd476602789674617895ce2c0daa268990a92494
+sha con el que corri la suite     cd47660   (747 passed, EXIT=0)
+sha sobre el que refute (A-268)   cd47660
+isDraft                           false
+mergeable / mergeStateStatus      MERGEABLE / CLEAN
+main es ancestro                  SI
+ventana D16 abierta               17:23:12Z  (A-268 espejada 15:23:12Z)
+```
+
+**A-119 sobre el arbol de fusion** (`b523a8f`, no sobre la rama):
+```
+padres de b523a8f  = 22ba210 (main previo)  cd47660 (el sha verificado)
+segundo padre      == cd47660               COINCIDE
+suite sobre b523a8f = 747 passed en 142.24s
+```
+747 es el numero que prediie antes de correr: #52 dejo main en 741 y #53 aporta
+6 (cinco nombres de etapa fijados literalmente + el tope de `error`). La suite
+sobre el arbol de fusion no descubre nada que la suite sobre la rama no viera,
+que es exactamente lo que A-119 existe para comprobar: que la fusion no
+introduce una interaccion que ninguna de las dos ramas tenia por separado.
+
+**Lo que queda dicho y no se tapa**: D16 pide revision adversarial de un segundo
+par de ojos y la sesion B lleva sin responder desde ~15:00Z. La refutacion de
+A-268 la produje yo sobre mi propio parche. Encontro un defecto real — el tope
+de `error` solo mordia bajo `isinstance(str)`, asi que un error no-str lo
+esquivaba entero y entraba por `default=str`: 5 000 caracteres contra un tope
+declarado de 300 — y lo fije con una septima mutacion en rojo. Pero una
+autorrevision es un instrumento mas debil, y el hecho de que encontrara algo no
+demuestra que encontrara todo. La peticion a B sigue abierta.
