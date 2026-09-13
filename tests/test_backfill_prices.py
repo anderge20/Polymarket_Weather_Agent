@@ -143,7 +143,9 @@ def _db_at_schema_7(path, priced_tokens=(), dataset_version="v2"):
             "dataset_version": dataset_version, "record_version": 1,
         })
     con.execute("DROP TABLE price_fetch_attempts")
-    con.execute("DELETE FROM schema_version WHERE version = 8")
+    # Everything from 8 up: `init_db` applies any unrecorded version, so leaving a
+    # later one recorded would make 8 a gap to fill, not a database at schema 7.
+    con.execute("DELETE FROM schema_version WHERE version >= 8")
     assert db.get_schema_version(con) == 7
     con.close()
 
@@ -184,7 +186,7 @@ def test_migration_8_SEEDS_the_attempts_from_price_history(tmp_path):
     dbp = tmp_path / "pmw.duckdb"
     _db_at_schema_7(dbp, priced_tokens=("y1854400", "y1854400x", "y1854401"), dataset_version="backfill_2b_v1")
     con = db.init_db(db.connect(str(dbp)))
-    assert db.get_schema_version(con) == 8
+    assert db.get_schema_version(con) == db.SCHEMA_VERSION
     got = con.execute("SELECT token_id, dataset_version, status, points_written, source "
                       "FROM price_fetch_attempts ORDER BY token_id").fetchall()
     assert got == [

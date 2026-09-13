@@ -50,7 +50,7 @@ from typing import Any, Iterable, Mapping, Sequence
 
 from .config import DB_PATH
 
-SCHEMA_VERSION = 8
+SCHEMA_VERSION = 9
 
 # Standard provenance columns present on every fact/derived table.
 PROVENANCE_COLUMNS = (
@@ -665,7 +665,37 @@ _DDL_V8 = [
     """,
 ]
 
+# Migration 9 — RE-DECLARE WHAT WAS ADDED TO A MIGRATION AFTER IT WAS PUBLISHED.
+#
+# `ALTER TABLE markets ADD COLUMN IF NOT EXISTS contract_source` was added to
+# `_DDL_V2` in b2add1f (2026-09-09) — three days after databases had already
+# applied migration 2 (session A's `pmw.duckdb` recorded it on 2026-09-06). An
+# applied migration never runs again, so every database older than the edit lacks
+# the column and nothing says so: no gap, no version, no trace.
+#
+# MEASURED, not guessed, before choosing what to re-declare: every column mapped to
+# the migration that introduces it (303 columns), then checked against six real
+# databases for columns missing although their migration is recorded. The union is
+# exactly one line, this one. Re-declaring it here is idempotent and reaches every
+# database; re-applying migration 2 would not.
+_DDL_V9 = [
+    "ALTER TABLE markets ADD COLUMN IF NOT EXISTS contract_source VARCHAR;",
+]
 
+
+# THE BODY OF A PUBLISHED MIGRATION IS NEVER EDITED. A change to the schema is a
+# NEW migration with the next number, even when it only re-declares something an
+# earlier one should have carried. Editing a migration that databases have already
+# applied changes nothing on those databases — they skip it by version — and it
+# leaves no trace of any kind (migration 9 exists because of exactly that). Every
+# migration's statements are pinned by checksum in `tests/test_migrations.py`, so
+# an edit fails by name instead of depending on someone remembering this.
+#
+# AND THE NUMBER IS THE NEXT ONE. Migration 5 was introduced after databases had
+# already applied 6 (session A's recorded 6 on 2026-09-09 and never 5), and the old
+# `init_db` skipped every version at or below the highest recorded — so a gap was
+# permanent. `init_db` now applies every version not recorded, and the same test
+# file pins the versions as 1..N in order.
 MIGRATIONS: list[dict] = [
     {
         "version": 1,
@@ -715,7 +745,23 @@ MIGRATIONS: list[dict] = [
         "name": "b136_price_fetch_attempts",
         "statements": _DDL_V8,
     },
+    {
+        "version": 9,
+        "name": "b139_redeclare_contract_source",
+        "statements": _DDL_V9,
+    },
 ]
+
+
+def migration_checksum(migration: dict) -> str:
+    """sha256 over a migration's statements, whitespace-normalised per statement.
+
+    Written into `schema_version.checksum` when the migration is applied, and pinned
+    in the tests: the body of a published migration is never edited."""
+    import hashlib
+
+    body = "\n".join(" ".join(str(st).split()) for st in migration["statements"])
+    return hashlib.sha256(body.encode("utf-8")).hexdigest()
 
 
 # =============================================================================
@@ -777,23 +823,31 @@ def get_schema_version(con) -> int:
 
 
 def init_db(con=None, db_path: str | None = None):
-    """Idempotently create/upgrade the schema. Applies every migration whose
-    version exceeds the current schema_version, each inside its own transaction.
-    Safe to call repeatedly. Returns the (open) connection."""
+    """Idempotently create/upgrade the schema. Applies every migration whose version
+    is NOT RECORDED in schema_version, in version order, each inside its own
+    transaction. Safe to call repeatedly. Returns the (open) connection.
+
+    NOT "every version above the highest recorded". That rule made a gap permanent:
+    session A's `pmw.duckdb` recorded 1-4, 6 and 7, never 5, so `markets` never got
+    `measurement_rule_code` — while the paper cycle, which builds a fresh schema in
+    `:memory:` every run, always had it. Production and analysis ran on different
+    schemas with nothing to say so, and the suite could not see it because it always
+    builds a new database. Every statement in MIGRATIONS is idempotent, so applying a
+    lower-numbered migration on a database that already holds later ones is safe."""
     if con is None:
         con = connect(db_path)
     _ensure_schema_version_table(con)
-    current = get_schema_version(con)
-    for mig in MIGRATIONS:
-        if mig["version"] <= current:
+    recorded = {int(v) for (v,) in con.execute("SELECT version FROM schema_version").fetchall()}
+    for mig in sorted(MIGRATIONS, key=lambda m: m["version"]):
+        if mig["version"] in recorded:
             continue
         con.execute("BEGIN TRANSACTION;")
         try:
             for stmt in mig["statements"]:
                 con.execute(stmt)
             con.execute(
-                "INSERT INTO schema_version (version, name, applied_at) VALUES (?, ?, ?)",
-                [mig["version"], mig["name"], _utcnow_iso()],
+                "INSERT INTO schema_version (version, name, applied_at, checksum) VALUES (?, ?, ?, ?)",
+                [mig["version"], mig["name"], _utcnow_iso(), migration_checksum(mig)],
             )
             con.execute("COMMIT;")
             # The cache first: it is keyed on the connection and the schema just
