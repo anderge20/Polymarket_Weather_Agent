@@ -19789,3 +19789,56 @@ de `price_history`, `markets` y `outcomes` bajo `dataset_version` nueva, con pre
 CLOB y ritmo preinscritos antes de lanzar.
 
 Evidencia: `evidence/B-136/` (ficheros de trabajo del agente).
+
+---
+
+## A-246 — Los 15 desajustes entre nuestra observación y la resolución del mercado son 15 de 15 POR DEBAJO y TODOS de exactamente 1,0 °C. Predicción fechada y falsable sobre el PR #49 · 2026-09-13 · Claude (sesión A)
+
+**Salió dimensionando la reingesta, no buscándolo.** Al contar cuántos eventos EGLC
+tendrían banda ganadora tras reparar el corpus, añadí la comprobación de integridad (c)
+de la preinscripción: *¿cae nuestro máximo observado dentro de la banda que el mercado
+declaró ganadora?*
+
+    dentro                        104
+    obs POR DEBAJO de la banda     15
+    obs POR ENCIMA de la banda      0
+
+**Y las quince, sin excepción, por exactamente 1,0 °C:**
+
+    04-14 16,0   04-23 17,0   04-24 17,0   04-25 20,0   04-29 15,0
+    05-13 12,0   05-16 14,0   05-18 15,0   05-31 23,0   06-05 18,0
+    06-16 26,0   07-07 31,0   07-26 26,0   08-09 30,0   08-22 21,0
+
+**Eso no es un desajuste de fuente.** Londres liquida contra Wunderground (A-241,
+estrato 5 `WU_DAILYOBS_C`) y nosotros etiquetamos con METAR de IEM; si la diferencia
+fuera «dos termómetros distintos», estaría repartida a los dos lados y con magnitudes
+variadas. **Unilateral y cuantizada en un grado entero es la firma de un máximo que se
+quedó bajo**, que es exactamente el defecto que arregla el PR #49: `REPORT_TYPE = 3`
+tiraba los METAR rutinarios semihorarios (:20) y el máximo del día se perdía cuando el
+pico caía en uno de ellos.
+
+**PREDICCIÓN, ESCRITA ANTES DE QUE EL ARREGLO LLEGUE A LOS DATOS, porque después ya no se
+puede observar** (la lección de «fusionar el arreglo destruye su propia prueba»):
+
+> Cuando el #49 esté fusionado y se reingesten las observaciones de EGLC con tipos 3+4,
+> **las 15 deben entrar dentro de su banda ganadora, y ninguno de los 104 que hoy están
+> dentro debe salirse.**
+>
+> - **15 de 15 y 0 salidas** → el defecto explicaba el desajuste entero.
+> - **menos de 15** → el resto es desajuste real de fuente (Wunderground ≠ METAR) y es una
+>   magnitud propia, no un error a tapar.
+> - **cualquiera de los 104 saliéndose** → el arreglo se pasa de largo, y eso sería un
+>   defecto del #49, no de la medición.
+
+**Es una muestra DISTINTA de la de B.** Sus 18 de 18 son días-estación donde las dos
+series difieren; estos 15 son días donde nuestra etiqueta contradice la resolución del
+mercado. **No he medido el solapamiento y no lo supongo.** Que dos construcciones
+independientes apunten al mismo grado entero es lo que hace fuerte al #49; decir que son
+la misma evidencia sería contarla dos veces.
+
+**Y una consecuencia para el NIVEL 1 que no se puede pasar por alto:** 15 de 119 eventos
+—**12,6 %**— tienen hoy una etiqueta que contradice la resolución contra la que se
+evalúa. Cualquier reejecución antes de reingestar las observaciones mediría el modelo
+contra una verdad que el mercado no usó en el 12,6 % de los casos. **Así que el orden
+queda fijado: primero el #49 y la reingesta de observaciones, después la reingesta de
+mercados, y sólo entonces la reejecución.**

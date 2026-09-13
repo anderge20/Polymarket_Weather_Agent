@@ -31,9 +31,20 @@ for t, v in pmw.execute("""SELECT observation_time, observed_value
                            FROM weather_observations WHERE station='EGLC'""").fetchall():
     obs[t.astimezone(LON).date()] = v
 
-# Los eventos EGLC que el almacen conoce; la escalera se toma del CATALOGO.
-eids = [str(r[0]) for r in pmw.execute(
-    """SELECT DISTINCT event_id FROM markets WHERE station_identifier='EGLC'""").fetchall()]
+# LOS EVENTOS DEL CATALOGO, no los del almacen. La primera version partia de
+# `markets`, y eso deja fuera por construccion los eventos que el almacen NO tiene
+# NINGUNA banda: 196 en el catalogo contra 163 en `markets`, 36 ausentes enteros.
+# Dimensionar la reparacion partiendo de lo que la reparacion va a arreglar es
+# contar con la poblacion recortada.
+eids = sorted({str(r[0]) for r in cat.execute(
+    """SELECT DISTINCT CAST(event_id AS VARCHAR) FROM mk
+       WHERE station_identifier='EGLC'
+          OR slug LIKE 'highest-temperature-in-london-%'""").fetchall()})
+# UNION de las dos definiciones a proposito: 187 eventos por `station_identifier`
+# y 196 por slug, y no son el mismo conjunto. Quedarse con una sola es elegir la
+# poblacion por la etiqueta que mas convenga, que es lo que este nivel no hace.
+en_almacen = {str(r[0]) for r in pmw.execute(
+    """SELECT DISTINCT event_id FROM markets WHERE station_identifier='EGLC'""").fetchall()}
 
 def banda(titulo):
     """(lo, hi) en C a partir del group_item_title, con los extremos abiertos."""
@@ -49,32 +60,36 @@ def banda(titulo):
 res = Counter()
 detalle = []
 for eid in eids:
-    rows = cat.execute("""SELECT group_item_title, endDate FROM mk
+    rows = cat.execute("""SELECT group_item_title, endDate, winning_outcome FROM mk
                           WHERE CAST(event_id AS VARCHAR)=?""", [eid]).fetchall()
     if not rows:
         res["sin_evento_en_catalogo"] += 1; continue
     fecha = rows[0][1]
     # `endDate` es un VARCHAR ISO en el catalogo, no una fecha: sin esto el
     # `hasattr(..., "date")` es False y la comparacion falla en silencio para
-    # los 163 eventos, que es lo que hizo la primera version.
+    # TODOS los eventos, que es lo que hizo la primera version (0 de 163).
     if isinstance(fecha, str):
         fecha = dt.datetime.fromisoformat(fecha.replace("Z", "+00:00")).date()
     elif hasattr(fecha, "date"):
         fecha = fecha.date()
-    bandas = [banda(t) for t, _ in rows]
+    bandas = [banda(t) for t, _, _ in rows]
     if any(b is None for b in bandas):
         res["banda_no_parseable"] += 1; continue
+    # LA VERDAD LA PONE EL MERCADO (§5 de la preinscripcion): se cuenta con
+    # `winning_outcome` del catalogo, no con nuestro maximo observado. La
+    # observacion solo sirve para la comprobacion de integridad (c).
+    ganadoras = [str(w).strip().lower() == "yes" for _, _, w in rows]
+    if sum(ganadoras) != 1:
+        res["sin_ganadora_declarada" if not any(ganadoras) else "ganadoras_multiples"] += 1
+        continue
     if fecha not in obs:
-        res["sin_observacion"] += 1; continue
+        res["con_ganadora_SIN_observacion"] += 1; continue
     y = obs[fecha]
-    gan = [b for b in bandas if b[0] <= y < b[1]]
-    if len(gan) == 1:
-        res["CON_GANADORA"] += 1
-        detalle.append((eid, fecha, y, len(rows)))
-    elif not gan:
-        res["fuera_de_la_escalera"] += 1
-    else:
-        res["bandas_solapadas"] += 1
+    bg = bandas[ganadoras.index(True)]
+    res["CON_GANADORA"] += 1
+    res["   de ellos AUSENTES enteros hoy"] += (eid not in en_almacen)
+    res["   de ellos con la obs FUERA de la banda ganadora"] += (not (bg[0] <= y < bg[1]))
+    detalle.append((eid, fecha, y, len(rows)))
 
 print("=== DIMENSIONADO (no es un resultado de NIVEL 1) ===")
 for k, v in res.most_common():
