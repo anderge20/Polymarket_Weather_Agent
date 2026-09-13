@@ -21090,3 +21090,45 @@ es la fusión más `846f90a`») usaba una base que no tenía el #49, así que lo
 entra (`07a335f`): cuatro ficheros, `database.py`, `tests/test_migrations.py`, el helper de
 `tests/test_backfill_prices.py` y un comentario en `paper_cycle.py`. Es la misma lección que A se aplicó
 con el #50. **Orden de fusión:** #51 (aprobado en `f3349f0`) y luego #52; no se tocan.]**
+
+---
+
+## A-266 — #51 (`47151e3`) y #52 (`22ba210`) fusionados. Y la sesión B ha dejado de estar accesible · 2026-09-13 · Claude (sesión A)
+
+**#51** — A-112 al disparo 14:50:22Z sobre `f3349f0`; A-119: segundo padre `f3349f0`,
+**733 passed**. El head había cambiado de `13847ce` a `f3349f0` al fusionar `main` en la
+rama, y eso **reabrió las tres condiciones**: pedí re-revisión sobre el sha nuevo, que es la
+regla que llevo todo el día exigiendo. *Aplicármela no es cortesía.*
+
+**#52** — A-112 al disparo 14:57:21Z sobre `c97ae3a`; A-119 en curso (esperado 741).
+
+**Cuatro fusiones esta tarde con el procedimiento completo —#49, #50, #51, #52— y en las
+cuatro el recuento se PREDIJO antes de correr la suite**: 703, 726, 733, 741. `main` pasa de
+693 a 741.
+
+**Y una lección de comparación que salió dos veces, una en cada lado:**
+
+> **Un recuento sin su base y un diff sin su punto de comparación son la misma clase de dato
+> que «un recuento sin su sha no es un hecho».** En el #50 iba a contar 711 contra 693
+> cuando su rama salía de `32e8972` (688): habría dado 18 en vez de 23, y una fusión que se
+> comiera cinco tests habría pasado por verde. Y al revisar el #52, difiendo contra su head
+> anterior aparecían `paper_cycle.py` y `observations.py` como cambios del PR **y eran del
+> #49 llegando por la fusión**: un solape fabricado por elegir mal el punto de comparación.
+
+---
+
+**LA SESIÓN B HA DEJADO DE ESTAR ACCESIBLE.** `SendMessage` devuelve *«No agent named 'codex
+mcp integration' is reachable»* y ya no aparece en `ListAgents`. Su último mensaje llegó a
+las ~14:57Z, con el #51 aprobado y el discriminador para el shard de las 15:07.
+
+**Qué cambia y qué no.** No queda trabajo suyo pendiente de validar: sus cuatro PRs están
+fusionados y sus dos entradas últimas (B-145, B-146) están en el espejo. Lo que se pierde es
+**el segundo par de ojos**, y con él la mitad barata de la regla de refutación hostil: hoy
+B ha refutado seis cosas mías —el `hetzner-manual`, la fuga de futuro del B1, la desviación
+falsa de A-253, la cota de la ventana, el arreglo que habría empeorado el almacén y la
+comparación contra la base equivocada— y **ninguna la había visto yo**.
+
+**Consecuencia operativa, no retórica:** mientras no vuelva, la presunción invertida de
+A-29.4 se aplica **contra mí mismo**, y el sustituto barato que ya ha funcionado hoy tres
+veces es **medir la frase antes de escribirla**. Sigo con mi pista; nada se declara VALIDADO
+sin que exista una refutación intentada y escrita.
