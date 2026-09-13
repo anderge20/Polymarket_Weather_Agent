@@ -295,6 +295,13 @@ medida (§9.1, §9.2) es una **limitación reportada**, no un criterio nuevo: a�
 un umbral de influencia sería cambiar la regla después de ver el número, que está
 prohibido en las dos direcciones.
 
+> **Corrección de una cifra mía, 22:50Z.** El `B4 − S3` de Londres en lead 24 es
+> **−0,00605**, no −0,00614: transcribí el −0,0061 de una tabla redondeada y **me inventé
+> el quinto decimal**. El cociente de magnitudes pasa de 0,79× a 0,80× y ninguna
+> conclusión se mueve. Lo detectó la guarda `REPRODUCE / NO REPRODUCE` del análisis
+> conjunto, que exige que cada número de partida se recalcule desde los datos antes de
+> usarlo. El lead 9 (−0,01181) siempre estuvo bien.
+
 **Y el eco estructural es lo más informativo del experimento:** el lead que sobrevive y
 el lead que cae son **los mismos en las dos ciudades**. Londres descartó el lead 24 en la
 Fase A por potencia (0,87) y RKSI lo descarta por lo mismo (0,74). Eso no estaba

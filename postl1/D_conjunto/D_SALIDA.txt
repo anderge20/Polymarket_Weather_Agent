@@ -1,0 +1,63 @@
+====================================================================================================
+D · ANALISIS CONJUNTO LONDRES + RKSI · preregistro bfd7cb0 · 0 peticiones
+====================================================================================================
+  EGLC lead 24: n= 95  B4-S3 -0.00605  publicado -0.00605  REPRODUCE  escaleras {11: 95}
+  EGLC lead  9: n= 96  B4-S3 -0.01181  publicado -0.01181  REPRODUCE  escaleras {11: 96}
+  RKSI lead 24: n= 73  B4-S3 -0.00485  publicado -0.00485  REPRODUCE  escaleras {11: 73}
+  RKSI lead  9: n= 74  B4-S3 -0.00892  publicado -0.00892  REPRODUCE  escaleras {11: 74}
+
+====================================================================================================
+C1 · VENTANA EQUIPARADA — Londres recortado a los 95 dias de RKSI
+====================================================================================================
+  C1a (95 dias mas recientes de EGLC) y C1b (calendario de RKSI) COINCIDEN:
+  las dos ventanas acaban el 2026-08-23, asi que el recorte es el mismo:
+  2026-05-21 -> 2026-08-23. Se mide UNA vez y responde a las dos.
+
+  lead 24
+    EGLC completo   n= 95  -0.00605
+    EGLC recortado  n= 57  -0.00806  [-0.01424, -0.00203]   n_train mediana 47 · S3 hist mediana 148
+    RKSI            n= 73  -0.00485           n_train mediana 56 · S3 hist mediana 147
+
+  lead  9
+    EGLC completo   n= 96  -0.01181
+    EGLC recortado  n= 57  -0.01257  [-0.01849, -0.00680]   n_train mediana 47 · S3 hist mediana 149
+    RKSI            n= 74  -0.00892           n_train mediana 56 · S3 hist mediana 148
+
+  LECTURA DE C1 (regla escrita antes, lead 9):
+    completo -0.01181 · recortado -0.01257 · RKSI -0.00892
+    -> el recorte NO acerca Londres a RKSI: |recortado-RKSI| 0.00365 vs |completo-RKSI| 0.00289
+    -> la diferencia entre ciudades es DE CIUDAD, no de ventana
+
+====================================================================================================
+C3/C4/C5 · lo que NO se puede equiparar y se declara
+====================================================================================================
+  C3 availability : EGLC -> ICON-D2 (cota TRASLADADA de ICON-GLOBAL, 1 medicion de dominio)
+                    RKSI -> ICON-GLOBAL (cota DIRECTA, 2 fechas, 2 canales)
+  C4 clima        : maritimo templado vs monzonico continental. NO equiparable.
+  C5 independencia: mismo proveedor (ICON) y misma plataforma (Polymarket). Comparten modo de fallo.
+
+====================================================================================================
+ESTIMADOR CONJUNTO — primario lead 9
+====================================================================================================
+
+  lead  9 · PRIMARIO
+    pesos  EGLC 0.552 · RKSI 0.448
+    analitico (efectos fijos)  theta -0.01051  IC95 [-0.01367, -0.00736]
+    bootstrap jerarquico       theta -0.01051  IC95 [-0.01369, -0.00732]  <- manda
+    pool ingenuo (control)     media -0.01055  IC95 [-0.01377, -0.00737]  n=170
+    heterogeneidad  Q 0.798 (gl 1, p 0.372)  I2 0.0%  -> AGREGABLE
+
+    --- §7 · el pooling pasa las MISMAS pruebas que pasaron las partes ---
+      quitando el 5% mas favorable de cada ciudad: n=161  -0.00790  [-0.01061, -0.00500]  sigue
+      quitando el 10% mas favorable de cada ciudad: n=153  -0.00605  [-0.00880, -0.00340]  sigue
+      quitando el 20% mas favorable de cada ciudad: n=136  -0.00282  [-0.00539, -0.00032]  sigue
+      una ciudad fuera (k=2, asi que es cada ciudad sola):
+        solo EGLC: n= 96  -0.01181  [-0.01597, -0.00763]
+        solo RKSI: n= 74  -0.00892  [-0.01382, -0.00433]
+
+  lead 24 · SECUNDARIO EXPLORATORIO — no desbloquea nada
+    pesos  EGLC 0.470 · RKSI 0.530
+    analitico (efectos fijos)  theta -0.00541  IC95 [-0.00873, -0.00209]
+    bootstrap jerarquico       theta -0.00541  IC95 [-0.00877, -0.00199]  <- manda
+    pool ingenuo (control)     media -0.00553  IC95 [-0.00887, -0.00216]  n=168
+    heterogeneidad  Q 0.124 (gl 1, p 0.725)  I2 0.0%  -> AGREGABLE

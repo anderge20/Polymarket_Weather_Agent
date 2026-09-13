@@ -107,7 +107,7 @@ LEAD 9 h · 74 eventos · escaleras {11: 74}
 §20 · COMPARACION CON LONDRES (solo ahora, con RKSI ya cerrado)
 ====================================================================================================
    lead   Londres B4-S3    RKSI B4-S3                  IC95 RKSI    n  efecto/MDE
-     24        -0.00614      -0.00485   [-0.00940, -0.00042]   73        0.74
-        direccion: MISMA · magnitud RKSI/Londres +0.79x
+     24        -0.00605      -0.00485   [-0.00940, -0.00042]   73        0.74
+        direccion: MISMA · magnitud RKSI/Londres +0.80x
       9        -0.01181      -0.00892   [-0.01378, -0.00438]   74        1.33
         direccion: MISMA · magnitud RKSI/Londres +0.76x

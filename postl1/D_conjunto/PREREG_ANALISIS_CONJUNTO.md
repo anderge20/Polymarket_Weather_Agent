@@ -27,7 +27,7 @@ aquí para que nadie lo lea como más de lo que es.
 
     lead 9    EGLC   B4-S3 = -0,01181   n=96   efecto/MDE 1,95   [A-293, Fase A]
               RKSI   B4-S3 = -0,00892   n=74   efecto/MDE 1,33   [A-298, Fase C]
-    lead 24   EGLC   B4-S3 = -0,00614   n=95   efecto/MDE 0,87   INCONCLUSIVE
+    lead 24   EGLC   B4-S3 = -0,00605   n=95   efecto/MDE 0,87   INCONCLUSIVE
               RKSI   B4-S3 = -0,00485   n=73   efecto/MDE 0,74   INCONCLUSIVE
 
 Los cuatro son del mismo estrato de escalera (**n = 11**), la misma métrica (Brier por

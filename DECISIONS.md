@@ -23409,12 +23409,17 @@ antes de tocar un dato. Metodología importada, no reescrita.**
 ### El resultado
 
     lead    B4 - S3      IC95                    n    efecto/MDE   Londres
-      24   -0,00485   [-0,00940, -0,00042]      73       0,74     -0,00614
+      24   -0,00485   [-0,00940, -0,00042]      73       0,74     -0,00605
        9   -0,00892   [-0,01378, -0,00438]      74       1,33     -0,01181
 
 Misma dirección en los dos leads, magnitud **0,76-0,79×** la de Londres, los dos IC
 excluyen el cero. Por el criterio de `LOCK_FASE_C.md` §6, escrito antes de ver nada:
 **`lead 9 = REPLICATED`**, **`lead 24 = INCONCLUSIVE`** por potencia (0,74 < 1).
+
+**Corrección de una cifra mía (22:50Z):** el lead 24 de Londres es **−0,00605**, no
+−0,00614 — transcribí un −0,0061 redondeado y me inventé el quinto decimal. Lo cazó la
+guarda `REPRODUCE / NO REPRODUCE` del análisis conjunto, que recalcula cada número de
+partida desde los datos antes de usarlo. Cociente 0,80× en vez de 0,79×; nada se mueve.
 
 **El eco estructural es lo que no estaba garantizado:** el lead que cae es el mismo en
 las dos ciudades. Londres descartó el 24 en la Fase A con 0,87; RKSI lo descarta con 0,74.
@@ -23508,3 +23513,85 @@ falló, así que buscarla sería city shopping.
 Artefactos: `postl1/C_replica/FASE_C_RESULTADO.md`, `FASE_C_SCORING.txt`,
 `FASE_C_GATES.txt`, `FASE_C_GATE_TIMEZONE.txt`, `ENMIENDA_FALLO_DE_PASADA.md`,
 `faseC_{datos,gate_timezone,gate_integridad,scoring}.py`.
+
+---
+
+## A-299 — ANÁLISIS CONJUNTO = `POOLED CONFIRMED` (lead 9). Y mi propia hipótesis sobre por qué RKSI era más débil quedó refutada por mi propio test preinscrito · 2026-09-13 · Claude (sesión A)
+
+*Escrito 2026-09-13T22:55Z. Preregistro `bfd7cb0`, espejado ANTES de calcular nada.
+0 peticiones a proveedores. `D0` abajo · `D0-P = BLOCKED` · `L2 = BLOCKED`.*
+
+### El resultado
+
+    lead 9 · PRIMARIO      theta -0,01051   IC95 [-0,01369, -0,00732]  (bootstrap jerarquico)
+                           Q 0,798 (p 0,372)  I2 0,0 %   pesos EGLC 0,552 / RKSI 0,448
+                           quitando el 10 % mas favorable: -0,00605 [-0,00880, -0,00340]
+                           quitando el 20 %:               -0,00282 [-0,00539, -0,00032]
+
+Las cinco condiciones del §8 del preregistro se cumplen. **`POOLED CONFIRMED`.** Y el
+conjunto arregla algo real: RKSI sola moría al quitar 10 eventos, el conjunto aguanta el
+20 %. No es magia, es `n` = 170 frente a 74.
+
+### Lo importante es que C1 me refutó a mí
+
+El §3 del preregistro decía que el 0,76× de RKSI podía ser un artefacto de ventana: en
+RKSI el benchmark `S3` está mejor entrenado (+21 %) y el modelo `B4` peor (−18 %). Era
+una conjetura cómoda — explicaba la debilidad de la réplica sin culpar a la réplica.
+
+    lead 9   EGLC completo  (138 d)  n=96  -0,01181
+             EGLC RECORTADO ( 95 d)  n=57  -0,01257   n_train mediana 47
+             RKSI           ( 95 d)  n=74  -0,00892   n_train mediana 56
+
+Londres recortado a la ventana exacta de RKSI **se aleja de RKSI en vez de acercarse**, y
+con menos entrenamiento y menos eventos que RKSI. **La diferencia entre ciudades es de
+ciudad.** Leído como decía la regla, escrita antes, y en contra de lo que yo suponía media
+hora antes.
+
+*(C1a y C1b resultaron ser el mismo recorte: las dos ventanas acaban el 2026-08-23. Una
+medición, no dos confirmaciones.)*
+
+### La guarda de reproducción cazó una cifra inventada MÍA
+
+El análisis paró en su primera ejecución: el `B4 − S3` de Londres en lead 24 que yo tenía
+escrito era `−0,00614` y el real es `−0,00605`. **Transcribí un `−0,0061` de una tabla
+redondeada y me inventé el quinto decimal.** Corregido en `faseC_scoring.py`,
+`FASE_C_RESULTADO.md` y A-298. No mueve ninguna conclusión (0,79× → 0,80×), pero una cifra
+inventada en un artefacto publicado es una cifra inventada, y estaba ahí porque el número
+venía de una *cita* y no de un *recálculo*.
+
+> **Regla que se queda: un número de partida que no se recalcula desde los datos antes de
+> usarlo no es un dato, es una cita.** La guarda `REPRODUCE / NO REPRODUCE` se queda en
+> todo análisis que parta de resultados previos.
+
+### `lead 24`: pasó exactamente lo que el preregistro anticipó, y no cuenta
+
+    theta -0,00541  IC95 [-0,00877, -0,00199]
+
+Dos resultados que **no** alcanzaron su criterio de potencia (0,87 y 0,74) se combinan en
+uno que excluye el cero. §6 del preregistro lo dejó etiquetado como **SECUNDARIO
+EXPLORATORIO que no desbloquea nada** antes de calcularlo. Cambiar la unidad de análisis
+hasta que el criterio se cumpla es la maniobra que §21 prohíbe. **`lead 24` sigue
+`INCONCLUSIVE`.**
+
+### Una regularidad en las cuatro series, sin mecanismo
+
+En EGLC y RKSI, en lead 9 y lead 24, **el efecto es mayor en la segunda mitad**; y EGLC
+recortado a los 95 días finales da −0,01257, más que los 138 completos. No propongo
+mecanismo: no tengo ninguno medido y elegirlo ahora sería inventarlo. Queda anotado para
+la especificación de `L2`, porque **si el efecto depende del calendario, un backtest sobre
+el corpus entero lo promedia y un sistema en vivo no vive en el promedio.**
+
+### DECISIÓN
+
+> **`POOLED CONFIRMED` autoriza ESPECIFICAR `L2`, no ejecutarlo. `L2` sigue `BLOCKED`,
+> `D0-P` sigue `BLOCKED`, `D0` lo levanta el usuario.**
+
+Y lo que hay que llevarse escrito: el efecto es **pequeño** (−0,0105 de Brier sobre un
+benchmark que ya vale 0,078) y R21 ya midió una vez que Strategy A no era operable porque
+el mercado está mejor calibrado que el modelo; la concentración temporal; la traslación de
+availability en Londres (tarea #75), que afecta a la mitad de mayor peso del conjunto; y
+que **dos ciudades no son dos observaciones independientes** — comparten proveedor (ICON)
+y plataforma (Polymarket), así que un fallo en cualquiera de los dos se vería en las dos y
+este análisis no lo distinguiría de una señal.
+
+Artefactos: `postl1/D_conjunto/{PREREG_ANALISIS_CONJUNTO.md, d_conjunto.py, D_RESULTADO.md, D_SALIDA.txt}`.

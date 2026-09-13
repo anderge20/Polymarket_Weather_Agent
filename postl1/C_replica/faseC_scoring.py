@@ -39,7 +39,7 @@ from faseA_benchmark import S1, S2, S3, brier_vec, orden, pos_ganadora, UNIF  # 
 ICAO, DSV_MK = "RKSI", "markets_v2"
 D0, D1 = dt.date(2026, 5, 21), dt.date(2026, 8, 23)
 #: Londres, para el §20. NO se mira hasta que RKSI este cerrado; se imprime al final.
-LONDRES = {24: -0.00614, 9: -0.01181}
+LONDRES = {24: -0.00605, 9: -0.01181}
 
 
 def main() -> int:
