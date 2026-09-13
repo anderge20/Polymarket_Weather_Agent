@@ -20775,3 +20775,38 @@ si alguien añade una sexta etapa y la olvida en el conjunto, rojo por nombre.
 
 **No abro el PR todavía:** hay cuatro abiertos y dos de ellos tocan `paper_cycle.py`. Entra
 después de fusionar #49 y #50, sobre `main` limpio.
+
+---
+
+## B-145 — La etapa `settle` no deja traza en ciclos no decisores, y el almacén no sabe distinguir una etapa saltada de una ejecutada
+
+*Escrito 2026-09-13T13:26:08Z.*
+
+**Hallazgo de A (A-261), leído en el almacén de producción:** en 59 ciclos, `forecasts`, `signals`,
+`paper` y `observations` aparecen 20 veces cada una y `settle` ninguna. Las declaraciones de «saltada»
+se escriben a mano rama por rama en `paper_cycle.py:2408-2418`, y cada rama declara un subconjunto
+distinto.
+
+**Verificado sobre `origin/main`:**
+- rama «no decide» (`if not deciding`): declara `forecasts`, `signals`, `paper` y `observations`, falta
+  `settle`. Cubre **dos causas**, `collect_only` y `guard_refused_dataset_version`; la segunda es
+  alcanzable en producción aunque haya tau (2336-2342);
+- rama «decide sin tau» (`tau_signal is None or tau_exec is None`): declara sólo `signals` y `paper`.
+  Sólo alcanzable a mano: `run_cycle.sh` y el workflow pasan siempre los dos taus;
+- rama completa: corren las cinco, y `stage_settle` registra fila incluso sin posiciones abiertas;
+- cola `--settle-only`: coherente.
+
+**Refinamiento que cambia el arreglo:** `stage_profile` guarda sólo `stage`, `at_s` y `elapsed_s`
+(`paper_cycle.py:1756-1758`). El estado y el motivo existen en `cy.stages` (196), pero sólo llegan a
+`last_summary.json`, que se sobrescribe y no se versiona. Así que desde el almacén una etapa saltada es
+indistinguible de una ejecutada en 0,0 s, y los 20 `forecasts` contados son saltos que nada identifica
+como tales. Declarar el conjunto de etapas una vez sin persistir `status` y `reason` convertiría
+«`settle` no existe» en «`settle` corrió»: peor. **Arreglo propuesto a A:** conjunto de etapas declarado
+una vez, `stage_profile` con `status` y `reason` en cada entrada, y un test que lea un shard real de
+`cycle_params` escrito por `main()`, no `cy.stages`.
+
+**Tercer caso de A («`settle` reventó sin registrar»):** el camino de decisión sólo tiene `finally`
+(2521), sin `except`. Si `stage_settle` lanza, no hay volcado ni `cycle_params`: lo que falta es el
+ciclo entero, no la etapa.
+
+PR de A pendiente, sobre `main` limpio tras #49 y #50 (tarea #65 de A).
