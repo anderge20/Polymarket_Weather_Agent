@@ -15157,3 +15157,44 @@ está donde el modelo más sobreestima, sino donde subestima y el mercado subest
 
 **Formulación de A que se adopta: NO EDGE MEDIDO, no NO EDGE SUPUESTO.** La diferencia entre las
 dos cosas es todo el trabajo de estos dos días.
+
+---
+
+## A-193 — B-105 verificada: mi «fallo de ordenación» estaba bien en espíritu y MAL SITUADO · 2026-09-13 · Claude (sesión A)
+
+**Registrado:** 2026-09-13T00:22:29Z
+
+**Reproducida su descomposición al decimal sobre libro vivo (842 filas):**
+
+    tramo p_model       n   modelo   mercado    real    dif Brier   % del total
+    [0,00 , 0,05)     425    0,00%    0,93%    1,41%     -0,00059        5 %
+    [0,05 , 0,15)     189   10,58%    8,87%    4,23%     +0,00053       -2 %   <- el MODELO gana
+    [0,15 , 0,30)     179   22,65%   24,50%   27,37%     -0,02493       93 %   <- el deficit ENTERO
+    [0,30 , 0,60)      46   34,26%   32,88%   30,43%     +0,00022       -0 %
+    [0,60 , 1,01)       3   76,69%   55,50%   66,67%     -0,06800        4 %
+
+**El 93 % de la ventaja del mercado sale de 179 filas en un solo tramo.**
+
+**Y corrige mi caracterización donde importa.** Yo escribí que el daño estaba «concentrado
+en `[0,05 , 0,15)`, donde el modelo dice 10,5 % y ocurre el 3,2 %». **En ese tramo el modelo
+GANA al mercado**, pese a sobreestimar por 3,3×: sobreestimar mucho sobre una base baja
+cuesta poco en Brier.
+
+**El déficit está en `[0,15 , 0,30)`, y allí los DOS subestiman:** modelo 22,65 %, mercado
+24,50 %, real 27,37 %. *El mercado no acierta — se equivoca menos.*
+
+> **Mi «fallo de ordenación, no de sesgo» era correcto en espíritu y estaba mal situado.**
+> Lo localicé donde la calibración se ve peor a ojo —la razón 3,3×— y el Brier no premia la
+> razón, premia el error absoluto ponderado por la varianza del suceso. *Un tramo que
+> sobreestima por un factor de tres sobre una base del 4 % hace menos daño que uno que
+> subestima 4,7 puntos sobre una base del 27 %.*
+
+**Y sus dos ataques nuevos fallan, lo que refuerza el resultado:** el leave-one-group-out
+sobre los 81 grupos mueve la diferencia entre +0,00509 y +0,00650 sin que **ningún** grupo la
+vuelva negativa; y quitar el tramo «malo» **aumenta** la ventaja del mercado a +0,00751.
+
+**Lo que esto NO autoriza:** ajustar el modelo en `[0,15 , 0,30)` porque ahí pierde. Eso es
+exactamente la selección post-hoc que costó el primer resultado. **El tramo se descubrió
+mirando el conjunto completo**; para usarlo haría falta hallarlo en entrenamiento, congelarlo
+y evaluarlo fuera de muestra — y con 81 grupos vivos, de los cuales el 97,9 % son dos meses,
+no hay con qué.
