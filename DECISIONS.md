@@ -19999,3 +19999,64 @@ real mientras la suite, que siempre construye una base nueva, pasa. Commits del 
 b2add1f, 10f1843), sin determinar cuál introdujo cada cosa. **Arreglo propuesto a A como PR aparte:**
 aplicar toda versión no registrada en orden numérico, con un test de base con hueco; y una migración
 nueva que re-declare la línea añadida a V2, en vez de reaplicar V2. Pendiente de quién lo toma.
+
+---
+
+## A-248 — #48 FUSIONADO (`8bc603f`), y la espera que llevaba tres fusiones haciendo ya no compraba nada · 2026-09-13 · Claude (sesión A)
+
+**A-112, las tres resoluciones al disparo (12:20:28Z):** `headRefOid = 2b94d58` == el sha con el
+que corrí la suite (`693 passed`, EXIT=0, verificado por mí) == el sha que aprobó la revisión
+(quinta pasada, 10:15:14Z); `isDraft = false`; `MERGEABLE/CLEAN`. **A-119 después:** segundo padre
+`2b94d58`, el esperado, y `693 passed` EXIT=0 **sobre el árbol de la fusión**, no sobre la rama.
+Ventana D16 cumplida (aprobación 10:15:14Z, entradas espejadas 09:55–10:10Z).
+
+**Y una costumbre corregida.** Llevaba desde ayer fusionando «después del ciclo», y al ir a
+justificarlo hoy resulta que la razón dejó de ser cierta cuando leímos de verdad quién hace el
+reset: **`launcher.sh:88-94` resetea el checkout AL EMPEZAR el ciclo** —a las 12:07:00— y
+`run_cycle.sh` sólo hace un `rev-parse` de lectura sobre `$REPO`. Una fusión posterior a esa hora
+**no puede tocar el ciclo en curso**; toca al de las 15:07, que es justamente el que hay que leer
+para comprobar `collect_only_reason == mode_collect` en producción. *Una precaución heredada de
+una arquitectura que ya habíamos corregido, sostenida por no volver a preguntar por qué.*
+
+---
+
+## A-249 — PRODUCCIÓN Y ANÁLISIS LLEVAN DÍAS CORRIENDO SOBRE ESQUEMAS DISTINTOS, y nada lo decía · 2026-09-13 · Claude (sesión A), hallazgo de B verificado por mí
+
+**Verificado por mí antes de aceptarlo**, sobre `pmw.duckdb`:
+
+    schema_version: [1, 2, 3, 4, 6, 7]      <- falta el 5, y faltará siempre
+    markets.measurement_rule_code   AUSENTE
+    markets.contract_source         AUSENTE
+
+**El mecanismo está en `database.py:771`**: `if mig["version"] <= current: continue`, con `current`
+= el **máximo** registrado. Una migración numerada por debajo de una ya aplicada **no se aplica
+nunca**, y `init_db` no lo nota: un hueco no es un retraso, es permanente.
+
+**Son TRES defectos, no uno** (inventario de B sobre todas las `.duckdb` del disco):
+
+1. **Hueco en el 5** — mi base. `measurement_rule_code` ausente para siempre.
+2. **Hueco en el 6** — bases de sonda y de humo, `[1,2,3,4,5,7]`. La migración 6 se numeró por
+   debajo de una 7 ya aplicada. **Mismo mecanismo, otra víctima**, lo que descarta que fuera un
+   accidente puntual de la 5.
+3. **La V2 editada después** — `pmw_probe` y `pmw_strat` están en `[1,2,3]` **sin hueco** y aun así
+   les falta `contract_source`, porque esa línea entró en la V2 cuando ya la habían aplicado.
+   *Rellenar huecos no arregla este caso*: hace falta una migración nueva que la redeclare.
+
+**Y la consecuencia que importa para el NIVEL 1.** `paper_cycle.py:2244` hace
+`db.init_db(db.connect(args.db or ":memory:"))`, y **ni `run_cycle.sh` ni `paper_cycle.yml` pasan
+`--db`**: la caja **nace con esquema nuevo cada ciclo**, sana, con las dos columnas. Mi base —la
+que el NIVEL 1 mide— no las tiene.
+
+> **Producción y análisis llevan días sobre esquemas distintos, y la suite no podía verlo porque
+> siempre construye una base nueva.** El único sitio donde el defecto existe es precisamente el
+> único sitio que la suite nunca visita: *un fichero que sobrevive.*
+
+Es la variante de esquema de lo que ya está escrito en [[context-that-does-not-travel]]: el
+instrumento sigue reportando verde porque apunta a un estado recién creado que no puede fallar.
+
+**Reparto:** el arreglo lo coge B como PR aparte, **antes de la reingesta**, con dos condiciones
+que puse: (a) el test construye una base REAL con el hueco —migraciones 1-4, 6, 7 aplicadas y
+registradas, sin la 5— y comprueba que `init_db` trae las dos columnas; un test que recorra la
+lista de migraciones sin una base con hueco pasa por la razón equivocada; (b) el PR lista qué
+bases existen y en qué versión están. **Yo no arreglo el instrumento con el que voy a medir**; lo
+reviso.
