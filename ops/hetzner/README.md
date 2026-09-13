@@ -30,12 +30,20 @@ is not.
 | `40 2 * * *` | `launcher.sh decide 9` — lead 9 h, target today |
 | `40 11 * * *` | `launcher.sh decide 24` — lead 24 h, target tomorrow |
 
-Cron calls `launcher.sh`, which lives **outside** the checkout. `run_cycle.sh`
-begins by updating the checkout it lives in, and a `git reset --hard` to a ref
-that does not contain `ops/hetzner/` would delete the running script while bash
-was still reading it — a half-executed file and a schedule that stops without an
-error anyone would recognise. The launcher updates the tree, **checks the runner
-still exists**, and stops loudly if it does not.
+Cron calls `launcher.sh`, which lives **outside** the checkout, and **it** is
+what updates the tree. A `git reset --hard` to a ref that does not contain
+`ops/hetzner/` would delete the running script while bash was still reading it —
+a half-executed file and a schedule that stops without an error anyone would
+recognise — so the update cannot happen from inside the checkout. The launcher
+updates the tree, **checks the runner still exists**, and stops loudly if it does
+not; `run_cycle.sh` does a read-only `rev-parse` on the code and touches only
+`state/`.
+
+*(This paragraph used to say «`run_cycle.sh` begins by updating the checkout it
+lives in». It does not, and `run_cycle.sh` says so itself — «deliberately not
+here». The same stale sentence lived in `launcher.sh` and was read as current
+fact on 2026-09-13, which cost a wrong design decision in PR #48. Text about
+ANOTHER file is the kind nothing makes you re-read.)*
 
 ## Trading is OFF, and turning it on is a deliberate act
 

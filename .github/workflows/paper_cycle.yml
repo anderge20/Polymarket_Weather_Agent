@@ -143,13 +143,20 @@ jobs:
         run: |
           set -euo pipefail
           TAU="${{ github.event.inputs.tau || vars.PAPER_TAU }}"
+          # DOS CAUSAS, DOS MOTIVOS. La puerta pone collect_only=true por dos
+          # razones distintas y el shard tiene que decir CUAL: un despacho manual
+          # con tau configurado no es un cierre en falso, y escribirle
+          # `no_paper_tau` seria un motivo de algo que no ocurrio — peor que
+          # ninguno, que es la tesis del campo entero.
           if [ -z "$TAU" ]; then
             echo "no tau configured (vars.PAPER_TAU unset and no override)"
             echo "collect_only=true" >> "$GITHUB_OUTPUT"
+            echo "collect_only_reason=no_paper_tau" >> "$GITHUB_OUTPUT"
             echo "tau=" >> "$GITHUB_OUTPUT"
           elif [ "${{ github.event.inputs.collect_only }}" = "true" ]; then
             echo "collect_only requested"
             echo "collect_only=true" >> "$GITHUB_OUTPUT"
+            echo "collect_only_reason=dispatch_requested" >> "$GITHUB_OUTPUT"
             echo "tau=" >> "$GITHUB_OUTPUT"
           else
             echo "tau=$TAU" >> "$GITHUB_OUTPUT"
@@ -187,11 +194,16 @@ jobs:
           if [ "${{ inputs.settle_only }}" = "true" ]; then
             ARGS+=(--settle-only)
           elif [ "${{ steps.gate.outputs.collect_only }}" = "true" ]; then
-            # El motivo viaja tambien por aqui. Las programaciones de este
-            # workflow estan desactivadas, pero `workflow_dispatch` sigue vivo:
-            # una corrida manual escribiria `collect_only=True` sin decir por
-            # que, que es el defecto entero.
-            ARGS+=(--collect-only --collect-only-reason no_paper_tau)
+            # El motivo viaja tambien por aqui, y SALE DE LA PUERTA en vez de
+            # estar escrito a mano: la puerta conoce cual de sus dos causas
+            # disparo, y esta linea no. Las programaciones de este workflow estan
+            # desactivadas pero `workflow_dispatch` sigue vivo, asi que una
+            # corrida manual escribiria `collect_only=True` sin decir por que.
+            # EN UNA LINEA A PROPOSITO: el barrido de `test_every_collect_only_
+            # in_EVERY_caller_carries_its_reason` es por linea, asi que partir la
+            # llamada en dos la convierte en un llamador mudo a ojos del test. Lo
+            # cazo al partirla.
+            ARGS+=(--collect-only --collect-only-reason "${{ steps.gate.outputs.collect_only_reason }}")
           else
             ARGS+=(
               --tau-signal "${{ steps.gate.outputs.tau }}"

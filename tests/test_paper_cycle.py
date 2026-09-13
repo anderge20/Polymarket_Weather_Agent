@@ -3314,13 +3314,20 @@ def test_every_collect_only_in_EVERY_caller_carries_its_reason():
     raiz = Path(__file__).resolve().parents[1]
     fuentes = sorted(list((raiz / "ops").rglob("*.sh")) +
                      list((raiz / ".github" / "workflows").rglob("*.yml")))
+
+    def es_llamada(linea):
+        """Una linea que PASA `--collect-only`, no una que lo menciona."""
+        t = linea.strip()
+        if t.startswith("#"):
+            return False
+        codigo = t.split("#", 1)[0]      # un motivo en un comentario final no cuenta
+        return "--collect-only" in codigo
+
     lineas = [(f.name, l.strip()) for f in fuentes
-              for l in f.read_text().splitlines()
-              if "--collect-only" in l and not l.strip().lstrip("-").startswith("#")
-              and "--collect-only-reason" not in l.strip().split("--collect-only")[0]]
-    lineas = [(n, l) for n, l in lineas if "--collect-only" in l]
+              for l in f.read_text().splitlines() if es_llamada(l)]
     assert lineas, "ningun llamador pasa --collect-only: revisar este test"
-    sin_motivo = [(n, l) for n, l in lineas if "--collect-only-reason" not in l]
+    sin_motivo = [(n, l) for n, l in lineas
+                  if "--collect-only-reason" not in l.split("#", 1)[0]]
     assert not sin_motivo, f"`--collect-only` sin motivo: {sin_motivo}"
     assert len(lineas) == 4, (
         f"se esperaban cuatro llamadas (run_cycle.sh x2, paper_collect.yml, "
@@ -3379,9 +3386,15 @@ def test_the_WRAPPER_itself_passes_the_reason_in_each_branch(tmp_path):
     entorno = dict(os.environ, PATH=f"{root/'bin'}:{os.environ['PATH']}")
 
     def correr(*args):
+        # BORRAR ANTES, no confiar en que se sobrescriba: una salida 0 que no
+        # llegara a llamar a python leeria el argv de la corrida anterior y el
+        # test pasaria sin haber ejecutado nada. Es el pase en vacio con otra
+        # cara, dentro del test escrito para conducir de verdad.
+        argv.unlink(missing_ok=True)
         r = subprocess.run(["bash", str(guion), *args], env=entorno,
                            capture_output=True, text=True, timeout=60)
         assert r.returncode == 0, (r.returncode, r.stdout[-800:], r.stderr[-800:])
+        assert argv.exists(), "el guion salio 0 sin llegar a invocar a python"
         return argv.read_text().split()
 
     assert "--collect-only" in correr("collect")
