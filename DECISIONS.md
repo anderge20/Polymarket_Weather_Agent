@@ -20733,3 +20733,45 @@ de pico, no lecturas. **El denominador de A-259 ya era el consistente con produc
 haría igual, y ahora está contestada con un número en vez de con una estimación.* Costó una
 ejecución sobre datos que ya estaban en disco; parar de refinar no es lo mismo que dejar
 abierta una pregunta que se cierra gratis.
+
+---
+
+## A-261 — La etapa `settle` NO DEJA RASTRO cuando no corre: 0 de 59 ciclos de producción la nombran · 2026-09-13 · Claude (sesión A)
+
+Pista de liquidación. Leídos los 59 `cycle_params` de `paper-state`, no supuesto:
+
+    etapas que aparecen en algun ciclo:  forecasts 20 · signals 20 · paper 20 · observations 20
+    ciclos con alguna etapa `settle`:     0   de 59
+
+**La etapa que mueve el libro mayor es la única que no aparece nunca.** Y la causa está en
+`paper_cycle.py:2408-2419`: las declaraciones de «saltada» **se escriben a mano, rama por
+rama, y cada rama declara un subconjunto distinto**.
+
+    rama 1  no deciding (collect-only)   declara forecasts · signals · paper · observations
+                                         FALTA: settle
+    rama 2  deciding pero sin tau        declara signals · paper
+                                         FALTAN: forecasts · observations · settle
+    rama 3  decision completa            corren las cinco
+
+Las cinco etapas del camino de decisión son `forecasts, signals, paper, observations,
+settle`. **La rama 1 declara cuatro; la rama 2, dos.** Quien lea el almacén no puede
+distinguir «`settle` se saltó porque el ciclo era collect-only» de «`settle` no existe» de
+«`settle` reventó antes de registrar nada». *Es el mismo defecto que el `collect_only_reason`
+del #48 — un estado que no deja traza — una capa más abajo y en la etapa donde más importa.*
+
+**Y LA RAMA 2 ES LA PEOR Y HOY ES INALCANZABLE, que es justamente por qué nadie la había
+visto.** `run_cycle.sh` convierte «no hay `PAPER_TAU`» en `--collect-only` en el shell, y
+cuando hay tau fija `TAU_EXEC = TAU` si falta el fichero de exec — así que los dos llegan
+siempre juntos y la rama 2 no se alcanza. Se alcanzará **el día que alguien pase
+`--tau-signal` sin `--tau-exec`**, y ese día un ciclo que se creía decisor dejará tres de
+sus cinco etapas sin una sola fila.
+
+**EL ARREGLO ES DE CLASE, NO DE INSTANCIA, y lo digo antes de escribirlo para no repetir lo
+de esta mañana:** no es añadir `settle` a la rama 1. Es **declarar UNA VEZ el conjunto de
+etapas del camino de decisión** y marcar como saltada toda la que no haya corrido, de modo
+que una etapa nueva no pueda olvidarse en una rama y aparecer en otra. Con un test que
+compare el conjunto declarado contra las etapas que el camino completo registra de verdad —
+si alguien añade una sexta etapa y la olvida en el conjunto, rojo por nombre.
+
+**No abro el PR todavía:** hay cuatro abiertos y dos de ellos tocan `paper_cycle.py`. Entra
+después de fusionar #49 y #50, sobre `main` limpio.
