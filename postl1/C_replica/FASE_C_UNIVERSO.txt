@@ -1,0 +1,59 @@
+universo de partida: 52 estaciones de markets_v2
+
+icao    A_eleg  obsDias  unid  fcFilas  2runs  modelo  PUNT  estrato  ELEGIBLE
+EGLC       186      138     C      236   True    True    97       97  SI
+RKSI       186       46     C       91   True    True    25       25  no
+RCSS       151       31     C       62   True    True    11       11  no
+EDDM       169       28     C       56   True    True     8        8  no
+EFHK       142       28     C       56   True    True     8        8  no
+EHAM       142       28     C       56   True    True     8        8  no
+EPWA       158       28     C       56   True    True     8        8  no
+LEMD       159       28     C       56   True    True     8        8  no
+LIMC       159       28     C       56   True    True     8        8  no
+LTAC       185       28     C       56   True    True     8        8  no
+NZWN       185       28     C       56   True    True     8        8  no
+RJTT       165       28     C       56   True    True     8        8  no
+RKPK       142       28     C       56   True    True     8        8  no
+WMKK       141       28     C       56   True    True     8        8  no
+WSSS       161       28     C       56   True    True     8        8  no
+ZBAA       154       28     C       56   True    True     8        8  no
+ZGSZ       152       28     C       56   True    True     8        8  no
+ZHHH       154       28     C       56   True    True     8        8  no
+ZSPD       162       28     C       56   True    True     8        8  no
+ZUCK       154       28     C       56   True    True     8        8  no
+ZUUU       153       28     C       56   True    True     8        8  no
+CYYZ       185       27     C       54   True    True     7        7  no
+FACT       132       27     C       54   True    True     7        7  no
+KHOU       149       27     F       54   True    True     7        7  no
+KLAX       149       27     F       54   True    True     7        7  no
+KLGA       187       27     F       54   True    True     7        7  no
+KMIA       183       27     F       54   True    True     7        7  no
+KORD       183       27     F       54   True    True     7        7  no
+KSEA       184       27     F       54   True    True     7        7  no
+KSFO       149       27     F       54   True    True     7        7  no
+OEJN       136       27     C       54   True    True     7        7  no
+SBGR       181       27     C       54   True    True     7        7  no
+KATL       185       26     F       52   True    True     6        6  no
+KAUS       148       26     F       52   True    True     6        6  no
+KDAL       186       26     F       52   True    True     6        6  no
+LFPB       128       26     C       52   True    True     6        6  no
+MMMX       142       26     C       54   True    True     6        6  no
+MPMG       138       26     C       54   True    True     6        6  no
+OPKC       129       26     C       52   True    True     6        6  no
+RPLL       129       26     C       52   True    True     6        6  no
+SAEZ       183       26     C       52   True    True     6        6  no
+VILK       170       26     C       56   True    True     6        6  no
+ZGGG       129       26     C       52   True    True     6        6  no
+KBKF       149       24     F       54   True    True     4        4  no
+ZSQD       119       24     C       48   True    True     4        4  no
+
+============================================================================================
+UNIVERSO ELEGIBLE: 1 estaciones
+============================================================================================
+  EGLC  puntuables 97 · escaleras {11: 97} · con evidencia F-3 64/97
+
+--- POR QUE CAEN LAS DEMAS (recuento de la causa PRIMERA que las excluye) ---
+  < 40 dias de observacion                     36
+  unidad != C (F)                              11
+  sin observacion                              3
+  < 30 eventos PUNTUABLES                      1

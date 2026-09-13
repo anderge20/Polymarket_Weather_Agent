@@ -23334,3 +23334,64 @@ por lo que la guarda lee el **AST**. Sigue siendo un instrumento más débil que
 de ojos.
 
 **Colector verde**: tres ciclos consecutivos a 15:32:34Z, 18:33:05Z y 21:34:08Z.
+
+## A-297 — FASE C = LOCKED. El universo elegible tiene UNA sola estación y es la propia Londres; la réplica queda congelada en `RKSI` · 2026-09-14 · Claude (sesión A)
+
+`postl1/C_replica/`. Criterios y regla espejados a las **21:58:56Z** (`aed9482`) **antes** de
+medir el universo. Ningún criterio usa Brier, `B4`, correlación, MAE, precios ni resultado
+alguno. `D0-P` = BLOCKED · `L2` = BLOCKED.
+
+### El universo elegible: UNA estación, y es Londres
+
+    UNIVERSO ELEGIBLE HOY: 1  ->  EGLC
+    por que caen las otras 51 (causa PRIMERA):
+      < 40 dias de observacion  36 · unidad != C (F)  11 · sin observacion  3 · < 30 puntuables  1
+
+**La réplica no se puede ejecutar hoy**, y la causa está medida: **el corpus se construyó
+centrado en Londres por los dos lados a la vez.**
+
+    dias objetivo CON PRONOSTICO:  EGLC 118 · RKSI 46 · RCSS 31 · 28 (x19) · 27 (x14) · 26 (x8)
+    dias locales CON OBSERVACION:  EGLC 138 · RKSI 46 · RCSS 31 · <=28 el resto
+
+Con `MIN_TRAIN = 20`, la segunda mejor estación daría **25 eventos puntuables**, por debajo del
+umbral de 30 que yo mismo preinscribí. **No se relaja el umbral para que entre alguien**: era la
+regla 5 de los criterios y se cumple.
+
+### Ciudad congelada: `RKSI` (Incheon/Seúl, `Asia/Seoul`)
+
+`D1` no es evaluable sin cobertura, así que se usa **su techo**, `A_eventos_elegibles`, que no
+depende de observación ni de pronóstico — adaptación declarada e independiente del resultado.
+
+    RKSI 186 elegibles · 46 dias de pronostico · {7:2, 9:26, 11:158}
+    CYYZ 185 · LTAC 185 · NZWN 185 · SAEZ 183 ...
+
+**`RKSI` gana por DOS criterios ex-ante independientes**: máximo de eventos elegibles entre las
+estaciones en Celsius, **y** máxima cobertura de pronóstico después de Londres. *Que los dos
+apunten a la misma estación es una comprobación, no una coincidencia buscada.*
+
+**Y RKSI sólo es utilizable por el arreglo de D11/A-285**: `observaciones()` toma ahora la zona
+de `stations.timezone_of`. Con el `Europe/London` fijo que había antes, los días de Seúl se
+habrían agrupado mal **sin que nada avisara**.
+
+### Presupuesto de ingesta, preinscrito ANTES de gastar cuota
+
+    pronosticos    ~72 dias x 2 ejecuciones = ~144 peticiones   TECHO 200
+    observaciones  ~72 peticiones IEM                            TECHO 100
+    reglas: respetar 429 sin excepcion, sin clave de pago, parar en el techo aunque falten
+            dias, registrar peticiones y fallos, dataset_version NUEVO sin tocar una fila
+
+**No se ejecuta en este turno.** El lock existe para que la ciudad esté congelada **antes** de
+tocar un dato.
+
+### Congelado palabra por palabra
+
+`B0`…`B4` idénticos · `S3` idéntico · los **dos** leads · `t_asof` · `MIN_TRAIN = 20` ·
+`epsilon = 1e-6` · bootstrap clusterizado por evento, semilla 20260913 · unidad **EVENTO** ·
+estratificar por escalera siempre · `exige_celsius()` activo. **Si la metodología no funciona en
+RKSI, eso es el resultado. No se corrige después.**
+
+Veredicto preescrito: `REPLICATED` / `NOT REPLICATED` / `INCONCLUSIVE`, con **una réplica
+negativa de potencia insuficiente clasificada como INCONCLUSIVE, jamás como NOT REPLICATED**, y
+sin buscar otra ciudad si ésta falla con potencia suficiente.
+
+    FASE C = LOCKED     ciudad congelada · metodologia congelada · datos pendientes
