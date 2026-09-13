@@ -10,8 +10,15 @@ con=duckdb.connect(DB, read_only=True); con.execute("SET TimeZone='UTC'")
 fc=con.execute("""SELECT target_date, issue_time, available_at, forecast_tmax,
                          forecast_p10, forecast_p25, forecast_p50, forecast_p75, forecast_p90
                   FROM weather_forecasts WHERE station='EGLC' ORDER BY target_date, issue_time""").fetchall()
-obs={r[0]: r[1] for r in con.execute("""SELECT CAST(observation_time AS DATE), observed_value
-                                        FROM weather_observations WHERE station='EGLC'""").fetchall()}
+# DIA LOCAL DE LONDRES, no la fecha UTC. `CAST(observation_time AS DATE)` colisiona
+# dos veces en EGLC —los maximos de 00:50 local caen en el dia UTC anterior— y en las
+# dos el dia siguiente sobrescribia al real: 05-03 perdia 20,0 y quedaba 15,0; 05-26
+# perdia 34,0 y quedaba 24,0. Lo encontro la sesion B revisando A-237.
+from zoneinfo import ZoneInfo as _Z
+obs={}
+for _t,_v in con.execute("""SELECT observation_time, observed_value
+                            FROM weather_observations WHERE station='EGLC'""").fetchall():
+    obs[_t.astimezone(_Z("Europe/London")).date()] = _v
 def tasof(td, lead): return dt.datetime.combine(td, dt.time(12), dt.timezone.utc) - dt.timedelta(hours=lead)
 
 pares={}

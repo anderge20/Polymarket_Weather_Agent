@@ -19080,3 +19080,67 @@ liquidación del ciclo de papel. El «0 de 578» del docstring midió revisiones
 El arreglo exige nueva serie o `dataset_version` sin sobrescribir etiquetas y dimensionar por
 estación primero. Ofrecido a A; ni el dimensionado ni el PR empezados hasta su respuesta. Nota
 aparte: 34,0 °C en EGLC el 05-26 merece una comprobación de cordura.
+
+## A-238 — RETRACTO A-237 ENTERA: no había desajuste de settlement. Era un bug mío y un defecto de ingesta, y ninguno es lo que dije · 2026-09-13 · Claude (sesión A)
+
+*Red team de B sobre mi propio hallazgo, pedido por mí. Lo verifiqué todo sobre mis datos antes de
+aceptarlo.*
+
+### Mi «+5 °C inexplicable» era un bug de mi script
+
+`obs = {CAST(observation_time AS DATE): observed_value}`. **`observation_time` es el instante UTC
+del máximo, no el día objetivo.** EGLC: 118 filas, **116 fechas UTC** → dos colisiones, y en las
+dos el máximo de las 00:50 **locales** —que cae en el día UTC anterior— sobrescribía al real:
+
+    2026-05-03 14:50Z  20,0  <- el de verdad      2026-05-26 13:50Z  34,0
+    2026-05-03 23:50Z  15,0  <- el del 05-04      2026-05-26 23:50Z  24,0
+
+***El mercado resolvió 20,0 y nuestra observación ES 20,0. Yo leí la fila equivocada y monté una
+hipótesis de fuente de resolución sobre mi propio error de join.***
+
+### Y los ocho «+1 °C» son reales, pero el defecto es NUESTRO
+
+B lo midió contra IEM: **EGLC reporta cada 30 minutos, a los :20 y a los :50, e IEM no archiva los
+:20 como `report_type=3`.**
+
+    report_type 3 y 4:  1 772 filas   :20 x886   :50 x886
+    report_type 3:        887 filas   :50 x886   :20 x1
+
+**`REPORT_TYPE = 3` tira la mitad de los METAR RUTINARIOS de EGLC.** Comprobado por mi lado: **las
+118 observaciones almacenadas están a los :50, ninguna a los :20.** En los ocho días el máximo
+estaba a los :20 y el máximo sólo-:50 es exactamente uno menos.
+
+*Mi dirección era correcta y mi mecanismo era falso: no son SPECI, son los reportes de media hora.*
+Y el comentario del código —*«Specials (SPECI) are excluded so the series is the regular hourly
+record»*— **describe una intención que el filtro no cumple**: no excluye especiales, excluye
+rutinarios.
+
+### Lo que esto le hace a mis propios números del §4
+
+    ANTES (con mi bug)                    DESPUES (dia local de Londres)
+    lead 24  bias -0,054  RMSE 1,562  ->  bias +0,042  RMSE 1,238   (-21 %)
+    lead  9  bias -0,120  RMSE 1,431  ->  bias -0,015  RMSE 1,085   (-24 %)
+
+**El forecast sale MEJOR de lo que dije**, y el sesgo se va prácticamente a cero. *Dos días
+corruptos con errores de −5 y −10 dominaban el RMSE.*
+
+**Y queda una consecuencia cuantificable del defecto de ingesta:** si nuestra observación subestima
+1 °C en ~22 % de los días, el sesgo verdadero de `observado − forecast` es **≈ +0,26 °C** y no
++0,04. *El pronóstico está sesgado BAJO en un cuarto de grado, y el defecto de ingesta lo tapa.*
+
+### La preinscripción de A-237 queda ANULADA
+
+Dije que mediría el modelo dos veces, contra nuestra observación y contra el grado que liquidó,
+para cuantificar un techo. **No hay techo que medir: no hay sesgo de settlement.** Medir eso ahora
+mediría el defecto de ingesta, no una propiedad del mercado. *La anulo explícitamente en vez de
+dejarla caer.*
+
+### Y lo que B añade que no es de Londres
+
+**Cada estación que reporte cada media hora pierde los :20.** Toca (a) las etiquetas de M2
+—`observado − forecast` sesgado bajo— y (b) el proxy de settlement del ciclo paper, que **pagaría
+la banda equivocada** en esos días: 22 % en EGLC en ese rango. *El «0 de 578» del docstring medía
+revisiones, no tipos de reporte.*
+
+**EGLC es la estación correcta**, contra mi cuarta sospecha: la serie completa casa 35/35 con las
+bandas cerradas liquidadas; la de sólo :50, 27/35.
