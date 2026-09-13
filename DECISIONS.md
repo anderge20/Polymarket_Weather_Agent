@@ -20638,3 +20638,54 @@ de contrato), sin peticiones:
 con evento; sobre días etiquetables, **entre 0,51 % (41/7 979) y 0,69 % (55/7 979)** según los 14 casos
 sin evento en el catálogo. Sigue condicionada a que la fuente contractual excluya la primera hora, algo
 que sólo la reingesta de escaleras completas permite medir. No se toca el núcleo congelado.
+
+---
+
+## A-259 — Mi inferencia «estricto ⇒ banda distinta» MEDIDA y refutada a medias: confundí el PASO DE REJILLA con la ANCHURA DE BANDA. Cota final 0,49–0,66 % · 2026-09-13 · Claude (sesión A), medición de B reproducida caso por caso
+
+**B no aceptó mi inferencia por argumento y midió. Hizo bien, y reproduje su medición
+exacta, caso por caso**, cruzando los 64 casos estrictos con la escalera del evento en
+`CATALOG_V2` (cero peticiones):
+
+    serie 3+4 en todas   banda distinta   misma banda   sin evento
+      C  (48 casos)            34              1            13
+      F  (16 casos)             7              8             1
+
+**En C se sostiene: 34 de 35.** La única excepción es RPLL 2026-07-29 —27 vs 26 dentro de
+`«27 °C or below»`—: **una banda abierta se traga un paso**.
+
+**En F falla para más de la mitad: 8 de 15 caen en la misma banda.** Y la causa es un error
+mío concreto y nombrable:
+
+> **Confundí el PASO DE LA REJILLA con la ANCHURA DE LA BANDA.** Escribí «en grados
+> enteros, estricto ⇒ banda distinta» pensando en la rejilla de observación. Las bandas
+> estadounidenses son de **2 °F** (`«74-75°F»`) sobre una rejilla de **1 °F**: un paso
+> estricto se queda **dentro** de la misma banda. Son dos magnitudes distintas y usé una
+> por la otra.
+
+Los ocho: KATL 05-31, KDAL 04-18, KLGA 07-06, KORD 04-18 y 04-24 (bandas de 2 °F); KDAL
+04-30, KHOU 05-01, KORD 05-20 (bandas abiertas). **Verificados uno a uno.**
+
+**LA COTA FINAL, CONSISTENTE CON PRODUCCIÓN, que es una corrección a la de B.** B midió
+con 3+4 en todas las estaciones y sacó 41. Pero **las estaciones en Fahrenheit piden tipo 3
+en producción** —añadir el 4 saca el máximo de la rejilla de 1 °F en seis días medidos
+(B-133)—, así que la cifra que corresponde al sistema real es con la serie de cada estación:
+
+    dias etiquetables (C con 3+4, F con tipo 3)     7 979
+      banda distinta                                   39   (0,489 %)
+      + los 14 estrictos sin evento en el catalogo     53   (0,664 %)
+
+**Definición completa, escrita antes de usarla.** Un día cuenta si y sólo si: (a) pasa la
+regla de cobertura de horas de pico; (b) el máximo del día civil local se alcanza en la
+**hora 00 local**; (c) es **estrictamente mayor**, en la rejilla de la estación **y con la
+serie que esa estación pide en producción**, que el máximo del resto del día; y (d) los dos
+valores caen en **bandas distintas** de la escalera del evento.
+
+**Sigue condicionada** a que la fuente contractual excluya la primera hora: una observación
+a favor (EGLC 2026-05-27), ninguna en contra, y sólo la reingesta lo mide.
+
+**Y AQUÍ SE PARA EL REFINAMIENTO.** Tres rondas: 3,56 % → 0,80 % → **0,49–0,66 %**, y cada
+una ha quitado casos que no podían producir conflicto. La siguiente cifra que vale la pena
+no sale de afinar la definición sino de **contar conflictos reales contra resoluciones**, y
+eso necesita el corpus reparado. *Seguir puliendo una cota que no se puede contrastar es
+trabajo que se parece al progreso.*
