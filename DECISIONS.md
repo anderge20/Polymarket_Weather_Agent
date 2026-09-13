@@ -19271,3 +19271,37 @@ forecast más incertidumbre genérica y B1' persistencia probabilística, para s
 predice» de «M2 modela el error». Límites: una temporada; los dos leads comparten días y resultados.
 
 Evidencia: `evidence/B-132/` (variante del script, serie EGLC completa y las seis salidas).
+
+---
+
+## B-133 — Dimensionado del defecto `REPORT_TYPE = 3` en las 55 estaciones: 7,3 % de los días etiquetables, la mitad del registro afectada, y el arreglo se parte entre C y F
+
+*Escrito 2026-09-13T11:03:06Z.*
+
+Condición 2 de A antes de tocar código. IEM `asos.py`, 2026-04-09..09-05, `report_type=3` frente a
+`3+4`, peticiones secuenciales con pausa, sin reintentos y con parada ante 429: cero 429 y cero
+errores en las 55 estaciones. Comprobación de cordura: ninguna fila de tipo 3 falta en el conjunto
+3+4. Un primer intento falló entero porque `urllib` rechazó el certificado de IEM; ninguna petición
+llegó al servidor y el log se guarda.
+
+**Total: 578 de 7 968 días etiquetables (7,3 %) cambian de máximo.** Deltas en la unidad de la
+estación: +1 ×551, +2 ×20, +3 ×2, +4 ×2, más décimas en KBKF (0,4 / 1,3 / 1,4 F).
+
+    fracción descartada   estaciones   días que cambian
+    ~50 %                 28           525/4029 (13,0 %)  METAR rutinarios semihorarios
+    10-40 %               15           47/2227  (2,1 %)   los 10 US 1F + CYYZ, MMMX, RKPK, SAEZ, FACT
+    0,5-10 %               4           5/578    (0,9 %)   KBKF 3, MPMG 2
+    ~0                     8           1/1134
+
+**Rejilla:** en las estaciones en C ningún reporte añadido cae fuera de la rejilla. En las US 1F,
+387 extras caen fuera de la rejilla entera de F, y en 6 días cambiados el nuevo máximo también
+(KHOU 1, KLGA 1, KMIA 3, KORD 1): incluir el tipo 4 sin más volvería UNKNOWN esas etiquetas. Los
+deltas US son de 2-4 F.
+
+**Consecuencias para el diseño:** (1) no es EGLC sino la mitad del registro, así que el proxy de
+liquidación sigue siendo lo urgente; (2) el arreglo se parte: las estaciones en C pueden ir ya, y
+las US en F necesitan una decisión propia sobre cómo muestra el resolutor un SPECI con valor fuera
+de rejilla, sin inventar conversión. Nota: el total de 578 coincide con el «0 de 578» del docstring
+de `observations.py`, que midió revisiones; es coincidencia.
+
+Evidencia: `evidence/B-133/` (script, `resumen.json`, logs y descargas crudas si caben).
