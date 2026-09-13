@@ -18543,3 +18543,52 @@ fusión**, sobre `4418ba4`: `tests/test_paper_cycle.py` 116 passed; tests nuevos
    de tests ya fijan `weather_agent.stations` en el paquete. Con el falso hecho efectivo, 116
    passed igual: **ningún test depende del falso**; están acoplados al registro real. No bloquea.
 4. Centinela nunca visto en producción: inevitable sin posiciones; cubrir el caso repetido.
+
+## A-229 — B revisa el #47 antes de fusionarlo y encuentra dos: mi justificación era falsa y mi centinela contaba otra cosa · 2026-09-13 · Claude (sesión A)
+
+*Revisión **antes** de la fusión, que es lo que le faltó al #46. La regla nueva funcionó a la
+primera. Ventana del #47 recalculada por el commit nuevo: fusionable a partir de las **09:00Z**.*
+
+### 1. «Tres es el número de sitios del código más concurrido» — FALSO, contado por AST
+
+    raises con `detail=`, por razon:
+      R_CONTEXT_OUT_OF_SNAPSHOT   6   lineas [284, 297, 374, 378, 388, 393]
+      R_SERIES_MISMATCH           3   lineas [342, 408, 442]
+
+**Escribí una derivación donde había una elección.** Tres es lo que cabe en una línea que lee una
+persona; lo que hace segura cualquier cota **es el centinela, no el número**. Reproducido por mí
+con el mismo AST antes de aceptarlo.
+
+**Y su remedio contesta la preocupación que yo había planteado al pedirle la revisión:** dije que
+no sabía si merecía un test que contara los `raise` del núcleo o si era preocuparse de más. Su
+respuesta es la buena y es factual: **nada en `tests/` fija nada sobre la forma del núcleo — la
+congelación vive en el documento.** El test nuevo fija los dos recuentos por AST, así que una
+enmienda que añada una rama bajo un código existente **falla por nombre** en vez de ensanchar en
+silencio lo que un detalle esconde.
+
+*Ese test habría cazado la frase falsa en el momento de escribirla.*
+
+### 2. El centinela contaba OCURRENCIAS y la lista cuenta CADENAS DISTINTAS
+
+    AAA BBB CCC DDD DDD  ->  mostradas 3   omitidas distintas 1   el centinela decia "+2 mas"
+
+**Un centinela cuyo número no cuenta lo que su nombre dice es el mismo defecto que todo esto
+arregla, dos capas más abajo.** Y lo escribí en el commit cuya tesis entera es *«la fila tiene que
+declarar lo que esconde»*.
+
+Arreglado con un conjunto. **Y el test lleva ahora el caso repetido**, que es lo que faltaba: sin
+una cadena que se repita, el test **no distingue contar apariciones de contar distintas** — que es
+exactamente cómo el defecto sobrevivió a la primera versión. *Mi test de cuatro distintas pasaba
+con el código malo.*
+
+### 3. Y me redimensiona la alarma de `_fake_stations`, con medición
+
+Yo lo había dejado como «lo que menos me gusta y no he perseguido». Él lo midió: **el desvío es
+determinista, no de orden** —los imports de cabecera del fichero ya fijan `weather_agent.stations`
+en el paquete— y, con el falso hecho efectivo por `setattr`, **el fichero sigue en 116 verdes.**
+
+**Ningún test depende del falso.** Son *doce tests acoplados al registro real*, no doce tests
+equivocados. Arreglo de una línea, aparte, y no bloquea. **Mi alarma estaba bien puesta y mal
+graduada**, que es la tercera vez esta noche.
+
+    687 -> 688
