@@ -1,41 +1,20 @@
 #!/usr/bin/env python3
-"""NIVEL 1 — REEJECUCION sobre el corpus reparado. NO cambia el criterio.
+"""SUPERSEDIDO Y DEFECTUOSO — NO USAR. Ver `n075_poblacion.py` + `n075_metricas.py` (A-278).
 
-Implementa, palabra por palabra, la preinscripcion que ya existia (docstring de
-`n1_14_baselines.py`) sobre la poblacion que define `PREREG_NIVEL1_REEJECUCION.md`:
+DOS DEFECTOS MEDIDOS, los dos encontrados al escribir el guion que lo sustituye:
 
-  Unidad        (target_date, lead). Brier por banda, promediado DENTRO del evento y
-                luego sobre eventos. Nunca las bandas como observaciones sueltas.
-  Entrenamiento solo dias cuya ETIQUETA estaba disponible en t_asof del evento
-                (fin del dia local + 24 h). Ventana expansiva. Minimo 20 pares.
-  Modelos       B0 climatologia 30d · B1 persistencia · B2 forecast crudo
-                B3 forecast + error empirico · B4 forecast bias-corregido + error
-  CONFIRMA (nivel B): B3 o B4 mejoran a B0 en Brier por evento con IC95 bootstrap
-                por evento que EXCLUYE el cero, EN LOS DOS LEADS.
-  REFUTA: el intervalo incluye el cero en cualquiera de los dos leads.
-  No se elige lead ni modelo despues de mirar: se reportan los cinco.
+1. `markets m JOIN outcomes o ON o.market_id = m.market_id` **sin
+   `AND o.dataset_version = m.dataset_version`**. Los 807 `market_id` de
+   `backfill_2b_v1` estan TAMBIEN en `markets_v2` (interseccion medida: 807 de 807)
+   y `outcomes` guarda una fila por (`market_id`, `dataset_version`), asi que cada
+   evento compartido recibe sus bandas DUPLICADAS y `particion()` las rechaza por
+   enteros repetidos. Medido: 24 fechas elegibles de 186 en vez de 186 de 187.
 
-SOBRE B1, Y UNA AFIRMACION MIA QUE ERA FALSA. Escribi que `n1_14` y `n1_20` reportaban
-cuatro modelos de los cinco. **Falso para `n1_14`**: su `MODELOS` (linea 112) incluye
-`B1_persist`, lo calcula en la 98 y lo reporta en los tres bucles -- la tabla de A-239 lo
-lleva. Quien lo dejo fuera es `n1_20_filtros.py:43`, y solo ese. Lo corrijo aqui porque
-lo escribi en el docstring, en DECISIONS y en un mensaje de commit (session B).
+2. La poblacion se indexa por FECHA (`eventos[td] = bs`), que A-272/A-275 refutaron:
+   la identidad primaria es `event_id` y la deduplicacion es `(station, target_date)`
+   con desempate por `close_time` por encima del dia civil local.
 
-Y B1 SE IMPLEMENTA CON EL MISMO CONJUNTO DE INFORMACION QUE EL ENTRENAMIENTO, que es lo
-que `n1_14` ya hacia y la primera version de este guion NO: tomaba `obs[td - 1 dia]` sin
-pasar por `label_av`, y en lead 24 el `t_asof` son las 12:00Z del dia ANTERIOR -- o sea
-que "el maximo de ayer" incluia una tarde que aun no habia ocurrido. **Informacion del
-futuro en un nivel cuya regla absoluta es EX-ANTE.** Aqui `pers` sale de `tr`, que ya
-esta filtrado por `label_av(d) <= t`, con el mismo respaldo que `n1_14`: la ultima
-etiqueta DISPONIBLE cuando la de ayer no lo esta.
-
-La FORMA es la de B2 -- puntual convertido en indicador -- y no la de B3, porque la
-preinscripcion agrupa B1 y B2 como los dos puntuales y reserva el error empirico para
-B3/B4. Es una lectura declarada antes de correr, no una variante elegida tras ver un
-numero.
-
-LA VERDAD LA PONE EL MERCADO: `markets.winning_outcome`. La observacion sirve para las
-lineas base y para la comprobacion de integridad (c), nunca como verdad.
+Se conserva sin tocar como registro de lo que se ejecuto. No reutilizar su salida.
 """
 from __future__ import annotations
 
