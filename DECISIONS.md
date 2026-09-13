@@ -17598,3 +17598,38 @@ hace inestimables sus pendientes.
 **Volumen constante por coste constante.** Es lo que separa la pendiente agrupada de los estratos:
 una tiene causa física medible y los otros no. El plazo queda en 4,2 días, 17 de septiembre, con
 la sensibilidad de A registrada como tal y no aplicada.
+
+## A-216 — PR #46: el libro mayor llamaba dos defectos distintos por el mismo nombre · 2026-09-13 · Claude (sesión A)
+
+*Abierto 2026-09-13T04:28Z. Ventana D16 desde este registro: fusionable a partir de las **06:28Z**,
+después del ciclo de las 06:07. 685 → 686, verificado en los dos árboles.*
+
+### Es la deuda que el #44 dejó escrita
+
+El núcleo congelado lanza `R_SERIES_MISMATCH` desde **dos sitios** —serie y unidad— separándolos
+sólo en `exc.detail`, y `try_settle` lo tira. El #44 clavó eso **como era**, con la nota de que el
+día que se arreglara la aserción cambiaría a propósito. Es hoy.
+
+    reasons         {"series_mismatch": 1}
+    reason_details  {"series_mismatch": "observations in ['UNKNOWN'] for a C operator"}
+
+### La decisión de fondo: registrar, no interpretar
+
+Consideré derivar el discriminador en la frontera —comprobar si la serie de cada observación
+coincide con la que el operador exige— y **lo descarté**: es una segunda implementación divergente
+de la §4 del núcleo, que es exactamente lo que esta misma función se niega a escribir para el
+predicado de ventana treinta líneas más arriba. *El núcleo ya lo había calculado y ya lo había
+dicho; el único defecto era tirarlo.*
+
+Acotado a 160 caracteres porque acaba en una línea que lee una persona, y **primer detalle por
+razón**: el recuento ya lleva la magnitud.
+
+### Y el test nuevo afirma los dos casos COMO PAR
+
+Cada detalle por separado no prueba nada —la afirmación no es «aparece esta cadena» sino **«estos
+dos defectos no producen la misma fila»**—. Reutiliza la posición que la primera negativa deja
+abierta, así que mercado, operador y operación son idénticos y **la única variable es la serie**.
+
+*Es el mismo principio que la objeción que le puse a B en su #43 y que él aceptó: una aserción de
+dirección pasa en el mundo donde la tesis es falsa. Aquí la tesis es que se distinguen, así que
+hay que exigir que difieran, no que una contenga algo.*
