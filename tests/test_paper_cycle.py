@@ -556,7 +556,7 @@ def _hand_built_observation(con):
 
 
 def _settleable_market(con, *, band="17°C", outcome="Yes", token="t1",
-                       write_obs=True):
+                       write_obs=True, market="m1", station="EGLC"):
     from weather_agent.polymarket import resolution as res
     # The CODE in `measurement_rule_code` and the PROSE in `measurement_rule` —
     # which is what live discovery writes. The old fixture put the P_* code in
@@ -569,21 +569,21 @@ def _settleable_market(con, *, band="17°C", outcome="Yes", token="t1",
         "unit, rounding_rule, station_identifier, source_timestamps, "
         "ingestion_timestamp, dataset_version, record_version) "
         "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-        ["m1", "e1", res.SRC_NOAA, res.P_NOAA_TEMPCOL,
+        [market, "e1", res.SRC_NOAA, res.P_NOAA_TEMPCOL,
          res.MEASUREMENT_RULE_TEXT[res.P_NOAA_TEMPCOL],
-         "C", "whole degree", "EGLC",
+         "C", "whole degree", station,
          '{"endDate":"2026-09-10T12:00:00Z"}', T0, "ds1", 1])
     con.execute(
         "INSERT INTO outcomes (market_id, token_id, band_label, outcome_label, "
         "ingestion_timestamp, dataset_version, record_version) VALUES (?,?,?,?,?,?,?)",
-        ["m1", token, band, outcome, T0, "ds1", 1])
+        [market, token, band, outcome, T0, "ds1", 1])
     if write_obs:
         _hand_built_observation(con)
     from weather_agent import paper as _paper
     fill = _paper.Fill(shares=100.0, notional=50.0, vwap=0.5, fee=0.6,
                        outlay=50.6, executable=True)
     return _paper.record_paper_trade(
-        con, backtest_id="r", market_id="m1", token_id=token, entry_time=T0,
+        con, backtest_id="r", market_id=market, token_id=token, entry_time=T0,
         fill=fill, bankroll_after=1.0, dataset_version="ds1", target_date=TD_TEST)
 
 
@@ -742,8 +742,8 @@ def test_an_off_grid_observation_never_settles(con, monkeypatch):
     # unit check — it is frozen and that enum is closed — but the boundary no
     # longer throws away the `detail` that tells them apart.
     assert out["refusals"] == {"series_mismatch": 1}, out["refusals"]
-    assert "UNKNOWN" in out["details"]["series_mismatch"], out["details"]
-    assert "operator" in out["details"]["series_mismatch"], out["details"]
+    assert out["details"]["series_mismatch"] == [
+        "observations in ['UNKNOWN'] for a C operator"], out["details"]
 
 
 def test_the_two_refusals_the_core_calls_series_mismatch_are_TOLD_APART(con, monkeypatch):
@@ -779,10 +779,16 @@ def test_the_two_refusals_the_core_calls_series_mismatch_are_TOLD_APART(con, mon
     serie_mala = paper_cycle.stage_settle(_cycle(), con, dataset_version="ds1")
 
     assert sin_unidad["refusals"] == serie_mala["refusals"] == {"series_mismatch": 1}
-    a = sin_unidad["details"]["series_mismatch"]
-    b = serie_mala["details"]["series_mismatch"]
+    (a,), (b,) = sin_unidad["details"]["series_mismatch"], serie_mala["details"]["series_mismatch"]
     assert a != b, f"mismo detalle para los dos casos: {a!r}"
-    assert "UNKNOWN" in a and "requires" in b, (a, b)
+    # DISCRIMINANTES, no meramente presentes. La primera version afirmaba
+    # `"requires" in b`, y session B encontro que NO discrimina: el tercer sitio
+    # que lanza este mismo codigo — `quantization=NONE requires an on-grid
+    # value` (settlement.py:343) — tambien lo contiene. Estas dos cadenas solo
+    # pueden salir de su rama: el nombre de la serie exigida, y la unidad que el
+    # ingestor declino asignar.
+    from weather_agent import settlement as _st
+    assert "UNKNOWN" in a and _st.SERIES_METAR_C in b, (a, b)
 
 
 
@@ -3161,3 +3167,41 @@ def test_the_available_field_carries_the_INSTANT_it_was_read_at():
     assert "mem_available_bytes" not in out, (
         "el nombre corto volvio: se lee como comparable con un MAXIMO y no lo es")
     assert "peak" in "rss_peak_bytes", "el maximo tiene que decir que es un maximo"
+
+
+def test_the_cap_on_details_SAYS_that_it_hides(con, monkeypatch):
+    """El centinela, que es lo que hace honesto al tope.
+
+    Guardar k detalles distintos sin decir cuántos se dejaron fuera sería el
+    mismo defecto que este arreglo cierra, una capa más abajo: una fila que
+    pierde información sin declararlo. Cuatro estaciones, cuatro unidades
+    inválidas distintas, tope de tres.
+
+    LO QUE EL CENTINELA NO DICE, y va escrito aquí además de en la constante:
+    cuenta detalles omitidos, NO clases. `+1 mas` puede ser otra variante de la
+    rama que ya se ve o la única de una rama distinta. Dice QUE esconde, nunca
+    QUÉ.
+    """
+    _with_b_substrate(con); _fake_stations(monkeypatch)
+    # ICAOs REALES: `_fake_stations` no llega a aplicarse aqui — `from
+    # weather_agent import stations` resuelve el submodulo ya importado y no la
+    # entrada de sys.modules, asi que manda el registro de verdad y una estacion
+    # inventada devuelve None por huso y la negativa sale por otra rama.
+    for i, (est, unidad) in enumerate((("EGLC", "AAA"), ("EDDM", "BBB"),
+                                       ("EHAM", "CCC"), ("LEMD", "DDD"))):
+        _settleable_market(con, token=f"t{i}", market=f"m{i}", station=est,
+                           write_obs=False)
+        con.execute(
+            "INSERT INTO weather_observations (station, observation_time, "
+            "tmax_observed, observed_value, observed_unit, series, source, "
+            "ingestion_timestamp, dataset_version, record_version) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?)",
+            [est, datetime(2026, 9, 10, 14, tzinfo=timezone.utc), 17.0, 17.0,
+             unidad, obs_mod.SERIES_1C, "IEM", T0, "ds1", 1])
+
+    out = paper_cycle.stage_settle(_cycle(), con, dataset_version="ds1")
+    assert out["refusals"] == {"series_mismatch": 4}, out["refusals"]
+    d = out["details"]["series_mismatch"]
+    assert len(d) == paper_cycle._REFUSAL_DETAIL_KINDS + 1, d
+    assert d[-1] == "+1 mas", d
+    assert len(set(d[:-1])) == 3, d
