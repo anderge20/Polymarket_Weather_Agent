@@ -21900,3 +21900,95 @@ población puntuada obliga a fijar la normalización ANTES de mirar el resultado
 
 **La revisión hostil la hice yo.** Encontró dos cosas reales —el `JOIN` sin `dataset_version`
 y la refutación falsa— y no es sustituto de B. **Nada de esto levanta el gate D0.**
+
+## A-279 — REFUTO MI PROPIA CADENA A-246→A-259: la ventana NO es la causa. 38 de 39 conflictos dicen que el núcleo congelado tenía razón, y el único que falta es de SERIE · 2026-09-13 · Claude (sesión A)
+
+A-259 se paró con una condición escrita: *«la siguiente cifra que vale la pena no sale de
+afinar la definición sino de contar conflictos reales contra resoluciones, y eso necesita el
+corpus reparado»*. El corpus está reparado y `markets_v2` cubre **52 estaciones y 79 735
+mercados**, así que el bloqueo se levantó hoy. Preinscripción espejada a las **18:58:11Z**
+(`b188267`) con la regla de decisión escrita; resultado abajo.
+
+### Reproducción caso por caso desde OTRA fuente de escalera
+
+                              A-259 (CATALOG_V2)    #63 (markets_v2 + regla A-275)
+    dias etiquetables               7 979                   7 979
+    banda distinta                     39  (0,489 %)           39  (0,489 %)
+    misma banda                         9 (inferido)            9
+    sin evento                         14                      14
+
+**El desglose coincide desde dos fuentes independientes.** Es la verificación más fuerte
+disponible de que la EXPOSICIÓN estaba bien medida.
+
+### EL RESULTADO, y la regla preinscrita aplicada sin retocarla
+
+    de los 39 dias con banda distinta y evento elegible:
+      A_FAVOR_DE_CIVIL       38     gana la banda del maximo del DIA CIVIL COMPLETO
+      A_FAVOR_DE_ESTRICTO     1     gana la banda del maximo del RESTO DEL DIA
+      NINGUNA                 0
+
+La regla decía: *«al menos uno A_FAVOR_DE_CIVIL → la condicional queda REFUTADA»*. **No es
+uno: son 38.** Y el único a favor del estricto es **EGLC 2026-05-27**, exactamente el caso
+sobre el que construí toda la conjetura.
+
+**`WINDOW_LOCAL_CIVIL_DAY` —hora 00 INCLUIDA— es la ventana que la fuente contractual usa,
+en 38 de 39 conflictos medibles.** El núcleo congelado tenía razón, y ahora lo está por
+evidencia y no por estar congelado.
+
+**La vía de escape del preregistro también está cerrada.** Estratificado por fuente:
+`wunderground` C 33 a favor de civil / 1 de estricto, `wunderground` F 5 de civil. **Los 39
+son de la MISMA fuente.** No hay estratificación que salve la conjetura.
+
+### ¿Qué es entonces el 2026-05-27? La SERIE, no la ventana. Medido
+
+    rt3   (METAR de cuerpo)    max dia civil 24   a las 00:50, 13:50 y 14:50  -> EMPATE
+    rt34  (+ grupo T, PRODUCCION)  max dia civil 25   a las 00:20  -> unico
+    banda ganadora declarada: 24 C
+
+**Con la serie tipo 3 el día resuelve BIEN bajo la ventana civil completa**, y ni siquiera
+está expuesto porque el máximo empata tres veces. El 25 de las 00:20 sólo existe en la serie
+con grupo T. *El instante ofensivo cae en la hora 00 y eso es lo que me hizo mirar la
+ventana; pero con la misma ventana y otra serie el día acierta, y con la misma serie y otros
+38 días la ventana acierta.*
+
+    conflictos de etiqueta contra la resolucion    1 de 7 979 = 0,0125 %
+      atribuibles a la VENTANA                     0
+      atribuibles a la SERIE                       1   (medido)
+
+### Lo que retiro, nominalmente
+
+* **A-247, la atribución**: *«lo que refuta A-246 no es el arreglo: es la VENTANA»*. Falso.
+  Lo que produce el desajuste del 05-27 **es** el arreglo de serie del #49, en un instante
+  que resulta estar en la hora 00. Volví a la primera explicación después de descartarla.
+* **A-259, la condicional**: *«sigue condicionada a que la fuente contractual excluya la
+  primera hora: una observación a favor, ninguna en contra»*. Ahora hay **38 en contra**.
+* **Lo que NO retiro**: la cota 0,489–0,664 % **de EXPOSICIÓN** sigue en pie y acaba de
+  reproducirse desde otra fuente. Lo que cambia es qué mide: cuántas veces la ventana
+  **podría** importar, no cuántas veces discrepa.
+
+### Y el instrumento estuvo mal en la primera pasada
+
+`n075_poblacion.particion()` exige bandas de **enteros sueltos** —la forma de la escalera en
+Celsius—, así que rechazaba las estadounidenses de **2 °F** y las 12 estaciones en Fahrenheit
+salían `SIN_EVENTO_ELEGIBLE`. La primera salida decía 34/1/27 y era el instrumento.
+`particion_general` tesela intervalos de anchura arbitraria y está **demostrada
+conservadora**: sobre 7 331 eventos acepta 1 852 más y **rechaza 0**; en EGLC las dos
+poblaciones son idénticas, verificado antes de usarla. *La pista de que había un defecto fue
+que las doce ausencias eran todas de estaciones en Fahrenheit: un patrón sistemático en lo
+que debería ser ruido.*
+
+### Un riesgo de infraestructura que apareció de paso
+
+El tarball del que depende **toda** esta cota vivía en
+`/Users/mariaaleu/.claude/jobs/43deec01/tmp/raw_b133.tgz` —**el directorio temporal de otro
+trabajo**— y `s02_ventana_estricta.py` apuntaba a una ruta que ya no existía. El guion habría
+fallado ruidosamente; la evidencia habría desaparecido en silencio con el trabajo que la
+alojaba. Copiado a `~/pmw-e2/evidence/B-133/` y espejado, con `sha256` verificado igual:
+`be91a009…`.
+
+### Consecuencia para la pista de liquidación
+
+`WINDOW_LOCAL_CIVIL_DAY` queda **VALIDADO contra resoluciones reales**. El riesgo residual de
+etiquetado **no es la ventana: es la serie**, que es justo lo que viven la tarea #61 (la clave
+de `weather_observations` en tres sitios) y el `SERIES_1C_RT34` del #49. **La tarea #63 se
+cierra.**

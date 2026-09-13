@@ -1,0 +1,80 @@
+equivalencia en EGLC: original 185 fechas · general 185 fechas · IDENTICAS
+estaciones en el tarball: 55
+
+==============================================================================
+EXPOSICION (definicion de A-259, sin tocar)
+==============================================================================
+  etiquetables                   7979
+  argmax_en_h0                    254
+  ESTRICTO                         62
+
+==============================================================================
+PASO (d) Y RESOLUCION — lo que A-259 no pudo medir
+==============================================================================
+  A_FAVOR_DE_CIVIL                  38
+  A_FAVOR_DE_ESTRICTO                1
+  SIN_EVENTO_ELEGIBLE               14
+  banda_distinta                    39
+  misma_banda                        9
+
+  denominador (dias etiquetables) 7979
+  ESTRICTO / etiquetables          0.777 %
+  banda_distinta / etiquetables    0.489 %
+
+==============================================================================
+CASOS, uno a uno
+==============================================================================
+  icao   dia             civil    resto  clase                        banda_civil -> banda_resto
+  CYYZ   2026-04-29       13.0     12.0  A_FAVOR_DE_CIVIL             (13.0, 13.0) -> (12.0, 12.0)
+  CYYZ   2026-06-14       24.0     23.0  A_FAVOR_DE_CIVIL             (24.0, 24.0) -> (23.0, 23.0)
+  CYYZ   2026-08-02       24.0     22.0  A_FAVOR_DE_CIVIL             (24.0, 24.0) -> (22.0, 22.0)
+  EDDM   2026-04-14       11.0     10.0  A_FAVOR_DE_CIVIL             (11.0, 11.0) -> (10.0, 10.0)
+  EFHK   2026-07-19       20.0     19.0  A_FAVOR_DE_CIVIL             (20.0, 20.0) -> (19.0, 19.0)
+  EFHK   2026-07-21       14.0     13.0  A_FAVOR_DE_CIVIL             (14.0, 14.0) -> (13.0, 13.0)
+  EPWA   2026-05-07       18.0     17.0  A_FAVOR_DE_CIVIL             (18.0, None) -> (17.0, 17.0)
+  KATL   2026-04-19       70.0     69.0  A_FAVOR_DE_CIVIL             (70.0, 71.0) -> (68.0, 69.0)
+  KHOU   2026-04-21       68.0     67.0  A_FAVOR_DE_CIVIL             (68.0, 69.0) -> (66.0, 67.0)
+  KHOU   2026-07-23       90.0     89.0  A_FAVOR_DE_CIVIL             (90.0, 91.0) -> (88.0, 89.0)
+  KORD   2026-04-29       57.0     55.0  A_FAVOR_DE_CIVIL             (56.0, None) -> (54.0, 55.0)
+  KORD   2026-05-05       61.0     59.0  A_FAVOR_DE_CIVIL             (60.0, None) -> (58.0, 59.0)
+  LFPB   2026-05-05       15.0     14.0  A_FAVOR_DE_CIVIL             (15.0, 15.0) -> (14.0, 14.0)
+  LFPB   2026-05-10       18.0     17.0  A_FAVOR_DE_CIVIL             (18.0, 18.0) -> (17.0, 17.0)
+  LFPB   2026-05-31       25.0     23.0  A_FAVOR_DE_CIVIL             (25.0, 25.0) -> (23.0, 23.0)
+  LIMC   2026-05-05       16.0     15.0  A_FAVOR_DE_CIVIL             (16.0, 16.0) -> (15.0, 15.0)
+  LIMC   2026-06-02       23.0     22.0  A_FAVOR_DE_CIVIL             (23.0, 23.0) -> (22.0, 22.0)
+  NZWN   2026-06-21       17.0     16.0  A_FAVOR_DE_CIVIL             (17.0, 17.0) -> (16.0, 16.0)
+  NZWN   2026-06-26       11.0     10.0  A_FAVOR_DE_CIVIL             (11.0, 11.0) -> (10.0, 10.0)
+  NZWN   2026-08-01       11.0     10.0  A_FAVOR_DE_CIVIL             (11.0, 11.0) -> (10.0, 10.0)
+  RKPK   2026-08-16       26.0     25.0  A_FAVOR_DE_CIVIL             (26.0, 26.0) -> (25.0, 25.0)
+  RKSI   2026-06-20       24.0     23.0  A_FAVOR_DE_CIVIL             (24.0, 24.0) -> (23.0, 23.0)
+  SAEZ   2026-05-07       21.0     18.0  A_FAVOR_DE_CIVIL             (21.0, 21.0) -> (18.0, 18.0)
+  SBGR   2026-05-10       20.0     19.0  A_FAVOR_DE_CIVIL             (20.0, 20.0) -> (19.0, 19.0)
+  VILK   2026-06-30       32.0     31.0  A_FAVOR_DE_CIVIL             (32.0, 32.0) -> (31.0, 31.0)
+  ZBAA   2026-07-22       28.0     27.0  A_FAVOR_DE_CIVIL             (28.0, 28.0) -> (27.0, 27.0)
+  ZGGG   2026-04-23       27.0     24.0  A_FAVOR_DE_CIVIL             (27.0, 27.0) -> (24.0, 24.0)
+  ZHCC   2026-08-08       31.0     30.0  A_FAVOR_DE_CIVIL             (31.0, 31.0) -> (30.0, 30.0)
+  ZHHH   2026-04-11       22.0     21.0  A_FAVOR_DE_CIVIL             (22.0, 22.0) -> (21.0, 21.0)
+  ZHHH   2026-06-07       27.0     26.0  A_FAVOR_DE_CIVIL             (27.0, 27.0) -> (26.0, 26.0)
+  ZHHH   2026-06-30       29.0     28.0  A_FAVOR_DE_CIVIL             (29.0, 29.0) -> (28.0, 28.0)
+  ZUCK   2026-04-28       19.0     18.0  A_FAVOR_DE_CIVIL             (19.0, 19.0) -> (18.0, 18.0)
+  ZUCK   2026-05-08       19.0     18.0  A_FAVOR_DE_CIVIL             (19.0, 19.0) -> (18.0, 18.0)
+  ZUCK   2026-05-28       24.0     23.0  A_FAVOR_DE_CIVIL             (24.0, 24.0) -> (23.0, 23.0)
+  ZUUU   2026-04-10       23.0     22.0  A_FAVOR_DE_CIVIL             (23.0, 23.0) -> (22.0, 22.0)
+  ZUUU   2026-06-20       28.0     27.0  A_FAVOR_DE_CIVIL             (28.0, 28.0) -> (27.0, 27.0)
+  ZUUU   2026-07-30       28.0     27.0  A_FAVOR_DE_CIVIL             (28.0, 28.0) -> (27.0, 27.0)
+  ZUUU   2026-08-17       27.0     25.0  A_FAVOR_DE_CIVIL             (27.0, 27.0) -> (25.0, 25.0)
+  EGLC   2026-05-27       25.0     24.0  A_FAVOR_DE_ESTRICTO          (25.0, 25.0) -> (24.0, 24.0)
+  KBKF   2026-04-17       58.3     40.3  SIN_EVENTO_ELEGIBLE          None -> None
+  LFPG   2026-05-31       24.0     23.0  SIN_EVENTO_ELEGIBLE          None -> None
+  LLBG   2026-05-15       25.0     24.0  SIN_EVENTO_ELEGIBLE          None -> None
+  LTFM   2026-04-27       16.0     14.0  SIN_EVENTO_ELEGIBLE          None -> None
+  LTFM   2026-07-04       26.0     25.0  SIN_EVENTO_ELEGIBLE          None -> None
+  RCTP   2026-04-30       20.0     19.0  SIN_EVENTO_ELEGIBLE          None -> None
+  UUWW   2026-05-08       18.0     17.0  SIN_EVENTO_ELEGIBLE          None -> None
+  UUWW   2026-07-04       22.0     19.0  SIN_EVENTO_ELEGIBLE          None -> None
+  UUWW   2026-08-19       19.0     18.0  SIN_EVENTO_ELEGIBLE          None -> None
+  VHHH   2026-04-24       23.0     22.0  SIN_EVENTO_ELEGIBLE          None -> None
+  VHHH   2026-07-26       30.0     29.0  SIN_EVENTO_ELEGIBLE          None -> None
+  ZHCC   2026-05-25       23.0     22.0  SIN_EVENTO_ELEGIBLE          None -> None
+  ZHCC   2026-06-19       23.0     22.0  SIN_EVENTO_ELEGIBLE          None -> None
+  ZHCC   2026-08-28       24.0     23.0  SIN_EVENTO_ELEGIBLE          None -> None
