@@ -16396,7 +16396,11 @@ incondicional:**
 
 **Un ciclo que arranque con más de 27 minutos de retraso es indistinguible por marca de tiempo
 de la ranura siguiente.** Y el margen ya se estaba gastando: el `collect` de las 12:07 arrancó a
-las 12:09:19, **135 segundos tarde, el 8 %**. Antes del #42 el `decide` proyectaba 41 minutos, lo
+las 12:09:19, **135 segundos tarde, el 8 %**.
+
+**[CONFLACIÓN, corregida en B-116: ese retraso no es consumo de este margen sino SÍNTOMA de otro.
+El `decide` de las 11:40 se pasó del hueco de 27 min por 132 s y el `collect` esperó exactamente
+eso. Son dos magnitudes que se parecen y acoté la que no ata.]** Antes del #42 el `decide` proyectaba 41 minutos, lo
 que habría empujado la espera del `collect` siguiente a ~14 min: **más de la mitad del margen.**
 
 *La formulación exacta no es «es derivable» sino «es derivable mientras el retraso se mantenga
@@ -16706,3 +16710,53 @@ de hoy tiene ~13 shards. Extrapolando la nula a 13 shards —53,2 s/shard, curva
 
 *Y una consecuencia que se mide sola: si el total baja de 27 min, el margen de identificación de
 B-113 deja de estar en rojo sin que nadie toque el cron.*
+
+---
+
+## B-116 — Dos magnitudes que se parecen, y acoté la que no ata
+
+*Escrito 2026-09-13T02:24:37Z. Corrección de A a B-113.*
+
+### La aritmética cierra al segundo
+
+    decide 11:40   arranca 11:40:05   dura 29,12 min   termina 12:09:12
+    collect 12:07  ranura 12:07:00                     arranca 12:09:19
+
+    hueco de cron 11:40 -> 12:07                  27 min
+    el decide se paso del hueco por               132 s
+    el collect arranco tras el fin del decide       7 s
+    retraso total del collect                     139 s  =  132 + 7
+
+**No es jitter: es el flock, y el flock porque el ciclo anterior ya se había pasado.**
+
+### La distinción que me faltaba
+
+    (a) lo que el ciclo ANTERIOR se pasa del hueco     132 s   ->  YA EN ROJO
+    (b) lo que el SIGUIENTE puede retrasarse sin        27 min ->  al 8 %
+        confundirse con la ranura de despues
+
+**Acoté (b) —cierto como enunciado— y luego usé el retraso del `collect` como si fuera consumo
+de (b).** No lo es: un `collect` de las 03:07 retrasado 27 minutos arranca a las 03:34, que no
+está cerca de ninguna ranura. *El retraso del collect no amenaza la identificación: es síntoma de
+que (a) se rompió.*
+
+**Y hay algo que me deja peor:** para que (b) se rompa tendría que retrasarse **el decide**, y el
+decide es el que coge el lock primero. Haría falta que el `collect` de las 00:07 corriera 2 h 33
+para empujar el 02:40 hasta las 03:07 — a los 22,7 min de hoy, un factor de 6,7. **Mi cota es
+real y no es la que ata.** *Acoté una magnitud verdadera que no era la binding, y llamé «consumo»
+de ella a un síntoma de la que sí lo era.*
+
+### Y la consecuencia del #42 que ninguno había nombrado
+
+**No es sólo velocidad: devuelve el margen.** Con el `decide` en 23,2 min proyectados, por debajo
+de los 27, el exceso desaparece y la identificación sale del rojo **sin tocar el cron**.
+
+*Es el único efecto del #42 que arregla algo que ya estaba roto en vez de prevenir algo futuro*,
+y no está ni en su PR ni en B-107.
+
+### Y una contrapartida a la frase que A se lleva
+
+Se queda con mi *«no caí en la trampa por suerte, no por mérito»*. Le pongo la mitad que falta:
+**acerté por el cron y él cayó por el prefijo, y la diferencia no fue método — fue que yo tenía
+`install.sh` abierto de otra cosa.** Distinguir «acerté» de «acerté por la razón correcta» vale;
+distinguir «acerté por la razón correcta» de «acerté porque tenía el fichero delante», también.
