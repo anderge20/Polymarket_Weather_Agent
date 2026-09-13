@@ -79,7 +79,19 @@ def pick_run(t: datetime, model: str) -> datetime | None:
 
 
 def targets(catalog_path: str, con, limit: int | None):
-    """(station, target_date, tz) for every market we already hold prices for."""
+    """(station, target_date, tz) for every market we already hold prices for.
+
+    THE `price_history` GATE HERE IS DELIBERATE, and it is now the LAST place where the
+    price backfill decides a universe (B-136, session A). `backfill_markets` no longer
+    reads prices; this script still does, because it needs (station, target date)
+    pairs, not complete ladders, and a truncated event still names a valid station-day.
+    The measured consequence, written so nobody reads the corpus as wider than its
+    labels: of the 187 EGLC catalogue events with a single winning band, 119 have an
+    observation and 68 do not — observation coverage was fixed by the truncated price
+    universe. Re-ingesting markets raises the corpus to 187; NIVEL 1 stays at 119 until
+    observations are widened, which session A carries as a separate task with its own
+    IEM budget.
+    """
     priced = {
         r["market_id"]
         for r in db.query(con, "SELECT DISTINCT market_id FROM price_history")

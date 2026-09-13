@@ -17,8 +17,28 @@ EXCLUDED (preregistration §9): markets with `rounding_rule = 'tenths'` are writ
 but flagged, since an integer-keyed distribution cannot represent them. They are
 counted, not silently dropped.
 
+WHOLE EVENTS, CHOSEN FROM THE CATALOGUE — NOT FROM `price_history` (B-136)
+------------------------------------------------------------------------
+This script used to read only the markets present in `price_history`. It makes no
+network request of its own, so that gate tied it to the price backfill by
+inheritance, not by need, and it inherited that backfill's sampling: 1 028 of the
+1 464 stored events came out truncated to their lowest-id bands. The events it
+writes are now chosen by `weather_agent.backfill_universe`, the same selection the
+price backfill uses, so the two can never pick different universes again.
+
+A gate on "has rows in `price_history`" was also unsound on its own terms:
+`prices.ingest` returns `EMPTY` for a token with no series and writes nothing, so
+"never traded" and "never asked for" look identical.
+
+PART OF A LADDER IS NEVER WRITTEN. An event goes in only if every one of its bands
+has a contractual unit and parseable CLOB token ids and outcome labels; otherwise
+the whole event stays out and is counted by reason. Skipping single markets — what
+this script did for a missing unit or an unparseable token list — is the same
+truncation by another route.
+
 Usage:
-    python3 scripts/backfill_markets.py --db data/pmw.duckdb
+    python3 scripts/backfill_markets.py --dataset-version backfill_2b_v2 --dry-run
+    python3 scripts/backfill_markets.py --dataset-version backfill_2b_v2 [--stations EGLC] [--since YYYY-MM-DD] [--until YYYY-MM-DD]
 """
 from __future__ import annotations
 
@@ -31,6 +51,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import duckdb  # noqa: E402
 
+from weather_agent import backfill_universe as bu  # noqa: E402
 from weather_agent import database as db  # noqa: E402
 
 CATALOG = os.path.expanduser("~/pmw-catalog-v2/CATALOG_V2.duckdb")
@@ -80,47 +101,94 @@ def _fee_fields(raw) -> dict:
     if to is not None:
         out["fee_taker_only"] = bool(to)
     return out
-DATASET_VERSION = "backfill_2b_v1"
 UNSUPPORTED_ROUNDING = "tenths"
 
+#: Every catalogue column the writer reads.
+WRITER_COLUMNS = (
+    "market_id", "condition_id", "event_id", "slug", "question", "city", "station",
+    "station_identifier", "resolution_source", "unit", "rounding_rule", "endDate",
+    "closedTime", "winning_outcome", "clobTokenIds", "outcomes", "tick_size",
+    "min_order_size", "group_item_title", "lo", "hi", "umaResolutionStatus",
+    "feesEnabled", "feeSchedule",
+)
 
-def main() -> int:
+EXCLUDED_MARKET_WITHOUT_UNIT = "market_without_unit"
+#: NO BANDS, not "not tradeable" — the two lead to opposite conclusions (session A).
+#: `outcomes` is keyed on (token_id, dataset_version, record_version): without a token
+#: there is no outcomes row, without that row there is no band, and without the band
+#: the event cannot be labelled. Measured on the catalogue: the two such events (504566
+#: Jinan, 504568 Zhengzhou, 2026-05-22) have no token, no winner and no resolution on
+#: any of their 11 bands.
+EXCLUDED_NO_BAND_ROWS = "market_without_token_ids_so_no_band_row"
+EXCLUDED_UNPARSEABLE_TOKENS = "unparseable_tokens_or_outcomes"
+
+
+def _parse_tokens(r) -> tuple[list, list] | None:
+    """(token ids, outcome labels) of one catalogue market, or None if unusable."""
+    try:
+        tokens = json.loads(r["clobTokenIds"])
+        raw = bu.present(r.get("outcomes"))
+        labels = json.loads(raw) if raw else ["Yes", "No"]
+    except (TypeError, ValueError):
+        return None
+    if not isinstance(tokens, list) or not tokens or not isinstance(labels, list):
+        return None
+    return tokens, labels
+
+
+def validate_events(selection: "bu.Selection") -> tuple[dict[str, list[dict]], dict[str, int]]:
+    """Split the selection into writable whole events and events excluded by reason.
+
+    Checked per EVENT before anything is written: one band without a unit or with an
+    unusable token list keeps the whole event out."""
+    by_event: dict[str, list[dict]] = {}
+    for r in selection.rows:
+        by_event.setdefault(str(r["event_id"]), []).append(r)
+    ok: dict[str, list[dict]] = {}
+    excluded: dict[str, int] = {}
+    for event_id in selection.events:
+        markets = by_event[event_id]
+        if any((_s(m.get("unit")) or "").upper() not in ("C", "F") for m in markets):
+            excluded[EXCLUDED_MARKET_WITHOUT_UNIT] = excluded.get(EXCLUDED_MARKET_WITHOUT_UNIT, 0) + 1
+            continue
+        if any(bu.present(m.get("clobTokenIds")) is None for m in markets):
+            excluded[EXCLUDED_NO_BAND_ROWS] = excluded.get(EXCLUDED_NO_BAND_ROWS, 0) + 1
+            continue
+        if any(_parse_tokens(m) is None for m in markets):
+            excluded[EXCLUDED_UNPARSEABLE_TOKENS] = excluded.get(EXCLUDED_UNPARSEABLE_TOKENS, 0) + 1
+            continue
+        ok[event_id] = markets
+    return ok, excluded
+
+
+def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--db", default="data/pmw.duckdb")
     ap.add_argument("--catalog", default=CATALOG)
-    args = ap.parse_args()
+    ap.add_argument("--dataset-version", required=True,
+                    help="REQUIRED, no default: nothing lands in an existing version by accident")
+    ap.add_argument("--stations", nargs="+", default=None)
+    ap.add_argument("--since", default=None, help="earliest target date (YYYY-MM-DD), inclusive")
+    ap.add_argument("--until", default=None, help="latest target date (YYYY-MM-DD), inclusive")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="print what would be written, by reason for everything left out; write nothing")
+    args = ap.parse_args(argv)
+
+    rows = bu.load_catalog_rows(args.catalog, WRITER_COLUMNS)
+    selection = bu.select_events(rows, stations=args.stations, since=args.since, until=args.until)
+    events, invalid = validate_events(selection)
+    summary = bu.summarize(selection)
+    summary["excluded"] = dict(sorted({**summary["excluded"], **invalid}.items()))
+    summary["events_writable"] = len(events)
+    summary["markets_writable"] = sum(len(v) for v in events.values())
+    print(json.dumps(summary, indent=1, default=str), flush=True)
+    if args.dry_run:
+        return 0
 
     con = db.init_db(db.connect(args.db))
-    priced = {
-        r["market_id"]
-        for r in db.query(con, "SELECT DISTINCT market_id FROM price_history")
-    }
-    print(f"mercados con precios: {len(priced)}", flush=True)
-    if not priced:
-        return 1
-
-    cat = duckdb.connect(args.catalog, read_only=True)
-    ids = ",".join(f"'{m}'" for m in priced)
-    rows = cat.execute(
-        f"""SELECT market_id, condition_id, event_id, slug, question, city,
-                   station, station_identifier, resolution_source, unit,
-                   rounding_rule, endDate, closedTime, winning_outcome,
-                   clobTokenIds, outcomes, tick_size, min_order_size,
-                   group_item_title, lo, hi, umaResolutionStatus,
-                   feesEnabled, feeSchedule
-            FROM mk WHERE market_id IN ({ids})"""
-    ).fetchdf().to_dict("records")
-    cat.close()
-    print(f"filas del catálogo: {len(rows)}", flush=True)
-
-    n_mk = n_out = skipped_unit = tenths = 0
-    for r in rows:
-        unit = (r.get("unit") or "").strip().upper()
-        if unit not in ("C", "F"):
-            # Without a unit the band cannot be compared to anything (B-6/B-7).
-            # Skip and count rather than write a market that will raise later.
-            skipped_unit += 1
-            continue
+    n_mk = n_out = tenths = 0
+    for r in (m for markets in events.values() for m in markets):
+        unit = _s(r.get("unit")).upper()
         rounding = (r.get("rounding_rule") or "").strip().lower()
         if rounding == UNSUPPORTED_ROUNDING:
             tenths += 1
@@ -156,18 +224,14 @@ def main() -> int:
                 "tick_size": float(r["tick_size"]) if r.get("tick_size") == r.get("tick_size") and r.get("tick_size") is not None else None,
                 "min_order_size": float(r["min_order_size"]) if r.get("min_order_size") == r.get("min_order_size") and r.get("min_order_size") is not None else None,
                 "source": "CATALOG_V2",
-                "dataset_version": DATASET_VERSION,
+                "dataset_version": args.dataset_version,
                 "record_version": 1,
             },
             conflict_cols=("market_id", "dataset_version", "record_version"),
         )
         n_mk += 1
 
-        try:
-            tokens = json.loads(r["clobTokenIds"])
-            labels = json.loads(r["outcomes"]) if r.get("outcomes") else ["Yes", "No"]
-        except Exception:
-            continue
+        tokens, labels = _parse_tokens(r)   # validated per event above
         lo, hi = r.get("lo"), r.get("hi")
         lo = None if lo != lo else lo   # NaN -> None (open-ended low)
         hi = None if hi != hi else hi
@@ -200,7 +264,7 @@ def main() -> int:
                     "outcome_index": idx,
                     "is_winner": None,   # a LABEL: never written from here
                     "source": "CATALOG_V2",
-                    "dataset_version": DATASET_VERSION,
+                    "dataset_version": args.dataset_version,
                     "record_version": 1,
                 },
                 conflict_cols=("token_id", "dataset_version", "record_version"),
@@ -208,8 +272,8 @@ def main() -> int:
             n_out += 1
 
     print(
-        f"LISTO markets={n_mk} outcomes={n_out} sin_unidad_saltados={skipped_unit} "
-        f"redondeo_decimas={tenths}",
+        f"LISTO markets={n_mk} outcomes={n_out} eventos={len(events)} "
+        f"redondeo_decimas={tenths} dataset_version={args.dataset_version}",
         flush=True,
     )
     for label, sql in (

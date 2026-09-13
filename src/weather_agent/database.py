@@ -50,7 +50,7 @@ from typing import Any, Iterable, Mapping, Sequence
 
 from .config import DB_PATH
 
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 8
 
 # Standard provenance columns present on every fact/derived table.
 PROVENANCE_COLUMNS = (
@@ -71,7 +71,7 @@ ALL_TABLES = (
     "price_history", "orderbook_snapshots", "trades", "weather_forecasts",
     "weather_observations", "weather_errors", "features", "predictions",
     "signals", "paper_trades", "backtest_results", "markets_excluded",
-    "data_quality",
+    "data_quality", "price_fetch_attempts",
 )
 
 # Canonical AS-OF column per table: the column the as-of engine filters on to
@@ -622,6 +622,49 @@ _DDL_V7 = [
     "ALTER TABLE paper_trades ADD COLUMN IF NOT EXISTS target_date DATE;",
 ]
 
+# B-136: WHAT WAS ASKED FOR, AND WHAT CAME BACK. `prices.ingest` returns `EMPTY` for a
+# token with no series and writes nothing, and the status of every fetch lived only in
+# a counter the backfill printed. So nothing in the database could tell "never traded"
+# from "never asked for" — measured on the historical store, the NO side of all 6 143
+# markets had no rows, and nothing said whether that was a result or an omission.
+# One row per (token, dataset_version), holding the LATEST attempt: the backfill's
+# "pending" is exact instead of inferred from `price_history`, and a token that came
+# back EMPTY is not asked for again on every pass.
+_DDL_V8 = [
+    """
+    CREATE TABLE IF NOT EXISTS price_fetch_attempts (
+        token_id            VARCHAR NOT NULL,
+        market_id           VARCHAR,
+        dataset_version     VARCHAR NOT NULL,
+        status              VARCHAR NOT NULL,    -- prices.S_* of the latest attempt
+        points_written      INTEGER,
+        attempted_at        TIMESTAMPTZ,
+        source              VARCHAR,
+        source_timestamp    TIMESTAMPTZ,
+        ingestion_timestamp TIMESTAMPTZ,
+        record_version      INTEGER DEFAULT 1,
+        PRIMARY KEY (token_id, dataset_version)
+    );
+    """,
+    # SEEDED FROM WHAT IS ALREADY THERE (session A). A table born empty counts every
+    # token already fetched as pending: measured on the real store, 807 EGLC YES tokens
+    # already had prices and a dry run called them pending — 1 997 against 1 190, 40 %
+    # off on the number this table exists to make exact, and 6 143 requests of quota
+    # re-spent on data already held. A row in `price_history` IS proof that the token
+    # was asked for and returned points, so it seeds an `OK` attempt. EMPTY results of
+    # the past cannot be recovered, and need not be: the NO side was never asked for.
+    """
+    INSERT INTO price_fetch_attempts (token_id, market_id, dataset_version, status,
+        points_written, attempted_at, source, source_timestamp, ingestion_timestamp,
+        record_version)
+    SELECT token_id, min(market_id), dataset_version, 'OK', count(*), max(fetched_at),
+           'seeded_from_price_history', max(fetched_at), now(), 1
+    FROM price_history
+    GROUP BY token_id, dataset_version
+    ON CONFLICT DO NOTHING;
+    """,
+]
+
 
 MIGRATIONS: list[dict] = [
     {
@@ -666,6 +709,11 @@ MIGRATIONS: list[dict] = [
         "version": 7,
         "name": "r30_paper_trade_target_date",
         "statements": _DDL_V7,
+    },
+    {
+        "version": 8,
+        "name": "b136_price_fetch_attempts",
+        "statements": _DDL_V8,
     },
 ]
 
