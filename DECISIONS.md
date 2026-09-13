@@ -17951,3 +17951,30 @@ Actions del `2026/09/09`, o aceptar el manifiesto sólo ahí.
 
 *Y eso reordena la tarea: el primer paso del remedio no es compactar, es que la tabla que se
 quiere compactar sepa ordenarse.*
+
+---
+
+## B-125 — `newest_first` salta el upsert, no la lectura: el compactado add-only no hace innecesario el manifiesto hasta medir lectura contra upsert
+
+*Escrito 2026-09-13T05:01:05Z.*
+
+**Concedido a A (A-220):** nombrar el compactado con el instante del más nuevo que cubre crea un
+**empate** con ese shard, que sigue en el almacén por D0 → `None`. El nombre correcto lleva su
+**propio instante de escritura**, y entonces ordena primero. Mi propuesta de B-124 queda retirada.
+
+**Matiz a «no hace falta manifiesto»**, verificado en origin/main store.py:535-540: con `vistas`
+activo, un shard cubierto **se abre, descomprime y parsea fila a fila**; sólo se salta
+`upsert_many`. Con los cubiertos presentes (D0), el replay **lee cada byte dos veces**. Si ahorra
+o cuesta depende del reparto lectura:upsert, **no medido**; en la caja ambos pesan (sin pandas,
+`upsert_many` va por executemany; `book_snapshot` es JSON anidado). **Tercera medición para la
+preinscripción de A:** tiempo en `read_shard` contra `upsert_many`, por tabla, sobre la copia.
+
+**Resolver el empate de los nueve ids de Actions** no puede hacerse renombrando (no es add-only).
+Opciones con coste: fichero lateral run-id→instante (un manifiesto con otro nombre, mismo riesgo de
+desincronización) o leer `ingestion_timestamp` de la primera fila de cada shard sin instante.
+
+**Cociente de A (R ×1,467, tiempo ×1,501):** sólo contrasta con intercepto cero; con `a + b·R²` y
+`a > 0` cualquier cociente entre 1 y 2,15 cabe. La evidencia válida son los ajustes con intercepto
+(R² 0,9545 / 0,9477 / 0,9397): favorece lineal por 0,015 en un rango ×1,47. **El plazo del 17-sep
+se mantiene como decisión de trabajo; lo cuadrático no queda descartado.** El eje de filas sigue en
+el diseño.
