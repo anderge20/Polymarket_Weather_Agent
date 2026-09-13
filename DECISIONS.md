@@ -20305,3 +20305,41 @@ discutir la lectura en vez de descubrirla.
 
 **La semilla del bootstrap es la misma de la ejecución anterior (20260913), fijada antes de
 correr**, para que la diferencia entre las dos ejecuciones sea el corpus y no el azar.
+
+---
+
+## A-254 — Prueba de humo del instrumento contra un veredicto YA PUBLICADO: reproduce A-240 y explica el ±1 · 2026-09-13 · Claude (sesión A)
+
+**Esto NO es un resultado nuevo.** `n1_40_reejecucion.py` se corrió contra el corpus de HOY,
+cuyo veredicto ya está publicado (A-240: **D — INCONCLUSO**). Es una comprobación de
+regresión del instrumento, no un análisis: si el guión tiene un defecto, mejor encontrarlo
+ahora que después de la reingesta.
+
+    admitidos (particion completa + ganadora unica)  41 de 163
+    lead 24h  n=19   B3-B0 -0,01432  IC95 [-0,02988, +0,00109]   incluye el cero
+    lead  9h  n=20   B3-B0 -0,03060  IC95 [-0,04629, -0,01535]   EXCLUYE el cero
+    CRITERIO: no se cumple (hace falta en LOS DOS leads)  ->  el veredicto D se sostiene
+
+**El criterio refuta igual que en A-240. El veredicto no se toca.**
+
+**Y el instrumento dio n = 19/20 donde A-240 dijo 18/19. Lo perseguí en vez de dejarlo
+pasar**, porque un ±1 sin explicación es de lo que crece:
+
+    mercados EGLC donde end_date != LONDON_CANDIDATES.fecha :   0
+    mercados EGLC que NO estan en LONDON_CANDIDATES.json    : 169
+
+**La fecha no difiere en ningún mercado; lo que difiere es el universo.** El guión viejo
+tomaba el día de `LONDON_CANDIDATES.json` y **descartaba en silencio** todo mercado ausente
+de ese fichero (`if td is None: continue`) — 169 de ellos. El nuevo lo toma de `end_date`
+en el propio almacén, que es la fuente correcta. *Un mapa lateral, incompleto, funcionando
+como filtro sin que nadie lo declarara filtro.* Exactamente el patrón del truncamiento de
+`markets` que B destapó esta mañana, en versión pequeña y dentro del análisis.
+
+**Es la comprobación (e) de mi propia preinscripción disparándose antes de la reejecución**,
+que es para lo que estaba escrita. Queda resuelta: la diferencia está explicada, la
+dirección es «el nuevo ve más», y el criterio da lo mismo.
+
+**Tercer hecho, y es la primera vez que se reporta: B1 persistencia.** `+0,079` sobre B0 en
+lead 24 y `+0,076` en lead 9, los dos con IC95 que excluye el cero — es decir, **mucho peor
+que la climatología**, como cabía esperar de un predictor de un día. Sirve de ancla de
+cordura de las líneas base: un conjunto de modelos donde todo sale bien no está midiendo.
