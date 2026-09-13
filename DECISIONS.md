@@ -22213,3 +22213,112 @@ frente con la regla de no fusionar sin tests verdes, y deja la suite rota para t
 demás. *La deuda se acuerda en la tarea y en este registro, que es donde vive; una suite no es
 un bloc de notas.* Retirado, y dicho en un comentario del fichero para que nadie lo reescriba
 dentro de un mes.
+
+## A-282 — GATE D0.9: `D0 = BLOCKED`. Hay dos falsos READY, no uno, y el peor defecto está en la cadena que Level 1 ejecutaría de verdad · 2026-09-13 · Claude (sesión A)
+
+Informe completo en `~/pmw-e2/d09/D09_RUNTIME_INTEGRITY.md`; cuatro guiones ejecutables y
+sus salidas, todo espejado. Nada modelado, nada entrenado, producción sin tocar.
+
+### Lo primero: hay DOS cadenas y confundirlas era responder a otra pregunta
+
+    cadena R (la que Level 1 ejecutaria)   forecast -> observation -> markets.winning_outcome
+                                           -> controles de referencia -> Brier/LL estratificado
+    cadena P (liquidacion)                 forecast -> observations.to_row -> settlement.try_settle
+
+**La cadena R no pasa por `settlement`, ni por `labels`, ni por la terna, ni por la
+traducción de series**: su etiqueta es la resolución que el propio mercado declaró, y los
+guiones de Level 1 importan **una sola** cosa de la librería, `resolution.parse_band`. Eso
+podría leerse como que los defectos de P no bloquean Level 1. No es así, porque R tiene su
+propia frontera rota y nadie la había mirado.
+
+### D1 — `forecast` y `observation` NO ESTÁN EN LA MISMA ESCALA, y no hay columna que lo diga
+
+    weather_forecasts    columnas con 'unit': NINGUNA   ·  forecast_tmax 3,6 .. 43,3 -> CELSIUS siempre
+    weather_observations observed_unit:  C 1 195 filas  ·  F 291 filas  -> 11 estaciones en FAHRENHEIT
+
+    KHOU 2026-04-08  obs 78,0 F (= 25,6 C)  fc 25,8 C
+        error CORRECTO       obs_C - fc_C = -0,24 C
+        error SIN convertir  obs_F - fc_C = +52,20      <- ni C ni F: un numero sin unidad
+
+`n075_metricas.filas()` resta `o - fx` **sin tocar la unidad**. En EGLC las dos son Celsius y
+es correcto; **en las 11 estaciones en Fahrenheit daría +52 en vez de −0,24, sin excepción y
+con un Brier de aspecto normal.** Lo único que hoy lo impide es que el análisis está
+restringido a una estación que resulta ser Celsius. *Abrir Level 1 sin guarda de unidad
+significa que la primera extensión a otra estación es silenciosamente falsa.* Y el mismo
+filo: `parse_band(banda, "C")` fijo en la población (A-279 bis).
+
+### D2 — UN TERCER MÓDULO DE ETIQUETAS, y un NULL que atraviesa su propia guarda
+
+El grafo de importaciones encontró `weather_agent.labeling` —distinto de `labels`, huérfano—
+cuyo docstring promete devolver `None` cuando falta el sello de resolución. Ejecutado con una
+fila real:
+
+    resolution_timestamp en el almacen: NaT  (NULL en 1 997 de 1 997)
+    build_label(..., resolution_timestamp=NaT, winning_outcome='Yes')
+      -> {'label': 'Yes', ..., 'resolution_timestamp': NaT}
+
+**No devuelve `None`: emite una etiqueta con el sello a `NaT`.** `NaT is None` es `False` y
+`datetime >= NaT` también, así que la comparación que debía rechazarla la deja pasar. **La
+guarda está escrita, documentada e inerte.** Es el contraejemplo de H4 y es de la peor clase:
+no falla, produce un valor plausible.
+
+### D3 — LOS DOS COMPROBADORES DE SUSTRATO, contra los cuatro criterios
+
+    comprobador                              1 columna  2 no-null  3 semantica  4 ruta
+    paper_cycle.settle_substrate_missing        SI         NO          SI         NO
+    labels.missing_substrate                    SI         NO          NO         NO
+
+    settle_substrate_missing(pmw.duckdb) -> []       labels.missing_substrate(con) -> []
+    measurement_rule_code no-NULL:  0 de 85 878      series del nucleo: 0 de 1 486 filas
+
+**Los dos aprueban un almacén en el que la ruta no puede liquidar ni un mercado. Son dos
+falsos READY, no uno.**
+
+### A — la traducción de series: UNA fuente de verdad, en el sitio equivocado
+
+Intersección de vocabularios **VACÍA**, y 0 de 1 486 filas llevan un nombre del núcleo. Tabla
+de traducción: **exactamente una**, `SERIES_CORRESPONDENCE`, **cero duplicados** por barrido
+AST — y mapea por **referencia** a las constantes del núcleo, así que un renombrado se
+propaga. El problema no es la unicidad: es que vive en `scripts/` y **ningún módulo de `src/`
+importa de `scripts/`** (verificado). API propuesta y consumidores demostrados en el informe;
+**no implementada**, falta la revisión de §34.
+
+**Y una corrección de mi propio instrumento antes de publicarlo:** el barrido buscaba
+ficheros con literales de los dos vocabularios y devolvió **cero fuentes de traducción**. Era
+un artefacto — `SERIES_CORRESPONDENCE` usa referencias, no cadenas copiadas, que es **mejor
+diseño que el que yo buscaba**. Publicar ese cero habría sido lo contrario de lo que pasa.
+
+### B — la única pieza que hace lo que promete
+
+Seis variantes de `NULL` en la terna, ejecutadas: el núcleo congelado **falla cerrado en las
+seis** con `context_out_of_snapshot`. **El problema nunca estuvo en el núcleo: está en los
+comprobadores que dicen READY antes de llegar a él.** `labels.context_for` sustituye el código
+por la prosa; `paper_cycle` lee la columna correcta. De dos fronteras, una sustituye.
+
+### E — nadie necesita `paper_cycle` en silencio
+
+Por AST sobre todo el repositorio: sólo lo importan **dos ficheros de tests**, por
+`spec_from_file_location`. De producción, **ninguno**. Moverlo no rompe a nadie.
+
+### RED-TEAM: las cinco refutadas
+
+    H1 READY implica ejecutable                 REFUTADA   dos falsos READY ejecutados     ALTA
+    H2 una sola fuente de verdad de series      unicidad SOSTENIDA / alcance REFUTADO      ALTA
+    H3 measurement_rule_code llega bien         REFUTADA   por dos vias independientes     ALTA
+    H4 NULL no atraviesa un gate READY          REFUTADA   NaT emite etiqueta plausible    ALTA
+    H5 no hay segunda frontera inconsistente    REFUTADA   hay CUATRO, mas un tercer modulo ALTA
+
+### VEREDICTO
+
+    D0.9 = NOT CLOSED
+    D0   = BLOCKED          Level 1 NO se abre.
+
+Seis arreglos especificados (`D09-1` a `D09-6`) y **ninguno implementado**: los que tocan
+liquidación necesitan revisión independiente de §34 y B sigue sin responder desde ~15:00Z. La
+prueba aislada `d09_spec_labels.py` deja `D09-4` y `D09-6` especificados y **ejecutables, con
+todas sus afirmaciones cumpliéndose hoy** — el bloque 1-2 describiendo el defecto, el bloque 3
+el objetivo. Está **fuera de `tests/` a propósito**: dentro, la suite pasaría a afirmar el
+defecto como esperado, que es exactamente lo que hace `test_labels.py:119` y por lo que ese
+defecto lleva verde desde siempre.
+
+**El gate de dinero real sigue siendo exclusivamente del usuario y nada de esto lo toca.**

@@ -1,0 +1,41 @@
+========================================================================================
+A — ¿CUANTAS FUENTES DE VERDAD HAY PARA TRADUCIR LA SERIE?
+========================================================================================
+  vocabulario del NUCLEO   ['hko_clmmaxt', 'metar_body_c', 'metar_tgroup_tmpf']
+  vocabulario del ALMACEN  ['IEM_ASOS_METAR_1C', 'IEM_ASOS_METAR_1C_RT34', 'IEM_ASOS_TMPF_0.1F', 'IEM_ASOS_TMPF_1F']
+  interseccion             VACIA
+
+  ficheros de src/ y scripts/ que mencionan nombres de LOS DOS vocabularios:
+    uno solo       scripts/paper_cycle.py                       ['IEM_ASOS_METAR_1C', 'IEM_ASOS_METAR_1C_RT34', 'IEM_ASOS_TMPF_1F']
+    uno solo       src/weather_agent/observations.py            ['IEM_ASOS_METAR_1C', 'IEM_ASOS_METAR_1C_RT34', 'IEM_ASOS_TMPF_0.1F', 'IEM_ASOS_TMPF_1F']
+    uno solo       src/weather_agent/settlement.py              ['hko_clmmaxt', 'metar_body_c', 'metar_tgroup_tmpf']
+
+  -> fuentes de verdad de la TRADUCCION: 0
+     (una sola, y esta en scripts/: es el hallazgo estructural de A-281)
+
+========================================================================================
+C — LOS DOS COMPROBADORES DE SUSTRATO, contra los cuatro criterios
+========================================================================================
+  comprobador                             1 columna  2 no-null  3 semantica   4 ruta
+  paper_cycle.settle_substrate_missing           SI         NO           SI       NO
+  labels.missing_substrate                       SI         NO           NO       NO
+
+  paper_cycle.settle_substrate_missing
+    exige: {'weather_observations': ('observed_value', 'observed_unit', 'series'), 'markets': ('contract_source', 'measurement_rule_code')}
+  labels.missing_substrate
+    exige: {'markets': ('contract_source', 'measurement_rule', 'unit', 'station_identifier'), 'weather_observations': ('observed_value', 'observed_unit', 'series')}
+
+  criterio 3 = pide `measurement_rule_code`, que es por lo que parte el nucleo.
+  criterio 4 = comprueba que la ruta downstream pueda consumirlo de verdad.
+
+========================================================================================
+E — ¿LA LOGICA DE paper_cycle LA NECESITA ALGUIEN EN SILENCIO?
+========================================================================================
+  importadores de `paper_cycle` (AST, todo el repo incluidos tests):
+    tests/test_observations_real_payload.py              (spec_from_file_location)
+    tests/test_paper_cycle.py                            (spec_from_file_location)
+
+  de PRODUCCION (src/ o scripts/): NINGUNO
+  -> la logica de `paper_cycle` no la necesita ningun modulo: solo sus tests.
+     Moverla a la libreria no rompe a nadie; dejarla donde esta es lo que
+     impide que la segunda frontera la herede.

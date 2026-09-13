@@ -1,0 +1,64 @@
+
+========================================================================================
+FRONTERA 1 — FORECAST.  Entradas reales: weather_forecasts
+========================================================================================
+  filas 2727   NULL por columna: ninguno
+  ¿existe columna de UNIDAD?  NO
+  -> `forecast_tmax` no lleva unidad declarada en la fila. La semantica vive fuera.
+  rango global de forecast_tmax: 3.6 .. 43.3
+     VILK   [  23.3 ..   43.3]  n=56
+     ZUCK   [  19.5 ..   42.0]  n=56
+     KDAL   [  17.4 ..   41.3]  n=52
+     OEJN   [  26.1 ..   40.6]  n=54
+
+========================================================================================
+FRONTERA 2 — OBSERVATION.  Entradas reales: weather_observations
+========================================================================================
+  filas 1486   NULL por columna: ninguno
+  unidades presentes: [('C', 1195), ('F', 291)]
+  series presentes  : [('IEM_ASOS_METAR_1C', 1057), ('IEM_ASOS_TMPF_1F', 267), ('IEM_ASOS_METAR_1C_RT34', 138), ('IEM_ASOS_TMPF_0.1F', 24)]
+
+  TRADUCCION DE SERIES — lo que el nucleo acepta:
+    nucleo   ['hko_clmmaxt', 'metar_body_c', 'metar_tgroup_tmpf']
+    almacen  ['IEM_ASOS_METAR_1C', 'IEM_ASOS_METAR_1C_RT34', 'IEM_ASOS_TMPF_0.1F', 'IEM_ASOS_TMPF_1F']
+    INTERSECCION: VACIA
+
+========================================================================================
+FRONTERA 3 — LABEL.  TRES implementaciones distintas, ejecutadas
+========================================================================================
+  fila real de markets (EGLC, markets_v2, ganadora):
+    market_id                '1056377'
+    event_id                 '130710'
+    contract_source          None
+    measurement_rule_code    None
+    measurement_rule         None
+    unit                     'C'
+    rounding_rule            'whole degree'
+    winning_outcome          'Yes'
+    resolution_timestamp     NaT
+    uma_resolution_status    'resolved'
+
+  (3a) markets.winning_outcome — la que USA el Nivel 1
+       filas 79735  no-NULL 79718  -> NULL 17
+
+  (3b) weather_agent.labeling.build_label — modulo huerfano, EJECUTADO
+       con la fila REAL -> {'label': 'Yes', 'prediction_time': datetime.datetime(2026, 5, 26, 12, 0, tzinfo=datetime.timezone.utc), 'resolution_timestamp': NaT}
+       docstring: «Returns None when: the market is unresolved»
+       pero uma_resolution_status = 'resolved' y winning_outcome = 'Yes'
+       con resolution_timestamp INVENTADO -> {'label': 'Yes', 'prediction_time': datetime.datetime(2026, 5, 26, 12, 0, tzinfo=datetime.timezone.utc), 'resolution_timestamp': datetime.datetime(2026, 5, 28, 0, 0, tzinfo=datetime.timezone.utc)}
+
+  (3c) weather_agent.labels.context_for + settlement.select_operator — EJECUTADO
+       measurement_rule_code que llega al nucleo: ''
+       el CODIGO de la fila era                 : None
+       lo que pasa labels     -> SettlementUnavailable: context_out_of_snapshot: terna outside the 11-class partition: ('', '', 'C')
+       la terna de la FILA    -> SettlementUnavailable: context_out_of_snapshot: terna outside the 11-class partition: (None, None, 'C')
+
+========================================================================================
+COMPORTAMIENTO ANTE NULL — ejecutado, no supuesto
+========================================================================================
+  terna completa y correcta          -> OK  SettlementOperator
+  measurement_rule_code = None       -> SettlementUnavailable: context_out_of_snapshot: terna outside the 11-class partition: ('NOAA', None, 
+  measurement_rule_code = ''         -> SettlementUnavailable: context_out_of_snapshot: terna outside the 11-class partition: ('NOAA', '', 'C
+  contract_source = None             -> SettlementUnavailable: context_out_of_snapshot: terna outside the 11-class partition: (None, 'P_NOAA_
+  los dos None (lo que hay HOY)      -> SettlementUnavailable: context_out_of_snapshot: terna outside the 11-class partition: (None, None, 'C
+  unit = None                        -> SettlementUnavailable: context_out_of_snapshot: terna outside the 11-class partition: ('NOAA', 'P_NOA

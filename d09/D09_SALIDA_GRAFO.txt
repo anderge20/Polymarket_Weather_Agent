@@ -1,0 +1,26 @@
+====================================================================================
+GRAFO DE IMPORTACIONES (solo modulos del proyecto), por AST
+====================================================================================
+
+  weather_agent.labels
+    importa   : ['weather_agent.database', 'weather_agent.settlement', 'weather_agent.stations']
+    LO IMPORTA: — NADIE
+
+  weather_agent.settlement
+    importa   : —
+    LO IMPORTA: ['weather_agent.labels']
+
+  weather_agent.observations
+    importa   : ['weather_agent.database', 'weather_agent.weather']
+    LO IMPORTA: — NADIE
+
+  paper_cycle
+    importa   : ['weather_agent']
+    LO IMPORTA: — NADIE
+
+====================================================================================
+¿ALGUIEN IMPORTA DE scripts/ ?  (paper_cycle es un SCRIPT, no libreria)
+====================================================================================
+  modulos de src/ que importan de scripts/: NINGUNO
+  -> la libreria NO depende del script. La dependencia va en un solo sentido,
+     y por eso `labels.py` no puede alcanzar SERIES_CORRESPONDENCE.
