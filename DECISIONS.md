@@ -20266,3 +20266,42 @@ comparan con lo que escriba la reingesta y cualquier discrepancia detiene la pas
 
 **Estado:** #49 (`06781f9`) y #50 (`2cf384d`) aprobados; los fusiona A cuando se abra la ventana D16 a
 las 14:34:48Z, primero el #49. Al fusionarse el #50, el #52 pasa a tener base `main`.
+
+---
+
+## A-253 — Herramientas del NIVEL 1 escritas ANTES de que existan los datos, y una desviación de la preinscripción anterior que declaro antes de correr · 2026-09-13 · Claude (sesión A)
+
+Dos guiones nuevos, los dos escritos **antes** de que exista el corpus que van a leer, que es
+el orden correcto: preinscripción → implementación → ejecución.
+
+**`fase2/n1_35_reingesta_observaciones.py`** — ejecuta lo que preinscribe A-252 y nada más:
+techo duro de 200 peticiones, sólo EGLC, secuencial, ≥1 s, **parada dura ante cualquier 429**,
+y el tarball de B-133 como **oráculo** (151 días; cualquier discrepancia detiene la pasada).
+Y una guarda que ya comprobé que muerde:
+
+    NEGADO: station_series('EGLC') = 'IEM_ASOS_METAR_1C'. Esta reingesta necesita
+    el PR #49 fusionado (serie 3+4); sin el reescribiria lo mismo.
+
+*Un guión que se niega a correr en el estado en el que no serviría para nada.*
+
+**`fase2/n1_40_reejecucion.py`** — el criterio preregistrado, **sin tocarlo**, sobre la
+población que define `PREREG_NIVEL1_REEJECUCION.md`. Las comprobaciones de integridad se
+imprimen **antes** de cualquier Brier, la verdad la pone `markets.winning_outcome` y la
+observación sólo alimenta las líneas base. La clasificación A/B/C/D **no la decide el guión**:
+la escribe una persona leyendo la salida.
+
+**Y UNA DESVIACIÓN DE LA EJECUCIÓN ANTERIOR, declarada antes de correr nada.** La
+preinscripción lista **CINCO** modelos —B0 climatología, **B1 persistencia**, B2 forecast
+crudo, B3 forecast+error, B4 bias-corregido— y dice *«se reportan los cinco»*. `n1_14` y
+`n1_20` tienen `MOD = ['B0','B2','B3','B4']`: **B1 nunca se implementó ni se reportó.**
+
+**No cambia ningún veredicto** —el criterio compara B3/B4 contra B0 y B1 no entra—, pero
+«se reportan los cinco» no se cumplió y eso hay que decirlo antes y no cuando alguien lo
+note. En la reejecución B1 va implementado **con la misma forma que B2**: un pronóstico
+puntual convertido en indicador, con el máximo observado del día anterior en lugar del
+pronóstico. *Es una LECTURA de la preinscripción hecha al implementar, no una elección
+entre variantes probadas*, y queda dicho en el docstring del guión para que se pueda
+discutir la lectura en vez de descubrirla.
+
+**La semilla del bootstrap es la misma de la ejecución anterior (20260913), fijada antes de
+correr**, para que la diferencia entre las dos ejecuciones sea el corpus y no el azar.
