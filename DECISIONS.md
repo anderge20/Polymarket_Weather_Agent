@@ -20432,3 +20432,35 @@ dos puntuales y reserva el error empírico para B3/B4. B coincide, por continuid
 > Es la segunda vez hoy —la primera fue el `hetzner-manual` doce líneas de shell después de
 > declarar que un defecto plausible es peor que un hueco—. *El sitio donde menos se audita
 > una regla es el cambio que la enuncia.*
+
+---
+
+## A-256 — El #49 entra DORMIDO en producción, y hoy la cota de su refetch es CERO · 2026-09-13 · Claude (sesión A)
+
+Comprobado **antes** de fusionar, porque el #49 hace que un día-estación cuya etiqueta lleva
+la serie superada se vuelva a pedir, y eso es cuota de IEM que **no** está en el presupuesto
+de A-252 (que cubre mi reingesta manual, no producción).
+
+**`stage_observations` se llama en dos sitios y sólo dos**: la rama `--settle-only` y la rama
+completa de decisión, **después de `stage_paper`**. **En un ciclo `collect-only` no corre.**
+
+Y leído en los shards de producción de hoy —no supuesto—:
+
+    cycle_params 09:07  collect_only True · tau_signal None
+    cycle_params 11:40  collect_only True · tau_signal None     <- el `decide 24`
+    cycle_params 12:07  collect_only True · tau_signal None
+
+**Los tres, incluido el `decide`, están en la rama de cierre en falso por no haber
+`PAPER_TAU`** (R24 P12: sin umbral preregistrado no se decide). Así que hoy
+`stage_observations` **no corre en ningún ciclo** y el camino de refetch del #49 entra
+dormido: **cero peticiones a IEM en producción** hasta que se fije un tau.
+
+**Y de ahí salen dos predicciones fechadas, escritas antes de leer los shards:**
+
+    15:07 de hoy      ciclo `collect`   ->  collect_only_reason == "mode_collect"
+    02:40 de manana   ciclo `decide 9`  ->  collect_only_reason == "no_paper_tau"
+
+**Es exactamente la distinción que el #48 existe para hacer, y se ve por primera vez esta
+noche.** Hasta ahora los dos casos eran indistinguibles: `collect_only` True en 37 de 37 y
+`tau_signal` None en 37 de 37 — tres campos que parecen discriminadores y son constantes.
+Si el 15:07 sale `None` o `""`, la puerta emite vacío y hay defecto. **Se lee, no se supone.**
