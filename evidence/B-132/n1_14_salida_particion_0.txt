@@ -1,0 +1,68 @@
+[FILTRO particion] eventos tras filtro: 37
+eventos reconstruidos: 37   bandas: 407
+
+=== lead 24h   eventos evaluados 18   bandas 198   (2026-05-02 .. 2026-05-19)
+   modelo         Brier/evento
+   B0_clima30          0.09260
+   B1_persist          0.16162
+   B2_fc_crudo         0.13131
+   B3_fc_error         0.07850
+   B4_fc_bias          0.08149
+
+   contra B0 (climatologia), diferencia pareada por evento  (negativo = MEJOR que B0)
+   B1_persist      +0.06901   IC95 [+0.03844, +0.09232]  EXCLUYE el cero
+   B2_fc_crudo     +0.03871   IC95 [-0.00272, +0.07470]  incluye el cero
+   B3_fc_error     -0.01410   IC95 [-0.03029, +0.00240]  incluye el cero
+   B4_fc_bias      -0.01112   IC95 [-0.02481, +0.00178]  incluye el cero
+
+   §7 CALIBRACION (por banda, descriptivo)   pendiente 1 e intercepto 0 = perfecta
+   modelo          pendiente  intercepto  sd(p)=sharpness
+   B0_clima30         -0.073     +0.0975           0.0932
+   B1_persist          0.022     +0.0889           0.2875
+   B2_fc_crudo         0.206     +0.0722           0.2875
+   B3_fc_error         0.623     +0.0343           0.1297
+   B4_fc_bias          0.535     +0.0423           0.1288
+
+   §7 FIABILIDAD de B3_fc_error
+   tramo                n   p medio     real
+   [0.00, 0.05)       101    0.0088   0.0396
+   [0.05, 0.15)        63    0.0846   0.0794
+   [0.15, 0.30)        12    0.2312   0.1667
+   [0.30, 0.60)        22    0.4092   0.3182
+
+   §18 ESTABILIDAD TEMPORAL (Brier por evento, por mes)
+   mes        n ev       B0       B1       B2       B3       B4
+   2026-05      18   0.09260  0.16162  0.13131  0.07850  0.08149
+
+=== lead 9h   eventos evaluados 19   bandas 209   (2026-05-01 .. 2026-05-19)
+   modelo         Brier/evento
+   B0_clima30          0.09631
+   B1_persist          0.17225
+   B2_fc_crudo         0.12440
+   B3_fc_error         0.06676
+   B4_fc_bias          0.06494
+
+   contra B0 (climatologia), diferencia pareada por evento  (negativo = MEJOR que B0)
+   B1_persist      +0.07594   IC95 [+0.05380, +0.09098]  EXCLUYE el cero
+   B2_fc_crudo     +0.02810   IC95 [-0.01619, +0.06891]  incluye el cero
+   B3_fc_error     -0.02955   IC95 [-0.04542, -0.01382]  EXCLUYE el cero
+   B4_fc_bias      -0.03136   IC95 [-0.04693, -0.01592]  EXCLUYE el cero
+
+   §7 CALIBRACION (por banda, descriptivo)   pendiente 1 e intercepto 0 = perfecta
+   modelo          pendiente  intercepto  sd(p)=sharpness
+   B0_clima30         -0.140     +0.1037           0.1033
+   B1_persist         -0.042     +0.0947           0.2875
+   B2_fc_crudo         0.247     +0.0684           0.2875
+   B3_fc_error         0.909     +0.0082           0.1393
+   B4_fc_bias          0.943     +0.0052           0.1414
+
+   §7 FIABILIDAD de B3_fc_error
+   tramo                n   p medio     real
+   [0.00, 0.05)       141    0.0087   0.0071
+   [0.05, 0.15)        20    0.0925   0.1500
+   [0.15, 0.30)        18    0.2501   0.2778
+   [0.30, 0.60)        30    0.3808   0.3333
+
+   §18 ESTABILIDAD TEMPORAL (Brier por evento, por mes)
+   mes        n ev       B0       B1       B2       B3       B4
+   2026-05      19   0.09631  0.17225  0.12440  0.06676  0.06494

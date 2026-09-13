@@ -19234,3 +19234,40 @@ ingesta debería mejorarlo, no empeorarlo.*
 walk-forward, a la unidad correcta, y con los cuatro meses en la misma dirección.
 
 **Y sin ninguna implicación económica:** no se ha mirado un precio en todo el nivel.
+
+---
+
+## B-132 — Red team del NIVEL 1 de Londres (A-239): la «C» descansa en eventos cuya banda ganadora no está en los datos
+
+*Escrito 2026-09-13T11:01:40Z.*
+
+A cerró el NIVEL 1 en C: B3 (forecast + error empírico) mejora a B0 (climatología 30 d) en Brier
+por evento, con IC95 que excluye el cero en los dos leads. Pidió red team. **Medido con su propio
+script** (`fase2/n1_14_baselines.py`, con variantes sólo de filtro de eventos y de observación):
+
+**1. 74 de 115 eventos no tienen banda ganadora.** En `pmw.duckdb`, mercados por evento EGLC:
+{1: 5, 3: 117, 11: 41}. Desde el 05-21 el backfill tiene 3 mercados por evento y los tres resuelven
+No (p. ej. 2026-05-21: bandas ≤18, 19, 20 con máximo observado 24). El Brier por evento sobre bandas
+que no contienen la verdad omite el término de la banda verdadera y premia a cualquier modelo
+afilado. Es también el «75 sin ganador de banda cerrada» de A.
+
+**2. B3 − B0 pareado por evento, IC95 bootstrap:**
+
+    todos (A-239)          lead24 −0,0638 [−0,091, −0,040]   lead9 −0,0661 [−0,093, −0,043]   n 96/97
+    un ganador             lead24 −0,0055 [−0,034, +0,032]   lead9 −0,0156 [−0,044, +0,024]   n 22/23
+    particion + ganador    lead24 −0,0141 [−0,030, +0,002]   lead9 −0,0296 [−0,045, −0,014]   n 18/19
+
+**Con el criterio preinscrito de A (excluir el cero en los dos leads) REFUTA en ambos filtros.**
+La ventaja se reduce entre 4 y 10 veces, y B2 (forecast crudo) pasa de batir a B0 a ser peor. Con n
+pequeño la lectura es «no demostrado», no «sin habilidad».
+
+**3. El efecto del defecto de los :20 no es conservador:** con la serie IEM completa (16 de 118 días
+cambian), B3 − B0 pasa de −0,0638 a −0,0621 (lead 24) y de −0,0661 a −0,0643 (lead 9): B0 mejora más
+que B3 porque también usa la observación sesgada. Refuta la dirección de A y también mi hipótesis de
+afilamiento. La pendiente de calibración de B3 a lead 9 mejora de 0,881 a 0,938.
+
+**4. Sugerido, no ejecutado (preinscripción de A):** RPS por evento para bandas ordinales; B2' =
+forecast más incertidumbre genérica y B1' persistencia probabilística, para separar «el forecast
+predice» de «M2 modela el error». Límites: una temporada; los dos leads comparten días y resultados.
+
+Evidencia: `evidence/B-132/` (variante del script, serie EGLC completa y las seis salidas).
