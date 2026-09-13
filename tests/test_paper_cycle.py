@@ -3245,3 +3245,79 @@ def test_the_frozen_cores_raise_sites_are_pinned_BY_COUNT():
     assert cuenta["R_SERIES_MISMATCH"] == 3, (
         "el caso que motivo `reason_details`: serie, unidad y quantization=NONE "
         "bajo un unico codigo de razon")
+
+
+def test_the_shard_says_WHY_it_is_collect_only(con, tmp_path, monkeypatch):
+    """`collect_only=True` significó dos cosas distintas en 37 de 37 ciclos.
+
+    Seis de los treinta y cuatro ciclos atribuibles son `decide` que no
+    decidieron —el envoltorio les añadió `--collect-only` por no existir
+    `PAPER_TAU`— y **nada en el almacén los distinguía**: el prefijo del
+    `session_id` es `col_` en 34 de 34, `collect_only` es True en 37 de 37 y
+    `tau_signal` es None en 37 de 37. Tres campos que parecen discriminadores y
+    son constantes.
+    """
+    monkeypatch.setattr(paper_cycle, "stage_discover",
+                        lambda cy, *a, **k: cy.stage("discover", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_collect",
+                        lambda cy, *a, **k: cy.stage("collect:books", paper_cycle.OK))
+    store_root = tmp_path / "store"
+    assert paper_cycle.main([
+        "--target-date", "2026-09-11", "--dataset-version", "ds1",
+        "--store-root", str(store_root), "--db", str(tmp_path / "t.duckdb"),
+        "--collect-only", "--collect-only-reason", "no_paper_tau",
+        "--summary-json", str(tmp_path / "s.json")]) == 0
+
+    import gzip as _gz
+    fila = json.loads(_gz.open(store.iter_shards(store_root, "cycle_params")[0],
+                               "rt").readline())
+    assert fila["collect_only"] is True
+    assert fila["collect_only_reason"] == "no_paper_tau"
+
+
+def test_a_deciding_cycle_carries_no_collect_only_reason(tmp_path, monkeypatch):
+    """La otra mitad: sin `--collect-only` el campo es None aunque se pase.
+
+    Un motivo de algo que no ocurrió es peor que ningún motivo — se lee como que
+    el ciclo fue collect-only cuando no lo fue.
+    """
+    monkeypatch.setattr(paper_cycle, "stage_discover",
+                        lambda cy, *a, **k: cy.stage("discover", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_collect",
+                        lambda cy, *a, **k: cy.stage("collect:books", paper_cycle.OK))
+    store_root = tmp_path / "store"
+    paper_cycle.main([
+        "--target-date", "2026-09-11", "--dataset-version", "ds1",
+        "--store-root", str(store_root), "--db", str(tmp_path / "t.duckdb"),
+        "--tau-signal", "0.02", "--collect-only-reason", "no_paper_tau",
+        "--summary-json", str(tmp_path / "s.json")])
+    import gzip as _gz
+    fila = json.loads(_gz.open(store.iter_shards(store_root, "cycle_params")[0],
+                               "rt").readline())
+    assert fila["collect_only"] is False
+    assert fila["collect_only_reason"] is None
+
+
+def test_every_collect_only_in_the_WRAPPER_carries_its_reason():
+    """EL DEFECTO VIVE EN LA LLAMADA, y la llamada está en un script de shell.
+
+    El campo de arriba no vale nada si el envoltorio no lo pasa, y `run_cycle.sh`
+    no lo ejecuta ninguna prueba: hace `git fetch` y `git rebase` sobre el
+    checkout en el que vive, así que conducirlo desde la suite no es una opción
+    razonable.
+
+    Así que se fija por lectura, que es débil y es lo único disponible: **cada
+    `--collect-only` del envoltorio tiene que ir acompañado de su motivo**. Una
+    tercera rama que se añada sin él falla aquí en vez de escribir un `True` mudo
+    durante semanas.
+    """
+    ruta = Path(__file__).resolve().parents[1] / "ops" / "hetzner" / "run_cycle.sh"
+    lineas = [l.strip() for l in ruta.read_text().splitlines()
+              if "--collect-only" in l and not l.strip().startswith("#")]
+    assert lineas, "el envoltorio ya no pasa --collect-only: revisar este test"
+    for l in lineas:
+        assert "--collect-only-reason" in l, (
+            f"`--collect-only` sin motivo en run_cycle.sh: {l!r}")
+    assert len(lineas) == 2, (
+        f"se esperaban las dos ramas conocidas (mode_collect y no_paper_tau), "
+        f"hay {len(lineas)}: {lineas}")
