@@ -19496,3 +19496,18 @@ de `weather_observations` es (station, source, observation_time, dataset_version
 Si una etiqueta vieja y una nueva comparten el instante del máximo (máximo a :50 en ambas series),
 el upsert de la nueva pisaría la vieja en lugar de convivir con ella, lo que contradiría «nunca
 sobrescribir».
+
+**[Actualización 2026-09-13T11:28:55Z: riesgo CONFIRMADO por medición antes de la revisión de A, y A lo
+confirmó y lo agravó: por el dimensionado de B-133 es el caso común (7 390 de 7 968 días, 92,7 %,
+con el mismo instante del máximo), así que el PR habría borrado progresivamente las etiquetas de tipo
+3 que lo justifican. Arreglado en `21f533d`, nuevo head del PR #49:
+- las filas de tipos 3+4 llevan `source` propio (`IEM_ASOS_METAR_RT34`) y conviven con las viejas en
+  la tabla y en el replay del almacén;
+- rechazado `series` en la clave: `database.py:331` declara `PRIMARY KEY` sobre esas cinco columnas,
+  y moverla exige reconstruir la tabla en cada DuckDB y cambiar la clave de `store.py`; rechazado
+  subir `record_version` (significa corrección METAR, D17-C);
+- de los seis lectores de `weather_observations`, `m2`, `labels`, `label_bias_pnl` y la liquidación
+  agregan con MAX; `observed_tmax` elegía UNA fila por `record_version` y podía devolver la vieja:
+  ahora prefiere la serie vigente.
+Mutaciones comprobadas en los dos tests nuevos. `tests/`: 696 passed. La ventana D16 corre desde este
+head; la aprobación de `f6859b8`, si la hubiera, no lo cubre.]**
