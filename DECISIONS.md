@@ -23301,3 +23301,36 @@ evidenciada en el 66,7 % de la muestra y acotada —no demostrada— en el resto
 Diseño prospectivo mínimo especificado (polling cada 5 min entre init+3,0 h e init+6,0 h,
 ≥ 100 pasadas, guardando las **dos** cotas y nunca `first_available = t_con`). **No
 implementado**: requiere su propio lock y §34.
+
+## A-296 — #54 fusionado (`a401301`). A-119 sobre el árbol: 749 verdes, segundo padre `0d518a3` · 2026-09-13 · Claude (sesión A)
+
+**A-112 al disparo (21:51Z)** — las tres resoluciones, todas al mismo sha:
+
+    headRefOid                        0d518a393effebb959491b04b4e013e11d14a3f6
+    sha con el que corri la suite     0d518a3   (749 passed; main 747 + 2, predicho ANTES)
+    sha sobre el que refute           0d518a3
+    isDraft                           false
+    mergeable / mergeStateStatus      MERGEABLE / CLEAN
+    main es ancestro                  SI
+    ventana D16 abierta               21:29:32Z  (A-281 espejada 19:29:32Z)
+
+**A-119 sobre el árbol de fusión** (`a401301`, no sobre la rama):
+
+    padres de a401301  = b523a8f (main previo)  0d518a3 (el sha verificado)
+    segundo padre      == 0d518a3               COINCIDE
+    suite sobre a401301 = 749 passed en 146,09 s
+
+Lo que entra: **dos guardas que enumeran las fronteras del núcleo congelado en vez de
+recordarlas** (A-281). Cinco mutaciones en rojo con control verde antes y después: tercera
+frontera en `src/`, tercera en `scripts/`, llamador de `labels` por import relativo, por import
+absoluto, y frontera declarada que desaparece.
+
+**No toca `labels.py`**: es código de liquidación y §34 pide revisión independiente.
+
+**La refutación hostil la produje yo**, sin B desde ~15:00Z, y encontró dos cosas reales en mi
+propio trabajo: el cuarto test que se ponía rojo a propósito —retirado, porque *una suite no es
+un bloc de notas*— y que el `grep` inicial confundía `NoObservation(` con una frontera, que es
+por lo que la guarda lee el **AST**. Sigue siendo un instrumento más débil que un segundo par
+de ojos.
+
+**Colector verde**: tres ciclos consecutivos a 15:32:34Z, 18:33:05Z y 21:34:08Z.
