@@ -20464,3 +20464,50 @@ dormido: **cero peticiones a IEM en producción** hasta que se fije un tau.
 noche.** Hasta ahora los dos casos eran indistinguibles: `collect_only` True en 37 de 37 y
 `tau_signal` None en 37 de 37 — tres campos que parecen discriminadores y son constantes.
 Si el 15:07 sale `None` o `""`, la puerta emite vacío y hay defecto. **Se lee, no se supone.**
+
+---
+
+## A-257 — La exposición de `WINDOW_LOCAL_CIVIL_DAY` medida en 55 estaciones: 3,56 % de los días-estación, y 212 de 292 en el instante EXACTO del límite · 2026-09-13 · Claude (sesión A)
+
+Pista de liquidación, cero peticiones: todo sale del tarball de B-133 que ya estaba en el
+espejo. `fase2/s01_ventana_hora_cero.py`.
+
+**Qué mide:** con qué frecuencia el máximo del **día civil local** cae en su **primera
+hora**, que es el caso donde el máximo del día es el calor sobrante del día anterior
+(A-247, EGLC 2026-05-27).
+
+    dias-estacion               8 202   (55 estaciones x 151 dias)
+    con el maximo en la hora 00   292   (3,56 %)
+    estaciones con al menos uno    50   de 55
+    minuto de esas lecturas     :00 -> 212 · :20 -> 27 · :30 -> 13 · :51/:53 -> 24 · resto 16
+
+**212 de 292 (72,6 %) caen en el instante EXACTO del límite**, las 00:00 locales. Y la
+ventana es `[medianoche local, siguiente medianoche local)`, medio abierta *a propósito*
+(`settlement.py:301-310`): **una lectura a las 00:00 pertenece al día que empieza**, y
+lleva la temperatura del día que acaba.
+
+**ES EXPOSICIÓN, NO TASA DE ERROR, y la distinción es la que decide si esto importa.** Un
+día expuesto sólo se convierte en conflicto si el máximo de la primera hora cae en una
+banda distinta de la que la fuente contractual publicó. En EGLC: **3 días expuestos, 1
+conflicto real** sobre 147 eventos completos. La exposición acota el error por arriba; no
+lo mide.
+
+**Y UNA FRASE MÍA QUE DESMENTÍ ANTES DE ESCRIBIRLA.** Iba a poner en el guión que «con
+tipo 3 el fenómeno sería invisible y medirlo con la serie vieja habría dado un cero
+tranquilizador». Lo medí:
+
+    tipo 3     290 de 8202 (3,54 %)   51 estaciones
+    tipos 3+4  292 de 8202 (3,56 %)   50 estaciones
+    EGLC        3 con tipo 3  ·  3 con 3+4     <- identico
+
+**Falso.** La exposición es una propiedad de la **VENTANA**, no de la serie. Lo que el #49
+cambia es el **VALOR** en ese instante —el 27-05 en EGLC: 24 °C a las 00:50 con tipo 3, 25
+°C a las 00:20 con 3+4— y es el valor el que convirtió un día expuesto en un conflicto.
+*Escribir la frase dramática sin medirla habría metido en el corpus una afirmación falsa
+con aspecto de hallazgo.*
+
+**Qué NO se hace con esto.** No se toca el núcleo congelado: una observación separadora y
+una exposición del 3,56 % no bastan para cambiar una ventana que la auditoría v3 dejó como
+`NO_SEPARABLE_EN_MUESTRA`. Lo que queda es **la medición de la tasa de conflicto real**, y
+ésa necesita las escaleras completas — o sea, la reingesta. Queda en la tarea #63 con el
+número de exposición ya fijado, para que la tasa se compare contra una cota escrita antes.
