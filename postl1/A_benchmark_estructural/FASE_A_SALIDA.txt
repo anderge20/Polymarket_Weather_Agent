@@ -1,0 +1,80 @@
+====================================================================================================
+FASE A — BENCHMARK ESTRUCTURAL COMPLETO · EGLC · escalera 11
+====================================================================================================
+
+====================================================================================================
+LEAD 24 h · 95 eventos
+====================================================================================================
+  historial ex-ante para S3: min 70 · mediana 121 · max 182 eventos
+
+  benchmark                  Brier  vs uniforme
+  S2 uniforme (control)    0.08264     -0.00000
+  S1 interior              0.08145     -0.00120
+  S3 posicion empirica     0.07718     -0.00547
+  B4 (el modelo)           0.07113     -0.01151
+
+  --- LA COMPARACION DE REGISTRO ---
+      B4 - S2   -0.01151  IC95 [-0.01589, -0.00700]  B4 MEJOR
+      B4 - S1   -0.01031  IC95 [-0.01494, -0.00566]  B4 MEJOR
+      B4 - S3   -0.00605  IC95 [-0.01092, -0.00125]  B4 MEJOR   <-- PRIMARIO
+              gana en 58/95 eventos · sd 0.02407 · MDE(80%) 0.00691 · razon 0.87
+
+  --- RED-TEAM 1 · ¿cuanta informacion lleva la escalera SOLA? ---
+      distribucion de la posicion de la ganadora: {-5: 2, -3: 2, -2: 12, -1: 27, 0: 25, 1: 13, 2: 7, 3: 6, 5: 1}
+      |desviacion| media 1.23 bandas (uniforme daria 2.73)
+      entropia de la posicion empirica: 1.8195  (uniforme sobre 11: 2.3979)
+
+  --- RED-TEAM 3 · robustez de B4-S3 al minimo de entrenamiento ---
+      MIN_TRAIN 20  n= 95   -0.00605  [-0.01109, -0.00141]  excluye el cero
+      MIN_TRAIN 30  n= 85   -0.00732  [-0.01231, -0.00238]  excluye el cero
+      MIN_TRAIN 40  n= 76   -0.00859  [-0.01388, -0.00317]  excluye el cero
+      MIN_TRAIN 50  n= 66   -0.00870  [-0.01431, -0.00342]  excluye el cero
+
+  --- RED-TEAM 4 · influencia sobre B4-S3 ---
+      quitando los  0 mas favorables: n= 95   -0.00605  [-0.01089, -0.00124]  sigue
+      quitando los  5 mas favorables: n= 90   -0.00292  [-0.00686, +0.00105]  YA NO
+      quitando los 10 mas favorables: n= 85   -0.00110  [-0.00491, +0.00302]  YA NO
+      quitando los 20 mas favorables: n= 75   +0.00243  [-0.00132, +0.00634]  YA NO
+      mediana -0.00442 · media -0.00605
+
+====================================================================================================
+LEAD 9 h · 96 eventos
+====================================================================================================
+  historial ex-ante para S3: min 70 · mediana 122 · max 183 eventos
+
+  benchmark                  Brier  vs uniforme
+  S2 uniforme (control)    0.08264     -0.00000
+  S1 interior              0.08144     -0.00121
+  S3 posicion empirica     0.07714     -0.00550
+  B4 (el modelo)           0.06534     -0.01731
+
+  --- LA COMPARACION DE REGISTRO ---
+      B4 - S2   -0.01731  IC95 [-0.02131, -0.01296]  B4 MEJOR
+      B4 - S1   -0.01610  IC95 [-0.02032, -0.01177]  B4 MEJOR
+      B4 - S3   -0.01181  IC95 [-0.01607, -0.00771]  B4 MEJOR   <-- PRIMARIO
+              gana en 73/96 eventos · sd 0.02120 · MDE(80%) 0.00606 · razon 1.95
+
+  --- RED-TEAM 1 · ¿cuanta informacion lleva la escalera SOLA? ---
+      distribucion de la posicion de la ganadora: {-5: 2, -3: 2, -2: 12, -1: 27, 0: 25, 1: 13, 2: 8, 3: 6, 5: 1}
+      |desviacion| media 1.24 bandas (uniforme daria 2.73)
+      entropia de la posicion empirica: 1.8270  (uniforme sobre 11: 2.3979)
+
+  --- RED-TEAM 3 · robustez de B4-S3 al minimo de entrenamiento ---
+      MIN_TRAIN 20  n= 96   -0.01181  [-0.01600, -0.00769]  excluye el cero
+      MIN_TRAIN 30  n= 86   -0.01146  [-0.01629, -0.00687]  excluye el cero
+      MIN_TRAIN 40  n= 77   -0.01197  [-0.01701, -0.00702]  excluye el cero
+      MIN_TRAIN 50  n= 67   -0.01208  [-0.01751, -0.00684]  excluye el cero
+
+  --- RED-TEAM 4 · influencia sobre B4-S3 ---
+      quitando los  0 mas favorables: n= 96   -0.01181  [-0.01601, -0.00772]  sigue
+      quitando los  5 mas favorables: n= 91   -0.00910  [-0.01256, -0.00545]  sigue
+      quitando los 10 mas favorables: n= 86   -0.00737  [-0.01075, -0.00383]  sigue
+      quitando los 20 mas favorables: n= 76   -0.00418  [-0.00740, -0.00074]  sigue
+      mediana -0.01306 · media -0.01181
+
+====================================================================================================
+RED-TEAM 2 · ¿S3 tiene fuga del futuro?
+====================================================================================================
+  eventos anteriores al corte 2026-06-23: 47
+  S3 identico prohibiendo ademas todo lo posterior al corte: 47/47
+  -> NO hay fuga: el historial ya estaba limitado a t_asof

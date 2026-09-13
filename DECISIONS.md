@@ -23149,3 +23149,70 @@ reapareciendo una capa más arriba.
 
 **Abrir L2 ahora sería estudiar si un precio está equivocado usando una señal cuyo tamaño real
 no conocemos con un factor de 4 de incertidumbre.**
+
+## A-294 — POST-L1.8 · FASE A: la CUARTA deflación. El lead 24 se cae; el lead 9 sobrevive al benchmark no ajustable · 2026-09-13 · Claude (sesión A)
+
+`postl1/A_benchmark_estructural/`, sin sobrescribir nada de L1. Lock `668b944` (21:36:55Z) con
+**la familia de tres pre-registrada entera** y `S3` declarado primario **antes** de verla.
+`D0-P` = BLOCKED · `L2` = BLOCKED. Nada de precios, EV, PnL, trading ni producción.
+
+### El benchmark correcto era el análogo estructural exacto de `B4`
+
+    B4  distribucion empirica del ERROR DE PRONOSTICO       -> necesita el forecast
+    S3  distribucion empirica de la POSICION DE LA GANADORA -> necesita solo la escalera
+
+Walk-forward, expansivo, mediana de 121 eventos de historial, **sin un solo parámetro libre que
+se pueda ajustar mirando el resultado**. Y sin fuga: prohibiendo además todo lo posterior al
+corte, `S3` sale **idéntico en 47 de 47**.
+
+### Y un defecto del benchmark anterior, dicho antes de nada
+
+`CTRL_escalera` (L1.7) fijaba su anchura con **la dispersión de `B4`**: el benchmark tomaba
+prestado un parámetro del modelo que juzgaba. Reclasificado a **control preliminar**; los
+números de L1.7 no se reescriben, se contextualizan. **Categoría B, corregido.**
+
+### La escalera sola sabe mucho más de lo que creíamos
+
+    |desviacion| media de la ganadora respecto al centro: 1,23 bandas (uniforme: 2,73)
+    entropia de la posicion empirica: 1,82              (uniforme sobre 11: 2,40)
+    S3 captura el 47,5 % (lead 24) y el 31,8 % (lead 9) de la ventaja de B4 sobre el uniforme
+    ...sin mirar el tiempo ni una vez
+
+### LA CUARTA DEFLACIÓN
+
+                                 lead 24     lead 9
+    B4 - B0                      -0,0304    -0,0359
+    B4 - uniforme                -0,0115    -0,0173
+    B4 - CTRL_escalera (L1.7)    -0,0076    -0,0134
+    B4 - S3 (estructural completo) -0,0061  -0,0118
+
+**Cada benchmark mejor ha vuelto a encoger el efecto, y éste ya no es ajustable.** Del titular
+pre-registrado al actual: **×5,0 en lead 24 y ×3,0 en lead 9.**
+
+### DONDE SE CAE EL LEAD 24: LA INFLUENCIA
+
+    lead 24  quitando los  5 mas favorables  -0,00292 [-0,00686,+0,00105]  YA NO excluye el cero
+             quitando los 20                 +0,00243 [-0,00132,+0,00634]  CAMBIA DE SIGNO
+             razon efecto/MDE 0,87  -> INFRAPOTENCIADO · gana en 58/95 (61 %)
+             mediana -0,00442 contra media -0,00605 -> la media la tira la cola
+
+    lead  9  quitando los 20 mas favorables  -0,00418 [-0,00740,-0,00074]  SIGUE excluyendo el cero
+             razon efecto/MDE 1,95 · gana en 73/96 (76 %)
+             mediana -0,01306 MAS favorable que la media -0,01181 -> efecto amplio
+
+> **Contra el uniforme hacían falta veinte eventos para tumbar el lead 24; contra `S3` bastan
+> cinco. El benchmark más fuerte no sólo redujo el efecto: destapó que era frágil.**
+
+### DECISIÓN: CONTINUAR a la FASE B, con el caso reducido a UN SOLO LEAD
+
+**Sobrevive `lead 9`**: −0,01181 [−0,01607, −0,00771], razón 1,95, 76 % de eventos, robusto a
+`MIN_TRAIN` 20/30/40/50 y a quitar los veinte más favorables.
+
+**Se cae `lead 24`**: infrapotenciado, frágil a cinco eventos, ya heterogéneo en L1.6 y con el
+margen de disponibilidad más estrecho (1,24 h). **Deja de ser parte del caso. No se busca otra
+transformación para salvarlo.**
+
+*Y una nota que va a favor, dicha con la misma claridad que las que van en contra:* **el lead que
+sobrevive es el que tiene MAYOR margen de disponibilidad** (4,24 h). La fase B es menos
+peligrosa para el superviviente de lo que habría sido para el lead 24 — pero más decisiva,
+porque ahora el caso entero descansa sobre un solo lead.
