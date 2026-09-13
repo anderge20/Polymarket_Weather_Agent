@@ -17544,3 +17544,57 @@ pasó **en vacío** porque no había bloque que revisar. *Sexta forma del catál
 escribió al final del día en que catalogamos cinco.* Lo que la delató fue la aserción de al lado,
 que sí falló en voz alta — **que es el argumento entero a favor de poner dos comprobaciones donde
 una podría pasar sin sustrato.**
+
+---
+
+## B-122 — El #42 no toca el libro por la guarda del día, los estratos de A no tienen mecanismo, y la pendiente agrupada sí
+
+*Escrito 2026-09-13T04:25:54Z.*
+
+### El ataque de A, y por qué falla en la premisa
+
+A sostuvo que `_newest_first` se aplica a todas las tablas, que en el libro no salta nada y cuesta
+una búsqueda de conjunto por fila, y que por tanto la serie del libro no es continua a través del
+#42. **Medido sobre el código de main y el almacén de hoy:**
+
+    markets              newest_first
+    outcomes             newest_first
+    orderbook_snapshots  REPLAY COMPLETO   empate irresoluble en 2026/09/09
+    price_history        REPLAY COMPLETO   empate irresoluble en 2026/09/09
+
+**Las tablas de libro caen al replay completo**, porque su directorio 2026/09/09 mezcla tres
+generaciones de id sin marca de tiempo. En ese modo el conjunto de claves vistas es `None` y la
+búsqueda por fila **no se ejecuta**. *El libro corre el mismo camino antes y después de la fusión:
+no por un filtro, sino por la guarda del directorio-día que B-107 diseñó para otra cosa.*
+
+### El −14,3 en la costura es ruido
+
+    06:07  td 09-13   +85,3
+    09:07  td 09-13   -74,6
+    11:40  td 09-13   +89,6
+
+**Saltos de ±80 s dentro del mismo target_date**, sin fusión ni cambio de fecha entre ellos. Con
+esa dispersión un −14,3 no discrimina nada.
+
+### El mecanismo para los estratos, buscado y ausente
+
+A estratificó la pendiente por target_date (+32,6 / +27,9 / +31,7, todas sobre la agrupada
++27,3) y **decidió no corregir el plazo por falta de mecanismo y por n=4 y n=2**. Busqué el
+mecanismo candidato —que el target_date cambie cuántos libros recoge el ciclo—:
+
+    filas de libro+precios ESCRITAS por ciclo
+      td 2026-09-12   n= 4   media 1.833   (1.766 .. 1.884)
+      td 2026-09-13   n=10   media 1.887   (1.762 .. 1.972)
+      td 2026-09-14   n= 2   media 1.854   (1.850 .. 1.858)
+
+**Planas, dentro de un 3 %.** El volumen no depende del día. *La decisión de A de no corregir sale
+reforzada por dos razones en vez de una:* sin mecanismo, y con una dispersión intra-estrato que
+hace inestimables sus pendientes.
+
+### Y la pendiente agrupada sí tiene mecanismo
+
+    ~1.850 filas por ciclo  x  ~14,8 ms por fila  =  27,3 s por ciclo
+
+**Volumen constante por coste constante.** Es lo que separa la pendiente agrupada de los estratos:
+una tiene causa física medible y los otros no. El plazo queda en 4,2 días, 17 de septiembre, con
+la sensibilidad de A registrada como tal y no aplicada.
