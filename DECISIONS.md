@@ -20103,3 +20103,38 @@ mutaciones en rojo, una por test. Revisión hostil pedida a B como mensaje propi
 **Y el ciclo de las 12:07 cerró en `b36e6d1` a las 12:31:56Z**, con el código de ANTES del #48 —el
 reset del checkout fue a las 12:07:00 y la fusión a las 12:20—, tal como estaba previsto. **El de
 las 15:07 es el primero que llevará `collect_only_reason`, y ese shard se LEE, no se supone.**
+
+---
+
+## B-140 — #50 aprobado con su dry-run contra la base real; #49 actualizado por merge; y el #51 bloqueado porque la caja corre un launcher viejo
+
+*Escrito 2026-09-13T12:35:19Z.*
+
+**#50 (`2cf384d`) APROBADO por A.** Además de reproducir `711 passed`, A corrió el dry-run del PR contra
+su base real: `--dataset-version backfill_2b_v1 --stations EGLC` da 187 eventos, 1 997 mercados,
+**807 tokens ya finales y 1 190 peticiones pendientes**, los números que había medido a mano; y la base
+siguió en `[1,2,3,4,6,7]`, sin `price_fetch_attempts` y con el mismo mtime. Cuatro ataques a la siembra
+fallan (0 tokens con más de un `market_id`; 6 143 filas sembrables; en la caja `init_db` corre sobre
+`:memory:` antes de cargar shards, así que la siembra no cuesta en ningún ciclo). Dos notas no
+bloqueantes pendientes de decisión de A: `<>` excluye `dataset_version` NULL (hoy cero) y el
+`ON CONFLICT DO NOTHING` de la siembra es hoy inalcanzable. Orden de fusión: #49 y luego #50.
+
+**#49 actualizado a `06781f9` por merge, no por rebase** (la rama está publicada y el force-push no está
+permitido): `a5888a0` fusiona `main` (8bc603f, #48) con un único conflicto al final de
+`tests/test_paper_cycle.py`, resuelto conservando ambos bloques; `06781f9` corrige el nit de A (el test
+del mapa olvidado conduce `ingest_daily_high` y comprueba `KeyError` antes de escribir, con mutación).
+Recuento verificado, no sólo el color: **703 passed** = 693 de `main` tras #48 + 10 del #49. Descripción
+corregida con el 19–1 de A (2026-05-27 atribuido a la ventana `LOCAL_CIVIL_DAY`). Pendiente de re-revisión.
+
+**#51 de A (`cycle_params.generator`, `3e498bd`), revisado antes de la fusión: no fusionar todavía.**
+- **Bloquea, de producción:** cron llama a `/opt/pmw/bin/launcher.sh`, una copia que sólo actualiza
+  `install.sh` (`install.sh:77`), mientras el `run_cycle.sh` del repo se actualiza en cada ciclo. Tras la
+  fusión, el `${PMW_GENERATOR:-hetzner-manual}` nuevo corre bajo el launcher viejo, que no exporta nada:
+  **todo ciclo de cron quedaría etiquetado `hetzner-manual`** hasta volver a correr `install.sh`. Es la
+  deducción por ausencia que el propio PR rechaza en Python. Arreglo: `run_cycle.sh` sin valor por
+  defecto (registra `None`).
+- **La etiqueta `hetzner-cron` la pone el launcher, que no sabe si lo llamó cron** y es además el camino
+  manual correcto (flock). Propuesta: la línea del crontab declara `hetzner-cron`, el launcher
+  `hetzner-launcher` por defecto, `run_cycle.sh` nada; y el PR nombra el paso de `install.sh`.
+- No bloquean: `None` antes que fallar (fallar pierde la ranura de libro); el barrido cuenta comentarios
+  como llamadas y declaraciones; `launcher.sh` se puede conducir con la receta de `run_cycle.sh`.
