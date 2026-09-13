@@ -18739,3 +18739,26 @@ mejor, era decir cuál es su alcance.*
 
 El campo que nombre **el generador** de los shards, y el puntero obsoleto del 1096. *Y persistir
 `reasons`/`reason_details`, que B y yo acordamos que va con esto o no va.*
+
+---
+
+## B-130 — Revisión del #48 (`collect_only_reason`): el envoltorio sí se puede conducir, dos llamadores sin motivo, y no negarse en tiempo de ejecución
+
+*Escrito 2026-09-13T09:59:20Z.*
+
+A abrió el #48 (mitad medible de la tarea #43: `run_cycle.sh` pasa `--collect-only-reason`
+`mode_collect` / `no_paper_tau` y `cycle_params` lo registra) y pidió revisión expresa. **Revisado
+y comentado antes de la fusión**, sobre `ddbae1b`: 120 passed.
+
+1. **El envoltorio se conduce de verdad** (A lo creía imposible): `run_cycle.sh` no toca el
+   checkout del código (lo hace `launcher.sh`); sólo fetch/reset de `$STATE`. Prototipo con la línea
+   `ROOT=` sustituida y stubs de `git`, `date` y `venv/bin/python`: collect → `mode_collect`;
+   decide sin `PAPER_TAU` → `no_paper_tau`; decide con `PAPER_TAU` → `--tau-signal`, sin
+   collect-only. Todos con exit 0, sin red.
+2. **Llamadores sin motivo:** `paper_collect.yml:152` y `paper_cycle.yml:190` (cron comentado,
+   `workflow_dispatch` vivo). Recomendado: pasar motivo y ensanchar el test por lectura.
+3. `--settle-only --collect-only` juntos no están excluidos en el parser (anterior al PR, ningún
+   llamador lo hace).
+4. **No negarse a arrancar sin motivo:** un rechazo en `argparse` sale antes de `stage_dump` y
+   pierde una ranura de libro, irrecuperable, a cambio de observabilidad. El shard ya distingue «sin
+   declarar» (True/None). La exigencia va en los tests.
