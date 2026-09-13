@@ -16302,3 +16302,60 @@ fechado en la historia.
 **Lo peligroso no es que el tipo sea derivable: es que el prefijo PARECE derivarlo y no lo
 deriva.** Una dependencia externa sin registrar se reconoce porque no hay dónde mirar; ésta se
 disfraza de campo.
+
+---
+
+## B-112 — El #45 mueve el defecto a estricto y deja la combinación separable
+
+*Escrito 2026-09-13T01:24:39Z. Revisión adversarial pedida por A sobre su propio PR.*
+
+### El hallazgo
+
+    def check_d16(..., enforced_from=None, legacy_short=None):
+        if enforced_from is not None and _utc(r["mergedAt"]).date() < enforced_from:
+            legacy += 1
+            continue                                   # <- la EXCLUSION
+        ...
+        if legacy_short is not None and legacy != legacy_short:
+            ...falla                                   # <- el PIN, independiente
+
+**`enforced_from` sin `legacy_short` da la exclusión sin el pin**: nueve filas desaparecen de la
+lista de fallos y nada comprueba el recuento. Nada en la firma lo impide.
+
+**Y lo que lo convierte en hallazgo es que el PR nombra ese modo de fallo exacto en el docstring
+de su propio test de cableado** —*«deja los dos chequeos en su modo estricto o en su modo SIN PIN
+según el descuido»*— y luego lo guarda probando **al llamador de hoy**. `main` pasa los dos y el
+test lo verifica; un llamador futuro obtiene la mitad indulgente sola y en silencio.
+
+*Es su propia tesis un nivel más arriba: movió el DEFECTO a estricto, que es correcto, y lo que
+queda separable es la COMBINACIÓN.* Arreglo pequeño: un `raise`, o un solo parámetro
+`legacy=(fecha, recuento)` que no se pueda partir.
+
+### Lo que ataqué y aguanta
+
+    el pin cuenta y no identifica filas   intente esconder un fallo nuevo manteniendo el
+                                          recuento: NO se puede. El recuento es solo de filas
+                                          anteriores al corte, congeladas en el tiempo.
+    ENFORCED_FROM es fecha FIJA           si fuera «hoy», la exclusion se lo tragaria todo
+    la frontera es <                      el dia que se empieza a exigir, se exige
+    la poblacion                          merged_prs se niega si el listado vuelve lleno
+
+### Y la corrección de A a mi propio argumento de B-111, que me refuerza
+
+Cité §5.2 por la unidad, y **la SUMA dentro del evento es correcta para PnL porque el dinero
+suma**. Para un *score* no: sumar los Brier de las bandas pondera un evento por **lo fino que el
+mercado lo haya troceado**, que es una decisión del mercado y no información. **El análogo
+honesto de «suma para dinero» es «media para score»** — que es su estimador exactamente.
+
+*Mi concesión sale mejor fundada de lo que la fundé yo.*
+
+Y no minimizo lo que él señala de vuelta: **+0,00010 sobre un punto de +0,00571 es un límite que
+vale el 2 % del estimador.** «Excluye el cero» ahí es cierto en el sentido más técnico que
+existe.
+
+### La lista fija gana una pregunta
+
+**«¿Esto está medido sobre libro vivo?»** se ha ganado el sitio al lado de *«¿qué haría esto
+imposible de violar?»*. Cuatro veces en una noche ha cambiado la lectura: mató el edge, reforzó
+el Brier, deshizo una alarma mía sobre la localización del soporte, y separó el veredicto de
+Brier del de ordenación.
