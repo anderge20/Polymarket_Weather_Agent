@@ -1223,16 +1223,24 @@ _REFUSAL_DETAIL_MAX = 160
 #: PR #46 kept the FIRST detail per reason, and session B found that this
 #: reopens INSIDE one cycle the conflation the PR closes BETWEEN cycles.
 #: `R_SERIES_MISMATCH` has THREE raise sites in the frozen core -- the series
-#: check (settlement.py:409), the unit check (443) and `quantization=NONE
-#: requires an on-grid value` (343) -- so `{"series_mismatch": 2}` with one
-#: detail says how MANY there were and hides how many KINDS.
+#: check, the unit check and `quantization=NONE requires an on-grid value` -- so
+#: `{"series_mismatch": 2}` with one detail says how MANY there were and hides
+#: how many KINDS.
 #:
 #: THREE IS A CHOICE, NOT A DERIVATION, and the first version of this comment
 #: claimed otherwise -- "the raise count of the busiest reason". Session B
 #: counted it by AST and it is false: `R_CONTEXT_OUT_OF_SNAPSHOT` raises with a
-#: detail SIX times (settlement.py 284, 297, 374, 378, 388, 393) against three
-#: for `R_SERIES_MISMATCH`. Three is what fits in a line a human reads, and what
-#: makes any bound safe is the sentinel below, not the number.
+#: detail SIX times against three for `R_SERIES_MISMATCH`. Three is what fits in
+#: a line a human reads, and what makes any bound safe is the sentinel below,
+#: not the number.
+#:
+#: THE LINE NUMBERS ARE GONE ON PURPOSE. The first version cited 409/443/343 in
+#: one paragraph and 342/408/442 in the next, for the same three sites -- the
+#: line of the `raise` and the line of its reason argument, one apart. Session B
+#: caught the pair. Two numbers for one thing is the defect this whole file
+#: keeps finding, and a comment cannot be kept in step with a file it does not
+#: import: the TEST below carries the counts, and counts are what the argument
+#: rests on.
 #:
 #: `test_the_frozen_cores_raise_sites_are_pinned_BY_COUNT` pins those counts, so
 #: an amendment that adds a branch under an existing code fails by name instead
