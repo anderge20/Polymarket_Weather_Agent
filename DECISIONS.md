@@ -17596,7 +17596,15 @@ hace inestimables sus pendientes.
     ~1.850 filas por ciclo  x  ~14,8 ms por fila  =  27,3 s por ciclo
 
 **Volumen constante por coste constante.** Es lo que separa la pendiente agrupada de los estratos:
-una tiene causa física medible y los otros no. El plazo queda en 4,2 días, 17 de septiembre, con
+una tiene causa física medible y los otros no.
+
+**[Corrección 2026-09-13T04:28:49Z, mía, antes de que A la atacara: esta sección es CIRCULAR y queda retirada.
+Los 14,8 ms salen de dividir 27,3 s entre 1.850 filas; multiplicarlos de vuelta da 27,3 por
+construcción. "El mismo orden que el catálogo" no se midió. Lo que sí queda: volumen escrito
+plano ⇒ almacén de libro que crece linealmente, CONSISTENTE con pendiente constante pero sin
+explicarla (14,8 ms por fila añadida es demasiado para un decode lineal en filas; no se sabe si
+el coste va con filas, shards o directorios). Pregunta abierta, no medida. La guarda de
+`vistas` sí se verificó en el código de main: store.py:449, 451, 536.]** El plazo queda en 4,2 días, 17 de septiembre, con
 la sensibilidad de A registrada como tal y no aplicada.
 
 ## A-216 — PR #46: el libro mayor llamaba dos defectos distintos por el mismo nombre · 2026-09-13 · Claude (sesión A)
