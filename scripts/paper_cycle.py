@@ -1180,6 +1180,24 @@ def _station_tz(icao: str | None) -> str | None:
 #:       a rule of the contractual source". The NAME says T-group; the THING is
 #:       tmpf rounded to 1 F.
 #:
+#:   IEM_ASOS_METAR_1C_RT34 -> metar_body_c
+#:       The same METAR-body Celsius value, built from IEM report types 3 AND 4
+#:       (`observations.REPORT_TYPES_ALL`) — the series every NEW Celsius row carries.
+#:       Type 3 alone had been throwing away the half-hourly routine reports (B-131),
+#:       and against real Wunderground settlement the 3+4 series is right on all 18
+#:       days where the two differ (B-134). The frozen core's `metar_body_c` does not
+#:       restrict the report type, so this needs no amendment. `IEM_ASOS_METAR_1C`
+#:       stays mapped above so the labels already written under it remain readable;
+#:       nothing is overwritten.
+#:
+#:   MIXING BOTH NAMES IN ONE WINDOW IS HARMLESS FOR THE VALUE, and by construction
+#:   rather than luck: the 3+4 set contains the type-3 set (0 type-3 rows missing
+#:   from 3+4 over 55 stations, B-133) and the core aggregates with MAX, so the
+#:   maximum over both rows is the 3+4 value. WHAT IT CANNOT SAY is which series
+#:   produced that maximum: the settlement result carries no series, so "is this
+#:   label from the corrected series?" has no field that answers it (session A).
+#:   The answer lives in `weather_observations.series` for that station-day.
+#:
 #: `IEM_ASOS_TMPF_0.1F` stays unmapped, and the reason is no longer uncertainty.
 #: Its only station is KBKF, whose audited row carries P_NOAA_HourlyData — stratum
 #: 9 — which the frozen core already fails closed on `series_filter_unverified`
@@ -1194,6 +1212,7 @@ def _station_tz(icao: str | None) -> str | None:
 #: in either direction is the error.
 SERIES_CORRESPONDENCE = {
     "IEM_ASOS_METAR_1C": settlement.SERIES_METAR_C,
+    "IEM_ASOS_METAR_1C_RT34": settlement.SERIES_METAR_C,
     "IEM_ASOS_TMPF_1F": settlement.SERIES_METAR_F,
 }
 
@@ -1207,9 +1226,9 @@ def to_core_series(series: str | None) -> str | None:
 #: of `error_model.ASSUMED_LABEL_LAG` — that is M2's TRAINING assumption about when
 #: a label could first be known, and using it here would delay every settlement by
 #: a day for no reason. This is the operational margin for the last METAR of the
-#: day to reach IEM, and it is deliberately small: routine METARs are hourly, so
-#: two hours covers the last observation plus a late feed without pushing the
-#: settlement into the next cycle.
+#: day to reach IEM, and it is deliberately small: routine METARs come every half
+#: hour at many stations and every hour at the rest, so two hours covers the last
+#: observation plus a late feed without pushing the settlement into the next cycle.
 LABEL_PUBLICATION_MARGIN = timedelta(hours=2)
 
 #: How much of a refusal's `detail` reaches the stage row. Bounded because this
@@ -1346,12 +1365,17 @@ def stage_observations(cy: Cycle, con, *, dataset_version: str, now: datetime) -
         if now < day_end + LABEL_PUBLICATION_MARGIN:
             pending += 1
             continue
+        # A ROW OF THE CURRENT SERIES, not any row. A label written under a
+        # superseded series (`IEM_ASOS_METAR_1C`, type 3 only) must not stop the
+        # corrected one from being fetched: "the row exists, skip it" is exactly how
+        # a wrong label becomes permanent. The refetch this allows is bounded by the
+        # station-days open positions wait on, so it carries no quota exposure.
         have = db.query(
             con,
             "SELECT 1 FROM weather_observations WHERE station = ? "
             "AND observation_time >= ? AND observation_time < ? "
-            "AND dataset_version = ? LIMIT 1",
-            [icao, day_start, day_end, dataset_version],
+            "AND dataset_version = ? AND series = ? LIMIT 1",
+            [icao, day_start, day_end, dataset_version, obs.station_series(icao)[0]],
         )
         if have:
             already += 1
