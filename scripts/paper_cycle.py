@@ -1227,10 +1227,21 @@ _REFUSAL_DETAIL_MAX = 160
 #: requires an on-grid value` (343) -- so `{"series_mismatch": 2}` with one
 #: detail says how MANY there were and hides how many KINDS.
 #:
-#: Three, because three is the raise count of the busiest reason. And DISTINCT
-#: strings rather than kinds, because classifying a detail by its branch means
-#: parsing the core's prose, which is what this boundary refused to do in #46
-#: and refuses again here.
+#: THREE IS A CHOICE, NOT A DERIVATION, and the first version of this comment
+#: claimed otherwise -- "the raise count of the busiest reason". Session B
+#: counted it by AST and it is false: `R_CONTEXT_OUT_OF_SNAPSHOT` raises with a
+#: detail SIX times (settlement.py 284, 297, 374, 378, 388, 393) against three
+#: for `R_SERIES_MISMATCH`. Three is what fits in a line a human reads, and what
+#: makes any bound safe is the sentinel below, not the number.
+#:
+#: `test_the_frozen_cores_raise_sites_are_pinned_BY_COUNT` pins those counts, so
+#: an amendment that adds a branch under an existing code fails by name instead
+#: of silently widening what one detail hides. Nothing else in the suite pins
+#: anything about the core's shape: the freeze lives in the document.
+#:
+#: And DISTINCT strings rather than kinds, because classifying a detail by its
+#: branch means parsing the core's prose, which is what this boundary refused to
+#: do in #46 and refuses again here.
 #:
 #: THE SENTINEL IS THE POINT. Distinct strings alone would be the same defect
 #: wearing another face: the details carry variable values (`got {value!r}`, a
@@ -1389,7 +1400,11 @@ def stage_settle(cy: Cycle, con, *, dataset_version: str) -> dict:
     settled = 0
     refusals: dict[str, int] = {}
     details: dict[str, list[str]] = {}
-    detalles_omitidos: dict[str, int] = {}
+    # UN CONJUNTO, no un contador. La primera version contaba OCURRENCIAS: con
+    # AAA BBB CCC DDD DDD decia "+2 mas" habiendo omitido UNA sola cadena
+    # distinta. Un centinela cuyo numero no cuenta lo que su nombre dice es el
+    # mismo defecto que todo esto arregla, dos capas abajo.
+    detalles_omitidos: dict[str, set] = {}
     for pos in open_rows:
         rows = db.query(
             con,
@@ -1511,7 +1526,7 @@ def stage_settle(cy: Cycle, con, *, dataset_version: str) -> dict:
                     if len(visto) < _REFUSAL_DETAIL_KINDS:
                         visto.append(corto)
                     else:
-                        detalles_omitidos[reason] = detalles_omitidos.get(reason, 0) + 1
+                        detalles_omitidos.setdefault(reason, set()).add(corto)
             continue
         won = settlement.band_key_wins(m["band_label"], result.band_key, m["unit"])
         # The position is on a specific token. A 'Yes' token pays when the band
@@ -1522,7 +1537,7 @@ def stage_settle(cy: Cycle, con, *, dataset_version: str) -> dict:
                                  exit_time=_iso(_utcnow()))
         settled += 1
 
-    salida = {k: (v + [f"+{detalles_omitidos[k]} mas"] if k in detalles_omitidos else v)
+    salida = {k: (v + [f"+{len(detalles_omitidos[k])} mas"] if k in detalles_omitidos else v)
               for k, v in details.items()}
     cy.stage("settle", OK, positions_open=n_open, settled=settled,
              refused=n_open - settled, reasons=json.dumps(refusals),

@@ -3187,8 +3187,13 @@ def test_the_cap_on_details_SAYS_that_it_hides(con, monkeypatch):
     # weather_agent import stations` resuelve el submodulo ya importado y no la
     # entrada de sys.modules, asi que manda el registro de verdad y una estacion
     # inventada devuelve None por huso y la negativa sale por otra rama.
+    # CINCO posiciones y CUATRO cadenas distintas: la quinta REPITE la cuarta.
+    # Sin la repetida el test no distingue contar ocurrencias de contar cadenas
+    # distintas, que es justo el defecto que la primera version tenia — decia
+    # «+2 mas» habiendo omitido UNA. Session B lo encontro midiendolo.
     for i, (est, unidad) in enumerate((("EGLC", "AAA"), ("EDDM", "BBB"),
-                                       ("EHAM", "CCC"), ("LEMD", "DDD"))):
+                                       ("EHAM", "CCC"), ("LEMD", "DDD"),
+                                       ("LFPG", "DDD"))):
         _settleable_market(con, token=f"t{i}", market=f"m{i}", station=est,
                            write_obs=False)
         con.execute(
@@ -3200,8 +3205,43 @@ def test_the_cap_on_details_SAYS_that_it_hides(con, monkeypatch):
              unidad, obs_mod.SERIES_1C, "IEM", T0, "ds1", 1])
 
     out = paper_cycle.stage_settle(_cycle(), con, dataset_version="ds1")
-    assert out["refusals"] == {"series_mismatch": 4}, out["refusals"]
+    assert out["refusals"] == {"series_mismatch": 5}, out["refusals"]
     d = out["details"]["series_mismatch"]
     assert len(d) == paper_cycle._REFUSAL_DETAIL_KINDS + 1, d
-    assert d[-1] == "+1 mas", d
     assert len(set(d[:-1])) == 3, d
+    # UNA cadena distinta omitida (DDD), vista DOS veces. El centinela cuenta
+    # cadenas, no apariciones.
+    assert d[-1] == "+1 mas", d
+
+
+def test_the_frozen_cores_raise_sites_are_pinned_BY_COUNT():
+    """Lo único de la suite que fija algo sobre la FORMA del núcleo congelado.
+
+    El núcleo está congelado por el sha de un DOCUMENTO, no por un test: nada en
+    `tests/` comprueba su estructura. Así que cuando escribí que tres era «el
+    número de sitios que lanzan el código más concurrido», nada lo contradijo —
+    y era falso: `R_CONTEXT_OUT_OF_SNAPSHOT` lanza con detalle SEIS veces.
+
+    Esto fija los dos recuentos. Si una enmienda añade una rama bajo un código
+    que ya existe, falla por nombre en vez de ensanchar en silencio lo que un
+    solo detalle esconde.
+    """
+    import ast
+    import collections
+
+    ruta = Path(__file__).resolve().parents[1] / "src" / "weather_agent" / "settlement.py"
+    cuenta: collections.Counter = collections.Counter()
+    for n in ast.walk(ast.parse(ruta.read_text())):
+        if not (isinstance(n, ast.Raise) and isinstance(n.exc, ast.Call)):
+            continue
+        if getattr(n.exc.func, "id", None) != "SettlementUnavailable":
+            continue
+        if not any(k.arg == "detail" for k in n.exc.keywords):
+            continue          # sin detalle no hay nada que `reason_details` pueda mostrar
+        arg = n.exc.args[0] if n.exc.args else None
+        cuenta[arg.id if isinstance(arg, ast.Name) else "?"] += 1
+
+    assert dict(cuenta) == {"R_CONTEXT_OUT_OF_SNAPSHOT": 6, "R_SERIES_MISMATCH": 3}, dict(cuenta)
+    assert cuenta["R_SERIES_MISMATCH"] == 3, (
+        "el caso que motivo `reason_details`: serie, unidad y quantization=NONE "
+        "bajo un unico codigo de razon")
