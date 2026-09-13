@@ -1,0 +1,51 @@
+========================================================================================
+LEVEL 1 · LOCK DEL DATASET
+========================================================================================
+  timestamp de ejecucion   2026-09-13T20:18:33Z
+  dataset_version markets  markets_v2
+  dataset_version obs/fc   backfill_2b_v1  (la unica que existe)
+  estacion                 EGLC
+  git SHA (repo)           b523a8f31ad8f669737492dac771748266bd2861
+  git SHA (research)       72dc0ad916bd901909947be88f46bb48f75546dd
+  base de analisis         /Users/mariaaleu/workspace/Polymarket_Weather_Agent/data/pmw.duckdb
+  guion de poblacion       n075_poblacion.py  sha256 f4511b9623b6d23a…
+  BANDERA                  availability_assumption = issue_plus_4h45m36s
+                           LOOKAHEAD ASSUMPTION = UNVERIFIED EXTERNALLY
+
+========================================================================================
+POBLACION — todas las definiciones, ninguna silenciada
+========================================================================================
+  population_total (eventos EGLC en el almacen)        187
+  mercados                                            1997
+  eventos ELEGIBLES (resolved + particion + 1 ganadora) 186
+    fecha_con_desempate              1
+    fecha_sin_elegible               1
+    no_resolved                      1
+  fechas tras deduplicar (station,target_date)         185
+
+  population_with_observation                         135
+  population_without_observation                      50
+    rango CON observacion   2026-04-08 .. 2026-08-23
+    rango SIN observacion   2025-12-31 .. 2026-04-07
+    -> los 50 NO se eliminan en silencio: son eventos validos fuera de la ventana
+       en que existen observaciones (2026-04-08 -> 2026-08-23).
+
+  ESCALERA por evento (de los elegibles):
+    total        {7: 2, 9: 26, 11: 157}
+    con obs      {11: 135}
+    con obs+FC lead 24  117 eventos  escaleras {11: 117}
+    con obs+FC lead  9  117 eventos  escaleras {11: 117}
+
+  LEADS disponibles: [9, 24]  (t_asof = end_date 12:00 UTC - lead)
+
+  ESTRATO ACEPTADO POR SETTLEMENT (se reporta, no se usa como filtro):
+    17 eventos · 187 mercados · ('WU','P_WU_DailyObservations')   [A-285]
+    los otros 170 eventos caen en estratos fail-closed DECLARADOS del nucleo.
+    Level 1 NO filtra por esto: el target es winning_outcome, no nuestra liquidacion.
+
+========================================================================================
+HUELLAS DE LAS FILAS QUE ENTRAN
+========================================================================================
+  markets+outcomes  cda1dc07fe80a20be3d356e8f35cacbb61ba4d0f42bfbf5ccc78af42444dfef5
+  observaciones     0eb8a2d8374d656b158d7acf734319c861ba37b417823110f2833c86a3d3c543
+  pronosticos       c9093b50b6e48b0feb1129ebccd7835b8a4ffd71721abc301a308e32043d8f08
