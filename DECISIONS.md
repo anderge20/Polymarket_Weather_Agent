@@ -19305,3 +19305,76 @@ de rejilla, sin inventar conversión. Nota: el total de 578 coincide con el «0 
 de `observations.py`, que midió revisiones; es coincidencia.
 
 Evidencia: `evidence/B-133/` (script, `resumen.json`, logs y descargas crudas si caben).
+
+## A-240 — RETRACTO EL NIVEL 1 «C»: la ventaja entera venía de eventos cuya banda ganadora NO ESTÁ en los datos. Queda **D — INCONCLUSO** · 2026-09-13 · Claude (sesión A)
+
+*Red team de B sobre A-239, pedido por mí. Reproducido con mi propio script
+(`fase2/n1_20_filtros.py`) antes de aceptarlo. Sus números salen; los míos también, y son peores
+de lo que él los enuncia.*
+
+### El defecto: 74 de 115 eventos no tienen banda ganadora
+
+    mercados por evento EGLC en el almacen:  {1: 5, 3: 72, 10: 1, 11: 37}
+
+    eventos de  3 mercados:  72,  con ganadora   3   (4 %)
+    eventos de 11 mercados:  37,  con ganadora  37   (100 %)
+    TOTAL: 41 con ganadora, 74 SIN
+
+    2026-05-21  obs 24,0   bandas ofrecidas: <=18, 19, 20
+    2026-05-22  obs 28,0                     <=20, 21, 22
+    2026-05-23  obs 30,0                     <=22, 23, 24
+
+**El máximo observado está POR ENCIMA de todas las bandas que tenemos.** No son bandas abiertas ni
+libro muerto: **son bandas que no están en el backfill.** En mi ventana evaluada, **74 de 97
+eventos (76 %) no tenían ganadora.**
+
+*Y el Brier por evento sobre tres bandas lejanas, todas con verdad 0, omite el único término que
+importa —`(q_verdadera − 1)²`— y premia a quien sea lo bastante afilado para no poner nada en
+ellas.* **B3 es exactamente eso.**
+
+### Reejecutado sobre tres poblaciones, con mi script
+
+    poblacion                    lead   n ev   B0       B3       B3 - B0            IC95
+    TODOS (mi resultado)          24     96   0,0905   0,0266   -0,06384  [-0,090, -0,040] EXCLUYE
+                                   9     97   0,0892   0,0230   -0,06613  [-0,092, -0,043] EXCLUYE
+    solo con banda GANADORA       24     22   0,0939   0,0884   -0,00550  [-0,034, +0,031] INCLUYE
+                                   9     23   0,0967   0,0811   -0,01557  [-0,044, +0,023] INCLUYE
+    PARTICION completa            24     18   0,0926   0,0785   -0,01410  [-0,030, +0,002] INCLUYE
+                                   9     19   0,0963   0,0668   -0,02955  [-0,046, -0,014] EXCLUYE
+
+**Mi criterio preinscrito exigía excluir el cero EN LOS DOS LEADS. Con eventos completos, falla.**
+
+**Y el Brier de B3 se multiplica por tres o cuatro** (0,023 → 0,067–0,088) mientras el de B0 apenas
+se mueve: *porque ahora el término difícil está dentro.* **B2, el forecast crudo, pasa de batir a
+la climatología a ser PEOR que ella** (+0,053 y +0,035).
+
+### VEREDICTO CORREGIDO: **D — INCONCLUSO**
+
+No es **A**: a lead 9 con partición completa el intervalo excluye el cero (−0,0296 [−0,046,
+−0,014]) y B3 bate a B0 en Brier absoluto en las tres poblaciones. *Decir «sin poder predictivo»
+sería pasarse en la otra dirección.*
+
+No es **B** ni **C**: **n = 18 y 19 eventos**. Con esa muestra no se distingue «señal sólo a lead
+9» de ruido, y mi propio criterio refuta.
+
+***D: los datos no permiten separar ausencia de señal de falta de potencia.***
+
+### El patrón de mis tres errores de esta fase, que es el mismo
+
+    A-195  el diente de sierra   -> corte de la SERIE     (ventana elegida por comodidad)
+    A-237  el desajuste          -> clave del JOIN        (fecha UTC en vez de dia local)
+    A-239  el poder predictivo   -> la POBLACION          (eventos sin ganadora)
+
+**Las tres veces la estadística estaba bien hecha sobre el conjunto equivocado.** No fallé en el
+bootstrap, ni en el pareado, ni en la unidad: *fallé en qué filas entraban*. Y las tres las
+encontró B mirando de dónde salían los datos, no cómo se procesaban.
+
+*La lección operativa: antes de cualquier estadístico, contar cuántas unidades de la población
+tienen el suceso que se está midiendo.* En este caso: **cuántos eventos tienen ganadora**. Era una
+línea de SQL y la habría parado tres horas antes.
+
+### Lo que hay que arreglar antes de repetir el nivel 1
+
+**El backfill de mercados está incompleto para 74 de 115 eventos**, y eso es anterior a cualquier
+modelo. Tarea nueva: determinar si los mercados faltan en Polymarket o en nuestra ingesta. *Si es
+lo segundo, el nivel 1 se puede rehacer con n≈115 en vez de n≈19.*

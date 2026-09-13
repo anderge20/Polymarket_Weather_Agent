@@ -65,9 +65,21 @@ def masa_desde_errores(f, errs, lo, hi):
         if (lo is None or g>=lo) and (hi is None or g<=hi): n+=1
     return n/len(errs)
 
-def evaluar(lead, minimo=20):
+def completo(bandas):
+    """¿el evento es una PARTICION con ganadora? Cubre de -inf a +inf sin huecos."""
+    if not any(w for _,_,w in bandas): return False
+    ab=[b for b in bandas if b[0] is None]; ar=[b for b in bandas if b[1] is None]
+    if len(ab)!=1 or len(ar)!=1: return False
+    cerr=sorted((b[0],b[1]) for b in bandas if b[0] is not None and b[1] is not None)
+    lo_ab=ab[0][1]; hi_ar=ar[0][0]
+    esperado=list(range(int(lo_ab)+1, int(hi_ar)))
+    return [int(a) for a,b in cerr if a==b]==esperado
+
+def evaluar(lead, minimo=20, filtro='todos'):
     filas=[]
     for td in sorted(eventos):
+        if filtro=='con_ganadora' and not any(w for _,_,w in eventos[td]): continue
+        if filtro=='particion' and not completo(eventos[td]): continue
         if (td,lead) not in FC: continue
         t=tasof(td,lead); f=FC[(td,lead)][1]
         # entrenamiento: dias con etiqueta disponible en t
@@ -114,39 +126,42 @@ def fiabilidad(filas, m, bordes=(0,.05,.15,.30,.60,1.01)):
         if s_: out.append((bordes[i],bordes[i+1],len(s_),st.mean(x for x,_ in s_),st.mean(y for _,y in s_)))
     return out
 random.seed(20260913)
-for lead in (24,9):
-    filas=evaluar(lead)
-    evs=sorted({td for td,_,_ in filas})
-    print(f"\n=== lead {lead}h   eventos evaluados {len(evs)}   bandas {len(filas)}"
-          f"   ({evs[0]} .. {evs[-1]})" if evs else f"\n=== lead {lead}h  sin datos")
-    if not evs: continue
-    B={m: brier_por_evento(filas,m) for m in MODELOS}
-    print(f"   {'modelo':14s} {'Brier/evento':>12s}")
-    for m in MODELOS:
-        print(f"   {m:14s} {st.mean(B[m].values()):12.5f}")
-    print(f"\n   contra B0 (climatologia), diferencia pareada por evento  (negativo = MEJOR que B0)")
-    for m in MODELOS[1:]:
-        d=[B[m][td]-B['B0_clima30'][td] for td in evs]
-        n=len(d); reps=sorted(st.mean(random.choices(d,k=n)) for _ in range(10000))
-        lo_,hi_=reps[250],reps[9750]
-        marca="  EXCLUYE el cero" if lo_*hi_>0 else "  incluye el cero"
-        print(f"   {m:14s} {st.mean(d):+9.5f}   IC95 [{lo_:+.5f}, {hi_:+.5f}]{marca}")
+import itertools
+for FILTRO in ('todos','con_ganadora','particion'):
+  print(f"\n{'='*70}\nFILTRO: {FILTRO}\n{'='*70}")
+  for lead in (24,9):
+    filas=evaluar(lead, filtro=FILTRO)
+      evs=sorted({td for td,_,_ in filas})
+      print(f"\n=== lead {lead}h   eventos evaluados {len(evs)}   bandas {len(filas)}"
+            f"   ({evs[0]} .. {evs[-1]})" if evs else f"\n=== lead {lead}h  sin datos")
+      if not evs: continue
+      B={m: brier_por_evento(filas,m) for m in MODELOS}
+      print(f"   {'modelo':14s} {'Brier/evento':>12s}")
+      for m in MODELOS:
+          print(f"   {m:14s} {st.mean(B[m].values()):12.5f}")
+      print(f"\n   contra B0 (climatologia), diferencia pareada por evento  (negativo = MEJOR que B0)")
+      for m in MODELOS[1:]:
+          d=[B[m][td]-B['B0_clima30'][td] for td in evs]
+          n=len(d); reps=sorted(st.mean(random.choices(d,k=n)) for _ in range(10000))
+          lo_,hi_=reps[250],reps[9750]
+          marca="  EXCLUYE el cero" if lo_*hi_>0 else "  incluye el cero"
+          print(f"   {m:14s} {st.mean(d):+9.5f}   IC95 [{lo_:+.5f}, {hi_:+.5f}]{marca}")
 
-    print(f"\n   §7 CALIBRACION (por banda, descriptivo)   pendiente 1 e intercepto 0 = perfecta")
-    print(f"   {'modelo':14s} {'pendiente':>10s} {'intercepto':>11s} {'sd(p)=sharpness':>16s}")
-    for m in MODELOS:
-        b,a,sd=calibracion(filas,m); print(f"   {m:14s} {b:10.3f} {a:+11.4f} {sd:16.4f}")
-    print(f"\n   §7 FIABILIDAD de B3_fc_error")
-    print(f"   {'tramo':16s} {'n':>5s} {'p medio':>9s} {'real':>8s}")
-    for lo_,hi_,n_,pm,re_ in fiabilidad(filas,'B3_fc_error'):
-        print(f"   [{lo_:.2f}, {hi_:.2f}){'':4s} {n_:5d} {pm:9.4f} {re_:8.4f}")
+      print(f"\n   §7 CALIBRACION (por banda, descriptivo)   pendiente 1 e intercepto 0 = perfecta")
+      print(f"   {'modelo':14s} {'pendiente':>10s} {'intercepto':>11s} {'sd(p)=sharpness':>16s}")
+      for m in MODELOS:
+          b,a,sd=calibracion(filas,m); print(f"   {m:14s} {b:10.3f} {a:+11.4f} {sd:16.4f}")
+      print(f"\n   §7 FIABILIDAD de B3_fc_error")
+      print(f"   {'tramo':16s} {'n':>5s} {'p medio':>9s} {'real':>8s}")
+      for lo_,hi_,n_,pm,re_ in fiabilidad(filas,'B3_fc_error'):
+          print(f"   [{lo_:.2f}, {hi_:.2f}){'':4s} {n_:5d} {pm:9.4f} {re_:8.4f}")
 
-    print(f"\n   §18 ESTABILIDAD TEMPORAL (Brier por evento, por mes)")
-    print(f"   {'mes':9s} {'n ev':>5s} " + " ".join(f"{m.split('_')[0]:>8s}" for m in MODELOS))
-    meses=sorted({td.strftime('%Y-%m') for td,_,_ in filas})
-    for mes in meses:
-        ev_m=sorted({td for td,_,_ in filas if td.strftime('%Y-%m')==mes})
-        fila=f"   {mes:9s} {len(ev_m):5d} "
-        for m in MODELOS:
-            fila+=f" {st.mean(B[m][td] for td in ev_m):8.5f}"
-        print(fila)
+      print(f"\n   §18 ESTABILIDAD TEMPORAL (Brier por evento, por mes)")
+      print(f"   {'mes':9s} {'n ev':>5s} " + " ".join(f"{m.split('_')[0]:>8s}" for m in MODELOS))
+      meses=sorted({td.strftime('%Y-%m') for td,_,_ in filas})
+      for mes in meses:
+          ev_m=sorted({td for td,_,_ in filas if td.strftime('%Y-%m')==mes})
+          fila=f"   {mes:9s} {len(ev_m):5d} "
+          for m in MODELOS:
+              fila+=f" {st.mean(B[m][td] for td in ev_m):8.5f}"
+          print(fila)
