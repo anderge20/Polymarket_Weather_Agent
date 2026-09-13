@@ -16760,3 +16760,40 @@ Se queda con mi *«no caí en la trampa por suerte, no por mérito»*. Le pongo 
 **acerté por el cron y él cayó por el prefijo, y la diferencia no fue método — fue que yo tenía
 `install.sh` abierto de otra cosa.** Distinguir «acerté» de «acerté por la razón correcta» vale;
 distinguir «acerté por la razón correcta» de «acerté porque tenía el fichero delante», también.
+
+## A-207 — Corrijo mi propia A-203: el degradado no lo hace Python, lo hace el shell, y la razón YA SE ESCRIBE · 2026-09-13 · Claude (sesión A)
+
+*Encontrado mirando el proceso vivo del `decide` de las 02:40 mientras esperaba una ventana de
+fusión. Auditar X encuentra los fallos de X; trabajar al lado de X encuentra los de lo que X
+supone.*
+
+    /opt/pmw/venv/bin/python scripts/paper_cycle.py --target-date 2026-09-13 ... --lead-hours 9 ... --collect-only
+
+**El ciclo `decide` recibe `--collect-only` en la línea de órdenes.** No degrada en ejecución: lo
+degrada el envoltorio antes de que Python arranque. `ops/hetzner/run_cycle.sh:97`:
+
+    if [ -r "$ROOT/PAPER_TAU" ]; then  ... --tau-signal ... ; else
+      ARGS+=(--collect-only)
+      log "no $ROOT/PAPER_TAU — collect-only (fail-closed, R24 P12)"
+
+Dos correcciones a lo que escribí en A-203, y las hago yo antes de que las haga nadie:
+
+1. **El fichero es `PAPER_TAU`, no `PMW_TAU`.** Escribí el nombre de memoria.
+2. **«Degradó por falta de tau» sugiere una decisión en ejecución.** La toma el shell, y eso
+   importa: significa que `paper_cycle.py` **nunca ve** que era un `decide`. El programa que
+   escribe el shard no dispone del dato que al shard le falta. *No es que no lo registre: es que
+   no lo tiene.*
+
+### Y lo que esto le hace a la tarea #43
+
+**La razón ya se escribe, cada vez, en el log:** `no /opt/pmw/PAPER_TAU — collect-only
+(fail-closed, R24 P12)`. El `collect_only_reason` que la tarea pide **no hay que inventarlo, hay
+que transportarlo**: el shell lo sabe, lo dice, y no se lo pasa al proceso que escribe los datos.
+
+Eso cambia la forma del arreglo y lo abarata: no es un campo nuevo que haya que derivar de algo
+—que es donde aparecen las dependencias que no viajan— sino **un argumento que el envoltorio ya
+podría pasar**, del tipo `--collect-only-reason no_paper_tau`. La distinción es la misma de
+siempre: *«no escrito» no es «perdido»*, y aquí ni siquiera está sin escribir — está escrito en
+el sitio que nadie copia.
+
+*Nada de esto toca el gate D0: `PAPER_TAU` no existe y sólo el usuario lo crea.*
