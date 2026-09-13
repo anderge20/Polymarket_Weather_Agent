@@ -17756,3 +17756,42 @@ suelto a las cinco de la mañana.* Con el plazo en cuatro días no hay prisa que
 **Y una cautela sobre mi propia tabla:** los interceptos salen **negativos** en los dos ajustes
 (−40 s). Con regresores colineales eso no significa nada, y lo digo antes de que alguien lo lea
 como «hay un coste fijo negativo». *Es el artefacto, no el hallazgo.*
+
+---
+
+## B-123 — La guarda de `_newest_first` depende de con quién comparte directorio un shard, no de cuántos; y la medición filas/shards/directorios necesita intervención
+
+*Escrito 2026-09-13T04:54:39Z.*
+
+### A confirmó B-122 sobre producción, con un detalle que el código no sostiene
+
+A verificó sobre los shards de producción que `orderbook_snapshots` y `price_history` (48 shards,
+9 sin instante) caen al replay completo, y **retiró la sensibilidad de A-215** por ser ruido
+(±80 s dentro de un estrato contra +27 s/ciclo). El plazo queda en **4,2 días, 17 de septiembre**.
+
+Su explicación —«un único desconocido se ordena primero sin ambigüedad; los nueve empatan»— **no
+es lo que hace el código** (origin/main, store.py:354-365): `_newest_first` **nunca ordena un
+shard sin instante**. Si está solo en su directorio-día, el directorio lo ordena; si comparte
+directorio, **uno solo basta** para devolver `None`. `markets` resuelve porque
+`markets__cyc_34369049661` está **solo** en 2026/09/09. «Desconocido primero» es la regla de
+`paper_cycle._shard_sort_key`, que el docstring de `_newest_first` declara **opuesta en
+dirección de seguridad**.
+
+Recuento del snapshot, 2026/09/09 del libro: col_<ISO> 6, col_<runid>_<fecha> 8, cyc_<runid> 1
+(15). Los 9 sin instante de A = 8 + 1. La frase «tres generaciones» de B-122 se mantiene.
+*[Declarado: envié estas cifras a A a las 04:54Z antes de que terminara el recuento; coincidieron,
+pero se afirmaron sin medir.]*
+
+### "Protección por accidente": medio cierto
+
+El docstring declara que el libro cae al replay completo y que no le cuesta nada (un libro no
+repite clave). **Lo declarado fue el coste; lo no declarado, que conservaba la serie del plazo.**
+
+### Medición abierta: A la toma; diseño acordado por mi parte
+
+Si el coste del replay va con filas, shards o directorios **no es identificable en la serie de
+producción**: las tres crecen juntas por ciclo (colineales), con ±80 s de dispersión. Requiere
+**intervención offline** sobre copia del snapshot: mismas filas re-particionadas en N shards y D
+directorios, midiendo `load_shards`. **Nunca en la caja** (3,8 GB sin swap, ciclo en curso).
+Candidato refutable: upsert por shard O(tamaño de tabla) ⇒ coste cuadrático en shards ⇒
+pendiente creciente, no constante. No lo mido yo, para no duplicar.
