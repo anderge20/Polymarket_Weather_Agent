@@ -1,0 +1,40 @@
+# Atribución ciclo -> commit, rescatada de /opt/pmw/log el 2026-09-13T01:35Z.
+# Origen: lineas 'launcher: ref=X at SHA -> MODO' seguidas de 'paper_cycle session=ID'.
+# Es el UNICO registro de que codigo produjo cada shard para los ciclos anteriores al PR #38,
+# que es cuando code_commit dejo de escribir None. La caja no tiene logrotate: esto no estaba copiado.
+# Se extrajo SOLO esta tabla, no el log entero (menos superficie que auditar).
+session_id	sha	ref	modo_lanzado	instante_lanzador
+col_20260909T202305Z_63236f	ee2836b	fix/upsert-no-pandas	collect	2026-09-09T20:23:04Z
+col_20260909T210326Z_e36a8f	47db59b	main	collect	2026-09-09T21:03:24Z
+col_20260909T210705Z_a101fc	47db59b	main	collect	2026-09-09T21:07:03Z
+col_20260910T000705Z_bd9d80	96937ab	main	collect	2026-09-10T00:07:03Z
+col_20260910T030705Z_cfdccc	83144ce	main	collect	2026-09-10T03:07:03Z
+col_20260910T060705Z_59ff8b	035f8d3	main	collect	2026-09-10T06:07:03Z
+col_20260910T090705Z_72142c	763c4bd	main	collect	2026-09-10T09:07:03Z
+col_20260910T120705Z_dd85d1	763c4bd	main	collect	2026-09-10T12:07:03Z
+col_20260910T150704Z_bf712c	763c4bd	main	collect	2026-09-10T15:07:03Z
+col_20260910T180705Z_c7e44c	763c4bd	main	collect	2026-09-10T18:07:03Z
+col_20260910T210704Z_ac4615	763c4bd	main	collect	2026-09-10T21:07:03Z
+col_20260911T000705Z_6cad93	763c4bd	main	collect	2026-09-11T00:07:03Z
+col_20260911T030704Z_15c38a	763c4bd	main	collect	2026-09-11T03:07:02Z
+col_20260911T060705Z_81a5b6	763c4bd	main	collect	2026-09-11T06:07:03Z
+col_20260911T090704Z_70d861	763c4bd	main	collect	2026-09-11T09:07:03Z
+col_20260911T120705Z_c5b1f7	763c4bd	main	collect	2026-09-11T12:07:03Z
+col_20260911T150705Z_70a7c5	a577f28	main	collect	2026-09-11T15:07:03Z
+col_20260911T180705Z_4c03ea	03396c2	main	collect	2026-09-11T18:07:03Z
+col_20260911T210705Z_709423	97e7111	main	collect	2026-09-11T21:07:03Z
+col_20260912T000705Z_b58b50	6232e71	main	collect	2026-09-12T00:07:03Z
+col_20260912T030705Z_f1ccaf	e341e02	main	collect	2026-09-12T03:07:03Z
+col_20260912T060705Z_c52ca2	e341e02	main	collect	2026-09-12T06:07:03Z
+col_20260912T090705Z_03d6d4	e341e02	main	collect	2026-09-12T09:07:03Z
+col_20260912T120919Z_a45c6d	e341e02	main	collect	2026-09-12T12:09:17Z
+col_20260912T150705Z_ae15d7	42120f2	main	collect	2026-09-12T15:07:03Z
+col_20260912T180705Z_84bd52	c424ea5	main	collect	2026-09-12T18:07:03Z
+col_20260912T210705Z_fa165f	c424ea5	main	collect	2026-09-12T21:07:03Z
+col_20260913T000706Z_40b22d	33f1eca	main	collect	2026-09-13T00:07:04Z
+col_20260910T024007Z_228145	83144ce	main	decide	2026-09-10T02:40:05Z
+col_20260910T114005Z_76c853	763c4bd	main	decide	2026-09-10T11:40:03Z
+col_20260911T024005Z_26c0fe	763c4bd	main	decide	2026-09-11T02:40:03Z
+col_20260911T114004Z_aa19cc	763c4bd	main	decide	2026-09-11T11:40:03Z
+col_20260912T024005Z_dffd86	e341e02	main	decide	2026-09-12T02:40:04Z
+col_20260912T114005Z_e79a6c	e341e02	main	decide	2026-09-12T11:40:03Z
