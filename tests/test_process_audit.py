@@ -94,12 +94,12 @@ def test_collector_refuses_to_pass_on_a_branch_with_only_decide_commits():
 
 
 def test_main_reports_failure_when_a_check_cannot_be_measured(monkeypatch, capsys):
-    monkeypatch.setattr(process_audit, "merged_prs", lambda limit: [{"number": 1}])
+    monkeypatch.setattr(process_audit, "merged_prs", lambda limit: [{"number": 1, "createdAt": "2026-09-12T10:00:00Z", "mergedAt": "2026-09-12T13:00:00Z", "reviews": [], "comments": []}])
     monkeypatch.setattr(process_audit, "check_d16",
-                        lambda merged: (_ for _ in ()).throw(
+                        lambda **kw: (_ for _ in ()).throw(
                             process_audit.CheckFailed("gh failed: not logged in")))
     monkeypatch.setattr(process_audit, "check_objection_window_was_used",
-                        lambda merged: [])
+                        lambda **kw: [])
     monkeypatch.setattr(process_audit, "check_mainline", lambda since: [])
     monkeypatch.setattr(process_audit, "check_collector", lambda: [])
     assert process_audit.main([]) == 1
@@ -109,10 +109,10 @@ def test_main_reports_failure_when_a_check_cannot_be_measured(monkeypatch, capsy
 
 
 def test_main_is_green_only_when_both_checks_are_green(monkeypatch, capsys):
-    monkeypatch.setattr(process_audit, "merged_prs", lambda limit: [{"number": 1}])
-    monkeypatch.setattr(process_audit, "check_d16", lambda merged: [])
+    monkeypatch.setattr(process_audit, "merged_prs", lambda limit: [{"number": 1, "createdAt": "2026-09-12T10:00:00Z", "mergedAt": "2026-09-12T13:00:00Z", "reviews": [], "comments": []}])
+    monkeypatch.setattr(process_audit, "check_d16", lambda **kw: [])
     monkeypatch.setattr(process_audit, "check_objection_window_was_used",
-                        lambda merged: [])
+                        lambda **kw: [])
     monkeypatch.setattr(process_audit, "check_mainline", lambda since: [])
     monkeypatch.setattr(process_audit, "check_collector", lambda: [])
     assert process_audit.main([]) == 0
@@ -125,10 +125,10 @@ def test_main_runs_the_window_check_and_not_only_the_clock(monkeypatch, capsys):
     Contarlo por numero de `[ok]` dice cuantos corrieron, no cuales — y un check
     que existe sin estar cableado es exactamente la forma de la comprobacion del
     colector que paso en vacio dos dias."""
-    monkeypatch.setattr(process_audit, "merged_prs", lambda limit: [{"number": 1}])
-    monkeypatch.setattr(process_audit, "check_d16", lambda merged: [])
+    monkeypatch.setattr(process_audit, "merged_prs", lambda limit: [{"number": 1, "createdAt": "2026-09-12T10:00:00Z", "mergedAt": "2026-09-12T13:00:00Z", "reviews": [], "comments": []}])
+    monkeypatch.setattr(process_audit, "check_d16", lambda **kw: [])
     monkeypatch.setattr(process_audit, "check_objection_window_was_used",
-                        lambda merged: ["PR #38: window of 2.19 h left NO trace"])
+                        lambda **kw: ["PR #38: window of 2.19 h left NO trace"])
     monkeypatch.setattr(process_audit, "check_mainline", lambda since: [])
     monkeypatch.setattr(process_audit, "check_collector", lambda: [])
     assert process_audit.main([]) == 1
@@ -300,10 +300,11 @@ def test_main_states_the_size_of_what_it_audited_on_every_run(monkeypatch, capsy
     run over the history.
     """
     monkeypatch.setattr(process_audit, "merged_prs",
-                        lambda limit: [{"number": 4}, {"number": 38}])
-    monkeypatch.setattr(process_audit, "check_d16", lambda merged: [])
+                        lambda limit: [_pr(4, "2026-09-12T10:00:00Z", "2026-09-12T13:00:00Z"),
+                                       _pr(38, "2026-09-12T11:00:00Z", "2026-09-12T14:00:00Z")])
+    monkeypatch.setattr(process_audit, "check_d16", lambda **kw: [])
     monkeypatch.setattr(process_audit, "check_objection_window_was_used",
-                        lambda merged: [])
+                        lambda **kw: [])
     monkeypatch.setattr(process_audit, "check_mainline", lambda since: [])
     monkeypatch.setattr(process_audit, "check_collector", lambda: [])
     assert process_audit.main([]) == 0
@@ -318,9 +319,9 @@ def test_both_pr_checks_run_over_the_SAME_population(monkeypatch):
     poblacion = [_pr(4, "2026-09-09T10:28:28Z", "2026-09-09T10:28:38Z")]
     monkeypatch.setattr(process_audit, "merged_prs", lambda limit: poblacion)
     monkeypatch.setattr(process_audit, "check_d16",
-                        lambda merged: vistas.append(("d16", id(merged))) or [])
+                        lambda merged, **kw: vistas.append(("d16", id(merged))) or [])
     monkeypatch.setattr(process_audit, "check_objection_window_was_used",
-                        lambda merged: vistas.append(("win", id(merged))) or [])
+                        lambda merged, **kw: vistas.append(("win", id(merged))) or [])
     monkeypatch.setattr(process_audit, "check_mainline", lambda since: [])
     monkeypatch.setattr(process_audit, "check_collector", lambda: [])
     process_audit.main([])
@@ -342,3 +343,87 @@ def test_the_seven_violations_of_2026_09_09_are_found_when_the_window_reaches_th
     assert len(problems) == 3
     assert any("PR #4" in p and "120 min short" in p for p in problems), problems
     assert any("PR #5" in p and "120 min short" in p for p in problems), problems
+
+
+# ------------------------------------------------------- deuda heredada y su fijación
+def test_without_a_policy_every_era_is_enforced():
+    """EL DEFECTO POR DEFECTO ES EL ESTRICTO, y eso es deliberado.
+
+    Si `enforced_from` valiera `ENFORCED_FROM` por defecto, cualquier llamada que
+    olvidara el argumento obtendría en silencio la versión indulgente: la forma
+    permisiva, una capa más abajo. La función cuenta violaciones; QUÉ ÉPOCA SE
+    EXIGE es una decisión, y las decisiones van en el punto de entrada."""
+    viejo = [_pr(4, "2026-09-09T10:28:28Z", "2026-09-09T10:28:38Z")]
+    assert len(process_audit.check_d16(merged=viejo)) == 1
+
+
+def test_a_short_window_before_the_cutoff_is_legacy_and_not_a_failure():
+    viejo = [_pr(4, "2026-09-09T10:28:28Z", "2026-09-09T10:28:38Z")]
+    out = process_audit.check_d16(merged=viejo, enforced_from=dt.date(2026, 9, 13),
+                                  legacy_short=1)
+    assert out == [], out
+
+
+def test_a_short_window_ON_the_cutoff_day_still_fails():
+    """La frontera es `<`, no `<=`: el día que se empieza a exigir, se exige."""
+    hoy = [_pr(99, "2026-09-13T10:00:00Z", "2026-09-13T10:30:00Z")]
+    out = process_audit.check_d16(merged=hoy, enforced_from=dt.date(2026, 9, 13),
+                                  legacy_short=0)
+    assert len(out) == 1 and "PR #99" in out[0], out
+
+
+def test_the_legacy_pin_fails_when_the_count_drifts():
+    """LO QUE IMPIDE QUE ESTA DIVISIÓN SEA UN 'YA NO PUEDE FALLAR'.
+
+    Sacar la deuda heredada de la lista de fallos sólo es honesto si el recuento
+    queda clavado: si cambia, o se reescribió la historia o el pin está obsoleto,
+    y las dos cosas necesitan a alguien."""
+    viejo = [_pr(4, "2026-09-09T10:28:28Z", "2026-09-09T10:28:38Z")]
+    out = process_audit.check_d16(merged=viejo, enforced_from=dt.date(2026, 9, 13),
+                                  legacy_short=7)
+    assert len(out) == 1 and "legacy baseline moved" in out[0] and "pinned at 7" in out[0]
+
+
+def test_a_silent_window_before_the_cutoff_is_legacy_and_the_pin_still_bites():
+    mudo = [_pr_traza(4, "2026-09-09T08:00:00Z", "2026-09-09T12:00:00Z")]
+    assert process_audit.check_objection_window_was_used(
+        merged=mudo, enforced_from=dt.date(2026, 9, 13), legacy_silent=1) == [
+            "0 formal reviews across 1 merged PRs: whatever review happens is in "
+            "the comment stream, and no check but this one looks there"]
+    drift = process_audit.check_objection_window_was_used(
+        merged=mudo, enforced_from=dt.date(2026, 9, 13), legacy_silent=0)
+    assert any("legacy baseline moved" in x for x in drift), drift
+
+
+def test_the_measurements_state_the_frozen_debt_even_when_nothing_fails():
+    """Sacarlas de los fallos sin imprimirlas no habría acortado la auditoría:
+    la habría callado. Nueve incumplimientos de la regla de fusión del propio
+    repositorio no desaparecen por ser viejos."""
+    pobl = [_pr_traza(4, "2026-09-09T10:28:28Z", "2026-09-09T10:28:38Z"),
+            _pr_traza(40, "2026-09-12T08:00:00Z", "2026-09-12T12:00:00Z",
+                      reviews=["2026-09-12T11:00:00Z"])]
+    lineas = process_audit.measure_process_state(pobl, dt.date(2026, 9, 13))
+    assert "1 of 2 merged PRs carry a formal review" in lineas[0]
+    assert "1 of 2 PRs merged before 2026-09-13 left no trace" in lineas[1]
+    assert "1 of 2 PRs merged before 2026-09-13 merged INSIDE" in lineas[2]
+
+
+def test_main_hands_the_checks_the_pin_and_not_only_the_cutoff(monkeypatch, capsys):
+    """CABLEADO, no existencia. Una política que se define y no se pasa deja los
+    dos chequeos en su modo estricto o en su modo sin pin según el descuido, y
+    ninguna prueba de unidad lo vería: el defecto vive en la llamada."""
+    visto = {}
+    monkeypatch.setattr(process_audit, "merged_prs",
+                        lambda limit: [_pr_traza(4, "2026-09-09T10:00:00Z",
+                                                 "2026-09-09T10:10:00Z")])
+    monkeypatch.setattr(process_audit, "check_d16",
+                        lambda **kw: visto.update(d16=kw) or [])
+    monkeypatch.setattr(process_audit, "check_objection_window_was_used",
+                        lambda **kw: visto.update(win=kw) or [])
+    monkeypatch.setattr(process_audit, "check_mainline", lambda since: [])
+    monkeypatch.setattr(process_audit, "check_collector", lambda: [])
+    process_audit.main([])
+    assert visto["d16"]["enforced_from"] == process_audit.ENFORCED_FROM
+    assert visto["d16"]["legacy_short"] == process_audit.LEGACY_SHORT
+    assert visto["win"]["enforced_from"] == process_audit.ENFORCED_FROM
+    assert visto["win"]["legacy_silent"] == process_audit.LEGACY_SILENT
