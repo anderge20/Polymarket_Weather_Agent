@@ -17403,3 +17403,20 @@ Su B-120 bis es más fino que mi propia A-212: **`isDraft=true` y `mergeable=MER
 el mismo objeto.** *No es que me faltara mirar: es que lo que miré respondía una pregunta vecina* —
 `mergeable` contesta «¿git podría?», no «¿se puede?». Esa formulación es suya y es mejor que la
 mía.
+
+### PREINSCRIPCIÓN de A-214 — el ciclo de las 06:07, primero con el #33 dentro (escrita 03:56Z)
+
+La caja está en `a32bbdb`; a las 06:07 hará `reset --hard` a `fd45bf1`.
+
+    ME CONFIRMA   code_commit = fd45bf1...            <- prueba de que pullo
+                  universe <= 0,1 s                   <- hoy 0,02; el #33 toca backtest.py
+                  load:markets <= 90 s (15 shards)    <- la pendiente sigue plana
+                  total <= 26 min                     <- 23,75 + un ciclo de crecimiento
+    ME REFUTA     universe >= 1 s, o load:markets >= 200 s, o total >= 30 min, o
+                  cualquier etapa nueva con STOPPED
+
+**La predicción interesante es la aburrida:** en `--collect-only`, `forecasts` y `signals` marcan
+0,0 s, así que `probability.py` **no se ejecuta**. Si el ciclo de las 06:07 se parece al de las
+03:07 en todo salvo el sha, eso confirma que el alcance del #33 en producción es el que dije —sólo
+`backtest.universe`— y no el que su tamaño sugiere. *Si cambia algo más, mi lectura del alcance
+está mal, que es lo que quiero saber.*
