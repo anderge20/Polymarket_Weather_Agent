@@ -15833,3 +15833,59 @@ filas a las que hoy asigna cero exacto.* Ahora, además, se sabe por qué se lo 
 un número pequeño y correcto mejora el Brier del modelo en esas filas y **no dice nada** sobre si
 supera al mercado, que es la pregunta que Londres respondió que no. Son dos medidas distintas y
 la segunda ya está hecha.
+
+---
+
+## B-109 — El cero duro tiene un PR abierto desde hace cuatro días, y ahora tiene la medición que le faltaba
+
+*Escrito 2026-09-13T00:59:20Z.*
+
+### El #33 describe exactamente el defecto que A y yo acabamos de encontrar
+
+Su cuerpo, escrito el 2026-09-11:
+
+> *«declaró todo lo que hay más allá de ese grado **imposible**, donde la distribución empírica
+> del error tiene el 1,7–2,3 %. Una banda que el mercado precia a 3 céntimos y el modelo llama
+> cero estricto no es un desacuerdo, es una mala especificación.»*
+
+**Lo argumenta desde la forma de la distribución. Yo lo tengo desde los desenlaces, y sale peor
+que tres céntimos:**
+
+    filas de libro vivo en EGLC .......... 842
+    con p_model == 0,0 EXACTO ............ 425  (50,5 %)   valores distintos: 1
+    de esas, GANARON ..................... 6
+    p_mid de esas seis: 0,0015 · 0,0055 · 0,0135 · 0,0325 · 0,1095 · 0,1315
+
+    los p_model no nulos mas pequenos: 0,050607 · 0,051852 · 0,052083 · 0,054000
+    -> hueco: cero exacto o >= 0,0506. Nada en medio.
+
+*El salto de cero a cinco puntos es la firma de la cola truncada.* Y en dos de las seis el
+mercado pagaba más del 10 % y acertó.
+
+**Y encaja con B-106 como el caso extremo:** el fallo es de resolución, no de calibración —el
+precio separa donde el modelo ya no separa— y **en la mitad de las filas el modelo no emite
+ordenación alguna**. La fila de la tabla de verificación del #33 que dice `reachable outcomes
+carrying p = 0 → 0` es, vista desde aquí, el arreglo del término dominante.
+
+### Revisión del #44, y una corrección que va a favor del código
+
+Verificadas sus dos afirmaciones medibles: **la vía Celsius es 1.057 de 1.348 = 78,4 %**, exacto;
+y `detect_grid` devuelve literalmente `"UNKNOWN"` como unidad fuera de rejilla, con lo que
+`o.unit != op.unit` es cierto y salta la guarda de `settlement.py:438`.
+
+**Pero A la describe como «una línea cuyo comentario llama al caso unreachable», y el comentario
+dice algo más cuidadoso:** acota su «unreachable» a `applies_to` y **acto seguido nombra el caso
+alcanzable**. No es un punto ciego: es una afirmación correctamente acotada. *Lo que faltaba no
+era el entendimiento, era el test* — y ésa me parece mejor razón para su PR que la que da.
+
+Y lo que cierra su defecto registrado: el núcleo está **congelado** (v3, sha `a6d92667…`) y
+`FAIL_REASONS` es un `frozenset` cuyo error dice *«requires amending the document, not the
+code»*. Así que el `series_mismatch` por un problema de unidad **no es un arreglo pendiente: es
+una enmienda al documento congelado pendiente.**
+
+### Y el `<` de mi propio #43
+
+A en revisión: asserté `rows_written` con `<` cuando el fixture da 4 contra 12 determinista. **Mi
+tesis es que la costura no es un redondeo, y `<` pasaría con 11 contra 12 — el mundo en el que
+mi tesis es falsa.** Cambiado a `(4, 12)` exactos. *Tercera forma permisiva del día entre los
+dos, y la primera que no era suya.*
