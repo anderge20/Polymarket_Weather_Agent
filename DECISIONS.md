@@ -21678,3 +21678,65 @@ dos degenerados del 05-19 (SBGR con 1 banda y RKSI con 3), **ninguno de EGLC**.
 
 **Nada reinterpretado, nada reejecutado, ningún modelo.** `LONDRES = NO EDGE MEDIDO` y el
 `D — INCONCLUSO` siguen intactos y quedan marcados como **OLD / historical reference**.
+
+---
+
+## A-276 — NIVEL 0.75, punto 4: `winning_outcome` VALIDADO, y la única discrepancia NO es suya · 2026-09-13 · Claude (sesión A)
+
+### Qué representa `winning_outcome`, verificado y no supuesto
+
+Es un campo **por MERCADO**, no por evento, con exactamente dos valores en EGLC:
+`'Yes'` (187) y `'No'` (1 810), sumando los 1 997. Significa **«el lado YES de este mercado
+ganó»**, y va junto a `uma_resolution_status='resolved'`: es **la resolución liquidada por
+UMA contra la fuente contractual**, que en EGLC es
+`wunderground.com/history/daily/gb/london/EGLC` en los 1 997.
+
+    ganadoras por evento -> nº eventos:   {1: 187}      exactamente una, en los 187
+    particion completa por evento:        187 de 187
+
+**Consistencia interna perfecta: una ganadora por evento y una partición completa en todos.**
+
+### Un hueco que hay que decir: NO hay portador redundante
+
+    is_winner en outcomes:   NULL en 3 994 de 3 994
+
+`backfill_markets` no puebla `is_winner`, así que **`markets.winning_outcome` es el ÚNICO
+portador del resultado** y no existe un segundo campo contra el que contrastarlo dentro del
+almacén. No es un defecto —la regla del proyecto prohíbe expresamente decidir por
+`is_winner` o por `outcome_index`— pero significa que la validación interna sólo puede ser
+estructural (unicidad y partición), y ésa pasa.
+
+### La comparación externa, y su lectura correcta
+
+    proxy COINCIDE     136
+    proxy DIFIERE        1     2026-05-27: maximo 25,0 contra banda ganadora '24 C'
+    sin observacion     50     eventos fuera de la ventana de observacion
+
+**Esto NO valida ni invalida `winning_outcome`: mide el acuerdo de nuestro PROXY con la
+fuente contractual.** Nuestra etiqueta es el máximo METAR de IEM; la fuente del contrato es
+Wunderground. **Un desacuerdo es una discrepancia del proxy, no un error de la resolución.**
+
+Y la única discrepancia **ya está resuelta y caracterizada**: es el 2026-05-27, el caso de
+`WINDOW_LOCAL_CIVIL_DAY` (A-247), con cota preinscrita de 0,49-0,66 % de días etiquetables
+(A-259) escrita antes de que estos datos existieran. **136 de 137 = 99,3 % de acuerdo del
+proxy.** *No hay discrepancia sin explicar, que es la condición de parada del encargo.*
+
+### Punto 3 del encargo, confirmado formalmente
+
+    7 bandas ·   2 eventos · 2025-12-31 -> 2026-01-01
+    9 bandas ·  26 eventos · 2026-02-18 -> 2026-03-15
+   11 bandas · 159 eventos · 2026-03-16 -> 2026-08-23
+
+    pares de ladders con rangos que se solapan:      0
+    dias EGLC con dos tamanos de escalera distintos:  0
+
+**Cero solapamiento temporal y cero eventos de transición en EGLC.** Los tres regímenes son
+intervalos disjuntos y consecutivos.
+
+### Lo que esto deja pendiente para poder comparar OLD vs CORRECTED
+
+Los **50 eventos sin observación** no son un defecto del dataset: son eventos válidos fuera
+de la ventana en que existen observaciones (2026-04-08 → 2026-08-23). Cualquier métrica que
+necesite la etiqueta observada trabaja sobre **137**, no sobre 187, y el informe tendrá que
+decir las dos cifras — que es justamente el punto 9 del encargo anterior sobre no presentar
+`N filas` como si fueran observaciones independientes.
