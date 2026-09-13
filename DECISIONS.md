@@ -19524,6 +19524,17 @@ vigente» se resuelve al leer. Nota 3 aceptada: faltaba un lector inocuo (`backf
 Mutaciones comprobadas en ambos tests nuevos. `tests/`: 698 passed. B-133 (superconjunto) es
 reverificable sin cuota desde `evidence/B-133/raw_iem_55_estaciones.tgz`.]**
 
+**[Actualización 2026-09-13T11:45:23Z: A APROBÓ `7a4ab05` (698 passed y tres mutaciones reproducidas por su lado:
+`.get` restaurado, `SERIES_SOURCE` sin `SERIES_1F` y clave sin `source`, este último con el
+`BinderException` que A había predicho para su propio arreglo). A comprobó además lo que el test no
+puede ver: la base REAL `pmw.duckdb` (1 348 filas) declara el mismo `PRIMARY KEY` que el test fija.
+Nit no bloqueante aceptado: en el test del mapa olvidado, el `setitem` sobre `SERIES_REPORT_TYPES` no
+afecta a `source_for`; se corrige en el commit de rebase. **Orden de fusión: primero el #48, luego
+rebase del #49 sobre main, y las tres condiciones de revisión se reabren sobre el head nuevo.**
+Tarea #60 (bandas ausentes): A comprobó en Gamma que los eventos truncados están completos en la fuente
+(251729: 3→9, 321062: 3→11, 693904: 3→11; control 341797: 11→11). La causa en discovery la toma
+esta sesión y el reanálisis del NIVEL 1 lo lleva A.]**
+
 ---
 
 ## A-242 — Revisión hostil del PR #49 (`21f533d`): el arreglo es correcto, y el mapa que lo sostiene REARMA el bug · 2026-09-13 · Claude (sesión A)
