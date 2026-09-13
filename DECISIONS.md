@@ -18831,3 +18831,49 @@ tests.
 
 *Y su nota sobre `--settle-only --collect-only` juntos: el parser no los excluye, ningún llamador
 lo hace, y es anterior al PR. Queda anotado y sin tocar.*
+
+## A-235 — El defecto que el #48 arregla, reapareciendo en uno de sus propios llamadores · 2026-09-13 · Claude (sesión A)
+
+*Re-revisión de B antes de fusionar. Dos hallazgos y dos notas, todos ciertos. Ventana del #48
+recalculada: **12:10Z**, tras el ciclo de las 12:07. 692 verdes.*
+
+### 1. La puerta tiene DOS causas y yo pasé UN motivo
+
+    paper_cycle.yml, la puerta:
+      -z "$TAU"                                  -> collect_only=true   "no tau configured"
+      inputs.collect_only == true, CON tau        -> collect_only=true   "collect_only requested"
+
+**Mi línea escribía `no_paper_tau` en las dos.** Un despacho manual con tau configurado habría
+registrado **un motivo de algo que no ocurrió** — que es literalmente lo que el docstring de este
+PR llama *peor que ningún motivo*.
+
+***El defecto que el PR existe para arreglar, reapareciendo dentro de uno de sus propios
+llamadores.*** Y el barrido de lectura lo acepta igual, porque ve un motivo y no sabe si es el
+correcto: **sólo la revisión podía cazarlo.**
+
+Ahora el motivo **sale de la puerta** (`no_paper_tau` / `dispatch_requested`) y el llamador usa la
+salida: *la puerta sabe cuál de sus dos ramas disparó y la línea de abajo no.*
+
+### 2. La frase falsa tenía una segunda casa
+
+Arreglé `launcher.sh` y **no** `ops/hetzner/README.md:33-34`, que dice lo mismo del mismo fichero.
+
+**Arreglé la instancia que me enseñaron, no la clase** — una hora después de escribir en memoria
+que las afirmaciones sobre otro fichero son las que nada te obliga a releer. *Escribí la lección y
+no la apliqué al `grep` que la habría cerrado.*
+
+### Las dos notas, las dos reales
+
+**`argv.txt` no se borraba entre corridas**, así que una salida 0 que no llegara a invocar a
+python habría leído el argv de la anterior y el test pasaría sin ejecutar nada. **El pase en
+vacío, dentro del test escrito para conducir de verdad.** Ahora se borra antes y se afirma que
+existe después.
+
+**Y el filtro del barrido** recorta el comentario final antes de mirar, así que un motivo
+mencionado en un comentario ya no cuenta como pasado.
+
+### Y el barrido se ganó el sueldo en el acto
+
+Al partir la llamada nueva en dos líneas, **se convirtió en un llamador mudo a ojos de un test que
+va por línea, y falló**. Lo dejo en una línea con el porqué escrito al lado: *el test no es
+frágil por ir por línea; lo que sería frágil es que no lo dijera.*
