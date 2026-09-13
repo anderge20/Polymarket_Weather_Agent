@@ -508,12 +508,17 @@ def test_an_open_ended_band_can_never_carry_probability_zero():
     42.3 of the 50.5 points of hard zeros.
 
     Reproduced here from the versioned artifact, so it does not depend on their
-    substrate.
+    substrate. THE FORECAST LEVEL BELOW IS CONSTRUCTED, not theirs: 34.5 C is
+    chosen only to put the old six-integer support above the band. So the 0.0196
+    this test sees is NOT the measured value — on the live book session A gets
+    0.006159 for the real forecast. Both are positive, which is the whole
+    assertion; the magnitudes differ because the forecasts do, and neither number
+    should be quoted as the other's.
 
-    NOTE THE FIX IS PARTIAL AND THE TEST SAYS SO: 0.0196 against a market price of
-    0.1095 is still light by more than 5x, which is the same residual session A's
-    review measures. What changes is POSSIBLE vs IMPOSSIBLE, and only that is
-    asserted here.
+    NOTE THE FIX IS PARTIAL AND THE TEST SAYS SO: 0.0196 here, 0.006159 on the
+    real row, against a market price of 0.1095 — light by 5x and by 18x
+    respectively, which is the same residual session A's tail-weight review
+    measures. What changes is POSSIBLE vs IMPOSSIBLE, and only that is asserted.
     """
     import json
     from weather_agent.probability import (quantiles_to_distribution,
