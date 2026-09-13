@@ -20138,3 +20138,58 @@ corregida con el 19–1 de A (2026-05-27 atribuido a la ventana `LOCAL_CIVIL_DAY
   `hetzner-launcher` por defecto, `run_cycle.sh` nada; y el PR nombra el paso de `install.sh`.
 - No bloquean: `None` antes que fallar (fallar pierde la ranura de libro); el barrido cuenta comentarios
   como llamadas y declaraciones; `launcher.sh` se puede conducir con la receta de `run_cycle.sh`.
+
+---
+
+## A-251 — MI PR HABRÍA CREADO EL DEFECTO QUE FUE ESCRITO PARA IMPEDIR, y la regla que lo prohíbe estaba en el mismo PR · 2026-09-13 · Claude (sesión A), bloqueante encontrado por B
+
+**El #51 añade `cycle_params.generator` y su comentario declara, con todas las letras, que un
+valor por defecto plausible es PEOR QUE UN HUECO.** Doce líneas de shell más allá, en el mismo PR,
+`run_cycle.sh` ponía `${PMW_GENERATOR:-hetzner-manual}`.
+
+**B lo refutó en producción y lo verifiqué leyendo el código:**
+
+    install.sh:77   install -m 0755 "$REPO/ops/hetzner/launcher.sh" "$ROOT/bin/launcher.sh"
+    install.sh:71   7 */3 * * * $ROOT/bin/launcher.sh collect ...
+
+El launcher que cron ejecuta es **una COPIA que sólo `install.sh` actualiza**; `run_cycle.sh` vive
+en el checkout y se actualiza **en cada ciclo**. Así que el ciclo siguiente a la fusión habría
+corrido mi `run_cycle.sh` nuevo **bajo el launcher viejo**, que no exporta nada, y **habría escrito
+`hetzner-manual` en todos los ciclos programados** hasta que alguien reejecutara `install.sh`.
+
+**Y mi propio test lo demostraba: `correr() == "hetzner-manual"` sin variable ES el caso del
+launcher viejo, y yo lo leí como «la rama manual».** Escribí el test que probaba el defecto y le
+puse el nombre de la intención en vez del de la conducta.
+
+> **La regla estaba escrita en el mismo PR que la violaba, en otro idioma.** En Python declaré que
+> deducir de la ausencia es inventar; en shell deduje de la ausencia. *Una regla escrita para un
+> lenguaje no se aplica sola al de al lado, y el sitio donde menos se busca es dentro del cambio
+> que la enuncia.*
+
+**El arreglo: tres declarantes, cada uno diciendo SÓLO lo que le consta** (diseño de B, y es mejor
+que el mío):
+
+    install.sh (crontab)  PMW_GENERATOR=hetzner-cron ...      lo unico que sabe que es cron
+    launcher.sh           ${PMW_GENERATOR:-hetzner-launcher}  sabe que es el launcher, no que
+                                                              le llamara cron: es tambien el
+                                                              camino manual correcto (el flock)
+    run_cycle.sh          ${PMW_GENERATOR-}                   no sabe nada y no inventa
+    paper_cycle.py        "" -> None
+
+**Hasta que se reejecute `install.sh` en la caja, los ciclos programados registran
+`hetzner-launcher`, que es CIERTO, en vez de `hetzner-cron`, que sería más preciso. Un hueco de
+precisión, no una mentira** — que es exactamente la distinción que el PR defiende, aplicada a sí
+mismo.
+
+**Segundo hallazgo de B sobre el mismo PR, y es la misma debilidad que él ya había encontrado en el
+#48:** el barrido preguntaba `"PMW_GENERATOR" in f.read_text()`, así que **un fichero que sólo lo
+mencionara en un COMENTARIO contaba como declarante**. Ahora mira el código. *Comprobado con la
+mutación que lo demuestra*: comentar `PMW_GENERATOR: github-actions` en `paper_collect.yml` deja el
+barrido rojo; con la versión anterior habría pasado.
+
+**Y el test del launcher pasó de leer a conducir.** Afirmaba la herencia comprobando que el
+`export` aparecía antes del `exec` — eso comprueba el orden de dos líneas, no que el valor llegue.
+Ahora se conduce `launcher.sh` de verdad, con `flock` y `git` interceptados y un `run_cycle.sh` de
+mentira que vuelca lo que ve.
+
+`tests/`: **700 passed**. Cinco mutaciones en rojo, una por test.
