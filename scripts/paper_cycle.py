@@ -1865,7 +1865,17 @@ def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
         # never sees that it was launched as a decide, so it is not that the
         # program declines to record the fact: it does not have it. The wrapper
         # passes it now.
-        "collect_only_reason": (args.collect_only_reason
+        # `or None`, NO SOLO EL TERNARIO. La cadena vacia y `None` son valores
+        # distintos en el shard y el lector no puede saber si `""` significa «no
+        # lo dijo» o «lo dijo en blanco» -- que es exactamente la conflacion que
+        # este campo existe para quitar, un nivel mas abajo.
+        #
+        # Y no es hipotetico: el llamador de `paper_cycle.yml` interpola
+        # `${{ steps.gate.outputs.collect_only_reason }}`, que sale VACIO si
+        # alguien anade una tercera rama a la puerta y olvida el `echo`. El
+        # barrido de lectura no lo veria: veria un motivo presente. Es el mismo
+        # agujero que la sesion B encontro en la puerta, una capa mas abajo.
+        "collect_only_reason": ((args.collect_only_reason or None)
                                 if args.collect_only else None),
         "code_commit": code_commit(),
         "run_id": os.environ.get("GITHUB_RUN_ID"),

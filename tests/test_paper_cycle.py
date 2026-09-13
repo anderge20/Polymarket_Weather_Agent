@@ -3275,6 +3275,31 @@ def test_the_shard_says_WHY_it_is_collect_only(con, tmp_path, monkeypatch):
     assert fila["collect_only_reason"] == "no_paper_tau"
 
 
+def test_an_EMPTY_reason_is_not_stated_rather_than_stated_blank(tmp_path, monkeypatch):
+    """`""` y `None` son valores distintos y sólo uno de ellos es honesto.
+
+    El llamador de `paper_cycle.yml` interpola la salida de la puerta, que sale
+    **vacía** si alguien añade una tercera rama y olvida el `echo`. El barrido de
+    lectura no lo vería —vería un motivo presente— así que el shard escribiría
+    `""`, que se lee como «lo dijo en blanco» en vez de «no lo dijo».
+    """
+    monkeypatch.setattr(paper_cycle, "stage_discover",
+                        lambda cy, *a, **k: cy.stage("discover", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_collect",
+                        lambda cy, *a, **k: cy.stage("collect:books", paper_cycle.OK))
+    store_root = tmp_path / "store"
+    paper_cycle.main([
+        "--target-date", "2026-09-11", "--dataset-version", "ds1",
+        "--store-root", str(store_root), "--db", str(tmp_path / "t.duckdb"),
+        "--collect-only", "--collect-only-reason", "",
+        "--summary-json", str(tmp_path / "s.json")])
+    import gzip as _gz
+    fila = json.loads(_gz.open(store.iter_shards(store_root, "cycle_params")[0],
+                               "rt").readline())
+    assert fila["collect_only"] is True
+    assert fila["collect_only_reason"] is None, fila["collect_only_reason"]
+
+
 def test_a_deciding_cycle_carries_no_collect_only_reason(tmp_path, monkeypatch):
     """La otra mitad: sin `--collect-only` el campo es None aunque se pase.
 
