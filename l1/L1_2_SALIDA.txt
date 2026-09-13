@@ -1,0 +1,54 @@
+============================================================================================
+L1.2 — BASELINES · implementacion declarada y BUENA FORMA
+============================================================================================
+  NO se puntua contra el target en esta etapa. El scoring es L1.4/L1.5.
+
+--------------------------------------------------------------------------------------------
+lead 24 h · eventos 95 · escaleras {11: 95}
+--------------------------------------------------------------------------------------------
+  OK  toda p en [0,1]   0 fuera
+  OK  suman 1 dentro del evento, en los CINCO   error maximo 0.00e+00
+  OK  exactamente un y=1 por evento
+  OK  un componente por banda del contrato, en los cinco
+  OK  el dia objetivo NUNCA esta en el entrenamiento   train_max maximo = td-3 dias
+  OK  la ultima etiqueta de entrenamiento estaba DISPONIBLE en t_asof
+  OK  minimo 20 pares de entrenamiento   min real 20
+
+  modelo                    p_max medio  entropia  bandas con masa  p=0 exactos  p=1 exactos
+  B0_clima                       0.4184    1.6543             8.08          277            1
+  B1_persist                     1.0000    0.0000             1.00          950           95
+  B2_fc_crudo                    1.0000    0.0000             1.00          950           95
+  B3_fc_sesgo                    1.0000    0.0000             1.00          950           95
+  B4_fc_prob                     0.3444    1.6313             7.18          363            0
+  (entropia maxima de una escalera de 11 bandas: 2.3979)
+
+--------------------------------------------------------------------------------------------
+lead 9 h · eventos 96 · escaleras {11: 96}
+--------------------------------------------------------------------------------------------
+  OK  toda p en [0,1]   0 fuera
+  OK  suman 1 dentro del evento, en los CINCO   error maximo 1.11e-16
+  OK  exactamente un y=1 por evento
+  OK  un componente por banda del contrato, en los cinco
+  OK  el dia objetivo NUNCA esta en el entrenamiento   train_max maximo = td-2 dias
+  OK  la ultima etiqueta de entrenamiento estaba DISPONIBLE en t_asof
+  OK  minimo 20 pares de entrenamiento   min real 20
+
+  modelo                    p_max medio  entropia  bandas con masa  p=0 exactos  p=1 exactos
+  B0_clima                       0.4143    1.6641             8.12          276            1
+  B1_persist                     1.0000    0.0000             1.00          960           96
+  B2_fc_crudo                    1.0000    0.0000             1.00          960           96
+  B3_fc_sesgo                    1.0000    0.0000             1.00          960           96
+  B4_fc_prob                     0.3620    1.4678             6.33          448            0
+  (entropia maxima de una escalera de 11 bandas: 2.3979)
+
+============================================================================================
+PRUEBA DE NO-FUGA — se altera el FUTURO y se exige que NADA cambie
+============================================================================================
+  se suma +25 C a TODAS las observaciones desde 2026-06-23 (incluida)
+  eventos anteriores al corte comparados: 47
+  OK  ninguna probabilidad ANTERIOR al corte cambia: no hay fuga del futuro
+  OK  y las POSTERIORES si cambian: la prueba tiene poder, no pasa por vacia   47 eventos posteriores
+
+============================================================================================
+RESULTADO: BUENA FORMA VERIFICADA
+============================================================================================

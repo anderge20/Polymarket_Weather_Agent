@@ -1,0 +1,57 @@
+55 estaciones
+[1/55] CYYZ C n3=3600 n34=4353 descartada=0.173 dias=150 cambian=4 deltas={'1.0': 4} fuera_rejilla_extra=0
+[2/55] DNMM C n3=2999 n34=3001 descartada=0.0007 dias=84 cambian=0 deltas={} fuera_rejilla_extra=0
+[3/55] EDDM C n3=3600 n34=7200 descartada=0.5 dias=150 cambian=20 deltas={'1.0': 20} fuera_rejilla_extra=0
+[4/55] EFHK C n3=3599 n34=7195 descartada=0.4998 dias=150 cambian=27 deltas={'1.0': 27} fuera_rejilla_extra=0
+[5/55] EGLC C n3=3598 n34=7194 descartada=0.4999 dias=150 cambian=20 deltas={'1.0': 19, '2.0': 1} fuera_rejilla_extra=0
+[6/55] EHAM C n3=3597 n34=7174 descartada=0.4986 dias=150 cambian=11 deltas={'1.0': 11} fuera_rejilla_extra=0
+[7/55] EPWA C n3=3601 n34=7199 descartada=0.4998 dias=150 cambian=21 deltas={'1.0': 21} fuera_rejilla_extra=0
+[8/55] FACT C n3=3587 n34=4551 descartada=0.2118 dias=148 cambian=1 deltas={'1.0': 1} fuera_rejilla_extra=0
+[9/55] KATL F n3=3599 n34=4167 descartada=0.1363 dias=150 cambian=5 deltas={'2.0': 4, '3.0': 1} fuera_rejilla_extra=54
+[10/55] KAUS F n3=3585 n34=4239 descartada=0.1543 dias=148 cambian=1 deltas={'2.0': 1} fuera_rejilla_extra=37
+[11/55] KBKF F n3=3533 n34=3890 descartada=0.0918 dias=140 cambian=3 deltas={'0.4': 1, '1.3': 1, '1.4000000000000001': 1} fuera_rejilla_extra=0
+[12/55] KDAL F n3=3591 n34=4106 descartada=0.1254 dias=147 cambian=2 deltas={'1.0': 1, '4.0': 1} fuera_rejilla_extra=24
+[13/55] KHOU F n3=3596 n34=4126 descartada=0.1285 dias=150 cambian=2 deltas={'1.0': 1, '2.0': 1} fuera_rejilla_extra=30
+[14/55] KLAX F n3=3592 n34=4113 descartada=0.1267 dias=147 cambian=2 deltas={'1.0': 2} fuera_rejilla_extra=35
+[15/55] KLGA F n3=3595 n34=4015 descartada=0.1046 dias=150 cambian=6 deltas={'1.0': 6} fuera_rejilla_extra=64
+[16/55] KMIA F n3=3593 n34=4063 descartada=0.1157 dias=147 cambian=7 deltas={'1.0': 6, '2.0': 1} fuera_rejilla_extra=55
+[17/55] KORD F n3=3597 n34=4291 descartada=0.1617 dias=150 cambian=3 deltas={'1.0': 2, '2.0': 1} fuera_rejilla_extra=47
+[18/55] KSEA F n3=3596 n34=4071 descartada=0.1167 dias=149 cambian=2 deltas={'1.0': 2} fuera_rejilla_extra=31
+[19/55] KSFO F n3=3598 n34=4113 descartada=0.1252 dias=149 cambian=2 deltas={'1.0': 1, '2.0': 1} fuera_rejilla_extra=10
+[20/55] LEMD C n3=3601 n34=7261 descartada=0.5041 dias=150 cambian=19 deltas={'1.0': 19} fuera_rejilla_extra=0
+[21/55] LFPB C n3=3601 n34=7199 descartada=0.4998 dias=150 cambian=22 deltas={'1.0': 21, '2.0': 1} fuera_rejilla_extra=0
+[22/55] LFPG C n3=3601 n34=7208 descartada=0.5004 dias=150 cambian=10 deltas={'1.0': 8, '2.0': 1, '4.0': 1} fuera_rejilla_extra=0
+[23/55] LIMC C n3=3584 n34=7128 descartada=0.4972 dias=144 cambian=15 deltas={'1.0': 15} fuera_rejilla_extra=0
+[24/55] LLBG C n3=3600 n34=7190 descartada=0.4993 dias=150 cambian=9 deltas={'1.0': 9} fuera_rejilla_extra=0
+[25/55] LTAC C n3=3600 n34=7294 descartada=0.5064 dias=150 cambian=20 deltas={'1.0': 20} fuera_rejilla_extra=0
+[26/55] LTFM C n3=3601 n34=7192 descartada=0.4993 dias=150 cambian=18 deltas={'1.0': 18} fuera_rejilla_extra=0
+[27/55] MMMX C n3=3541 n34=5167 descartada=0.3147 dias=142 cambian=8 deltas={'1.0': 8} fuera_rejilla_extra=0
+[28/55] MPMG C n3=3505 n34=3727 descartada=0.0596 dias=139 cambian=2 deltas={'1.0': 2} fuera_rejilla_extra=0
+[29/55] NZWN C n3=3598 n34=7188 descartada=0.4994 dias=148 cambian=12 deltas={'1.0': 12} fuera_rejilla_extra=0
+[30/55] OEJN C n3=3600 n34=3617 descartada=0.0047 dias=150 cambian=1 deltas={'1.0': 1} fuera_rejilla_extra=0
+[31/55] OPKC C n3=3597 n34=7166 descartada=0.498 dias=150 cambian=18 deltas={'1.0': 18} fuera_rejilla_extra=0
+[32/55] RCSS C n3=3874 n34=7517 descartada=0.4846 dias=149 cambian=28 deltas={'1.0': 27, '2.0': 1} fuera_rejilla_extra=0
+[33/55] RCTP C n3=3918 n34=8097 descartada=0.5161 dias=147 cambian=23 deltas={'1.0': 23} fuera_rejilla_extra=0
+[34/55] RJTT C n3=3600 n34=7200 descartada=0.5 dias=150 cambian=19 deltas={'1.0': 19} fuera_rejilla_extra=0
+[35/55] RKPK C n3=3594 n34=4161 descartada=0.1363 dias=150 cambian=2 deltas={'1.0': 1, '2.0': 1} fuera_rejilla_extra=0
+[36/55] RKSI C n3=3601 n34=7203 descartada=0.5001 dias=150 cambian=23 deltas={'1.0': 23} fuera_rejilla_extra=0
+[37/55] RPLL C n3=3597 n34=3718 descartada=0.0325 dias=149 cambian=0 deltas={} fuera_rejilla_extra=0
+[38/55] SAEZ C n3=3597 n34=4148 descartada=0.1328 dias=150 cambian=0 deltas={} fuera_rejilla_extra=0
+[39/55] SBGR C n3=3600 n34=3807 descartada=0.0544 dias=150 cambian=0 deltas={} fuera_rejilla_extra=0
+[40/55] UUWW C n3=3601 n34=8273 descartada=0.5647 dias=150 cambian=37 deltas={'1.0': 33, '2.0': 3, '3.0': 1} fuera_rejilla_extra=0
+[41/55] VHHH C n3=3601 n34=8298 descartada=0.566 dias=150 cambian=19 deltas={'1.0': 19} fuera_rejilla_extra=0
+[42/55] VILK C n3=3593 n34=7170 descartada=0.4989 dias=144 cambian=13 deltas={'1.0': 13} fuera_rejilla_extra=0
+[43/55] WIHH C n3=3572 n34=7196 descartada=0.5036 dias=147 cambian=29 deltas={'1.0': 29} fuera_rejilla_extra=0
+[44/55] WMKK C n3=3599 n34=7332 descartada=0.5091 dias=150 cambian=18 deltas={'1.0': 18} fuera_rejilla_extra=0
+[45/55] WSSS C n3=3601 n34=7372 descartada=0.5115 dias=150 cambian=21 deltas={'1.0': 21} fuera_rejilla_extra=0
+[46/55] ZBAA C n3=3600 n34=7360 descartada=0.5109 dias=150 cambian=19 deltas={'1.0': 17, '2.0': 2} fuera_rejilla_extra=0
+[47/55] ZGGG C n3=3600 n34=7658 descartada=0.5299 dias=150 cambian=27 deltas={'1.0': 26, '2.0': 1} fuera_rejilla_extra=0
+[48/55] ZGSZ C n3=3600 n34=3600 descartada=0.0 dias=150 cambian=0 deltas={} fuera_rejilla_extra=0
+[49/55] ZHCC C n3=3600 n34=3600 descartada=0.0 dias=150 cambian=0 deltas={} fuera_rejilla_extra=0
+[50/55] ZHHH C n3=3600 n34=3600 descartada=0.0 dias=150 cambian=0 deltas={} fuera_rejilla_extra=0
+[51/55] ZSJN C n3=116 n34=199 descartada=0.4171 dias=0 cambian=0 deltas={} fuera_rejilla_extra=0
+[52/55] ZSPD C n3=3600 n34=7351 descartada=0.5103 dias=150 cambian=7 deltas={'1.0': 7} fuera_rejilla_extra=0
+[53/55] ZSQD C n3=3600 n34=3600 descartada=0.0 dias=150 cambian=0 deltas={} fuera_rejilla_extra=0
+[54/55] ZUCK C n3=3600 n34=3600 descartada=0.0 dias=150 cambian=0 deltas={} fuera_rejilla_extra=0
+[55/55] ZUUU C n3=3600 n34=3600 descartada=0.0 dias=150 cambian=0 deltas={} fuera_rejilla_extra=0
+FIN

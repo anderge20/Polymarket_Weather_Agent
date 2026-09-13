@@ -22654,3 +22654,62 @@ Cobertura 84,3 % y 87,8 % contra un 80 % nominal, anchura 3,82 y 3,48 °C, fallo
 (casi todos por abajo). **No entran en Level 1**: serían un sexto modelo.
 
 **Ningún defecto metodológico en L1.1. Siguiente etapa: `L1.2 — BASELINES`.**
+
+## A-287 — `L1.2`: PARADA DE ETAPA. Dos defectos en MI propia preinscripción, los dos visibles sin mirar el target ni una vez · 2026-09-13 · Claude (sesión A)
+
+El orden por etapas existe para esto. **No se ha puntuado nada contra `winning_outcome`**, ni
+antes ni después. `D0-P` sigue BLOCKED.
+
+### Defecto 1 — el SIGNO de la corrección de sesgo
+
+`e = obs − fc`. Si `E[e] = b > 0` el pronóstico va **bajo**, y corregirlo es **`f + b`**. Mi
+§7 decía `round(f − sesgo)`: **empuja al mismo lado que el error.**
+
+    lead 24, n=95     sin corregir  f      bias +0,0789  MAE 1,0137
+                      PREINSCRITO   f - b  bias +0,2867  MAE 1,0362   <- empeora las dos
+                      CORREGIDO     f + b  bias -0,1288  MAE 1,0303
+
+Heredado de `n1_14.B4_fc_bias` (`masa(f - bias, [e - bias ...])`). **Estaba en la primera
+preinscripción y nadie lo miró, yo incluido, durante todo el corpus.**
+
+### Defecto 2 — `B4` y `B4'` eran el MISMO modelo
+
+    f + b + (e - b) = f + e      identidad algebraica; comprobado 60 de 60
+
+El pronóstico probabilístico **ya lleva el sesgo dentro**, porque los errores empíricos lo
+llevan. La distinción que declaré era vacua y **sólo parecía real por culpa del defecto 1**.
+
+### Enmienda, y por qué no es optimizar tras ver resultados
+
+    B3  round(f + sesgo)                  signo corregido
+    B4  masa empirica de round(f + e)     el probabilistico, sesgo incluido
+    B4' RETIRADO: identico a B4
+
+**De seis modelos a CINCO.** Cuatro razones: (1) no se ha puntuado nada contra el target;
+(2) el defecto es un signo, visible desde la definición; (3) la corrección **empeora** a `B3`
+en MAE frente a no corregir —si buscara favorecerme iría al revés—; (4) el número de
+comparaciones **baja**.
+
+*Y un hallazgo que sale gratis y queda registrado ANTES de puntuar: la corrección de sesgo
+global no ayuda ni contra la observación. Es lo que L1.1 anticipó — el sesgo es CONDICIONAL y
+una corrección global no lo captura.*
+
+### Buena forma: 16 comprobaciones verdes
+
+`p ∈ [0,1]` sin excepción · suman 1 (0,00e+00 y 1,11e-16) · un `y=1` por evento · un
+componente por banda · **el día objetivo nunca en el entrenamiento** (el más cercano es `td−3`
+a lead 24, `td−2` a lead 9) · última etiqueta de train disponible en `t_asof` · mínimo 20 pares.
+
+**Prueba de no-fuga EJECUTADA, no leída**: se suman +25 °C a todas las observaciones desde el
+2026-06-23. **Ninguna probabilidad anterior al corte cambia** (47 eventos) **y las posteriores
+sí** (47 eventos) — *una prueba de no-fuga que pasa porque no puede fallar no prueba nada.*
+
+### Lo que queda registrado antes de puntuar
+
+1. **`B1`, `B2` y `B3` son indicadores puros**: entropía 0, una banda con masa, 950 ceros y 95
+   unos exactos por lead. **Su Log Loss será aritmética del recorte**, no calibración (A-280).
+2. **`B4` se afila con el lead corto**: bandas con masa 7,18 → 6,33 y entropía 1,631 → 1,468 de
+   lead 24 a lead 9. Comprobación interna coherente, no un resultado.
+3. **`B3` se separa de `B2`** en el 20,0 % de los eventos a lead 24 y el 14,6 % a lead 9.
+
+**Etapa cerrada. Siguiente: `L1.3` — FORECAST → P(YES).**
