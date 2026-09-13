@@ -22579,3 +22579,78 @@ investigación histórica**: prohibidos producción, settlement, ejecución, pap
 operativo y activación del bot. El objetivo es sólo determinar si el pronóstico disponible en
 `prediction_time` tiene poder predictivo **fuera de muestra** sobre `P(YES)`. **No se buscan
 estrategias hasta demostrarlo.**
+
+## A-286 — LEVEL 1 abierto. Preinscripción espejada antes de correr, y `L1.1` cerrada: el pronóstico TIENE señal meteorológica real · 2026-09-13 · Claude (sesión A)
+
+Alcance exclusivamente histórico. **`D0-P` sigue BLOCKED** y no se toca producción, settlement,
+ejecución, paper trading, PnL, activación, selección de mercados, estrategias, umbrales ni edge.
+
+### Lock y preinscripción, espejados a las 20:18:35Z (`e4db1af`) ANTES de L1.1
+
+    markets_v2 · EGLC · repo b523a8f · research 72dc0ad
+    huellas sha256 de markets+outcomes, observaciones y pronosticos registradas
+    availability_assumption = issue_plus_4h45m36s   ·   LOOKAHEAD ASSUMPTION = UNVERIFIED EXTERNALLY
+
+**Las dos cifras de población, con la diferencia explicada evento a evento:**
+
+    population_total                    187 eventos
+    con observacion  NIVEL EVENTO       137        sin observacion  50
+    con observacion  NIVEL FECHA        135        (tras deduplicar (station,target_date))
+    con observacion + pronostico        117 en cada lead
+
+    los DOS que separan 137 de 135, nombrados:
+      2026-05-19  event 493651  elegible, lo descarta el DESEMPATE (gana 503460)
+      2026-05-20  event 496987  NO elegible: uma = {proposed, resolved}
+
+**Los 50 sin observación no se eliminan en silencio**: son de 2025-12-31 → 2026-04-07, fuera de
+la ventana observacional. Y las escaleras de 7 y 9 aportan **cero** eventos puntuables, así que
+**quedan declaradas insuficientes para inferencia** desde antes de mirar nada.
+
+### La estructura de revisiones, MEDIDA (no supuesta)
+
+    dos ejecuciones por target_date, 06z y 18z, las dos del dia ANTERIOR
+    lead 24  t_asof 12:00Z de td-1  -> elige la 06z  margen 1,24 h
+    lead  9  t_asof 03:00Z de td    -> elige la 18z  margen 4,24 h
+
+**Los dos leads usan ejecuciones distintas**, y la del lead 9 es una revisión posterior: no es
+el mismo pronóstico leído dos veces.
+
+### L1.1 — el pronóstico tiene señal
+
+                        n     bias    MAE   RMSE   MedAE
+    todos             236   +0,15   0,94   1,22    0,80
+    lead 24 (06z)     118   +0,18   1,01   1,30    0,80
+    lead  9 (18z)     118   +0,12   0,87   1,13    0,70
+
+**El lead 9 gana al 24 en las cuatro medidas** — el orden esperado, y una comprobación interna:
+si no lo hiciera, habría algo mal en la lógica de disponibilidad. Ningún mes se descuelga
+(MAE 0,70–1,22). La revisión 06z→18z es **información nueva** (difiere en 106 de 118 días) y
+mejora **en promedio pero no siempre**: gana 62, empata 13, pierde 43.
+
+### EL NÚMERO QUE GOBIERNA TODO LO QUE VIENE
+
+    banda del contrato   1 C            error tipico del pronostico   0,94 C
+
+    round(obs) == round(fc):   lead 24  33,9 %     lead 9  35,6 %
+    nulo uniforme de 11 bandas:          9,1 %     ->  3,7-3,9 veces el azar
+
+**Y lo que NO dice:** es pronóstico contra **observación**. El target de Level 1 es
+`winning_outcome`, que coincide con nuestro proxy en 136 de 137 (A-276) pero **no es lo mismo**.
+Convertir ese 34 % en una afirmación sobre el contrato es el trabajo de L1.2-L1.5 y no está
+hecho.
+
+### Dos cosas registradas ANTES de poder interpretarlas a conveniencia
+
+1. **El sesgo es CONDICIONAL**: −0,55 °C en días bajo 15 °C, +0,37 entre 25 y 30. El pronóstico
+   encoge hacia la media. **`B3`, que corrige un sesgo GLOBAL, está limitado por construcción**,
+   y eso queda dicho antes de ver su resultado. No se añade una corrección condicional: sería un
+   sexto modelo y la preinscripción lo prohíbe.
+2. **La anchura de banda (1 °C) es del mismo orden que el error típico (0,94 °C)**, así que el
+   techo de cualquier modelo puntual sobre esta escalera **es bajo por física, no por método**.
+
+### Cuantiles del proveedor: medidos, NO usados
+
+Cobertura 84,3 % y 87,8 % contra un 80 % nominal, anchura 3,82 y 3,48 °C, fallos asimétricos
+(casi todos por abajo). **No entran en Level 1**: serían un sexto modelo.
+
+**Ningún defecto metodológico en L1.1. Siguiente etapa: `L1.2 — BASELINES`.**

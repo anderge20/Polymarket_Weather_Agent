@@ -1,0 +1,52 @@
+================================================================================================
+L1.1 — FORECAST SKILL · EGLC · error = tmax_observed (C) - forecast_tmax (C)
+================================================================================================
+  filas de pronostico con forecast_tmax: 236
+  PARES VALIDOS (con observacion del dia): 236
+  dias objetivo distintos: 118
+  ejecuciones: [6, 18] UTC  ->  lead 24 = 06z · lead 9 = 18z (preinscripcion §3)
+
+------------------------------------------------------------------------------------------------
+GLOBAL Y POR LEAD
+------------------------------------------------------------------------------------------------
+  todos                      n= 236  bias  +0.15  MAE  0.94  RMSE  1.22  MedAE  0.80  p10  -1.40  p90  +1.60  sd  1.21
+  lead 24 h (06z)            n= 118  bias  +0.18  MAE  1.01  RMSE  1.30  MedAE  0.80  p10  -1.49  p90  +1.70  sd  1.29
+  lead 9 h (18z)             n= 118  bias  +0.12  MAE  0.87  RMSE  1.13  MedAE  0.70  p10  -1.13  p90  +1.33  sd  1.12
+
+------------------------------------------------------------------------------------------------
+POR MES
+------------------------------------------------------------------------------------------------
+  2026-04 lead 24            n=  21  bias  +0.67  MAE  1.03  RMSE  1.32  MedAE  0.90  p10  -0.30  p90  +1.90  sd  1.13
+  2026-04 lead 9             n=  21  bias  +0.37  MAE  0.81  RMSE  0.98  MedAE  0.70  p10  -0.60  p90  +1.60  sd  0.91
+  2026-05 lead 24            n=  31  bias  -0.07  MAE  1.05  RMSE  1.30  MedAE  0.90  p10  -1.80  p90  +1.60  sd  1.30
+  2026-05 lead 9             n=  31  bias  +0.19  MAE  0.95  RMSE  1.22  MedAE  0.80  p10  -0.80  p90  +1.70  sd  1.20
+  2026-06 lead 24            n=  22  bias  +0.04  MAE  1.22  RMSE  1.61  MedAE  0.95  p10  -1.94  p90  +1.78  sd  1.61
+  2026-06 lead 9             n=  22  bias  -0.32  MAE  1.10  RMSE  1.49  MedAE  0.75  p10  -2.24  p90  +1.28  sd  1.45
+  2026-07 lead 24            n=  25  bias  +0.10  MAE  0.82  RMSE  1.07  MedAE  0.60  p10  -1.32  p90  +1.28  sd  1.06
+  2026-07 lead 9             n=  25  bias  +0.10  MAE  0.70  RMSE  0.90  MedAE  0.60  p10  -1.04  p90  +0.90  sd  0.89
+  2026-08 lead 24            n=  19  bias  +0.30  MAE  0.91  RMSE  1.13  MedAE  0.90  p10  -1.14  p90  +1.24  sd  1.09
+  2026-08 lead 9             n=  19  bias  +0.27  MAE  0.75  RMSE  0.89  MedAE  0.70  p10  -0.80  p90  +1.22  sd  0.84
+
+------------------------------------------------------------------------------------------------
+POR RANGO DE TEMPERATURA OBSERVADA
+------------------------------------------------------------------------------------------------
+  obs [-inf, 15)             n=  24  bias  -0.55  MAE  1.03  RMSE  1.26  MedAE  0.80  p10  -1.94  p90  +0.60  sd  1.14
+  obs [15, 20)               n=  56  bias  -0.08  MAE  1.03  RMSE  1.32  MedAE  0.80  p10  -1.85  p90  +1.60  sd  1.32
+  obs [20, 25)               n=  42  bias  +0.30  MAE  0.90  RMSE  1.12  MedAE  0.80  p10  -1.16  p90  +1.57  sd  1.08
+  obs [25, 30)               n=  82  bias  +0.37  MAE  0.80  RMSE  1.02  MedAE  0.70  p10  -0.80  p90  +1.39  sd  0.95
+  obs [30, +inf)             n=  32  bias  +0.30  MAE  1.12  RMSE  1.52  MedAE  0.75  p10  -1.77  p90  +2.08  sd  1.49
+
+------------------------------------------------------------------------------------------------
+COBERTURA Y ANCHURA p10-p90  (cuantiles DEL PROVEEDOR, no se usan como modelo)
+------------------------------------------------------------------------------------------------
+  lead 24  n=115  cobertura  84.3 % (nominal 80 %)   por debajo  14  por encima   4   anchura media  3.82 C  mediana  3.82 C
+  lead  9  n=115  cobertura  87.8 % (nominal 80 %)   por debajo  14  por encima   0   anchura media  3.48 C  mediana  3.44 C
+
+------------------------------------------------------------------------------------------------
+ESTABILIDAD DE LAS REVISIONES  06z -> 18z (mismo target_date)
+------------------------------------------------------------------------------------------------
+  dias con las DOS ejecuciones: 118
+  revision 18z - 06z         n= 118  bias  +0.06  MAE  0.54  RMSE  0.73  MedAE  0.40  p10  -0.90  p90  +1.13  sd  0.72
+  |e06| - |e18|  (>0 = mejora) n= 118  bias  +0.14  MAE  0.48  RMSE  0.66  MedAE  0.30  p10  -0.60  p90  +1.10  sd  0.65
+  la 18z acierta MAS en 62 de 118 dias · empata 13 · peor 43
+  revision identica (18z == 06z) en 12 dias
