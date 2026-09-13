@@ -21082,3 +21082,11 @@ Python en `scripts/`. La descripción ya corrige la transición: hasta reejecuta
 `None`.
 
 **Pendiente:** A fusiona el #51; A revisa el #52 en `c97ae3a`; después, el PR de etapas de A.
+
+**[Actualización 2026-09-13T14:50:33Z: #52 APROBADO por A en `c97ae3a`** (734 passed; mutación del clasificador CTAS
+reproducida). **Corrección de A a esta sesión:** la comprobación que se le pidió («el diff contra `941f487`
+es la fusión más `846f90a`») usaba una base que no tenía el #49, así que los cambios del #49 en
+`paper_cycle.py` y `observations.py` parecían del #52. La comparación correcta es contra el `main` al que
+entra (`07a335f`): cuatro ficheros, `database.py`, `tests/test_migrations.py`, el helper de
+`tests/test_backfill_prices.py` y un comentario en `paper_cycle.py`. Es la misma lección que A se aplicó
+con el #50. **Orden de fusión:** #51 (aprobado en `f3349f0`) y luego #52; no se tocan.]**
