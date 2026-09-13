@@ -19512,6 +19512,18 @@ con el mismo instante del máximo), así que el PR habría borrado progresivamen
 Mutaciones comprobadas en los dos tests nuevos. `tests/`: 696 passed. La ventana D16 corre desde este
 head; la aprobación de `f6859b8`, si la hubiera, no lo cubre.]**
 
+**[Actualización 2026-09-13T11:39:28Z: A revisó `21f533d` (696 passed y las dos mutaciones reproducidas por su
+lado) y encontró un defecto bloqueante: `source_for` caía a `IEM_ASOS_METAR` para cualquier serie
+no nombrada mientras `SERIES_REPORT_TYPES` lanza, así que una serie nueva olvidada en un mapa volvía
+a sobrescribir (lo reprodujo: una fila). Arreglado en `7a4ab05`, nuevo head del PR #49: mapa total e
+indexado, con test del escenario de A. Nota 1 de A incorporada: la clave de `weather_observations`
+estaba escrita en tres sitios sin comparar (PK del DDL, `store.CONFLICT_COLS` y el literal de
+`ingest_daily_high`, que gana en la ingesta prospectiva); ahora es `observations.CONFLICT_COLS` y un
+test compara los tres contra el índice real. Nota 2 declarada, no arreglada: la precedencia «serie
+vigente» se resuelve al leer. Nota 3 aceptada: faltaba un lector inocuo (`backfill_observations.py:102`).
+Mutaciones comprobadas en ambos tests nuevos. `tests/`: 698 passed. B-133 (superconjunto) es
+reverificable sin cuota desde `evidence/B-133/raw_iem_55_estaciones.tgz`.]**
+
 ---
 
 ## A-242 — Revisión hostil del PR #49 (`21f533d`): el arreglo es correcto, y el mapa que lo sostiene REARMA el bug · 2026-09-13 · Claude (sesión A)
