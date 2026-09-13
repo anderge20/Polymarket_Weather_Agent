@@ -172,14 +172,24 @@ SERIES_REPORT_TYPES = {
 #: and which report types were asked for is part of it. Rejected alternatives:
 #: putting `series` in the key (a schema and store migration) and bumping
 #: `record_version` (which means a METAR correction, D17-C).
+#:
+#: TOTAL, LIKE `SERIES_REPORT_TYPES`, and indexed rather than `.get`. The first
+#: version fell back to `SOURCE` for any series it did not name, and what that
+#: fallback lets through is this very bug: a new series declared in the map above
+#: and forgotten here would reuse `IEM_ASOS_METAR` and overwrite again (session A,
+#: reproduced: one row left). Both maps now make whoever adds a series pass through
+#: them, loudly.
 SERIES_SOURCE = {
+    SERIES_1C: SOURCE,
     SERIES_1C_RT34: "IEM_ASOS_METAR_RT34",
+    SERIES_1F: SOURCE,
+    SERIES_TENTH_F: SOURCE,
 }
 
 
 def source_for(series: str) -> str:
-    """The `source` a row of this series is written under (see `SERIES_SOURCE`)."""
-    return SERIES_SOURCE.get(series, SOURCE)
+    """The `source` a row of this series is written under. Raises for an unknown one."""
+    return SERIES_SOURCE[series]
 
 
 def station_series(station: str) -> tuple[str, str, float]:
@@ -381,6 +391,14 @@ def to_row(dh: DailyHigh, dataset_version: str, fetched_at: datetime | None = No
     }
 
 
+#: The key `ingest_daily_high` upserts on. It MUST equal the table's primary key and
+#: `store.CONFLICT_COLS["weather_observations"]`: the key is written in three places,
+#: this literal wins over the store map for prospective ingestion, and fixing only one
+#: of them would not have fixed the overwrite. `test_the_observation_key_is_the_same_
+#: in_all_three_places` compares them.
+CONFLICT_COLS = ("station", "source", "observation_time", "dataset_version", "record_version")
+
+
 def ingest_daily_high(
     con,
     icao: str,
@@ -395,7 +413,7 @@ def ingest_daily_high(
         con,
         "weather_observations",
         to_row(dh, dataset_version),
-        conflict_cols=("station", "source", "observation_time", "dataset_version", "record_version"),
+        conflict_cols=CONFLICT_COLS,
     )
     return dh
 
@@ -414,6 +432,11 @@ def observed_tmax(
     if dataset_version is not None:
         where += " AND dataset_version = ?"
         params.append(dataset_version)
+    # PRECEDENCE, DECLARED: current series, then latest revision. "Current" is
+    # resolved HERE, at read time, from `station_series` — so the day the default
+    # series moves again, every stored series stops being current at once and the
+    # tie between them is arbitrary again, with nothing turning red (session A).
+    #
     # THE STATION'S CURRENT SERIES FIRST, then the latest revision. Corrected labels
     # land BESIDE the superseded ones (`SERIES_SOURCE`), so a station-day can hold
     # both, and `record_version` alone picks between them arbitrarily — both are

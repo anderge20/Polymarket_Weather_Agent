@@ -184,6 +184,18 @@ def test_every_series_a_station_can_carry_declares_its_report_types():
     assert carried <= set(obs.SERIES_REPORT_TYPES), carried - set(obs.SERIES_REPORT_TYPES)
     # And the superseded name keeps saying what its stored rows are.
     assert obs.SERIES_REPORT_TYPES[obs.SERIES_1C] == (3,)
+    # And every one of them says which `source` its rows are written under: the two
+    # maps are total over the same series, or a series reuses a source and overwrites.
+    assert set(obs.SERIES_SOURCE) == set(obs.SERIES_REPORT_TYPES)
+
+
+def test_a_series_forgotten_in_the_source_map_RAISES_instead_of_overwriting(monkeypatch):
+    """Session A's reproduction of the fallback: a new series declared where the fetch
+    needs it and forgotten where the row's `source` comes from. With `.get` it reused
+    `IEM_ASOS_METAR` and overwrote the old label; indexed, it cannot get that far."""
+    monkeypatch.setitem(obs.SERIES_REPORT_TYPES, "IEM_ASOS_METAR_1C_RT345", (3, 4, 5))
+    with pytest.raises(KeyError):
+        obs.source_for("IEM_ASOS_METAR_1C_RT345")
 
 
 def test_a_corrected_label_lands_BESIDE_the_old_one_never_over_it(con, monkeypatch):
@@ -241,4 +253,19 @@ def test_observed_tmax_reads_the_CURRENT_series_when_both_labels_exist(con, monk
 
     assert db.query(con, "SELECT count(*) AS n FROM weather_observations")[0]["n"] == 2
     assert obs.observed_tmax(con, ICAO, TARGET, TZ, DSV) == 27.0
+
+
+def test_the_observation_key_is_the_same_in_all_three_places(con):
+    """The key is written in the DDL, in `store.CONFLICT_COLS` and in
+    `observations.CONFLICT_COLS`, and nothing compared them. The literal in
+    `ingest_daily_high` wins over the store map for prospective ingestion, so fixing the
+    key in one place and not the others would have left the overwrite in place."""
+    from weather_agent import store
+
+    pk = con.execute(
+        "SELECT constraint_column_names FROM duckdb_constraints() "
+        "WHERE table_name = 'weather_observations' AND constraint_type = 'PRIMARY KEY'"
+    ).fetchall()
+    assert len(pk) == 1, pk
+    assert tuple(pk[0][0]) == tuple(store.CONFLICT_COLS["weather_observations"]) == obs.CONFLICT_COLS
 
