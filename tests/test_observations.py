@@ -185,3 +185,60 @@ def test_every_series_a_station_can_carry_declares_its_report_types():
     # And the superseded name keeps saying what its stored rows are.
     assert obs.SERIES_REPORT_TYPES[obs.SERIES_1C] == (3,)
 
+
+def test_a_corrected_label_lands_BESIDE_the_old_one_never_over_it(con, monkeypatch):
+    """Labels are never overwritten, and the primary key has no series.
+
+    The measured failure: an old `IEM_ASOS_METAR_1C` label and a new 3+4 label whose
+    highs fall on the SAME instant (a peak at :50, which both series see) share every
+    key column, and the upsert replaced the old row. With the 3+4 rows under their own
+    `source`, both rows stay — the old one with its value intact."""
+    peak = _utc(21, 12, 50)
+
+    def half_hourly(icao, start, end, timeout=90):
+        out, t = [], _utc(20, 21, 20)
+        while t < _utc(21, 21):
+            out.append((t, 25.0 if t == peak else 10.0))
+            t += timedelta(minutes=30)
+        return [(t, v) for t, v in out if start <= t <= end]
+
+    monkeypatch.setitem(obs.STATION_SERIES, ICAO, (obs.SERIES_1C, "C", 1.0))
+    obs.ingest_daily_high(con, ICAO, TARGET, TZ, DSV, fetcher=half_hourly)
+    monkeypatch.delitem(obs.STATION_SERIES, ICAO)
+    obs.ingest_daily_high(con, ICAO, TARGET, TZ, DSV, fetcher=half_hourly)
+
+    rows = db.query(con, "SELECT source, series, observation_time, tmax_observed "
+                         "FROM weather_observations ORDER BY series")
+    assert [(r["source"], r["series"]) for r in rows] == [
+        ("IEM_ASOS_METAR", obs.SERIES_1C),
+        ("IEM_ASOS_METAR_RT34", obs.SERIES_1C_RT34),
+    ], rows
+    assert {r["observation_time"] for r in rows} == {peak}, "same instant: the collision case"
+    assert [r["tmax_observed"] for r in rows] == [25.0, 25.0]
+
+
+def test_observed_tmax_reads_the_CURRENT_series_when_both_labels_exist(con, monkeypatch):
+    """The one reader that picks a single row, and the day it would pick wrong.
+
+    With corrected labels written beside the superseded ones, a station-day holds an
+    `IEM_ASOS_METAR_1C` label (type 3 alone) and an `IEM_ASOS_METAR_1C_RT34` one, both
+    at record_version 1. Ordering by revision alone returns whichever row comes first
+    — here the old, lower one. The label read back has to be the corrected one."""
+    def day(peak_c, peak_minute):
+        def fetch(icao, start, end, timeout=90):
+            out, t = [], _utc(20, 21, 20)
+            while t < _utc(21, 21):
+                hot = t.day == 21 and (t.hour, t.minute) == (12, peak_minute)
+                out.append((t, peak_c if hot else 10.0))
+                t += timedelta(minutes=30)
+            return [(x, v) for x, v in out if start <= x <= end]
+        return fetch
+
+    monkeypatch.setitem(obs.STATION_SERIES, ICAO, (obs.SERIES_1C, "C", 1.0))
+    obs.ingest_daily_high(con, ICAO, TARGET, TZ, DSV, fetcher=day(26.0, 50))
+    monkeypatch.delitem(obs.STATION_SERIES, ICAO)
+    obs.ingest_daily_high(con, ICAO, TARGET, TZ, DSV, fetcher=day(27.0, 20))
+
+    assert db.query(con, "SELECT count(*) AS n FROM weather_observations")[0]["n"] == 2
+    assert obs.observed_tmax(con, ICAO, TARGET, TZ, DSV) == 27.0
+

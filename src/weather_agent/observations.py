@@ -157,6 +157,31 @@ SERIES_REPORT_TYPES = {
 }
 
 
+#: THE `source` OF A ROW CARRIES ITS QUERY, because the primary key has no series.
+#:
+#: `weather_observations` is keyed on (station, source, observation_time,
+#: dataset_version, record_version), and `store.py` replays on the same key. An old
+#: type-3 label and a new 3+4 label whose highs fall on the SAME instant — a peak at
+#: :50, which both series see — share every one of those columns, and the upsert
+#: (`ON CONFLICT DO UPDATE`) replaced the old row with the new one. Measured, not
+#: argued: one row left, carrying the new series. That is an overwrite, and labels
+#: are never overwritten.
+#:
+#: So rows built from types 3+4 carry their own source name, and the two coexist in
+#: the table and in the store. Not an invented label: `source` is the provenance,
+#: and which report types were asked for is part of it. Rejected alternatives:
+#: putting `series` in the key (a schema and store migration) and bumping
+#: `record_version` (which means a METAR correction, D17-C).
+SERIES_SOURCE = {
+    SERIES_1C_RT34: "IEM_ASOS_METAR_RT34",
+}
+
+
+def source_for(series: str) -> str:
+    """The `source` a row of this series is written under (see `SERIES_SOURCE`)."""
+    return SERIES_SOURCE.get(series, SOURCE)
+
+
 def station_series(station: str) -> tuple[str, str, float]:
     """(series, unit, resolution) for a station. Celsius at 1 degree by default."""
     return STATION_SERIES.get((station or "").upper(), DEFAULT_SERIES)
@@ -340,7 +365,7 @@ def to_row(dh: DailyHigh, dataset_version: str, fetched_at: datetime | None = No
         # the day's high is the fact; observation_time anchors it to when it occurred
         "observation_time": dh.when_utc.isoformat(),
         "station": dh.station,
-        "source": SOURCE,
+        "source": source_for(_grid(dh)[2]),
         "tmax_observed": dh.tmax_c,   # always Celsius, derived
         "observed_unit": _grid(dh)[0],
         "observed_value": _grid(dh)[1],
@@ -389,11 +414,17 @@ def observed_tmax(
     if dataset_version is not None:
         where += " AND dataset_version = ?"
         params.append(dataset_version)
+    # THE STATION'S CURRENT SERIES FIRST, then the latest revision. Corrected labels
+    # land BESIDE the superseded ones (`SERIES_SOURCE`), so a station-day can hold
+    # both, and `record_version` alone picks between them arbitrarily — both are
+    # version 1 — which returns the type-3 label on a day it is 1 C low. Every other
+    # reader (`m2`, `labels`, `label_bias_pnl`, settlement) aggregates with MAX and is
+    # already safe; this is the one that picks a single row.
     rows = db.query(
         con,
         f"SELECT tmax_observed FROM weather_observations WHERE {where} "
-        "ORDER BY record_version DESC LIMIT 1",
-        params,
+        "ORDER BY (series = ?) DESC, record_version DESC LIMIT 1",
+        params + [station_series(station)[0]],
     )
     if not rows:
         raise NoObservation(f"no observed high for {station} on {target_date}")
