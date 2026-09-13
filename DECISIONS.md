@@ -16359,3 +16359,50 @@ existe.
 imposible de violar?»*. Cuatro veces en una noche ha cambiado la lectura: mató el edge, reforzó
 el Brier, deshizo una alarma mía sobre la localización del soporte, y separó el veredicto de
 Brier del de ordenación.
+
+---
+
+## B-113 — Tres campos constantes que parecen discriminadores, y una derivación con margen de 27 minutos
+
+*Escrito 2026-09-13T01:26:20Z. Trampa encontrada por A, verificada sobre mis datos y acotada.*
+
+### Verificado, 37 ciclos de la caja
+
+    prefijos      col_ : 37 de 37        <- constante que parece discriminador
+    collect_only  True : 37 de 37
+    tau_signal    None : 37 de 37
+    por ranura de cron: 31 collect · 6 decide
+
+**Ni el prefijo ni `collect_only` ni `tau_signal` distinguen nada: los tres son constantes sobre
+la población entera.** `sid.startswith("col")` acierta en 31 y falla exactamente en los 6 que
+importan — los `decide`, los únicos que podrían abrir posición.
+
+Y `collect_only=True` en 37 de 37 dice además que **ningún ciclo ha corrido en modo decide de
+verdad**, lo que encaja con la auditoría: `paper_trades` 0 shards, nunca se abrió una posición.
+
+**No caí en la trampa por suerte, no por mérito:** en B-102 llamé `decide` al 02:40 porque lo
+saqué del cron de `install.sh`, no porque mirara el prefijo. *Si hubiera tirado del `session_id`
+habría etiquetado seis ciclos mal exactamente igual.*
+
+### Lo que añado: la derivación tiene un margen, y se estaba consumiendo
+
+A dice que el tipo es derivable del instante de disparo más el cron. Cierto — **y no es
+incondicional:**
+
+    02:40 -> 03:07    27 min    <- el minimo
+    11:40 -> 12:07    27 min
+    00:07 -> 02:40   153 min
+    el resto          180 min
+
+**Un ciclo que arranque con más de 27 minutos de retraso es indistinguible por marca de tiempo
+de la ranura siguiente.** Y el margen ya se estaba gastando: el `collect` de las 12:07 arrancó a
+las 12:09:19, **135 segundos tarde, el 8 %**. Antes del #42 el `decide` proyectaba 41 minutos, lo
+que habría empujado la espera del `collect` siguiente a ~14 min: **más de la mitad del margen.**
+
+*La formulación exacta no es «es derivable» sino «es derivable mientras el retraso se mantenga
+por debajo de 27 minutos, y ese margen se estaba consumiendo».* **Es la misma forma que todo lo
+de estos dos días: la clase benigna es benigna mientras una magnitud se queda por debajo de un
+límite, y el límite no estaba escrito.**
+
+La frase de A —*«lo peligroso no es que sea derivable: es que el prefijo finge derivarlo»*— con
+la coletilla: **y la derivación de verdad tiene un margen que nadie había medido.**
