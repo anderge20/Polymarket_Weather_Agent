@@ -19737,3 +19737,55 @@ así que hoy no liquida nada mal.** Queda como tarea #62 con tres salidas posibl
 negativa es una frontera arreglada en otro sitio y NO aquí, a propósito; o borrar el
 módulo— y con revisión independiente como mensaje propio si toca código de liquidación
 (§34 del encargo de FASE 2).
+
+---
+
+## B-136 — Tarea #60: las bandas ausentes las recortó el backfill de precios, no Polymarket ni discovery; el modo paper en vivo no está afectado
+
+*Escrito 2026-09-13T11:53:06Z.*
+
+A comprobó que los eventos truncados del almacén están completos en la fuente (`CATALOG_V2.duckdb`
+tabla `mk` y Gamma coinciden: 321062 → 11, 693904 → 11, 251729 → 9; control 341797 → 11) y que el
+truncamiento es uniforme en `markets`, `outcomes` y `price_history`. **La causa en ingesta, investigada
+con un agente y verificada por esta sesión en sus piezas portantes:**
+
+**Puerta (verificado en código).** `backfill_markets.py:94-111` y `backfill_weather.py:82-104` sólo
+leen del catálogo los mercados presentes en `price_history`. Los 6 143 mercados almacenados tienen
+precios: quien eligió qué precios bajar decidió el universo.
+
+**Selección (verificado por datos y código; valores de CLI inferidos).** `backfill_prices.py`, en
+cuatro corridas fechadas por `price_history.fetched_at`:
+
+    09-06 08-11h     f6a3995  ORDER BY endDate DESC LIMIT n                 -> sólo 09-04/09-05, completos
+    09-07 21h-00h    2ffb187  row_number() OVER (PARTITION BY fecha ORDER BY market_id) <= per_date
+                              -> 597 mercados = 199 fechas x 3, 471 de EGLC
+    09-08 20h-04h    04b14d0  PARTITION BY fecha, estación, --per-pair 1    -> 1 mercado por evento
+    09-09 15-17h     f8a54af  --complete-events: sorted(by_event)[:max_events] -> 400 eventos completos
+
+La corrida 2ffb187 ordena todos los mercados de una fecha por id y se queda con los 3 menores; el menor
+id de la fecha suele ser de Londres y los ids crecen con la banda, así que guarda las 3 bandas más bajas
+de un evento. En los 1 028 eventos truncados el conjunto guardado es exactamente el prefijo de ids más
+bajos de la escalera. El volumen no lo explica. **341797 frente a 321062:** ambos recibieron 3 en la
+corrida del 09-07; la de eventos completos sólo completa (estación, fecha) con pronóstico, que empiezan
+el 04-08, y con tope de 400 eventos. Los 36 eventos completos con id por encima del tope son todos de la
+corrida del 09-06 (objetivos 09-04/05) y sólo uno tiene pronóstico. **Corrección al agente:** el tope
+ordena ids como texto, pero los 1 464 `event_id` tienen 6 dígitos, así que texto = numérico y es
+inocuo aquí.
+
+**Alcance.** 1 028 de 1 464 eventos truncados (869 con 1 mercado, 158 con 3, 1 con 4), en todas las
+estaciones; 2026-06, 07 y 08 al 100 %. **La muestra histórica completa es 2026-04-08..05-20 más el
+09-04.** Todo resultado sobre `backfill_2b_v1`, R21 incluido, descansa en esa muestra.
+
+**Modo paper en vivo: no afectado.** `stage_discover` pagina eventos enteros y
+`build_market_records` recorre todos sus mercados, sin muestreo ni puerta de precios. Shards vivos: 253
+eventos, todos con 11 mercados; snapshot de esta sesión: 100 eventos, todos con 11.
+
+**Cuota.** El agente hizo 4 peticiones secuenciales a Gamma (todas HTTP 200) antes de recibir la
+indicación de usar el catálogo local; ninguna después.
+
+**Arreglo propuesto, pendiente de reparto con A:** seleccionar eventos enteros en `backfill_prices`
+(tope y orden explícitos), puertas por evento en `backfill_markets` y `backfill_weather`, y re-backfill
+de `price_history`, `markets` y `outcomes` bajo `dataset_version` nueva, con presupuesto de peticiones
+CLOB y ritmo preinscritos antes de lanzar.
+
+Evidencia: `evidence/B-136/` (ficheros de trabajo del agente).
