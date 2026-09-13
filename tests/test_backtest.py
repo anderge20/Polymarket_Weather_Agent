@@ -180,3 +180,152 @@ def test_a_tail_band_uses_its_open_edge_and_not_an_invented_midpoint():
     assert backtest.band_position(Q_C, None, 14.0) == "cola_lejana"
     assert backtest.band_position(Q_C, 26.0, None) == "cola_lejana"
     assert backtest.band_position(Q_C, None, None) == "abierta_ambos"
+
+
+# ---------------------------------------------------------------------------
+# A1 — the objective `select_tau` maximises
+# ---------------------------------------------------------------------------
+
+def _obj_cand(p_model, p_mid, won, edge_gross):
+    """One candidate at the real fee schedule, for objective tests only."""
+    from datetime import date, datetime, timezone
+    from weather_agent import backtest as bt, costs
+    spec = costs.FeeSpec(enabled=True, rate=0.05, exponent=1, taker_only=True)
+    net, p_exec, fee = costs.edge_net(p_model=p_model, mid=p_mid, spec=spec)
+    return bt.Candidate(
+        market_id="m", token_id="t", station="KJFK", target_date=date(2026, 7, 1),
+        lead_h=24, decision_time=datetime(2026, 6, 30, 12, tzinfo=timezone.utc),
+        label_available_at=datetime(2026, 7, 2, tzinfo=timezone.utc), unit="F",
+        lo=78.0, hi=78.0, q_market={10: 74, 25: 76, 50: 78, 75: 79, 90: 81},
+        spec=spec, p_mid=p_mid, p_model=p_model, edge_gross=edge_gross,
+        edge_net=net, p_exec=p_exec, fee=fee, margin=0.0, won=won,
+        pnl=costs.realised_pnl(won=won, p_exec=p_exec, fee=fee))
+
+
+def _two_bucket_population():
+    """A population where the RIGHT answer is unambiguous and the median gets it
+    wrong: a GOOD bucket (real edge, 15-cent tickets) and a CHEAP bucket (tiny
+    edge, 2-cent tickets). Both have win rates under 50 %, as every band in this
+    universe does — which is the precondition the median cannot survive."""
+    import random
+    rng = random.Random(11)
+    pop = []
+    for _ in range(1000):
+        pop.append(_obj_cand(0.30, 0.15, rng.random() < 0.30, 0.15))
+    for _ in range(1000):
+        pop.append(_obj_cand(0.06, 0.02, rng.random() < 0.06, 0.04))
+    return pop
+
+
+def test_median_objective_ranks_by_ticket_price_not_expected_value():
+    """The defect, pinned so it cannot come back silently. With every win rate
+    below 50 % the median is always a loser's PnL, so maximising it prefers the
+    bucket with the CHEAPEST tickets regardless of what they earn."""
+    from statistics import mean
+    from weather_agent import backtest as bt
+    pop = _two_bucket_population()
+
+    cheap = [c.pnl for c in pop if c.edge_gross >= 0.04 and c.passes_exec]
+    good = [c.pnl for c in pop if c.edge_gross >= 0.15 and c.passes_exec]
+    # the 15-cent bucket earns strictly more per trade...
+    assert mean(good) > mean(cheap) * 1.5
+    # ...and the median still prefers the other one.
+    assert bt.select_tau(pop, objective=bt.OBJ_MEDIAN_R21) == pytest.approx(0.04)
+
+
+def test_trimmed_mean_objective_picks_the_profitable_bucket():
+    """The property, not a magic number: the chosen tau must admit the GOOD bucket
+    (edge 0.15) and exclude the CHEAP one (edge 0.04). Every tau in 0.06..0.14
+    does exactly that and scores identically, so the documented tie-break to the
+    larger tau lands on 0.14 — 0.15 is not even on the grid, which is multiples
+    of 0.02."""
+    from weather_agent import backtest as bt
+    tau = bt.select_tau(_two_bucket_population())
+    assert 0.04 < tau <= 0.15, f"tau {tau} does not separate the two buckets"
+    taken = [c for c in _two_bucket_population()
+             if c.edge_gross >= tau and c.passes_exec]
+    assert taken and all(c.edge_gross == pytest.approx(0.15) for c in taken), \
+        "the chosen tau admitted the cheap bucket"
+
+
+def test_the_default_objective_is_the_trimmed_mean():
+    from weather_agent import backtest as bt
+    pop = _two_bucket_population()
+    assert bt.select_tau(pop) == bt.select_tau(pop, objective=bt.OBJ_TRIMMED_MEAN)
+    assert bt.select_tau(pop) != bt.select_tau(pop, objective=bt.OBJ_MEDIAN_R21)
+
+
+def test_the_r21_median_objective_is_still_reachable():
+    """PREREG_R21 §3 froze the median and the published R21 numbers came from it.
+    Keeping it selectable is what lets that result stay reproducible — the same
+    reason `error_model` keeps its withdrawn v3."""
+    from weather_agent import backtest as bt
+    assert bt.select_tau(_two_bucket_population(),
+                         objective=bt.OBJ_MEDIAN_R21) is not None
+
+
+def test_unknown_objective_is_refused_rather_than_defaulted():
+    from weather_agent import backtest as bt
+    with pytest.raises(ValueError):
+        bt.select_tau(_two_bucket_population(), objective="mean")
+
+
+def test_trimmed_mean_degenerates_to_the_mean_on_a_small_sample():
+    """Never trims to nothing: with fewer than 1/frac points there is no tail to
+    cut, and the plain mean is the right answer."""
+    from statistics import mean
+    from weather_agent.backtest import _trimmed_mean
+    for n in (1, 2, 3, 5, 9):
+        v = [float(i) for i in range(n)]
+        assert _trimmed_mean(v) == pytest.approx(mean(v))
+
+
+def test_trimmed_mean_actually_cuts_the_tail_it_exists_for():
+    """The concern the median was chosen for: one extreme value fixing the mean."""
+    from weather_agent.backtest import _trimmed_mean
+    base = [1.0] * 20
+    assert _trimmed_mean(base + [10_000.0]) == pytest.approx(1.0)
+
+
+def test_calibration_margin_honours_the_tail_model_end_to_end():
+    """A reproduction path that stops half way is not one.
+
+    `calibration_margin` builds its OWN distributions, so pinning the tail model
+    only where `p_model` is computed mixes an old p_model with a new margin and
+    reproduces neither. Found by re-running this session's own published
+    cost decomposition under both models and getting a THIRD number (71 %) that
+    matched neither the published 74 % nor a clean exponential run.
+
+    With the model threaded through, the published decomposition comes back
+    exactly: margin 74 % / slippage 17 % / fees 9 %.
+    """
+    import json
+    from weather_agent import error_model as em
+    from weather_agent.probability import (quantiles_to_distribution,
+                                           band_probability, TAIL_LINEAR_R21)
+    art = json.load(open("artifacts/m2_quantiles.json"))
+    qc = {int(k): v for k, v in art["strata"]["24"]["values"].items()}
+    lev = {l: 25.0 + qc[l] for l in (10, 25, 50, 75, 90)}
+    qF = em.to_market_unit(lev, "F")
+
+    def share(**kw):
+        d = quantiles_to_distribution(**{f"p{k}": qF[k] for k in qF}, **kw)
+        tot = {"margin": 0.0, "x": 0.0, "fee": 0.0}
+        for t_ in sorted(d):
+            pm = band_probability(d, lo=float(t_), hi=float(t_))
+            mg = backtest.calibration_margin(lev, unit="F", lo=float(t_),
+                                             hi=float(t_), **kw)
+            tot["margin"] += mg * pm
+            tot["x"] += 0.01 * pm
+            tot["fee"] += 0.05 * pm * (1 - pm) * pm
+        s = sum(tot.values())
+        return {k: v / s for k, v in tot.items()}
+
+    published = share(tail_model=TAIL_LINEAR_R21)
+    assert published["margin"] == pytest.approx(0.74, abs=0.005)
+    assert published["x"] == pytest.approx(0.17, abs=0.005)
+
+    # and the CONCLUSION — that the model's own imprecision binds, not the costs —
+    # survives the fix rather than depending on it
+    fixed = share()
+    assert fixed["margin"] > 0.65, "the margin stopped dominating under the new tails"

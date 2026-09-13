@@ -165,6 +165,20 @@ def main() -> int:
     # §4: p_model is RECOMPUTED under as-of discipline, never reused from R21, and
     # with the CDF that carries session A's lower-tail fix — a DIFFERENT CDF from
     # the one that produced R21, which is why R22 is not row-comparable with it.
+    #
+    # AND THE CDF MOVED AGAIN AFTER THIS RAN (A2). The published R22 numbers — the
+    # Brier table and the BSS-inside-each-price-bin decomposition that R30 §2
+    # inherits as its hard constraint — were computed with the LINEAR one-degree
+    # tails. Those are preserved and reachable as
+    # `probability.TAIL_LINEAR_R21`; the default is now an exponential tail whose
+    # scale comes from the quantiles, so re-running this file AS IS will not
+    # reproduce the published numbers and is not supposed to.
+    #
+    # The pointer lives here, next to the result, and not only in the module:
+    # preserving a code path does nothing for a reader who does not know to look
+    # for it. To reproduce, thread tail_model=TAIL_LINEAR_R21 through
+    # `backtest.candidates`; to ask the more interesting question — whether the
+    # BSS-inside-bin finding SURVIVES the tail fix — run it both ways and compare.
     cands = backtest.candidates(con, days, dataset_version=DATASET_VERSION,
                                 counters={})
     meta = {r["market_id"]: r for r in db.query(
