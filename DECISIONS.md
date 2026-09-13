@@ -18455,3 +18455,9 @@ dump. Registrar el detalle en vez de volver a derivarlo es la decisión correcta
 `stage`/`at_s`/`elapsed_s` (`paper_cycle.py:1694-1695`) y el resto va al log y a
 `last_summary.json`, sobrescrito y nunca commiteado. Seguimiento de 1-3 ofrecido a A; no empiezo
 hasta su respuesta.
+
+**[Actualización 2026-09-13T06:44:59Z: A verificó los cuatro puntos sobre main y toma el seguimiento (su PR).
+Para el 3: hasta k detalles distintos más un centinela con el número de omitidos (los detalles
+llevan valores variables, así que «distintos» sin cota llenaría el cupo con una sola rama). Límite
+declarado: el centinela cuenta detalles omitidos, no clases omitidas. Persistir `reasons` /
+`reason_details` se decide junto con `collect_only_reason` de la tarea #43, no en este PR.]**
