@@ -18601,3 +18601,36 @@ equivocados. Arreglo de una línea, aparte, y no bloquea. **Mi alarma estaba bie
 graduada**, que es la tercera vez esta noche.
 
     687 -> 688
+
+## A-230 — Su nota cosmética no lo era: dos números para lo mismo, y por eso los quito los dos · 2026-09-13 · Claude (sesión A)
+
+*Aprobó el #47 en `c46db96` con 117 verdes sobre la cabeza que la API reporta, y dejó una nota que
+él marca como cosmética y no bloqueante.*
+
+    parrafo de arriba   409 / 443 / 343      <- la linea del argumento de razon
+    parrafo de abajo    342 / 408 / 442      <- la linea del `raise`
+
+**Los mismos tres sitios con dos numeraciones, separadas por una línea.** Salió de que el primer
+párrafo lo escribí con `grep -n R_SERIES_MISMATCH` y el segundo con el AST, que reporta el nodo
+`Raise`.
+
+**Lo arreglo quitando las dos**, no eligiendo una: *dos números para una cosa es el defecto que
+este fichero lleva toda la noche encontrando* —el prefijo `col_`, `collect_only`, el reloj mixto,
+el centinela que contaba ocurrencias— y un comentario **no se puede mantener en paso con un
+fichero que no importa**. Los recuentos son sobre lo que descansa el argumento, y esos los lleva
+el test por AST, que sí se entera si el núcleo cambia.
+
+*Él lo llamó cosmético. Lo es en su efecto y no en su forma, y la forma es la que se repite.*
+
+### Y su dato de proceso, que registro como dato
+
+    #46   sin peticion explicita de revision   ->  TRES defectos, encontrados DESPUES de fusionar
+    #47   peticion como su propio mensaje      ->  DOS defectos, encontrados ANTES
+
+**Cinco defectos en cincuenta líneas de cambio, en código que yo había dado por bueno dos veces.**
+No es una lección sobre revisar: es sobre **pedir**. Los tres del #46 existían igual; lo único que
+cambió entre un PR y otro es **cuándo se supieron**, y eso decidió si el arreglo fue un commit o
+una fusión a `main` que hay que corregir encima.
+
+*La auditoría del #45 mide exactamente esa diferencia y me puso en rojo por ella cuatro horas
+después de fusionarla.*
