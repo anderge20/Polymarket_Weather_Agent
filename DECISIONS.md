@@ -18461,3 +18461,61 @@ Para el 3: hasta k detalles distintos más un centinela con el número de omitid
 llevan valores variables, así que «distintos» sin cota llenaría el cupo con una sola rama). Límite
 declarado: el centinela cuenta detalles omitidos, no clases omitidas. Persistir `reasons` /
 `reason_details` se decide junto con `collect_only_reason` de la tarea #43, no en este PR.]**
+
+## A-228 — B revisa el #46 después de fusionarlo y encuentra tres defectos; el tercero es mi propio arreglo repetido una capa más abajo · 2026-09-13 · Claude (sesión A)
+
+*PR **#47** abierto 2026-09-13T06:51Z. Ventana D16 desde este registro: fusionable a partir de las
+**08:51Z**. 686 → 687, verificado. **Y esta vez la revisión está pedida expresamente**, que es lo
+que le faltó al #46.*
+
+### Los tres, verificados sobre `main` antes de aceptarlos
+
+    grep R_SERIES_MISMATCH src/weather_agent/settlement.py
+      343:  quantization=NONE requires an on-grid value    <- el que me faltaba
+      409:  la comprobacion de SERIE
+      443:  la comprobacion de UNIDAD
+
+**1. Tres sitios, no dos.** Yo escribí «dos» en el #46 y en su registro, y lo escribí sin contar.
+
+**2. `"requires" in b` no discriminaba**, porque el detalle de cuantización dice literalmente
+*«quantization=NONE **requires** an on-grid value»*. **`a != b` hacía todo el trabajo y la
+aserción se leía como dos afirmaciones.** Es el defecto que yo mismo le puse a B en su #43 —una
+aserción que pasa en el mundo donde la tesis es falsa— cometido en el test escrito para no
+cometerlo.
+
+**3. Y el tercero es el que me importa: «primer detalle por razón» reabre DENTRO de un ciclo la
+confusión que el #46 cierra ENTRE ciclos.** `{"series_mismatch": 2}` con un detalle dice cuántos
+hubo y esconde cuántas **clases**. *Arreglé la conflación a escala de ciclo y la reintroduje a
+escala de fila, en el mismo commit.*
+
+### El arreglo, y por qué el centinela no es adorno
+
+Hasta tres detalles **distintos** por razón, y **`+N mas`** cuando el tope muerde. Guardar k sin
+decir cuántos se dejaron fuera sería el mismo defecto una capa más abajo: **una fila que pierde
+información sin declararlo**, que es lo que llevo dos días catalogando.
+
+Y el límite del centinela va escrito en la constante, con las palabras de B: **cuenta detalles
+omitidos, no clases**. `+17 mas` puede ser diecisiete valores de una rama o dieciséis más el único
+de otra. *Dice QUE esconde, nunca QUÉ.* Con el núcleo congelado y el parseo descartado no hay
+remedio que los separe aquí; la fila apunta al log y el log los tiene todos.
+
+### Su cuarto punto, que no es del #46 y es mi propio argumento devuelto
+
+**Ni `reasons` ni `reason_details` se persisten.** `stage_profile` guarda sólo `stage`, `at_s` y
+`elapsed_s` (`paper_cycle.py:1693-1695`), así que el detalle que el #46 rescata acaba en la línea
+de log y en `last_summary.json` — **las dos superficies que yo describí hace una hora como donde
+las cosas se pierden**, una sin rotación y la otra sobrescrita y sin commitear.
+
+*El PR no es incorrecto: el detalle se calcula y se emite en vez de tirarse. Pero su valor está
+topado por dónde aterriza, y escribí un rescate hacia un pozo que yo mismo había señalado.*
+
+**Persistirlo no va aquí:** es la misma pregunta que el `collect_only_reason` de la tarea #43 —qué
+del resumen del ciclo merece sobrevivir al ciclo— y van juntas o no van.
+
+### Y una anotación de proceso
+
+Él revisó el #46 **después** de la fusión y dejó el comentario diciendo que no limpia D16.
+*Correcto: el chequeo sólo cuenta huellas anteriores.* Lo hizo igualmente porque **el código
+estaba en `main` y nadie lo había leído**, que es más importante que el contador — y de esa
+revisión salieron tres defectos reales. **El contador mide la ausencia de revisión; la revisión
+tardía arregla el código y deja el contador en rojo, y las dos cosas son correctas a la vez.**
