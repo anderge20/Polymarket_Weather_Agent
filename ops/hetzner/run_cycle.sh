@@ -82,7 +82,7 @@ ARGS=(--target-date "$TD" --dataset-version "$DSV"
       --coverage-also "$ALSO")
 
 if [ "$MODE" = "collect" ]; then
-  ARGS+=(--collect-only)
+  ARGS+=(--collect-only --collect-only-reason mode_collect)
 else
   # FAIL-CLOSED ON tau, exactly as the workflow did. No PAPER_TAU file, no
   # trades — a threshold picked by a default is a parameter nobody
@@ -94,7 +94,13 @@ else
     ARGS+=(--tau-signal "$TAU" --tau-exec "$TAU_EXEC")
     log "deciding with tau_signal=$TAU tau_exec=$TAU_EXEC"
   else
-    ARGS+=(--collect-only)
+    # THE SAME STRING THE NEXT LINE LOGS, AND THAT IS THE WHOLE POINT. The
+    # reason has been written on every fail-closed cycle since this file
+    # existed -- into a log on a box with no rotation, which nobody copies.
+    # `paper_cycle.py` never learns it was launched as a decide, so the shard
+    # could not tell a `collect` from a `decide` that refused to decide: six of
+    # thirty-four cycles, indistinguishable in the data.
+    ARGS+=(--collect-only --collect-only-reason no_paper_tau)
     log "no $ROOT/PAPER_TAU — collect-only (fail-closed, R24 P12)"
   fi
 fi
