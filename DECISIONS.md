@@ -18336,3 +18336,49 @@ las dos direcciones.*
 shard → ejecución de Actions es **exacta y directa** —`34340664711` es la corrida de las 10:31—.
 Es la misma atribución que rescaté de los logs para la era de la caja, y para la era de Actions
 nunca hizo falta rescatarla: estaba en el nombre.
+
+## A-225 — La preinscripción del 06:07 se cumple, y la predicción interesante era la aburrida · 2026-09-13 · Claude (sesión A)
+
+*Resuelve la preinscripción sellada en A-214 a las 03:56Z, antes de que el ciclo existiera.*
+
+    sesion                        sha        markets  universe  TOTAL_min   ratio
+    col_20260913T000706Z          33f1eca9      60,9    0,020      22,70   1,0075
+    col_20260913T024005Z          33f1eca9      60,9    0,020      23,83   1,0074
+    col_20260913T030705Z          a32bbdb9      61,4    0,020      23,75   1,0073
+    col_20260913T060705Z          fd45bf13      61,4    0,020      25,12   1,0071   <- con el #33
+
+    CONFIRMA  code_commit = fd45bf13        ->  la caja pullo con el #45 y el #33   CUMPLIDO
+              universe <= 0,1 s              ->  0,020, IDENTICO                     CUMPLIDO
+              load:markets <= 90 s           ->  61,4                                CUMPLIDO
+              total <= 26 min                ->  25,12                               CUMPLIDO
+              ninguna etapa STOPPED          ->  ninguna                             CUMPLIDO
+
+**La predicción que declaré interesante era la aburrida y salió aburrida.** El ciclo se parece al
+de las 03:07 en todo salvo el sha, así que **el alcance del #33 en producción es exactamente el
+que dije** —sólo `backtest.universe`, y cuesta los mismos 20 ms—. `probability.py` no se ejecuta
+en la caja porque `forecasts` y `signals` marcan 0,0 s en `--collect-only`.
+
+*Un PR de +623 líneas que cambia el 50,5 % de los `p_model` del backtest entra en producción sin
+mover un solo milisegundo, y eso era comprobable de antemano y lo comprobé de antemano.*
+
+**La pendiente sigue plana:** 12 → 60,9 · 13 → 60,9 · 14 → 61,4 · 15 → 61,4 s. **+0,17 s/shard
+sobre cuatro puntos**, contra los 53,2 del código viejo.
+
+*El total sube 1,37 min, más que los ~27 s del término de libro — pero con ±80 s de ruido medido
+en ese término, un punto no dice nada. El de las 21:07 con diecinueve shards es el que cierra la
+tarea #51.*
+
+## A-226 — PR #46 fusionado: 686, y esta vez sí miré `isDraft` · 2026-09-13 · Claude (sesión A)
+
+    sha al disparo   8f65143d      isDraft: false, comprobado AL DISPARO
+    arbol            9f64f10       686 verdes, contra 685
+    segundo padre    8f65143d      comprobado
+    ventana          06:28Z, y fusionado a las 06:35 tras el ciclo de las 06:07
+
+**Cinco fusiones esta noche: 657 → 686.** Y la comprobación que anoche me faltó tres veces
+seguidas en el #33 —`isDraft`— entra ya en el mismo gesto que el `headRefOid`. *No como propósito:
+como campo de la misma consulta.*
+
+Con esto queda cerrado el ciclo que abrió el #44: **el libro mayor ya no llama dos defectos
+distintos por el mismo nombre**, y la aserción que el #44 dejó clavada «como era» cambió a
+propósito, que es exactamente lo que decía su nota.
