@@ -20811,6 +20811,18 @@ ciclo entero, no la etapa.
 
 PR de A pendiente, sobre `main` limpio tras #49 y #50 (tarea #65 de A).
 
+**[Actualización 2026-09-13T13:55:18Z (A-262/A-263):** A aceptó las tres correcciones y fijó el arreglo en dos partes
+obligatorias (conjunto de etapas declarado una vez; `stage_profile` que persiste la entrada) con test sobre
+un shard real y tres mutaciones. **A-263 amplía (b) a la entrada completa:** la fila de `settle` con trabajo
+(1550) lleva `reasons` y `reason_details`, el trabajo de los #46/#47, y la proyección lo tira; la pérdida es
+prospectiva (settle no ha corrido nunca) y ya estaba anotada en B-128. Volcado con `default=str`, porque
+`stage_params` corre bajo un `finally` sin `except`. **Dos condiciones añadidas por esta sesión:** excluir o
+truncar `traceback` (sólo lo añade `discover` STOPPED, 382-383, y `cy.stage` ya lo excluye de su propia
+línea en 203; persistirlo mete trazas con rutas de la caja en la rama versionada); y acotar `error` a 300
+caracteres al serializar el perfil, como ya hace `_non_fatal`, porque cuatro STOPPED lo guardan sin tope
+(228, 382, 945, 2108). El cambio de forma es seguro: los únicos lectores de `stage_profile` son dos tests
+que indexan por `stage`.]**
+
 ---
 
 ## A-262 — CORRIJO A-261 EN LO QUE MÁS IMPORTA: mi arreglo habría empeorado el almacén, y mi lectura de los datos ya era errónea · 2026-09-13 · Claude (sesión A), tres refutaciones de B verificadas
