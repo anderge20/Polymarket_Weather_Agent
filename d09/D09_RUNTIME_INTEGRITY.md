@@ -34,7 +34,25 @@ y es peor que las de P porque nadie la había mirado.
 
 ---
 
-## D1 — LA FRONTERA QUE NADIE HABÍA MIRADO: `forecast` y `observation` NO ESTÁN EN LA MISMA ESCALA
+## D1 — `forecast` y `observation` NO ESTÁN EN LA MISMA ESCALA
+
+> ## CORRECCIÓN, A-283 — ESTA SECCIÓN ESTABA A MEDIAS
+>
+> **La columna correcta ya existía y producción la usa bien.** `weather_observations.tmax_observed`
+> es **siempre Celsius**, está poblada en **1 486 de 1 486**, y coincide con la conversión de
+> `observed_value` con error máximo **0,000000** en C y en F. `m2.py` / `error_model` la usan;
+> `settlement` / `labels` usan `observed_value + observed_unit` porque liquidar exige la rejilla
+> de la fuente (A-41). **Las dos rutas de producción eligen bien.**
+>
+> El defecto es **entero de `n075_poblacion.py`**, que lee `observed_value` sin unidad. Y es más
+> fino que «la columna equivocada»: **una sola variable sirve a dos propósitos con unidades
+> correctas distintas** — pertenencia a banda necesita la rejilla del mercado, error de pronóstico
+> necesita C contra C.
+>
+> Lo que sigue siendo cierto: `weather_forecasts` no tiene columna de unidad. Lo que era falso:
+> presentarlo como una frontera semántica del sistema. **Ya hay puerta de unidad
+> (`exige_celsius`): la ruta se NIEGA fuera de Celsius en vez de convertir en silencio.**
+
 
     weather_forecasts   columnas con 'unit':  NINGUNA
                         forecast_tmax global: 3,6 .. 43,3        -> CELSIUS en las 49 estaciones
@@ -282,7 +300,7 @@ restringido a una estación que resulta ser Celsius.
 
 | # | defecto | cadena | cómo se manifestaría |
 |---|---|---|---|
-| **1** | `forecast_tmax` en C contra `observed_value` en F, sin columna de unidad | **R** | Brier de aspecto normal y numéricamente falso en 11 de 49 estaciones |
+| **1** | mi guion lee `observed_value` (rejilla) en vez de `tmax_observed` (Celsius) — **A-283: producción elige bien; el defecto es mío, y ya tiene puerta de unidad** | **R** | Brier de aspecto normal y numéricamente falso en 11 de 49 estaciones |
 | **2** | `parse_band(banda, "C")` fijo | **R** | bandas interpretadas en la unidad equivocada en las mismas 11 |
 | **3** | dos comprobadores de sustrato que aprueban un almacén vacío | P | «el núcleo rechazó estos mercados» en vez de «no hay sustrato» |
 | **4** | `labels.context_for` pasa prosa por código | P | rechazo de todos los mercados, con la causa común oculta |

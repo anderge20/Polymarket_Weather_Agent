@@ -35,6 +35,45 @@ LON = ZoneInfo("Europe/London")
 DB = os.environ.get("PMW_DB", "/Users/mariaaleu/workspace/Polymarket_Weather_Agent/data/pmw.duckdb")
 
 
+
+class UnidadNoSoportada(RuntimeError):
+    """La ruta se NIEGA en vez de convertir en silencio. D09-1 / A-283."""
+
+
+def exige_celsius(con, station: str, dsv: str = "markets_v2") -> None:
+    """PUERTA DE UNIDAD. Se niega si la estacion no es enteramente Celsius.
+
+    POR QUE NEGARSE Y NO CONVERTIR. `weather_forecasts.forecast_tmax` es Celsius en las
+    49 estaciones y NO lleva columna de unidad; `weather_observations` guarda DOS
+    representaciones: `tmax_observed` (siempre Celsius, derivada) y `observed_value` (en
+    la rejilla de la fuente, Fahrenheit en 11 estaciones). Las bandas del mercado estan
+    en la unidad del mercado.
+
+    Este guion usa `observed_value` -- que es lo CORRECTO para preguntar en que banda
+    cae una observacion, y lo INCORRECTO para restarle un pronostico en Celsius. En
+    EGLC las dos columnas coinciden (diferencia maxima medida 3,6e-15) y no hay
+    ambiguedad. Fuera de EGLC la habria, y el error no levantaria ninguna excepcion:
+    en KHOU daria +52,20 donde el valor correcto es -0,24.
+
+    Asi que la ruta se niega, con nombre. Convertir aqui seria elegir una de las dos
+    lecturas sin decir cual, y la version multiunidad hay que escribirla entera:
+    trabajar en la rejilla del mercado y convertir el PRONOSTICO, no la observacion.
+    """
+    uds = [r[0] for r in con.execute(
+        "SELECT DISTINCT unit FROM markets WHERE station_identifier = ? AND dataset_version = ?",
+        [station, dsv]).fetchall()]
+    obs_uds = [r[0] for r in con.execute(
+        "SELECT DISTINCT observed_unit FROM weather_observations WHERE station = ?",
+        [station]).fetchall()]
+    malas = [u for u in uds + obs_uds if u not in (None, "C")]
+    if malas:
+        raise UnidadNoSoportada(
+            f"{station}: unidades {sorted(set(uds))} en markets y {sorted(set(obs_uds))} en "
+            f"weather_observations. Este guion solo es correcto en Celsius; en Fahrenheit "
+            f"restaria `observed_value` (F) menos `forecast_tmax` (C) y devolveria un numero "
+            f"sin unidad SIN levantar excepcion. Ver D09-1 (tarea #72) y A-283.")
+
+
 def particion(bandas) -> bool:
     ab = [b for b in bandas if b[0] is None]
     ar = [b for b in bandas if b[1] is None]
@@ -77,6 +116,7 @@ def pronosticos(con, station="EGLC", leads=(24, 9)):
 
 def poblacion(con, dsv, station="EGLC"):
     """Devuelve (elegidos, diag) donde elegidos: fecha -> dict del evento escogido."""
+    exige_celsius(con, station, dsv)
     ev = {}
     for eid, td, ct, uma, banda, gan in con.execute(
             """SELECT m.event_id, CAST(m.end_date AS DATE), m.close_time,

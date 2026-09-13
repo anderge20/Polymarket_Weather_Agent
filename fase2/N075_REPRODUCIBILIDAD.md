@@ -58,15 +58,15 @@ son sobre el **contenido leído**, que es la condición que de verdad hay que re
 
 ## Guiones y salidas, con hash
 
-> **Actualizado el 2026-09-13 tras `H4 = INVALIDADA` (A-280).** Tres artefactos se
-> **reetiquetaron** como `REFERENCE / SANITY CONTROLS — NOT LEVEL 1`
-> (`N075_OLD_VS_CORRECTED.md`, `n075_metricas.py`, `N075_METRICAS_SALIDA.txt`). **Sólo cambió
-> el texto de cabecera: ni un número.** Sus `sha256` cambian por eso, y se reemiten aquí en
-> vez de dejar en pie una cita obsoleta. Los hashes anteriores quedan en el historial de
-> `research/modelsel-artifacts` (commit `b148cef`).
+> **Reemitido dos veces el 2026-09-13.** (1) tras `H4 = INVALIDADA` (A-280), por el
+> reetiquetado `REFERENCE / SANITY CONTROLS`; (2) tras **A-283**, porque `n075_poblacion.py`
+> gana la puerta de unidad `exige_celsius()`. **En los dos casos la salida de métricas es
+> IDÉNTICA BYTE A BYTE** — comprobado con `diff`, no supuesto — y ningún número de A-278 se
+> mueve. Los hashes anteriores quedan en el historial de `research/modelsel-artifacts`
+> (`b148cef` y `96c4755`).
 
 ```
-da1d2cbbb20d1805b35ed25697d43d7ec01adc5a7ec46ac6c8b7ababf290dbba  n075_poblacion.py
+b6d23f5719320b6589d7342249ebe8117acd77d797760125a79c568a2b9bcbb1  n075_poblacion.py
 4a331adbec3a0b33b5d655ebb56941e23635bb637a1c5e5954bc0663371b779b  n075_metricas.py
 1e522bd837f60788be73c7deae746bf05bbe3a74907d24a578e31d23d50f321e  N075_METRICAS_SALIDA.txt
 5787852e77b038d4abb9cbbab92495b32a9e9a6c21562d908460c4189a747908  N075_HUELLA_DATASET.txt

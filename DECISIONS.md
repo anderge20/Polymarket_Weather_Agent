@@ -22322,3 +22322,81 @@ defecto como esperado, que es exactamente lo que hace `test_labels.py:119` y por
 defecto lleva verde desde siempre.
 
 **El gate de dinero real sigue siendo exclusivamente del usuario y nada de esto lo toca.**
+
+## A-283 — CORRIJO MI PROPIO D09-1: la columna correcta YA EXISTÍA, producción la usa bien, y el defecto era entero de mi guion · 2026-09-13 · Claude (sesión A)
+
+Ataqué mi hallazgo de A-282 antes de dejarlo en pie, y se cayó a la mitad.
+
+### Lo que A-282 dio a entender, y lo que es falso
+
+Escribí que `weather_forecasts` no tiene columna de unidad, que «la semántica vive fuera de
+la fila», y presenté D09-1 como una frontera semántica del sistema. **La primera mitad es
+cierta; la conclusión no.**
+
+    weather_observations.tmax_observed   no-NULL en 1 486 de 1 486
+    |tmax_observed - conversion(observed_value)|   max 0,000000   en C y en F
+
+**El almacén guarda las DOS representaciones**, y la DDL lo dice desde siempre
+(`database.py:323`: *«tmax_observed DOUBLE, -- ALWAYS Celsius»*). **Y producción elige bien
+en las dos rutas:**
+
+    m2.py / error_model        -> tmax_observed     (siempre Celsius)
+    settlement / labels        -> observed_value + observed_unit  (rejilla de la fuente, A-41)
+    MI n075_poblacion          -> observed_value SIN unidad        <- el defecto
+
+**No es un hueco del esquema ni un defecto de producción. Es mi guion, y la columna correcta
+estaba a un `SELECT` de distancia.** Segunda vez en dos ciclos con la misma forma: en A-279
+bis fue `resolution.band_integrity`, que existía dos definiciones más abajo de la que yo
+importaba. *La pregunta que sigo sin hacerme a tiempo no es «¿es correcto lo que he
+escrito?» sino «¿esto ya existe?».*
+
+### Y el defecto real es más fino que «la columna equivocada»
+
+Mi `obs` sirve para DOS cosas con unidades correctas distintas:
+
+    pertenencia a banda   necesita la rejilla del MERCADO  -> observed_value  (lo que uso)
+    error de pronostico   necesita C contra C              -> tmax_observed   (lo que falta)
+
+**Una sola variable con dos propósitos y dos unidades correctas.** Por eso no se arregla
+cambiando el nombre de la columna: la versión multiunidad hay que escribirla entera, y la
+forma correcta es **trabajar en la rejilla del mercado y convertir el PRONÓSTICO**, no la
+observación — que es lo que A-41 lleva diciendo desde el principio.
+
+### Lo que SÍ he hecho: la ruta se NIEGA, no convierte
+
+`n075_poblacion.exige_celsius()` — puerta de unidad al principio de `poblacion()`:
+
+    EGLC   OK  185 fechas          KHOU   SE NIEGA: unidades ['F'] en markets y ['F'] en obs
+    CYYZ   OK  184 fechas          KORD   SE NIEGA: ...
+
+Negarse y no convertir es deliberado: convertir aquí sería elegir una de las dos lecturas
+sin decir cuál. El mensaje nombra D09-1, la tarea #72 y esta entrada.
+
+**Y A-278 no se mueve: la salida de `n075_metricas.py` es IDÉNTICA BYTE A BYTE** a la
+publicada. Tenía que serlo —en EGLC `observed_value` y `tmax_observed` difieren 3,6e-15 y los
+mercados son todos `unit='C'`— pero se ha comprobado con `diff`, no se ha supuesto.
+`n63_conflictos_ventana` sigue dando 38/1/14/39/9: **ya era correcto en unidades** porque
+cuantiza en la unidad de la estación y parsea las bandas en la del mercado.
+
+### Qué le pasa al veredicto de D0.9
+
+**`D0 = BLOCKED` se mantiene**, y los motivos que lo sostienen no son el que acabo de
+corregir:
+
+    H1 dos falsos READY ejecutados                     EN PIE
+    H3 labels.context_for sustituye codigo por prosa   EN PIE
+    H4 labeling.build_label deja pasar NaT             EN PIE
+    H5 series: interseccion VACIA                      EN PIE
+    H5 parse_band(banda,"C") fijo                      EN PIE  (cadena R, tarea #70)
+    H5 unidad forecast/observation                     RE-ATRIBUIDO: mi guion, no el sistema
+
+**Lo que cambia es el titular.** A-282 decía que el peor defecto estaba en la cadena que
+Level 1 ejecutaría y sonaba a problema de diseño. **Es un problema de mi código, cuesta una
+puerta de unidad —ya puesta— y la versión multiunidad completa.** Eso es mejor noticia y hay
+que decirlo con la misma claridad con que dije lo otro.
+
+### Reproducibilidad
+
+`n075_poblacion.py` cambia (la guarda), así que su `sha256` cambia y estaba citado en
+`N075_REPRODUCIBILIDAD.md`. Reemitido allí, con la nota de que **la salida de métricas es
+idéntica byte a byte**; los hashes anteriores quedan en `research/modelsel-artifacts`.
