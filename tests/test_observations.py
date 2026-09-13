@@ -189,13 +189,25 @@ def test_every_series_a_station_can_carry_declares_its_report_types():
     assert set(obs.SERIES_SOURCE) == set(obs.SERIES_REPORT_TYPES)
 
 
-def test_a_series_forgotten_in_the_source_map_RAISES_instead_of_overwriting(monkeypatch):
-    """Session A's reproduction of the fallback: a new series declared where the fetch
-    needs it and forgotten where the row's `source` comes from. With `.get` it reused
-    `IEM_ASOS_METAR` and overwrote the old label; indexed, it cannot get that far."""
-    monkeypatch.setitem(obs.SERIES_REPORT_TYPES, "IEM_ASOS_METAR_1C_RT345", (3, 4, 5))
+def test_a_series_forgotten_in_the_source_map_RAISES_instead_of_overwriting(con, monkeypatch):
+    """Session A's reproduction of the fallback, driven through the REAL path.
+
+    A new series declared where the station and the fetch need it — `STATION_SERIES`
+    and `SERIES_REPORT_TYPES` — and forgotten where the row's `source` comes from. With
+    a `.get` fallback it reused `IEM_ASOS_METAR` and overwrote the old label. Indexed,
+    `to_row` raises before `ingest_daily_high` writes anything.
+
+    The first version called `source_for` directly after patching only the report-types
+    map, which `source_for` never reads: it looked like it exercised the relationship
+    between the two maps and exercised one (session A)."""
+    new_series = "IEM_ASOS_METAR_1C_RT345"
+    monkeypatch.setitem(obs.STATION_SERIES, ICAO, (new_series, "C", 1.0))
+    monkeypatch.setitem(obs.SERIES_REPORT_TYPES, new_series, (3, 4, 5))
+    assert new_series not in obs.SERIES_SOURCE
+
     with pytest.raises(KeyError):
-        obs.source_for("IEM_ASOS_METAR_1C_RT345")
+        obs.ingest_daily_high(con, ICAO, TARGET, TZ, DSV, fetcher=_fetcher(_full_local_day()))
+    assert db.query(con, "SELECT count(*) AS n FROM weather_observations")[0]["n"] == 0
 
 
 def test_a_corrected_label_lands_BESIDE_the_old_one_never_over_it(con, monkeypatch):
