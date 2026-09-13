@@ -21256,3 +21256,51 @@ de 37 — tres campos que parecían discriminadores y eran constantes.
 **Queda una mitad por observar:** el `decide 9` de mañana a las 02:40 debe traer
 `collect_only_reason == "no_paper_tau"`. Es la otra rama de la misma puerta y **no se supone;
 se lee.**
+
+---
+
+## A-270 — LA PREDICCIÓN DE A-246 SE CUMPLE EN SUS TRES RAMAS. Los desajustes pasan de 15 a 1, y el que queda es de la VENTANA · 2026-09-13 · Claude (sesión A)
+
+**Reingesta ejecutada dentro del presupuesto preinscrito** (A-252): `peticiones=138` contra
+un techo de 200, `dias_sin_observacion=0`, **`discrepancias=0` contra el oráculo** de 137
+días del tarball de B-133. Ninguna parada.
+
+**Criterio (a) — coexistencia, verificada:**
+
+    IEM_ASOS_METAR       IEM_ASOS_METAR_1C        118 filas   2026-04-08 -> 2026-08-23
+    IEM_ASOS_METAR_RT34  IEM_ASOS_METAR_1C_RT34   138 filas   2026-04-08 -> 2026-08-23
+    weather_observations: 1 348 -> 1 486 (+138, exactamente las peticiones)
+    dias-EGLC con LAS DOS filas: 118
+
+**La etiqueta vieja sigue entera y la nueva vive al lado**, que es lo que el #49 fue escrito
+para garantizar. Y el esquema quedó en `[1..9]` con `measurement_rule_code` y
+`contract_source` presentes y 6.143 filas sembradas en `price_fetch_attempts` — el #52
+aplicado sobre la base real, sin tocar un dato.
+
+**Criterio (c) — LA PREDICCIÓN, escrita antes de que estos datos existieran:**
+
+> *«Las 15 deben entrar dentro de su banda ganadora, y ninguno de los 104 que hoy están
+> dentro debe salirse. 15 de 15 y 0 salidas → el defecto explicaba el desajuste entero.
+> Menos de 15 → el resto es desajuste real de fuente. Cualquiera de los 104 saliéndose → el
+> arreglo se pasa de largo.»* — y en A-247, corregido: **el 2026-05-27 saldrá, y saldrá por
+> la VENTANA, no por la serie.**
+
+    ENTRAN (antes fuera, ahora dentro)   15   las quince, una por una, +1,0 C cada una
+    SALEN  (antes dentro, ahora fuera)    1   2026-05-27: 24,0 -> 25,0, banda [23,5 · 24,5)
+    siguen fuera                          0
+    siguen dentro                       102
+
+**Las tres ramas se cumplen.** Las quince entran. Sale exactamente una, y es la que estaba
+nombrada. **Y «siguen fuera: 0» es el dato que cierra el caso**: el defecto del tipo 3
+explicaba el desajuste **entero**, sin residuo de fuente. No hay una discrepancia
+Wunderground-vs-METAR que rescatar; había un máximo que se quedaba bajo.
+
+**Los desajustes pasan de 15 a 1, y el que queda no es el mismo fenómeno**: es la
+exposición de `WINDOW_LOCAL_CIVIL_DAY`, caracterizada en A-257/258/259 con una cota
+—0,49-0,66 % de los días etiquetables— **escrita antes de que este dato existiera**. Un
+evento de 119 es 0,84 %, del orden de la cota, con n=1 y sin pretender más.
+
+**Lo que esto NO es.** No es un resultado de NIVEL 1 ni toca el veredicto **D —
+INCONCLUSO**: es la reparación del sustrato, paso 1 de §6bis. El paso 2 —reingesta de
+mercados, coste cero— y el 3 —las cinco comprobaciones— siguen pendientes, y la reejecución
+del criterio va después y sin tocarlo.
