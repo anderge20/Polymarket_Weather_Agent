@@ -21530,3 +21530,71 @@ convierte en defendible en vez de arbitraria.*
 Ni un modelo, ni un umbral, ni una reejecución. `LONDRES = NO EDGE MEDIDO` y el `D —
 INCONCLUSO` siguen intactos, y lo de ayer se sigue llamando **`DATASET CORRECTION
 VALIDATED`**.
+
+---
+
+## A-274 — REINGESTA TERMINADA Y LAS DIEZ IDENTIDADES PASAN. `DATASET COMPLETO` · 2026-09-13 · Claude (sesión A)
+
+    LISTO markets=79735 outcomes=159470 eventos=7331 redondeo_decimas=0 dataset_version=markets_v2
+
+**Coincide exactamente con el `--dry-run`**, y las dieciocho comprobaciones de I1-I10
+—escritas a las 16:46Z **con la reingesta corriendo**— pasan todas
+(`fase2/n075_identidades.py`, reejecutable):
+
+    I1  eventos catalogo == escritos + excluidos     7 333 == 7 331 + 2
+    I1  mercados catalogo == escritos + excluidos   79 757 == 79 735 + 22
+    I2  eventos 7 331 · mercados 79 735             el dry-run no mintio
+    I3  eventos escritos a medias                   0
+    I4  outcomes == 2 x mercados · un Yes y un No   159 470 · 0 mal formados
+    I5  market_id / token_id duplicados             0 / 0
+    I6  tokens Yes sin band_label                   0
+    I7  backfill_2b_v1 intacto                      6 143 mercados · 12 286 outcomes
+    I8  EGLC 187 eventos · {7:2, 9:26, 11:159}      exacto
+    I9  118 viejas + 138 nuevas · 118 dias con las dos · 0 con dos de la misma serie
+    I10 observaciones disponibles antes de ocurrir  0
+
+**`I1` cierra a la unidad**: no hay un solo evento ni un solo mercado que no esté escrito o
+excluido con motivo. Era la identidad que buscaba un universo que se evapora en silencio.
+
+### ANTES / DESPUÉS
+
+**EGLC**
+
+    elemento                antiguo   corregido      delta
+    eventos                     163         187        +24
+    mercados                    807       1 997     +1 190
+    outcomes                  1 614       3 994     +2 380
+    dias                        163         186        +23
+    (estacion,dia) con >1 ev      0           1         +1
+    EVENTOS CON GANADORA         49         187       +138
+
+**Todas las estaciones**
+
+    eventos                   1 464       7 331     +5 867
+    mercados                  6 143      79 735    +73 592
+    outcomes                 12 286     159 470   +147 184
+    (estacion,dia) con >1 ev      1          52        +51
+    EVENTOS CON GANADORA        457       7 329     +6 872
+
+**El titular es la última fila: en EGLC los eventos con ganadora declarada pasan de 49 a
+187.** El sustrato anterior podía ver el resultado en el **30 %** de los eventos; el
+corregido lo ve en el **100 %**.
+
+Y las escaleras dejan de ser un artefacto: `{1:5, 3:117, 11:41}` era el truncamiento;
+`{7:2, 9:26, 11:159}` es el producto.
+
+### Dos errores de consulta míos, corregidos antes de publicar la tabla
+
+La primera versión daba `outcomes EGLC = 3 228` con 807 mercados —imposible, 2×807=1 614— y
+contaba «días con más de un evento» **mezclando estaciones**, lo que daba 199 de 200. Las dos
+cifras eran bugs de mi SQL, no hechos. Rehechas: los outcomes son exactamente el doble de los
+mercados en las cuatro celdas, y los `(estación, día)` múltiples son **52**, que coincide con
+el recuento independiente del catálogo. *Una tabla que no cuadra consigo misma se detecta
+sumando; por eso se publican las dos columnas y el delta.*
+
+### Estado de los niveles
+
+**NIVEL 0.5 — la mitad de DATASET queda cerrada: `DATASET COMPLETO`.** **NIVEL 0.75 sigue
+abierto**: faltan la población por `event_id` aplicada al análisis, el tratamiento de las
+escaleras 7/9/11, la unidad estadística `event_id × lead`, las descomposiciones de Brier y
+log-loss, y la reproducibilidad. **Ninguna reejecución todavía.**
