@@ -21055,3 +21055,30 @@ exigiéndosela a él. *Aplicármela no es cortesía, es la regla.*
 
 **Estado de main: `07a335f`, 726 tests.** Ocho fusiones hoy: #43, #44, #45, #33, #46, #47,
 #48, #49, #50 — 657 → 726.
+
+---
+
+## B-147 — #51 re-revisado en `f3349f0` tras fusionar `main`: la fusión no coló nada y el recuento cuadra por nombre
+
+*Escrito 2026-09-13T14:49:34Z.*
+
+A pidió re-revisión del #51 (`cycle_params.generator`) aplicándose su propia regla A-112: el sha que se
+fusiona debe ser el aprobado, aunque el cambio fuera sólo traer `main` (#49 y #50). **Aprobado en
+`f3349f0`**, `headRefOid` coincidente, `isDraft=false`, MERGEABLE, **733 passed**.
+
+Comprobado por contenido:
+- el diff `13847ce → f3349f0` en `ops/` y `.github/` es vacío;
+- en `scripts/paper_cycle.py` y `tests/test_paper_cycle.py`, las líneas cambiadas entre `13847ce` y
+  `f3349f0` son idénticas a las que `main` cambió entre `8bc603f` y `07a335f`;
+- contra `main` sólo difieren los siete ficheros del PR;
+- `tests/test_paper_cycle.py` tiene 132 funciones (122 + 6 + 4), las seis del #51 presentes por nombre;
+  733 = 726 + 7, predicho por A antes de correr.
+
+**El recuento clavado en 3 del barrido de llamadores sigue valiendo:** los únicos que invocan
+`paper_cycle.py` son `run_cycle.sh:126`, `paper_collect.yml:148` y `paper_cycle.yml:224`; nada en
+`scripts/` ni `src/`, incluidos los `backfill_*` del #50, lo importa ni lo lanza. Nota de alcance, no
+bloqueante: el barrido sólo mira `ops/*.sh` y `.github/workflows/*.yml`, así que no vería un futuro llamador
+Python en `scripts/`. La descripción ya corrige la transición: hasta reejecutar `install.sh`, cron registra
+`None`.
+
+**Pendiente:** A fusiona el #51; A revisa el #52 en `c97ae3a`; después, el PR de etapas de A.
