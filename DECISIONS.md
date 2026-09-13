@@ -21379,3 +21379,74 @@ desde las ~15:00Z). La revisión hostil del punto 10 **queda solicitada y pendie
 tanto la produzco yo, y lo digo con todas las letras: **una autorrevisión es un instrumento
 más débil** y hoy B ha encontrado seis defectos míos que yo no vi. La petición sigue abierta
 para cuando vuelva.
+
+---
+
+## A-272 — NIVEL 0.5: UN DÍA PUEDE LLEVAR DOS EVENTOS RESUELTOS CON GANADORAS DISTINTAS, y mi análisis los indexa por fecha · 2026-09-13 · Claude (sesión A)
+
+Atacando la lista del punto 10 **contra el catálogo, sin tocar la base** (hay un escritor),
+con los ataques que no necesitan la reingesta: duplicados, cambios de definición, unidades,
+redondeo, mercados desaparecidos.
+
+**EL HALLAZGO, y es contra mi propio instrumento:**
+
+    pares (estacion, dia) con MAS DE UN evento:            52
+      ... quitando los de slug 'arch-':                     8
+    eventos con slug 'arch-' en el catalogo:              149  (1 639 mercados; 3 de EGLC)
+
+    pares que tienen ARCH y VIVO a la vez:                 44
+       MISMA banda ganadora                                 6
+       banda ganadora DISTINTA                             36
+       solo uno de los dos resuelto                         2
+
+**Treinta y seis días llevan dos eventos resueltos cuya banda ganadora declarada NO
+coincide.** Y todo mi análisis —`n1_40_reejecucion.py` incluido— construye la población con
+`ev[fecha] = ...`: **un diccionario indexado por la fecha, donde el segundo evento pisa
+silenciosamente al primero.** Cuál sobreviva depende del orden de la consulta.
+
+*Es la forma exacta del bug de A-238 —dos cosas colapsando en una clave que no las
+distingue— reaparecida en el nivel de arriba, en código que escribí ayer.*
+
+**El caso de EGLC, mirado de cerca:** el 2026-05-19 hay dos eventos resueltos, los dos de 11
+bandas y los dos con ganadora `18 °C`, pero con **escaleras desplazadas**:
+
+    493651   arch-highest-temperature-in-london-on-may-19-2026-12corbelow   12 -> 22
+    503460   highest-temperature-in-london-on-may-19-2026-13corbelow        13 -> 23
+
+Mismo día, misma estación, mismo ganador, **distinta rejilla de bandas**. El Brier por banda
+**no es el mismo número** según cuál se use.
+
+### REGLA DE POBLACIÓN, DECLARADA AHORA Y ANTES DE CUALQUIER REEJECUCIÓN
+
+1. **Se excluye todo evento cuyo `slug` empiece por `arch-`.** No es una elección mía: es el
+   marcador de archivo del propio Polymarket, y el evento vivo es el contrato que quedó en
+   pie. Esto resuelve **44 de los 52** pares.
+2. **La población se indexa por EVENTO, nunca por fecha.** Si tras (1) una fecha sigue
+   llevando más de un evento admitido, **se reporta y no se elige en silencio**. Los 8 que
+   quedan son del 2026-03-20 y del 2026-03-25 y **ninguno es de EGLC**.
+
+*Esto no cambia el criterio: lo hace explícito donde la preinscripción era ambigua. Su
+unidad es `(target_date, lead)`, y esa formulación **daba por supuesto un evento por
+fecha**. Lo doy por escrito antes de ver ningún resultado nuevo.*
+
+### Los otros ataques del punto 10, comprobados y limpios
+
+- **`market_id` duplicado en el catálogo: 0.**
+- **EGLC es uniforme**: `unit = C`, `rounding_rule = whole degree`, en los 1 997 mercados.
+- **Las dos definiciones de universo EGLC no coinciden**: 186 días por `station_identifier`,
+  196 por slug; 12 sólo-slug (todos del 2026-08-24 en adelante, fuera de la ventana de
+  observación) y 2 sólo-estación. La preinscripción ya tomaba la **unión** a propósito.
+
+### Y UN CAMBIO DE DEFINICIÓN DEL PRODUCTO, que hay que tener en cuenta en el NIVEL 1
+
+Tamaño de la escalera de EGLC por mes de `endDate`:
+
+    2025-12  7 bandas x1     2026-03   9 x15  y  11 x15     2026-06  11 x30
+    2026-01  7 x1            2026-04  11 x28                2026-07  11 x31
+    2026-02  9 x11           2026-05  11 x32                2026-08  11 x23
+
+**La resolución del objetivo NO es constante en la muestra**: 7 bandas en diciembre, 9 en
+febrero, 11 desde marzo — y **marzo lleva las dos**. Un problema de 9 bandas y uno de 11 no
+son el mismo problema de predicción, y **un Brier promediado sobre ambos mezcla dos escalas**.
+No lo arreglo aquí ni cambio nada: lo dejo escrito **antes** de la reejecución, porque es
+justo el tipo de cosa que después se usa para explicar un resultado que no gustó.
