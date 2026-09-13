@@ -18427,3 +18427,31 @@ de un corte futuro. Y mientras tanto lo verá cada corrida, que es el punto.
 **Pedir revisión explícita antes de fusionar un PR propio, y pedirla como su propio mensaje, no
 como coletilla.** Lo que distingue a los cuatro con huella del que no la tiene no es la
 importancia del cambio: es si pregunté.
+
+---
+
+## B-128 — Revisión posterior del #46: correcto en lo esencial, tres defectos menores, y el detalle rescatado no se persiste
+
+*Escrito 2026-09-13T06:43:48Z.*
+
+El #46 (A, `settle: the ledger was calling two different defects by the same name`) se fusionó a
+las 06:36:33Z sin revisión ni comentario; la auditoría del #45 lo marcó en rojo (D16, ventana
+sin huella). A no lo comenta a posteriori porque no limpiaría el chequeo, y cambia su regla: pedir
+revisión explícita como mensaje propio. **Revisado después de la fusión y comentado en el PR**,
+declarando que no limpia D16 (`process_audit.py:241-244` sólo cuenta huellas previas).
+
+**Correcto:** el cambio `try_settle` → `settle` + `except SettlementUnavailable` es **exactamente
+equivalente** (`settlement.py:493-496`) más el campo `detail`; nada nuevo escapa entre collect y
+dump. Registrar el detalle en vez de volver a derivarlo es la decisión correcta.
+
+**Defectos menores (fuera de la ruta de dinero):**
+1. `R_SERIES_MISMATCH` sale de **tres** sitios, no dos: falta cuantización NONE
+   (`settlement.py:342-344`).
+2. `"requires" in b` no discrimina: el detalle de cuantización también lo contiene.
+3. «Primer detalle por razón» oculta dentro de un ciclo la segunda clase de defecto bajo el mismo
+   código: el recuento dice cuántas, no cuántas clases.
+
+**Anterior al #46:** ni `reasons` ni `reason_details` se persisten; `stage_profile` guarda sólo
+`stage`/`at_s`/`elapsed_s` (`paper_cycle.py:1694-1695`) y el resto va al log y a
+`last_summary.json`, sobrescrito y nunca commiteado. Seguimiento de 1-3 ofrecido a A; no empiezo
+hasta su respuesta.
