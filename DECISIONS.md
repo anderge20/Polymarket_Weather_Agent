@@ -21598,3 +21598,83 @@ sumando; por eso se publican las dos columnas y el delta.*
 abierto**: faltan la población por `event_id` aplicada al análisis, el tratamiento de las
 escaleras 7/9/11, la unidad estadística `event_id × lead`, las descomposiciones de Brier y
 log-loss, y la reproducibilidad. **Ninguna reejecución todavía.**
+
+---
+
+## A-275 — NIVEL 0.75: «preferir el vivo» TAMBIÉN ERA INCORRECTA. La regla se funda en el ciclo de vida observable, no en el nombre ni en la posición · 2026-09-13 · Claude (sesión A)
+
+**Tercera versión de esta regla, y las dos anteriores las refutaron los datos.** A-272 decía
+«excluir todo `arch-`» — borraba 93 días-estación. A-273 decía «preferir el no archivado» —
+y los dos casos del punto 2 del encargo la rompen:
+
+    SBGR 2026-05-19  ARCH  493653  11 bandas · 1 ganadora · resolved · closed 05-25
+                     VIVO  503528   1 banda  · 0 ganadoras · resolved · closed 05-20
+
+    FACT 2026-05-19  ARCH  493696  11 bandas · 0 ganadoras · uma=None · closed 05-18 (ANTES del dia)
+                     VIVO  503670  11 bandas · 1 ganadora · resolved · closed 05-20
+
+**En SBGR, «preferir el vivo» cambiaría un evento completo de 11 bandas con ganadora por un
+muñón de UNA banda sin ganadora.** Habría empeorado el sustrato aplicando una regla que yo
+había justificado con el calendario de liquidación. *La corroboración de ayer era correcta en
+43 de 44 casos y la regla que sostenía era falsa en el 44.º.*
+
+### REGLA DEFINITIVA, por ciclo de vida observable
+
+> Para cada `(station, target_date)` con más de un evento, **es elegible** el evento que
+> (a) está `resolved`, (b) tiene **exactamente una** ganadora declarada y (c) forma una
+> **partición completa**. Entre los elegibles gana el de `closedTime` **más próximo por
+> encima** de la fecha objetivo — el plazo normal de liquidación. Si no hay ninguno
+> elegible, ese `(station, día)` **no tiene evento utilizable**: se excluye, se cuenta y se
+> nombra. **El prefijo `arch-` no entra en la regla**: sólo sirve para contar el fenómeno.
+
+Aplicada: **SBGR → se queda el archivado**; **FACT → se queda el vivo**; **EGLC 05-19 → el
+vivo** (ambos elegibles, 05-20 antes que 05-25); **EGLC 05-17 y 05-18 → el archivado**, único
+existente y elegible.
+
+### Punto 11: ¿son los 138 nuevos el mismo producto? SÍ, y está medido
+
+    los 49 antiguos son un SUBCONJUNTO de los 187          True  (no se perdio ninguno)
+    los 138 nuevos: resolution_source  wunderground.com/history/daily/gb/london/EGLC   138/138
+                    unit C · rounding whole degree · uma resolved                      138/138
+                    slug fuera de 'highest-temperature-in-london-*'                       0
+    escaleras   los 49: {9:5, 11:44}      los 138: {7:2, 9:21, 11:115}
+
+**Misma fuente contractual, misma unidad, mismo redondeo, misma familia de slug, todos
+resueltos.** La única diferencia estructural es la escalera, que es la evolución del propio
+producto. **No hay mezcla de productos.**
+
+### Punto 3: las escaleras, y los periodos NO se solapan
+
+    TODAS           ladder  eventos  mercados   % ev   periodo
+                         1        1         1   0,0%   2026-05-19
+                         3        1         3   0,0%   2026-05-19
+                         7       19       133   0,3%   2025-12-30 -> 2026-01-01
+                         9      406     3 654   5,5%   2026-02-18 -> 2026-03-15
+                        11    6 904    75 944  94,2%   2026-03-16 -> 2026-09-04
+
+    EGLC                 7        2        14   1,1%   2025-12-31 -> 2026-01-01
+                         9       26       234  13,9%   2026-02-18 -> 2026-03-15
+                        11      159     1 749  85,0%   2026-03-16 -> 2026-08-23
+
+**El corte es un día, no un mes: 9 bandas hasta el 2026-03-15, 11 desde el 03-16.** Corrijo mi
+propia frase de A-272 —«marzo lleva las dos»—: era cierta **a granularidad de mes** y engañosa
+a granularidad de día. **No hay eventos de transición ni un día con dos escaleras**, salvo los
+dos degenerados del 05-19 (SBGR con 1 banda y RKSI con 3), **ninguno de EGLC**.
+
+### Dos excepciones documentadas
+
+1. **Evento 496987 (EGLC, 2026-05-20)**: una de sus once bandas —la de `17 °C`— sigue en
+   `proposed` mientras las otras diez están `resolved`. **La ganadora (`20 °C`) está
+   determinada**, así que el objetivo del evento no se ve afectado; queda anotado como
+   excepción y no se descarta.
+2. **`measurement_rule_code`, `contract_source` y `measurement_rule` están a NULL en los
+   1 997 mercados de `markets_v2` — y también en los 807 de `backfill_2b_v1`.** No es una
+   regresión de la reingesta: el catálogo no los trae y `backfill_markets` no los deriva.
+   **Consecuencia para MI pista: ninguno de los dos datasets puede liquidarse con el núcleo
+   congelado**, porque la terna está incompleta. Y una guarda que comprueba *presencia de
+   columna* —`settle_substrate_missing`— **diría «listo» con la columna vacía**: presencia no
+   es población. `stage_settle` falla cerrado por mercado con `no_measurement_rule_code`, así
+   que no hay pago equivocado, pero la guarda es engañosa y va a la lista.
+
+**Nada reinterpretado, nada reejecutado, ningún modelo.** `LONDRES = NO EDGE MEDIDO` y el
+`D — INCONCLUSO` siguen intactos y quedan marcados como **OLD / historical reference**.
