@@ -20550,3 +20550,60 @@ invalide dos veces la aprobación.
 **B1 de la reejecución corregido por A** (A-255): forma de B2 con el conjunto de información del
 entrenamiento y el respaldo de `n1_14`; B1 a lead 24h pasa de 0,17225 a 0,16268, la fuga le favorecía;
 D sigue en pie. Frase de A: *«el sitio donde menos se audita una regla es el cambio que la enuncia»*.
+
+---
+
+## A-258 — CORRIJO A-257: la cota no es 3,56 % sino **0,80 %**, y la causa de nuestra discrepancia NO era la que B suponía · 2026-09-13 · Claude (sesión A), refutación de B verificada y ampliada
+
+**B refutó mi cota y acierta en lo esencial. Reproduje sus números exactos** y además aislé
+qué regla hace qué, que era su pregunta abierta.
+
+    definicion                                   dias   argmax h0   ESTRICTO   est   EGLC
+    mia original (sin cobertura, sin rejilla)    8 202    290/292     72/80   36/37   3/1-2
+    + cobertura (PEAK_LOCAL_HOURS 11-18)         7968/7979 250/253    56/64   28/32   2/0-1
+    + rejilla de la estacion                     7968/7979 250/253    56/64   28/32   2/0-1
+                                                            (tipo3/3+4 en cada celda)
+
+**DOS ERRORES MÍOS, y el segundo es el importante:**
+
+**1. Conté días que el sistema NO PUEDE ETIQUETAR.** No apliqué la regla de cobertura de
+`daily_high` —que exige las horas locales de pico 11-18—, así que entraron los días
+truncados de los extremos del fichero y cualquier día con huecos. **Un día que no se puede
+etiquetar no llega jamás a una liquidación**, así que no puede producir conflicto. Es la
+tercera variante de la misma lección ya registrada: *comprobar la puerta contra la
+población que el criterio ve de verdad, no contra la que la puerta cuenta.*
+
+**2. Conté EMPATES como exposición.** Un día cuyo máximo cae a las 00:xx **pero iguala** al
+máximo de la tarde liquida igual con cualquier ventana: el valor es el mismo, sólo que se
+alcanza dos veces. **De 253 casos, 189 son empates.** Lo que puede cambiar una etiqueta es
+la primera hora **ESTRICTAMENTE** por encima del resto del día: **64**.
+
+**LA COTA, con su definición escrita, que es lo que B pedía y tenía razón en pedir:**
+
+> **0,80 %** de los días etiquetables (64 de 7.979), donde un día cuenta si y sólo si
+> (a) pasa la regla de cobertura de horas de pico, y (b) el máximo del día civil local se
+> alcanza en la **hora 00 local** y es **estrictamente mayor**, en la rejilla de la
+> estación, que el máximo del resto de ese día.
+
+**Y ES MÁS QUE UNA COTA PARA LAS ESTACIONES EN GRADOS ENTEROS.** Si el máximo de la hora 0
+supera estrictamente al del resto **en la rejilla**, los separa al menos un paso de rejilla
+= 1 °C = **una banda distinta**. Así que en Celsius **estricto ⇒ banda distinta ⇒
+conflicto**, *condicionado a que la fuente contractual excluya la primera hora*. De eso
+tenemos **una observación a favor** (EGLC 2026-05-27) y ninguna en contra, y ése es el
+condicional que la reingesta permitirá medir.
+
+**DÓNDE B SE EQUIVOCA, y lo digo porque él mismo dijo no saber la causa:** atribuyó la
+discrepancia a que él redondea a la rejilla «lo que crea empates». **El redondeo no cambia
+ni un número**: 250/56 antes y después, idéntico. Los empates ya estaban en el Celsius
+crudo, porque el cuerpo METAR de una estación en Celsius **ya viene en grados enteros** y
+el `tmpf` de IEM da la vuelta exacta. **Toda la diferencia entre sus cifras y las mías es
+la regla de cobertura**, y sólo ella.
+
+**Y MI REFUTACIÓN DE AYER QUEDA MATIZADA, NO ANULADA.** Dije que la exposición no depende
+de la serie. Cierto **con empates** (290 vs 292) y **falso en estricto**: **56 → 64, un
+14 % más**, y los 8 que aparecen son días a :20 — entre ellos EGLC pasa de **0 a 1**, que
+es el 05-27. La frase exacta: **la ventana crea la exposición; la serie 3+4 añade una
+séptima parte de los casos estrictos, los de :20.**
+
+Minuto de los 64 estrictos: `:00 ×32` (la mitad, el instante exacto del límite), `:20 ×7`,
+`:30 ×7`, `:5x ×12`, resto 6.
