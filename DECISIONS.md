@@ -15758,3 +15758,78 @@ cambiaría el comportamiento —un día malo dejaría de envenenar a los demás,
 es una decisión distinta—, y meter un cambio de conducta dentro de un PR de sólo tests es
 exactamente cómo se cuela lo que nadie revisó. Queda como tarea aparte; el día que se arregle,
 esta aserción tiene que cambiar a propósito.
+
+## A-198 — El cero duro tiene mecanismo, está en el código y se ve sin mirar un solo resultado · 2026-09-13 · Claude (sesión A)
+
+*Validación de B-107 y cierre del corolario de A-194. B encontró el hueco; el mecanismo estaba a
+dos funciones de distancia. Y lo que sigue NO sale de mirar aciertos: sale de leer
+`quantiles_to_distribution`, así que no es selección post-hoc de nada.*
+
+### El hueco de B, confirmado exacto
+
+    p_model == 0,0 EXACTO:  425 de 842 filas vivas (50,5 %)   ·   762 de 1 266 totales (60,2 %)
+    los no nulos mas pequenos: 0,050607  0,051852  0,052083  0,052083  0,054000
+    NADA entre 0 y 0,0506.   maximo p_model 0,8928.   ningun 1,0 exacto.
+
+### El mecanismo, en tres líneas de `probability.py`
+
+    minimum = math.floor(values[0])     # values[0] = P10
+    maximum = math.ceil(values[-1])     # values[-1] = P90
+    for temperature in range(minimum, maximum + 1): ...
+
+**El soporte de la distribución son los enteros entre `floor(P10)` y `ceil(P90)`, y nada más.**
+`band_probability` suma masa recorriendo ese diccionario, así que **una banda cuyos enteros caen
+todos fuera recibe `0.0` exacto** — no una probabilidad pequeña: un cero.
+
+Medido sobre el artefacto real `m2_quantiles.json` (`61f20fd1…`, lead 24 h, n = 1 348, cuantiles
+del ERROR P10 = −1,40 °C, P90 = +2,30 °C):
+
+    pronostico   soporte entero   grados
+       15,0 C        [13, 18]        6
+       17,4 C        [16, 20]        5
+       22,0 C        [20, 25]        6
+
+**El modelo tiene opinión sobre cinco o seis grados y declara IMPOSIBLE todo lo demás.** Un
+mercado de Londres reparte diez o quince bandas; por eso el cero cae sobre la mitad de ellas, y
+el 50,5 % observado no es una casualidad de la muestra sino la aritmética del soporte.
+
+**Y de lo que declara imposible, ocurrió el 1,41 %.** Seis veces en el libro vivo. El mercado
+pagaba 0,0015 · 0,0055 · 0,0135 · 0,0325 · 0,1095 · 0,1315 — en dos de ellas, por encima del 10 %.
+
+### Una hipótesis mía, medida y DESCARTADA antes de escribirla como hecho
+
+Pensé que la normalización final (`probability / total`) repartiría la masa de las colas
+descartadas entre los grados supervivientes, inflando cada banda del soporte — lo que habría
+explicado de paso la sobreestimación del tramo `[0,05 , 0,15)` de A-193. **Lo medí y es falso:**
+
+    soporte de 6 grados -> masa bruta 1,0000, descartada 0,0000, inflacion 1,000x
+    soporte de 5 grados -> masa bruta 0,9300, descartada 0,0700, inflacion 1,075x
+
+Las rampas de ±1 °C del `cdf` **ya recogen la cola entera** cuando el soporte abarca seis grados.
+La inflación máxima es del 7,5 %, demasiado pequeña para explicar un 10,58 % predicho contra un
+4,23 % real. *La sobreestimación de ese tramo sigue sin mecanismo conocido: UNKNOWN.*
+
+### Por qué esto NO es la selección post-hoc que nos costó Londres
+
+El defecto se lee **en la función**, sin datos de resultado: el bucle enumera un rango cerrado y
+la banda de fuera suma cero. Habría sido visible el primer día. Lo que aportan los datos es sólo
+el **tamaño** del agujero —cuántas bandas caen fuera y cuántas de ellas ocurrieron—, no su
+existencia. *Un defecto estructural encontrado leyendo el código no se convierte en post-hoc por
+haber medido después cuánto duele.*
+
+Sigue en pie, íntegro, lo de A-193/A-194: **esto no autoriza a tocar nada en `[0,15 , 0,30)`.**
+Aquello era una banda descubierta mirando el conjunto; esto es un rango de soporte escrito en un
+`range()`.
+
+### Consecuencia operativa
+
+El PR **#33** —*«A2: the distribution tails were a magic constant»*, abierto desde 2026-09-11 por
+la sesión de la nube— ataca exactamente esta constante. Con lo de hoy deja de ser un pendiente y
+pasa a ser **la decisión anterior a cualquier medición de edge**, que es justo donde A-194 dejó
+el corolario: *lo próximo que se intente tiene que decidir primero qué hace con el 50,5 % de
+filas a las que hoy asigna cero exacto.* Ahora, además, se sabe por qué se lo asigna.
+
+*Y una cautela que vale para cuando se toque: una cola mejor NO es un edge.* Cambiar el cero por
+un número pequeño y correcto mejora el Brier del modelo en esas filas y **no dice nada** sobre si
+supera al mercado, que es la pregunta que Londres respondió que no. Son dos medidas distintas y
+la segunda ya está hecha.
