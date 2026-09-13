@@ -536,7 +536,27 @@ def test_settle_skips_loudly_rather_than_guessing_a_winner(con, monkeypatch):
     assert row[0] is None and row[1] is None      # untouched, not guessed
 
 
-def _settleable_market(con, *, band="17°C", outcome="Yes", token="t1"):
+def _hand_built_observation(con):
+    """The row as the settle fixtures have always written it: BY HAND.
+
+    Kept exactly as it was so the tests that used it do not change, and
+    named so the contrast with `_ingested_observation` is visible from the
+    call site."""
+    con.execute(
+        "INSERT INTO weather_observations (station, observation_time, tmax_observed, "
+        "observed_value, observed_unit, series, source, ingestion_timestamp, "
+        "dataset_version, record_version) VALUES (?,?,?,?,?,?,?,?,?,?)",
+        ["EGLC", datetime(2026, 9, 10, 14, tzinfo=timezone.utc), 17.0, 17.0, "C",
+         # What the INGESTER writes, not what the frozen core requires. The old
+         # fixture wrote `metar_body_c` — a value no ingester has ever produced —
+         # so the suite could not see that every real settlement was refused for
+         # `series_mismatch`. Fifth fixture today certifying a world that is not
+         # the one the code runs in.
+         obs_mod.SERIES_1C, "IEM", T0, "ds1", 1])
+
+
+def _settleable_market(con, *, band="17°C", outcome="Yes", token="t1",
+                       write_obs=True):
     from weather_agent.polymarket import resolution as res
     # The CODE in `measurement_rule_code` and the PROSE in `measurement_rule` —
     # which is what live discovery writes. The old fixture put the P_* code in
@@ -557,17 +577,8 @@ def _settleable_market(con, *, band="17°C", outcome="Yes", token="t1"):
         "INSERT INTO outcomes (market_id, token_id, band_label, outcome_label, "
         "ingestion_timestamp, dataset_version, record_version) VALUES (?,?,?,?,?,?,?)",
         ["m1", token, band, outcome, T0, "ds1", 1])
-    con.execute(
-        "INSERT INTO weather_observations (station, observation_time, tmax_observed, "
-        "observed_value, observed_unit, series, source, ingestion_timestamp, "
-        "dataset_version, record_version) VALUES (?,?,?,?,?,?,?,?,?,?)",
-        ["EGLC", datetime(2026, 9, 10, 14, tzinfo=timezone.utc), 17.0, 17.0, "C",
-         # What the INGESTER writes, not what the frozen core requires. The old
-         # fixture wrote `metar_body_c` — a value no ingester has ever produced —
-         # so the suite could not see that every real settlement was refused for
-         # `series_mismatch`. Fifth fixture today certifying a world that is not
-         # the one the code runs in.
-         obs_mod.SERIES_1C, "IEM", T0, "ds1", 1])
+    if write_obs:
+        _hand_built_observation(con)
     from weather_agent import paper as _paper
     fill = _paper.Fill(shares=100.0, notional=50.0, vwap=0.5, fee=0.6,
                        outlay=50.6, executable=True)
@@ -635,6 +646,106 @@ def test_a_refused_settlement_leaves_the_position_open_with_its_reason(con, monk
     assert out["refusals"].get("no_settlement_operator:by_forecast") == 1
     assert con.execute("SELECT exit_time FROM paper_trades WHERE paper_trade_id = ?",
                        [tid]).fetchone()[0] is None
+
+
+def _ingested_observation(con, *, tmax_c, icao="EGLC", day=TD_TEST, tz="Europe/London"):
+    """Write `weather_observations` THE WAY PRODUCTION WRITES IT.
+
+    Everything below the network is the real chain: `daily_high` picks the day's
+    maximum, `detect_grid` decides the unit and snaps the value to the station's
+    grid, `to_row` shapes the row and `db.upsert` puts it in the table. Only
+    `fetch_metar` is replaced, and it is replaced by something with its declared
+    return type — `(UTC instant, °C)` pairs — not by a stub of the row.
+
+    WHY THIS EXISTS. Every settle test in this file hands `stage_settle` a row the
+    TEST built, so what the suite verifies is the shape its author believes the
+    ingester writes. That belief has been wrong twice in this very file, both
+    times with the suite green: `metar_body_c`, a series no ingester has ever
+    emitted, and the P_* code placed in the prose column. A fixture cannot catch
+    a divergence it is the source of.
+    """
+    from zoneinfo import ZoneInfo
+
+    from weather_agent import weather as _weather
+
+    start, end = _weather.target_day_window(day, tz)
+    zone = ZoneInfo(tz)
+
+    def fetcher(_icao, _start, _end):
+        out, t = [], start
+        while t < end:            # every local hour, so the peak-hours guard passes
+            hot = t.astimezone(zone).hour == 14
+            out.append((t, tmax_c if hot else tmax_c - 4.0))
+            t += timedelta(hours=1)
+        return out
+
+    return obs_mod.ingest_daily_high(con, icao, day, tz, "ds1", fetcher=fetcher)
+
+
+def test_settle_closes_against_a_row_THE_INGESTER_WROTE(con, monkeypatch):
+    """The end of the chain, on the population that is 78 % of the store.
+
+    `test_a_real_ingested_row_is_refused_by_settlement_and_says_why` already
+    drives a real payload into the boundary — but through KBKF, whose series is
+    left undeclared on purpose, so it can only ever assert a REFUSAL. The Celsius
+    path is the one 1 057 of the 1 348 rows in the real store take, it is the one
+    every non-US market settles on, and nothing has ever driven it end to end.
+
+    Unit and value are asserted BEFORE the settlement: if `detect_grid` ever
+    stopped returning °C for a Celsius station, `stage_settle` would refuse on a
+    unit mismatch and this test would fail with `settled == 0` — true, and it
+    would not say why.
+    """
+    _with_b_substrate(con); _fake_stations(monkeypatch)
+    tid = _settleable_market(con, band="17°C", outcome="Yes", write_obs=False)
+
+    dh = _ingested_observation(con, tmax_c=17.0)
+    assert dh.tmax_c == 17.0 and dh.n_obs == 24
+    row = db_mod.query(con, "SELECT observed_unit, observed_value, series "
+                            "FROM weather_observations")[0]
+    assert (row["observed_unit"], row["observed_value"], row["series"]) == \
+        ("C", 17.0, obs_mod.SERIES_1C)
+
+    out = paper_cycle.stage_settle(_cycle(), con, dataset_version="ds1")
+    assert out["settled"] == 1, out
+    assert con.execute("SELECT settlement FROM paper_trades WHERE paper_trade_id = ?",
+                       [tid]).fetchone()[0] == 1.0
+
+
+def test_an_off_grid_observation_never_settles(con, monkeypatch):
+    """`detect_grid` refuses to snap a value off the station's grid and writes
+    `UNKNOWN` rather than a plausible number. THAT REFUSAL HAS TO SURVIVE THE
+    JOURNEY, and nothing checked that it did.
+
+    What stops it is one line in the frozen core — `any(o.unit != op.unit ...)` —
+    whose own comment calls the case "unreachable through `applies_to`". It is
+    reachable: not by choosing the wrong operator, but by an observation that
+    never got a unit in the first place. Pinned here as an executable claim, the
+    way the source-daily-row guard is, because the alternative is settling a
+    contract against a temperature the ingester declined to vouch for.
+    """
+    _with_b_substrate(con); _fake_stations(monkeypatch)
+    tid = _settleable_market(con, band="17°C", outcome="Yes", write_obs=False)
+
+    _ingested_observation(con, tmax_c=17.5)      # half a degree off a 1 °C grid
+    row = db_mod.query(con, "SELECT observed_unit, observed_value "
+                            "FROM weather_observations")[0]
+    assert row["observed_unit"] == "UNKNOWN" and row["observed_value"] == 17.5
+
+    out = paper_cycle.stage_settle(_cycle(), con, dataset_version="ds1")
+    assert out["settled"] == 0, out
+    assert con.execute("SELECT settlement, exit_time FROM paper_trades "
+                       "WHERE paper_trade_id = ?", [tid]).fetchone() == (None, None)
+
+    # AND THE LEDGER CALLS IT THE WRONG THING — asserted as it IS, not as it
+    # should be. The core raises `R_SERIES_MISMATCH` for BOTH the series check and
+    # the unit check, distinguishing them only in `detail`, which `try_settle`
+    # drops on the floor. So a cycle whose observations were perfectly named comes
+    # back reading `series_mismatch`, and whoever reads that summary goes looking
+    # for a naming bug that is not there. Recorded here so the day it is fixed
+    # this assertion has to change on purpose.
+    assert out["refusals"] == {"series_mismatch": 1}, out["refusals"]
+
 
 
 # --------------------------------------------------------------------------- forecasts
