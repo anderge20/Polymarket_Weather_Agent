@@ -438,3 +438,54 @@ def test_the_two_models_differ_only_where_they_should():
     # and inside the quantile range the shapes stay close
     for t in (25, 26, 27):
         assert abs(exp[t] - lin[t]) < 0.06
+
+
+def test_the_linear_tail_leaves_a_probability_GAP_and_the_exponential_does_not():
+    """The defect measured from OUTCOMES rather than from the distribution's shape.
+
+    Session A audited EGLC (London) over 842 live-book rows and found `p_model`
+    was EXACTLY 0.0 in 50.5 % of them, with the smallest non-zero values at
+    0.0506, 0.0519, 0.0521, 0.0540, 0.0549 — nothing in between. Six of the
+    exact-zero rows WON, and the market had priced two of them above 0.10.
+
+    That gap is not a property of London: it is ARITHMETIC. A tail ramp one
+    degree wide carrying 10 % of the mass, discretised onto a one-degree grid,
+    can only give a band either nothing or roughly a half of that 10 %. This test
+    reproduces it from first principles on synthetic quantiles, so the mechanism
+    is pinned independently of any one station's data.
+
+    The exponential tail removes the DISCONTINUITY. It does not remove every zero
+    and must not be claimed to: the support is finite by construction (truncated
+    at 6.9 lambda), so bands far enough out are still zero. What changes is that
+    the boundary moves far from the centre and the mass approaches it smoothly.
+    """
+    import random
+    from weather_agent.probability import (quantiles_to_distribution,
+                                           band_probability, TAIL_LINEAR_R21)
+    rng = random.Random(7)
+
+    def smallest_non_zero(tail_kwargs):
+        out = []
+        for _ in range(200):
+            c, s = rng.uniform(-5, 35), rng.uniform(0.6, 4.0)
+            qs = dict(p10=c - 1.28 * s, p25=c - 0.67 * s, p50=c,
+                      p75=c + 0.67 * s, p90=c + 1.28 * s)
+            d = quantiles_to_distribution(**qs, **tail_kwargs)
+            nz = [band_probability(d, lo=float(t), hi=float(t))
+                  for t in range(int(min(d)) - 4, int(max(d)) + 5)]
+            nz = [v for v in nz if v > 0]
+            if nz:
+                out.append(min(nz))
+        return sorted(out)
+
+    linear = smallest_non_zero({"tail_model": TAIL_LINEAR_R21})
+    exponential = smallest_non_zero({})
+
+    # the gap: under the linear tail nothing lands between 0 and ~0.05
+    assert min(linear) > 0.04, "the probability gap is gone from the linear model"
+    assert linear[len(linear) // 2] > 0.06
+
+    # and it is closed by the fix: mass approaches zero smoothly instead
+    assert min(exponential) < 0.001
+    assert exponential[len(exponential) // 2] < 0.01, \
+        "the exponential tail reintroduced a gap"
