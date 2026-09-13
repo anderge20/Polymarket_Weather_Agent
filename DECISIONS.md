@@ -18970,3 +18970,78 @@ coste real. El **5** no.
 
 *Lo digo ahora y no en el apartado 23, porque descubrir en el paso final que no había libro sería
 haber gastado el trabajo entero para llegar a un UNKNOWN que ya estaba medido en el paso uno.*
+
+## A-237 — NIVEL 1: antes de la primera probabilidad aparece un DESAJUSTE DE SETTLEMENT, y es unilateral · 2026-09-13 · Claude (sesión A)
+
+*Encontrado al comprobar si podía reconstruir `won` desde `weather_observations`. No lo buscaba;
+lo comprobaba para poder trabajar con todos los mercados y no sólo con los 1 266 candidatos.*
+
+### El hallazgo
+
+    eventos EGLC con un ganador de banda cerrada de un grado:   38
+      coinciden con nuestra observacion:                        29
+      DISCREPAN:                                                 9   (23,7 %)
+
+    fecha        nuestra obs   gano de verdad    dif
+    2026-04-14        16,0            17,0      +1,0
+    2026-04-23        17,0            18,0      +1,0
+    2026-04-24        17,0            18,0      +1,0
+    2026-04-25        20,0            21,0      +1,0
+    2026-04-29        15,0            16,0      +1,0
+    2026-05-03        15,0            20,0      +5,0
+    2026-05-13        12,0            13,0      +1,0
+    2026-05-16        14,0            15,0      +1,0
+    2026-05-18        15,0            16,0      +1,0
+
+***Las nueve van en la misma dirección: el mercado resuelve MÁS ALTO que nuestra observación.***
+Ocho por exactamente +1 °C. **Bajo una nula simétrica, 9 de 9 en el mismo sentido tiene
+p = 2⁻⁹ = 0,002.** No es ruido de medición: es un sesgo.
+
+### Por qué importa antes de modelar y no después
+
+El **target** (`won`) viene de `winning_outcome`: la resolución real del mercado, y eso es lo
+correcto según el §3. Pero **nuestro modelo de error M2 está ajustado sobre
+`observed − forecast`, con `observed` = nuestra observación.**
+
+*Si la variable que liquida es sistemáticamente mayor que la que usamos para calibrar, la
+distribución que ajustamos está desplazada hacia abajo respecto de la que decide.* Un modelo
+construido así **subestima el grado que liquida**, y lo hace en una dirección conocida.
+
+**Es un techo medible sobre cualquier modelo meteorológico que construyamos con este sustrato**, y
+no se arregla con más datos del mismo tipo.
+
+### Mecanismo candidato, NO verificado
+
+`observations.py:59-61`: **`REPORT_TYPE = 3`, sólo METAR rutinarios; los SPECI se excluyen a
+propósito** —*«so the series is the regular hourly record the climate summaries are built from»*—.
+Los SPECI se emiten justamente cuando las condiciones cambian de forma significativa, así que un
+máximo calculado sólo con rutinarios es **≤** el máximo que incluye especiales. *La dirección
+encaja.*
+
+**Pero no lo doy por demostrado, y hay al menos tres alternativas que no he descartado:**
+
+    a) el resolutor usa otro PRODUCTO (resumen climatico diario, no METAR crudo)
+    b) el resolutor usa otra ESTACION (EGLC contra Heathrow/St James's Park)
+    c) nuestra conversion f_to_c del tmpf de IEM redondea a la baja
+
+**Y el caso del 2026-05-03, con +5,0 °C, no lo explica ninguna hipótesis de muestreo.** Cinco
+grados no es un pico que se escape entre dos observaciones horarias. *Ese caso solo es
+consistente con (a) o (b), o con un error de emparejamiento de día.*
+
+### Lo que esto le hace al NIVEL 1
+
+No lo invalida, lo **acota**: puedo medir el poder predictivo del forecast **contra la resolución
+real** —que es el target correcto— pero **la distribución de error que transforma pronóstico en
+probabilidad está calibrada contra otra variable.** Cualquier resultado de calibración hereda ese
+desplazamiento, y en una dirección conocida.
+
+**Preinscribo antes de correr nada más:** mediré el modelo de probabilidad **dos veces**, una con
+el error ajustado contra nuestra observación y otra contra el grado que realmente liquidó, y
+reportaré las dos. *Si la segunda es mejor, el techo es real y está cuantificado; si no cambia
+nada, mi alarma está mal graduada y lo diré.*
+
+### Y una nota sobre el tamaño
+
+Los 38 eventos comparables son pocos porque en 75 de 113 el ganador es una banda **abierta**, donde
+la comparación no identifica un grado. *El desajuste puede ser mayor o menor fuera de esa
+submuestra y no tengo forma de saberlo con estos datos.*
