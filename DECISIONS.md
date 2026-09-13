@@ -19144,3 +19144,93 @@ revisiones, no tipos de reporte.*
 
 **EGLC es la estación correcta**, contra mi cuarta sospecha: la serie completa casa 35/35 con las
 bandas cerradas liquidadas; la de sólo :50, 27/35.
+
+## A-239 — NIVEL 1 RESUELTO: **C — PODER PREDICTIVO FUERTE**, contra climatología, walk-forward y en los dos leads · 2026-09-13 · Claude (sesión A)
+
+*Criterio preinscrito en la cabecera de `fase2/n1_14_baselines.py` antes de ejecutar: B3 o B4
+mejoran a B0 con IC95 bootstrap por evento que excluye el cero **en los dos leads**. Se cumple.*
+
+### Los cinco modelos, Brier por EVENTO (unidad correcta)
+
+    modelo                  lead 24h    lead 9h      que es
+    B0 climatologia 30d      0,09049    0,08916      distribucion empirica de los 30 dias previos
+    B1 persistencia          0,12266    0,13546      el maximo de ayer
+    B2 forecast crudo        0,05795    0,04155      P=1 en round(forecast)
+    B3 forecast + error      0,02664    0,02303      forecast + distribucion empirica del error
+    B4 bias-corregido        0,02724    0,02241      lo mismo, con el sesgo pasado restado
+
+    eventos evaluados: 96 (lead 24) y 97 (lead 9), de 115. Los 19 que faltan son los
+    primeros: no habia 20 pares de entrenamiento con etiqueta disponible.
+
+### Contra climatología, pareado por evento
+
+    lead 24   B3 -0,06384  IC95 [-0,09056, -0,04009]   EXCLUYE
+              B4 -0,06325  IC95 [-0,08940, -0,03961]   EXCLUYE
+    lead  9   B3 -0,06613  IC95 [-0,09313, -0,04291]   EXCLUYE
+              B4 -0,06675  IC95 [-0,09256, -0,04377]   EXCLUYE
+
+**Y la persistencia es PEOR que la climatología** (+0,032 y +0,046, los dos excluyendo el cero):
+el máximo de ayer no predice el de hoy en un clima marítimo.
+
+### §7 Calibración (lead 9)
+
+    modelo          pendiente  intercepto   sharpness
+    B0 clima30          0,045    +0,0465       0,186     <- no discrimina
+    B2 fc crudo         0,297    +0,0361       0,227     <- probabilidades 0/1, mal calibrado
+    B3 fc + error       0,881    -0,0062       0,118     <- casi perfecta
+    B4 bias-corr        0,916    -0,0076       0,118
+
+    fiabilidad de B3:  [0,00-0,05) n=328  p 0,011 real 0,006
+                       [0,05-0,15) n= 47  p 0,092 real 0,064
+                       [0,15-0,30) n= 28  p 0,245 real 0,214
+                       [0,30-0,60) n= 36  p 0,374 real 0,306
+
+**Sobreestima de forma sistemática y moderada, y la ordenación es correcta en los cuatro tramos.**
+
+### §18 Estabilidad: mejora a la climatología los CUATRO meses
+
+    mes      n ev       B0       B3      factor
+    2026-05    31   0,13684  0,04269     3,2x
+    2026-06    22   0,07288  0,02468     3,0x
+    2026-07    25   0,07578  0,00995     7,6x
+    2026-08    19   0,04784  0,00626     7,6x
+
+*Sin cambio de signo, sin dependencia de un mes, y la ventaja crece.*
+
+### §8 La corrección de sesgo NO mejora
+
+B3 y B4 se diferencian en ±0,0006 y cambian de orden entre leads. **Con un sesgo medido de +0,04 y
+−0,02 °C no hay nada que corregir**, y añadirlo es un parámetro que no paga su sitio.
+
+### Lo que este resultado NO dice, y hay que decirlo aquí
+
+**1. No se ha comparado con el mercado.** Esto es climatología, persistencia y forecast entre sí.
+*El mercado puede conocer exactamente lo mismo.* Es el nivel 2/3 y no está hecho.
+
+**2. La climatología está estructuralmente lisiada por el sustrato.** Con **una sola temporada** no
+se puede construir una climatología por día del año: mi B0 es una ventana móvil de 30 días, que
+va por detrás en una estación con tendencia. *Parte de la ventaja de B3 es que B0 no puede ser
+mejor con estos datos.*
+
+**3. La tarea es fácil en promedio.** Tasa base 6 %, y la mayoría de las bandas están lejos del
+pronóstico: decir «casi seguro que no» acierta el 94 % de las veces. Por eso todos los Brier son
+pequeños y por eso **la tabla de fiabilidad importa más que el Brier**: en el tramo [0,30-0,60),
+con n=36, el modelo hace trabajo de verdad.
+
+**4. Y el reparto del mérito:** B2 (pronóstico puntual, sin incertidumbre) ya bate a la
+climatología. La **distribución del error** añade 0,0185 más a lead 9 — el **39 % de la ventaja
+total** sale de modelar la incertidumbre, no de saber la temperatura.
+
+### El defecto de los :20 hace este resultado CONSERVADOR
+
+Nuestra observación subestima 1 °C en ~22 % de los días (A-238), así que la distribución de error
+ajustada está desplazada ~0,22 °C hacia abajo respecto de la variable que liquida. **El modelo
+apunta bajo por un cuarto de grado en una dirección conocida.** *Lo medido es un suelo: arreglar la
+ingesta debería mejorarlo, no empeorarlo.*
+
+### VEREDICTO NIVEL 1
+
+***C — PODER PREDICTIVO FUERTE.*** Estable, calibrado, mejor que los baselines en los dos leads,
+walk-forward, a la unidad correcta, y con los cuatro meses en la misma dirección.
+
+**Y sin ninguna implicación económica:** no se ha mirado un precio en todo el nivel.
