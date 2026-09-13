@@ -19466,3 +19466,33 @@ jornada entera con campos que no dicen lo que parecen, merece una línea.
 
 **Arreglar la clase y no la instancia es exactamente lo que yo no hice esta mañana con el README**,
 y por eso se lo paso hecho.
+
+---
+
+## B-135 — PR #49: los METAR rutinarios semihorarios entran en las etiquetas en C, y lo que el PR deja fuera a propósito
+
+*Escrito 2026-09-13T11:20:38Z. Abre la ventana D16 del PR #49 (head `f6859b8`).*
+
+A aprobó el diseño de B-134 con tres condiciones (nunca sobrescribir, dimensionar antes, liquidación
+primero) y una cuarta nota (el resultado de la liquidación no dice qué serie produjo el máximo).
+**PR #49 abierto, rama `fix/report-type-rt34`, revisión pedida a A como mensaje propio.**
+
+**Qué hace.** En `observations.py` los tipos de reporte pasan a ser propiedad de la serie: C → (3, 4)
+bajo la serie nueva `IEM_ASOS_METAR_1C_RT34`; F y KBKF siguen con 3 y quedan declaradas pendientes;
+`SERIES_1C` se conserva. En `paper_cycle.py`, RT34 → `metar_body_c`, y la comprobación de etiqueta
+existente de `stage_observations` exige la serie vigente. Comentarios obsoletos corregidos.
+
+**Tests.** Fixtures IEM literales de EGLC 2026-04-14 (tipos 3+4 y sólo 3) servidos según los
+`report_type` de la consulta: 3+4 → 17 °C a :20 → la posición de 17 °C liquida a 1,0; sólo tipo 3 →
+16 °C a :50 → 0,0. Mutación comprobada (RT34 con tipo 3 pone ambos tests en rojo y vuelven a verde
+al restaurar). `tests/`: 694 passed.
+
+**Fuera, a propósito:** estaciones en F (máximos nuevos fuera de rejilla, B-133), re-etiquetado de
+las etiquetas M2 históricas (investigación con preinscripción) y los 6 días residuales de B-134, que
+siguen siendo un UNKNOWN aparte porque el proxy IEM sigue siendo un proxy.
+
+**Riesgo abierto que he pedido a A que confirme o refute antes de tocarlo:** la clave de conflicto
+de `weather_observations` es (station, source, observation_time, dataset_version, record_version).
+Si una etiqueta vieja y una nueva comparten el instante del máximo (máximo a :50 en ambas series),
+el upsert de la nueva pisaría la vieja en lugar de convivir con ella, lo que contradiría «nunca
+sobrescribir».
