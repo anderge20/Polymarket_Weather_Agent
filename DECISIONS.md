@@ -20060,3 +20060,46 @@ registradas, sin la 5— y comprueba que `init_db` trae las dos columnas; un tes
 lista de migraciones sin una base con hueco pasa por la razón equivocada; (b) el PR lista qué
 bases existen y en qué versión están. **Yo no arreglo el instrumento con el que voy a medir**; lo
 reviso.
+
+---
+
+## A-250 — #49 (`06781f9`) y #50 (`2cf384d`) aprobados; #51 abierto. Y dos verificaciones que valen más que las aprobaciones · 2026-09-13 · Claude (sesión A)
+
+**#49 — `703 passed`, EXIT=0, verificado por mí.** B lo actualizó por **fusión y no por rebase**,
+y la razón es la correcta: rebasar una rama publicada exige un *force-push*, y eso no se hace.
+
+**La fusión la comprobé por RECUENTO y POR NOMBRE, no por el color**, porque las dos ramas añadían
+al final de `tests/test_paper_cycle.py` y ese es exactamente el sitio donde un `checkout --theirs`
+se lleva la mitad y la suite sigue verde, dos tests más ligera:
+
+    base 32e8972  117 · #48  122 (+5) · #49  121 (+4) · fusion  126 = 117 + 5 + 4
+    perdidos del #48: ninguno        perdidos del #49: ninguno
+
+Y la fusión **no coló código propio**: sobre `src/ scripts/ .github/ ops/`, el diff contra
+`8bc603f` son exactamente los dos ficheros del #49, y contra `7a4ab05` exactamente los seis del
+#48. El nit ahora conduce `ingest_daily_high` y comprueba **que no escribió ni una fila**, que era
+la propiedad que importaba; mutación reproducida por mí en rojo.
+
+**#50 — `711 passed`, EXIT=0, y el arreglo comprobado CONTRA LA BASE REAL**, que es lo que de
+verdad lo valida:
+
+    $ backfill_prices.py --db data/pmw.duckdb --dataset-version backfill_2b_v1 --stations EGLC --dry-run
+      tokens_already_final 807 · requests_pending 1190 · pending_with_prices_in_other_dsv 0
+
+**807 y 1.190: exactamente lo que yo había medido a mano antes de que existiera el código.** Y el
+contrato del ensayo, comprobado donde importa: tras correrlo, `schema_version` sigue siendo
+`[1,2,3,4,6,7]`, `price_fetch_attempts` sigue sin existir y **el `mtime` del fichero no se movió**.
+
+Cuatro ataques a la siembra, los cuatro fallan: `min(market_id)` no desempata nada (**0** tokens
+con más de un `market_id`); `fetched_at` existe; sembraría **6.143** filas sobre un único
+`dataset_version`; y **no cuesta nada en la caja**, porque `init_db` corre sobre `:memory:` ANTES
+de cargar shards y el `GROUP BY` sobre 16,1 M de filas no se paga en ningún ciclo.
+
+**#51 abierto (`3e498bd`, 698 verdes): `cycle_params.generator`.** Se declara por entorno y no se
+olfatea, porque olfatear `GITHUB_ACTIONS`/hostname/uid sería la misma derivación que ya se rompió
+en silencio con `GITHUB_SHA`. `None` cuando nadie lo declara, que es el valor honesto. Cinco
+mutaciones en rojo, una por test. Revisión hostil pedida a B como mensaje propio.
+
+**Y el ciclo de las 12:07 cerró en `b36e6d1` a las 12:31:56Z**, con el código de ANTES del #48 —el
+reset del checkout fue a las 12:07:00 y la fusión a las 12:20—, tal como estaba previsto. **El de
+las 15:07 es el primero que llevará `collect_only_reason`, y ese shard se LEE, no se supone.**
