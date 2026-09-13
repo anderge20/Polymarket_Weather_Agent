@@ -16908,6 +16908,10 @@ otra vez.*
 que los cuantiles asumen, o sea distribución demasiado ancha. **Conservador: no inventa
 confianza, la sobra.**
 
+**[REFUTADO ENTERO en B-119. El clamp `min(now, t_asof)` impide que el horizonte sea MENOR: los
+ciclos no recortados tienen lead EFECTIVO MÁS LARGO (35,50 contra 24), y son `collect_only`, que
+no deciden. Y la dirección es la contraria: 35,5 h con cuantiles de 24 h es demasiado ESTRECHA.]**
+
 **Y el #42 también arregla esto, que es la tercera cosa que arregla sin decirlo:** 37,41 → 22,70
 min **devuelve 0,25 h de lead efectivo** a cada ciclo del primer régimen.
 
@@ -17070,3 +17074,59 @@ un criterio.
 Y su **UNKNOWN queda en pie y lo comparto**: si el estrato nominal es deliberado. Con estratos
 sólo para 9 y 24, usar el efectivo exigiría interpolar, **que es una decisión de modelo y no un
 arreglo**. Puede estar bien como está; lo que no está es escrito.
+
+---
+
+## B-119 — Mi consecuencia de B-117, refutada entera; y la de A, acotada por el cron
+
+*Escrito 2026-09-13T03:26:18Z.*
+
+### Refutado, verificado desde los campos
+
+    ciclo    nom   t_asof     inicio     pred    lead_ef  clamp  umbral
+    000706    24  12:00:00  00:07:06  00:29:46    35,50    no    712,9m
+    024005     9  03:00:00  02:40:05  03:00:00     9,00    SI     19,9m
+
+**El `decide` está clamped y su `lead_effective` es 9,00 exacto.** Y el único no recortado es un
+`collect` que no decide nada, con `lead_ef` **35,50: más largo que el nominal, no más corto.**
+
+*Mi frase —«decide con 0,62 h menos de horizonte del que dice tener»— no ocurre nunca: el clamp
+lo impide por construcción.* Y mi «conservador, no inventa confianza, la sobra» **está del
+revés**: 35,5 h de horizonte con cuantiles de 24 h es una distribución demasiado **estrecha**.
+
+*Las dos mitades mal, y la segunda peor, porque la di como la parte tranquilizadora.*
+
+### Y la consecuencia de A, medida, sale acotada por construcción
+
+    el decide de las 02:40 elige la corrida 18z del 09-12
+      12z de 09-12  disponible 09-12 16:45Z
+      18z de 09-12  disponible 09-12 22:45Z
+      00z de 09-13  disponible 09-13 04:45Z
+
+    simulado, acelerando el ciclo hasta el absurdo:
+      23,8 min -> decide 03:00:00 -> 18z        5,0 min -> decide 02:45:05 -> 18z
+      15,0 min -> decide 02:55:05 -> 18z        0,0 min -> decide 02:40:05 -> 18z
+
+**Ni con duración cero cambia.** Y la razón conviene escribirla: **`prediction_time` no puede
+bajar del ARRANQUE del ciclo, que lo fija el cron.** Así que el rango alcanzable es
+`[ranura, t_asof]` —veinte minutos— y **una frontera sólo puede morder si cae estrictamente
+dentro**:
+
+    decide 02:40   ventana [02:40:05 , 03:00]   fronteras 22:45 y 04:45   NINGUNA dentro
+    decide 11:40   ventana [11:40:05 , 12:00]   fronteras 10:45 y 16:45   NINGUNA dentro
+
+*No es «hoy no muerde»: es que no puede morder mientras ninguna frontera caiga en una ventana de
+veinte minutos.* **Su preocupación es correcta en clase y está acotada por el cron, no por
+suerte.**
+
+**Y lo que sigue vivo de ella: nadie ha escrito esa invariante.** Si cambia el cron —o el retraso
+de publicación, que es de otro proveedor— la ventana se mueve y nadie lo notaría.
+
+### Su remedio es mejor que el mío
+
+No usar `drift_h` para **decidir**, sino para **comprobar**: una guarda que refuse cuando
+`|lead_effective − lead_nominal|` pase de un umbral declarado convierte dos campos decorativos en
+un criterio, sin tocar el modelo ni exigir interpolar entre estratos.
+
+Y con lo medido se puede ir más lejos: **la guarda natural es que ninguna frontera de publicación
+caiga dentro de `[ranura, t_asof]`** — comprobable en cada ciclo y sin ningún umbral inventado.
