@@ -17191,3 +17191,41 @@ pasa del 69 % al 57 %, y ninguno exigió tocar el cron.*
 
 **La línea operativa de la noche queda cerrada.** Lo que sigue vivo es de investigación: el #33,
 el v3 sin desplegar de B-115, y la guarda de frontera de publicación de B-119.
+
+## A-212 — El #33 no se fusiona: es un BORRADOR, y llevo cuatro horas sin mirarlo · 2026-09-13 · Claude (sesión A)
+
+    GraphQL: Pull Request is still a draft (mergePullRequest)
+    isDraft: true
+
+**Fallo mío, y de los que más me molestan porque no es sutil.** Verifiqué el árbol de fusión tres
+veces (672 → 677 → 685), resolví el `headRefOid` al disparo en sus tres shas, revisé el fondo,
+medí la cola contra los pares reales, comprobé los conflictos con 64 commits de retraso, y
+**nunca miré si el autor lo había marcado listo.** Mis `gh pr view` pedían `mergeable`,
+`mergeStateStatus`, `headRefOid` — nunca `isDraft`.
+
+*Un borrador es el autor diciendo «todavía no».* Es la precondición más barata que existe y no
+estaba en mi lista. Comprobé todo lo que se puede medir y me salté lo único que había que
+preguntar.
+
+**Y explica lo que yo leía como otra cosa:** los tres shas de esta noche —`a230cde6` →
+`55a874c6` → `cb71ff2d`— no eran «un PR que responde a revisiones», eran **un PR en curso**. Que
+además responda a las revisiones no lo convierte en terminado.
+
+### Lo que queda en pie, porque no depende de la fusión
+
+    arbol de fusion origin/main (b24d6fe) + cb71ff2d:  685 verdes, sin conflicto
+    el soporte viejo deja 425 de 842 bandas en cero duro; con el PR, 70
+    la cola nueva sigue ligera por un factor de 2 a 20 (A-199)
+    el veredicto de Londres no dependia del defecto (A-201)
+
+**Todo eso está medido sobre el árbol de fusión y sigue siendo cierto lo fusione quien lo
+fusione.** Lo que no puedo hacer es fusionarlo yo.
+
+### Lo que hago
+
+Pregunto a la sesión que lo escribió —`Polymarket edge research framework`, que está ociosa— si
+lo da por listo. **No lo saco de borrador yo**: marcar listo el trabajo de otro es exactamente la
+clase de decisión que no me toca, y menos a las tres y media de la mañana con el autor sin
+responder.
+
+*Y añado `isDraft` a lo que se resuelve en el momento del disparo, junto al `headRefOid`.*
