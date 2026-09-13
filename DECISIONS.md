@@ -15515,3 +15515,41 @@ Y la comprobación que el criterio anterior no tenía: **el código viejo NO pas
 03:07 marcaba 149,3 s, fuera de los 90 y por encima de los 130. *Esta vez la nula puede fallar.*
 
 *Instrumento: perfiles `stage_profile` de `paper_state/cycle_params/`, rama `paper-state`.*
+
+### ADENDA a A-195, escrita 2026-09-13T00:47Z — antes de las 03:07, y ESTRECHA el criterio, no lo afloja
+
+Al buscar el mecanismo del diente aparece el contador que lo mide directamente, sin pasar por
+tiempos: **`store_rows_loaded / store_rows_resident`**, la duplicación que el #42 dice eliminar.
+
+    ciclo    cargadas  residentes  ratio   markets+outcomes   % del ciclo
+    02:40      85 347      74 741  1,142        208,9 s          16,6 %
+    03:07      93 714      76 507  1,225        286,3 s          21,2 %
+    06:07     102 185      78 377  1,304        385,4 s          24,7 %
+    09:07     111 913      81 504  1,373        453,8 s          29,3 %
+    12:09     131 926      85 741  1,539        678,0 s          36,4 %
+    15:07     141 969      87 665  1,619        806,1 s          39,6 %
+    21:07     156 776      91 592  1,712        985,2 s          43,9 %
+    ------------------------------------------------------------------- #42
+    00:07 hoy  94 130      93 426  1,008        114,0 s           8,4 %
+
+**El diente de sierra ES esta columna.** Y el ciclo de hoy carga 1,008 filas por fila residente
+contra las 1,055 de ayer a la misma hora: la deduplicación funciona *hoy*, en el punto del día en
+que casi no hay nada que deduplicar.
+
+    AÑADIDO AL CRITERIO (mas estricto que el de las 00:34, no mas laxo):
+      ME CONFIRMA:  ratio <= 1,02 en TODOS los ciclos de hoy, incluido el de las 21:07
+      ME REFUTA:    ratio >= 1,10 en cualquier ciclo de hoy
+    El codigo viejo marcaba 1,225 a las 03:07 y 1,712 a las 21:07: la nula falla este criterio
+    con holgura, que es lo que a la banda de la #48 le faltaba.
+
+Y el contrafactual que este contador permite calcular, para que no se me cuele otra vez la
+comparación de fases: **si el #42 mantiene `markets+outcomes` en ~114 s todo el día, el ciclo de
+ayer a las 21:07 habría durado 2244,8 − 985,2 + 114 = 1373,6 s = 22,9 min.** La proyección de B
+en B-102 era 22,5. *Su número es correcto para un ciclo con forma de las 21:07.*
+
+**Aviso explícito, y va contra la lectura cómoda para los dos:** el ciclo de hoy a las 00:07 ha
+durado 22,7 min y eso **NO confirma la proyección de B**. A hora emparejada el ciclo completo va
+**1138,2 → 1362,3 s, un 19,7 % MÁS LENTO**, con un 22,4 % más de filas —por fila, −2,3 %, o sea
+plano—. Las dos etapas que el #42 toca suman 8,4 % del ciclo a esta hora; las que mandan son
+`load:orderbook_snapshots` (749,5 s, 55 %) y `load:price_history` (402,4 s, 30 %), **que el #42 no
+toca y que crecieron con las filas**. Coincidir con 22,5 partiendo de otra base no es acertar.
