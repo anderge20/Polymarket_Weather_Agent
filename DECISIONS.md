@@ -19611,3 +19611,87 @@ confirmar algo ya medido. Queda con el nombre de B, y es **la única pieza porta
 reproducido**.
 
 **Estado: NO fusionar hasta que `SERIES_SOURCE` sea total. Todo lo demás, aprobado.**
+
+---
+
+## A-243 — PR #49 (`7a4ab05`) APROBADO: el arreglo del arreglo, y la mutación que devuelve el error que yo predije para MI propuesta · 2026-09-13 · Claude (sesión A)
+
+**Suite verificada por mí: `698 passed in 87.96s`, EXIT=0.** Tres mutaciones, las tres rojas,
+ejecutadas por mí y no citadas:
+
+| mutación | resultado |
+|---|---|
+| `source_for` vuelve a `.get(series, SOURCE)` | `test_a_series_forgotten_in_the_source_map_RAISES...` → **DID NOT RAISE `KeyError`** |
+| `SERIES_SOURCE` pierde `SERIES_1F` | la igualdad de conjuntos con `SERIES_REPORT_TYPES` se rompe |
+| `CONFLICT_COLS` sin `source` | **6 rojos**, el primero `BinderException: The specified columns as conflict target...` |
+
+**La tercera mutación cierra el círculo de A-242.** Ese `BinderException` es *exactamente* el modo de
+fallo que yo predije para mi propia propuesta —cambiar la tupla del `ON CONFLICT` sin mover el índice—
+y que externalicé como «compruébalo tú». Ahora está clavado como test: el argumento pasó de vivir en
+un mensaje a vivir en la suite.
+
+**Lo que B hizo mejor que lo que yo pedí.** Pedí un mapa total; hizo `set(SERIES_SOURCE) ==
+set(SERIES_REPORT_TYPES)`, **igualdad y no inclusión**, que coge la omisión en los dos sentidos. Y el
+test de la clave consulta `duckdb_constraints()` —el índice real— en vez del texto del DDL.
+
+**La comprobación que ese test NO puede hacer, hecha por mí.** Corre sobre una base recién creada por
+`init_db`, así que fija el esquema del código, no el de los ficheros que existen. Consultada la base
+REAL (`pmw.duckdb`, 1.348 filas): `PRIMARY KEY ['station','source','observation_time',
+'dataset_version','record_version']`. **Idéntica.** No hay divergencia entre lo que el test fija y lo
+que hay en disco.
+
+**Nota menor, aceptada por B para el rebase:** el `monkeypatch.setitem(SERIES_REPORT_TYPES, ...)` de
+su test nuevo no cambia nada — `source_for` no lee ese mapa — así que el test *parece* ejercitar la
+relación entre los dos mapas y sólo ejercita uno.
+
+**Orden acordado:** #48 primero; el #49 rebasa después y **el rebase reabre las tres condiciones al
+disparo** sobre el head nuevo.
+
+---
+
+## A-244 — #60 RESUELTO Y LOCALIZADO: las bandas que faltan existen en Polymarket Y en nuestro catálogo en disco. El corte está entre el catálogo y `markets` · 2026-09-13 · Claude (sesión A)
+
+**El bloqueo del NIVEL 1 era que 74 de 115 eventos EGLC no tienen banda ganadora en el almacén.** La
+pregunta abierta era si faltaban en Polymarket o en nuestra ingesta. **Faltan en la nuestra, y ahora
+está localizado a un paso concreto.**
+
+**1. La forma del hueco, medida en el almacén.** De 163 eventos EGLC resueltos: 117 con 3 mercados, 5
+con 1, 1 con 10, 40 con 11. **Los 122 eventos pequeños tienen escalera ABIERTA POR ARRIBA**: está el
+`«N °C or below»` y no está ningún `«M °C or higher»`; los 41 grandes tienen los dos extremos. Ganadora
+declarada: **40/40** en los de 11, 1/1 en el de 10, **8/117** en los de 3, 0/5 en los de 1 — y esos 8
+son los días bastante fríos como para caer dentro de las tres bandas capturadas.
+
+**2. No es artefacto de mis filtros.** Sin ningún `WHERE` sobre bandas ni sobre resolución, los
+recuentos por evento son los mismos: `{1:5, 3:117, 11:41}`. El truncamiento está en `markets` mismo.
+
+**3. No lo explica el calendario.** Abril trae **21 eventos de 11 y 5 de 3 a la vez**; mayo, 20 y 11.
+Los 163 salieron de la misma construcción: `dataset_version = backfill_2b_v1`, `source = CATALOG_V2`,
+`discovered_at` NULL en todos. *Dos eventos del mismo mes y de la misma pasada salen distintos.*
+
+**4. Polymarket los tiene.** Cuatro eventos consultados a Gamma (lectura, secuencial):
+
+    251729 marzo-9   almacen  3 -> gamma  9
+    321062 abril-2   almacen  3 -> gamma 11
+    693904 julio-14  almacen  3 -> gamma 11
+    341797 abril-8   almacen 11 -> gamma 11
+
+**5. Y NUESTRO PROPIO CATÁLOGO EN DISCO TAMBIÉN LOS TIENE.** `~/pmw-catalog-v2/CATALOG_V2.duckdb`
+(5 de septiembre), tabla `mk`: **9, 11, 11, 11** — coincide con Gamma evento por evento, el 9 del de
+marzo incluido. Así que **ni Gamma recortó ni el catálogo recortó**. El corte está **entre el catálogo
+y `markets`**, y es reproducible **offline**, contra dos ficheros que ya tenemos.
+
+**6. Y es uniforme en las tres tablas**: `markets`, `outcomes` y `price_history` traen los mismos 3
+—no 11 en una y 3 en otra—, así que no es un filtro de una etapa: **una sola pasada decidió el
+universo** y las tres lo heredaron. Un sitio por donde empezar, aunque sea consumidor y no escritor:
+`scripts/backfill_weather.py:82-103` construye `priced` desde `price_history` y descarta lo que no esté
+ahí — **`price_history` funciona como puerta**, y quien la llenó decidió el universo.
+
+**Consecuencia para el NIVEL 1.** La retractación de A-240 sigue en pie: con los datos de hoy el
+veredicto es **D — INCONCLUSO**, y no se toca hasta reingestar. Pero la causa ya no es «faltan datos y
+no sabemos por qué»: es un paso identificado, offline y reparable, y **el NIVEL 1 puede rehacerse con
+n≈115 en vez de n≈19** en cuanto se reingeste. *No se reejecuta ningún criterio ni se re-clasifica nada
+antes de eso*: el preregistro de la reejecución se escribe antes de ver el resultado nuevo.
+
+**Reparto:** B coge el lado de discovery (mecanismo exacto, fichero:línea, qué eventos afecta y si toca
+también la ingesta viva en modo paper o sólo el backfill — eso último decide si es urgente). Yo me
+quedo el reanálisis del NIVEL 1.
