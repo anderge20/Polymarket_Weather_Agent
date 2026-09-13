@@ -18772,6 +18772,13 @@ Remedio: que el gate emita el motivo. (b) `ops/hetzner/README.md:33-34` repite l
 de que `run_cycle.sh` actualiza su propio checkout. Nits: `argv.txt` no se borra entre corridas; el
 filtro del barrido acepta un motivo que sólo esté en un comentario final.]**
 
+**[Actualización 2026-09-13T10:11:47Z: arreglado en `b5f457d` (121 passed; head de la API coincidente,
+`isDraft=false`). La puerta emite `no_paper_tau` / `dispatch_requested`; README corregido y la
+clase cerrada por `git grep` en todo el repo; `argv.txt` se borra antes y se afirma después; el
+barrido recorta comentarios finales. **APROBADO sobre `b5f457d`** en el PR antes de la fusión. Nit
+opcional: motivo vacío `""` en vez de `None` si faltara la salida de la puerta. Cuatro pasadas sobre
+el #48, y cada una encontró algo que las anteriores no.]**
+
 ## A-234 — Las tres de B sobre el #48, y la primera es una cita correcta sosteniendo una afirmación falsa · 2026-09-13 · Claude (sesión A)
 
 *Revisión **antes** de la fusión, la segunda vez que la regla nueva funciona. 691 → 692. Ventana
