@@ -16955,3 +16955,55 @@ ata —1620 s de hueco + 900 s de lock = 2520 s— el `decide` pasa del **69 % a
 
 *Queda el ciclo de las 03:07 para el segundo punto de la tarea #51, y el de las 21:07 para el
 tercero, que es el que mide si la pendiente sigue plana con diecinueve shards.*
+
+---
+
+## B-118 — El `decide` de las 02:40 confirma la preinscripción, y el margen vuelve al negro
+
+*Escrito 2026-09-13T03:06:18Z.*
+
+### El punto de control de A (A-206), resuelto
+
+    decide 02:40 del 13-sep, sha 33f1eca9 (main tras el #42)
+      arranca 02:40:05Z   termina 03:03:55Z   total 23,83 min
+      load:markets   60,9 s     load:outcomes   55,3 s
+      libro         792,4 s     precios        425,8 s
+      ratio cargadas/residentes 1,007
+
+    CONFIRMA   load:markets <= 90 s     60,9     SI
+               total <= 25 min          23,83    SI
+               ratio <= 1,02            1,007    SI
+    REFUTA     >= 200 s / >= 30 min     ninguno
+
+**La nula extrapolada de A daba ~653 s y ~38 min. Falla por un factor de 10,7 en `load:markets`
+y por catorce minutos en el total.**
+
+### El control emparejado por ranura, que era el punto
+
+    02:40 de AYER   codigo viejo,  3 shards   ->  109,2 s   y  21,0 min
+    02:40 de HOY    con el #42,   13 shards   ->   60,9 s   y  23,83 min
+
+**Más del cuádruple de shards y menos tiempo de catálogo.** *Esta vez el emparejamiento es
+honesto* — es la corrección que A me hizo con el 22,7 contra el 22,5, aplicada por él a su propia
+preinscripción.
+
+### Y el margen vuelve, exactamente como A predijo
+
+    ayer   el decide de las 11:40 termino 12:09:12,  132 s DESPUES de la ranura de las 12:07
+    hoy    el decide de las 02:40 termina 03:03:55,  185 s ANTES  de la ranura de las 03:07
+
+**El hueco de 27 minutos vuelve al negro sin tocar el cron.** Es su consecuencia del #42 —*«no es
+sólo velocidad, devuelve el margen»*— **medida**.
+
+### Mi proyección, y por qué esta vez cuenta
+
+B-107 decía **23,2 min** para este ciclo. Salió **23,83**. Dentro de 0,6 min — *y esta vez el
+anclaje era el correcto, porque era el mismo tipo de ciclo y no otro con otra forma.* Ésa es
+exactamente la diferencia que A me señaló cuando coincidí con el 22,5 partiendo de otra base.
+
+### Una acotación a B-117, antes de que se lea de más
+
+Este `decide` tiene `lead_nominal = 9,0`, `lead_effective = 9,00` exacto y `drift = +0,065`:
+**está en el régimen RECORTADO, así que el tiempo de carga no se come el lead aquí.** *B-117
+aplica al otro régimen —los ciclos que van por delante de `t_asof`— y conviene que quede dicho
+para que nadie lo lea como si aplicara a todos.*
