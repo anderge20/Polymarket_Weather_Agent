@@ -19842,3 +19842,35 @@ evalúa. Cualquier reejecución antes de reingestar las observaciones mediría e
 contra una verdad que el mercado no usó en el 12,6 % de los casos. **Así que el orden
 queda fijado: primero el #49 y la reingesta de observaciones, después la reingesta de
 mercados, y sólo entonces la reejecución.**
+
+---
+
+## B-137 — Los 15 días de A bajo la banda son el defecto de los :20; el alcance contra el catálogo son 7 093 eventos ausentes; diseño del PR de `backfill_prices`
+
+*Escrito 2026-09-13T11:59:24Z.*
+
+**1. Comprobación (c) de A, contrastada sin peticiones nuevas.** A encontró 15 eventos EGLC con escalera
+completa en que nuestro máximo observado queda exactamente 1,0 °C por debajo de la banda ganadora
+(104 dentro, 0 por encima) y registró la predicción A-246 antes del arreglo. Con la descarga IEM de
+B-133 (EGLC, día local): **en los 15 el máximo sólo tipo 3 reproduce la observación de A, a las :50, y
+el de 3+4 da exactamente un grado más, a las :20.** Queda fijada fuera de línea la primera mitad de
+A-246. La segunda (ninguno de los 104 sale de su banda) necesita las bandas ganadoras de A y es su
+comprobación.
+
+**2. Alcance medido contra el catálogo, no contra `markets`** (corrección de A): en el rango
+2025-12-30..2026-09-05, `CATALOG_V2` tiene 8 557 eventos, de los que **7 093 están ausentes del
+almacén**, 1 028 truncados y 436 completos; ningún evento almacenado falta del catálogo. EGLC por
+`station_identifier`: 41 completos, 122 truncados, 24 ausentes. La mayoría de las ausencias vienen del
+muestreo antiguo, no de otro defecto, pero fijan el presupuesto: re-backfill de todo ≈ 93 000
+peticiones de historia de precios. El universo debe elegirse en la preinscripción de A.
+
+**3. Reparto acordado.** Esta sesión escribe el PR de `backfill_prices`. A hace la revisión hostil,
+preinscribe el presupuesto de peticiones y lanza. Orden de A: #49 y reingesta de observaciones, luego
+reingesta de mercados, las cinco comprobaciones, y reejecución sin tocar el criterio.
+
+**4. Diseño propuesto a A:** sólo eventos enteros con filtros explícitos (`--stations`,
+`--since/--until`, `--require-forecast`); tope por eventos con orden declarado (fecha objetivo,
+`int(event_id)`); `--dataset-version` obligatorio sin valor por defecto; `--dry-run` que cuenta
+eventos, mercados y peticiones pendientes por estación y mes sin hacer ninguna; puertas de
+`backfill_markets` y `backfill_weather` por evento (sólo entran eventos con todos sus mercados con
+precio y los demás se cuentan por motivo). Valores por defecto pendientes del universo que fije A.
