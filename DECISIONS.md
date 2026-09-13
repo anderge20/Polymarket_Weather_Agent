@@ -19972,3 +19972,30 @@ pares estación-día, no escaleras completas).
 00:20 tras un día de 34 °C y el mercado pagó 24 °C. Es un caso de la ventana `LOCAL_CIVIL_DAY`, no de la
 serie 3+4, y refuta la segunda mitad de A-246 y la frase «3+4 siempre al menos tan bien». La descripción
 del #49 se corrige en su rebase.
+
+---
+
+## B-139 — La migración 8 del #50 es inocua sobre los datos reales; y la base de A nunca aplicó la migración 5 (defecto de `init_db`, anterior al #50)
+
+*Escrito 2026-09-13T12:18:18Z.*
+
+**1. Migración 8 sobre una copia de `pmw.duckdb`** (fichero original sin tocar, mtime igual): esquema 7→8,
+`price_fetch_attempts` creada vacía con PK (token_id, dataset_version), segunda `init_db` idempotente.
+La única tabla con recuento distinto es `schema_version` (+1 fila); `markets` 6 143, `outcomes`
+12 286, `price_history` 16 165 636, `weather_observations` 1 348 y `weather_forecasts` 2 727 quedan
+iguales. Una primera lectura «recuentos distintos» se debía a incluir `schema_version` en la comparación.
+
+**2. Los 2 eventos que el #50 excluye por tokens ilegibles** son 504566 (Jinan, ZSJN) y 504568
+(Zhengzhou, ZHCC), 2026-05-22: las 11 bandas de cada uno sin `clobTokenIds`, sin `winning_outcome` y
+sin `umaResolutionStatus`. Nunca negociaron ni se resolvieron; excluirlos no cuesta nada al NIVEL 1.
+
+**3. Hallazgo aparte, no causado por el #50.** La base de A registra las migraciones 1, 2, 3, 4, 6 y 7:
+**la 5 no está.** `markets` carece de `measurement_rule_code` (migración 5) y de `contract_source`
+(una línea de la migración 2), y seguir llamando a `init_db` no las añade; una base nueva sí las tiene.
+Mecanismo: `init_db` sólo aplica `version > MAX(version)`, así que una migración numerada por debajo de
+una ya aplicada, o una línea añadida a una migración ya aplicada, no llega nunca a una base existente, y
+nada lo señala. Consecuencia: cualquier ruta que necesite esas columnas falla o rehúsa sobre la base
+real mientras la suite, que siempre construye una base nueva, pasa. Commits del 2026-09-09 (6b1534a,
+b2add1f, 10f1843), sin determinar cuál introdujo cada cosa. **Arreglo propuesto a A como PR aparte:**
+aplicar toda versión no registrada en orden numérico, con un test de base con hueco; y una migración
+nueva que re-declare la línea añadida a V2, en vez de reaplicar V2. Pendiente de quién lo toma.
