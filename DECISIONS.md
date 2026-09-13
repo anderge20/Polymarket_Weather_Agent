@@ -21304,3 +21304,78 @@ evento de 119 es 0,84 %, del orden de la cota, con n=1 y sin pretender más.
 INCONCLUSO**: es la reparación del sustrato, paso 1 de §6bis. El paso 2 —reingesta de
 mercados, coste cero— y el 3 —las cinco comprobaciones— siguen pendientes, y la reejecución
 del criterio va después y sin tocarlo.
+
+---
+
+## A-271 — NIVEL 0.5 abierto. Criterio escrito CON LA REINGESTA CORRIENDO, y la primera respuesta al ataque del encargo: 17 de 137, todas +1, y 16 de 17 arregladas · 2026-09-13 · Claude (sesión A)
+
+**El usuario abre formalmente un NIVEL 0.5 — DATASET VALIDATION** antes del NIVEL 1, con
+once puntos. Lo primero que exige es que **el criterio de completitud esté escrito antes de
+aceptar la reingesta**: `fase2/NIVEL0_5_CRITERIO_COMPLETITUD.md`, espejado a las **16:46Z
+con `backfill_markets` todavía corriendo** — la marca de git lo prueba, que es la única
+forma de que «escrito antes» signifique algo.
+
+Diez identidades `I1`–`I10`, los números esperados fijados de antemano, y la regla de
+parada: **cualquier `expected != actual` deja el dataset `INVALID / INCOMPLETE`** y fuera de
+la investigación. Se compara contra **las dos** fuentes —el `--dry-run` y el catálogo—
+porque comparar sólo contra el dry-run valida el código contra sí mismo.
+
+### El ataque del punto 10, contestado con números y no con seguridad
+
+> *«¿Las 15 entradas + 1 salida demuestran que el problema estaba completamente
+> identificado, o simplemente que esas 16 observaciones coinciden?»*
+
+Medido **offline**, sobre el tarball y el catálogo, sin tocar la base (hay un escritor):
+
+    dias de la ventana cubiertos por las dos series           137
+    delta (3+4 menos tipo 3)                    {0: 120,  +1: 17}
+    dias que CAMBIAN de valor                                  17   (12,4 %)
+
+**Ni un solo día cambia en otra dirección ni en otra magnitud.** El cambio es
+**unidireccional y cuantizado en un grado entero** — la firma de una lectura que faltaba, no
+la de una estimación distinta. Bajo la hipótesis «es otra serie ruidosa» los cambios serían
+simétricos y de magnitudes variadas; no hay ninguno.
+
+Y su efecto sobre la banda ganadora declarada:
+
+    cambia · fuera -> dentro      16
+    cambia · dentro -> fuera       1     (2026-05-27, el de la VENTANA, ya caracterizado)
+    igual  · dentro -> dentro    118
+    sin evento                     2
+
+**De los 17 días que el arreglo toca, 16 estaban mal y ahora están bien.** Toca el 12,4 % de
+los días y acierta en el 94 % de lo que toca. *Eso no es una coincidencia de 16
+observaciones: es un defecto con una firma.*
+
+### Y APARECE UN DÍA QUE YO NO TENÍA: 2026-08-06
+
+Los 17 son las 15 de A-246 + el 05-27 (conocido) + **2026-08-06, que no estaba en mi lista**.
+Tiene evento válido en el catálogo (`794517`, 11 bandas, ganadora `23 °C`) y su máximo pasa
+de **22 a 23**, o sea **fuera → dentro**.
+
+**Por qué no estaba:** las 15 de A-246 salieron de la población con observación EN LA BASE, y
+la serie vieja tenía **118 filas sobre una ventana de 138 días** — **20 días sin etiqueta
+ninguna**. El 08-06 es uno de ellos: no estaba mal etiquetado, **no estaba etiquetado**.
+
+> **La corrección arregla 16 desajustes, no 15. El decimosexto era invisible porque no había
+> nada que contradecir.** Un hueco de cobertura no aparece como error: aparece como nada, y
+> por eso no entró en el recuento que hice ayer.
+
+**Esto no debilita la predicción de A-246: la precisa.** Las 15 que nombré entraron todas,
+salió la que nombré, y ninguna se quedó fuera. Lo que el NIVEL 0.5 añade es que **la
+población sobre la que la escribí estaba ella misma incompleta**, que es exactamente lo que
+este nivel existe para encontrar.
+
+### Nomenclatura, como pide el encargo
+
+Lo de ayer y lo de hoy se llama **`DATASET CORRECTION VALIDATED`**. **No** es mejora
+predictiva, **no** es edge, **no** es alpha, **no** es ventaja. Y el veredicto de fase
+`LONDRES = NO EDGE MEDIDO` y el `D — INCONCLUSO` del NIVEL 1 **siguen sin tocarse**.
+
+### Revisión hostil del punto 10: pedida y bloqueada
+
+La sesión B **no está accesible** (`SendMessage` la rechaza y no aparece en `ListAgents`
+desde las ~15:00Z). La revisión hostil del punto 10 **queda solicitada y pendiente**; mientras
+tanto la produzco yo, y lo digo con todas las letras: **una autorrevisión es un instrumento
+más débil** y hoy B ha encontrado seis defectos míos que yo no vi. La petición sigue abierta
+para cuando vuelva.
