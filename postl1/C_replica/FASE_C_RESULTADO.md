@@ -142,6 +142,30 @@ el modelo que sirve a RKSI. Para RKSI la cota es **directa**.
 Margen mínimo `t_asof − available_at` sobre las 190 lecturas: **1,240 h**. Cero
 look-ahead.
 
+### Y la evidencia de las dos ciudades no es de la misma calidad — hay que decirlo
+
+`ARCH_AUDIT_OPENMETEO.md` §7.1-2 declara un UNKNOWN que esta afirmación hereda:
+
+> *"Estabilidad temporal de la composición. La asignación estación→componente se midió
+> para una única fecha (2026-07-15). Si D2/EU cambian de dominio, resolución o
+> disponibilidad a lo largo del histórico, la composición podría no ser constante.
+> **No verificado.**"*
+
+La identificación en sí es inequívoca — se consultaron `icon_d2`, `icon_eu` e
+`icon_global` por separado y se buscó cuál reproduce a la vez el centro de celda exacto
+**y** los 24 valores horarios. Pero es de **un día**.
+
+| | evidencia del dominio | fechas |
+|---|---|---|
+| **RKSI → ICON-GLOBAL** | auditoría 2026-07-15 **+ el proveedor lo nombra** (`Model: dwd_icon`) en un run de **2026-06-10** | **dos**, por dos canales distintos |
+| **EGLC → ICON-D2** | auditoría 2026-07-15 | **una** |
+
+Así que la afirmación *"a Londres se le aplicó la latencia de otro modelo"* descansa sobre
+una sola medición de dominio. La dirección del sesgo no cambia — ICON-D2 publica antes que
+GLOBAL, así que 4,76 h **retrasa** `available_at` y hace perder información, nunca
+filtrarla — pero la fuerza de la evidencia sí, y va anotada en la tarea #75 en vez de
+viajar sin ella.
+
 ---
 
 ## 7 · RESULTADOS (§14)

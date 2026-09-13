@@ -23463,6 +23463,13 @@ conservadora (D2 publica antes, así que la cota retrasa `available_at` y hace *
 información), pero es una traslación no declarada. Queda contra la tarea #75 y contra la
 Fase B.
 
+**Y la evidencia de los dos lados no es igual de fuerte.** `ARCH_AUDIT_OPENMETEO.md`
+§7.1-2 declara UNKNOWN la *estabilidad temporal* de la composición de `seamless`: la
+asignación estación→dominio se midió **un solo día**, el 2026-07-15. RKSI tiene además el
+mensaje del proveedor de un run del **2026-06-10**, así que son dos fechas por dos canales;
+**EGLC tiene una sola medición**. La dirección del sesgo no cambia, la fuerza de la
+evidencia sí, y se dice aquí en vez de dejar que la afirmación viaje sin ella.
+
 ### Ingesta y presupuesto — techos respetados, ninguno movido
 
     observaciones   95 / 100   0 fallos   0 429   95 de 95 dias
