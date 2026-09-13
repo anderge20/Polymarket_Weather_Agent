@@ -518,6 +518,12 @@ def test_rows_written_counts_what_was_OFFERED_not_what_the_store_holds(tmp_path)
     assert nuevo["rows_read"] == viejo["rows_read"] == 12, (
         "`rows_read` tiene que ser el INVARIANTE entre los dos modos: es lo que "
         "hace la costura detectable en vez de silenciosa")
-    assert nuevo["rows_written"] < viejo["rows_written"], (
-        f"{nuevo['rows_written']} contra {viejo['rows_written']}: si no cae, no "
-        "hay costura que documentar y este test no describe el codigo")
+    # LOS VALORES EXACTOS, no `<`. Sesion A en revision: la tesis de esta entrada
+    # es que la costura NO es un redondeo, y un `<` pasaria con 11 contra 12 --
+    # que es precisamente el mundo en el que la tesis es falsa. El fixture es
+    # determinista: tres instantaneas de las MISMAS cuatro claves, asi que el
+    # replay completo ofrece 12 y el nuevo-primero 4.
+    assert (nuevo["rows_written"], viejo["rows_written"]) == (4, 12), (
+        f"{nuevo['rows_written']} contra {viejo['rows_written']}: se esperaban "
+        "4 y 12 exactos. Un margen menor no distingue esta costura de un "
+        "redondeo, que es lo unico que este test existe para distinguir")
