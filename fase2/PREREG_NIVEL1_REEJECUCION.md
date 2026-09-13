@@ -24,15 +24,29 @@ catálogo y `markets`. Es reparable y offline.
 
 `fase2/n1_30_dimensionado_reingesta.py`, contra el catálogo y las observaciones:
 
-    CON_GANADORA                118
-    sin_observacion              45   (eventos anteriores al 2026-04-08)
-    fuera_de_la_escalera          0
-    n hoy: 19   ->   n tras reingestar: 118   (escalera de 11 bandas en los 118)
+    CON_GANADORA                                            119
+    con_ganadora_SIN_observacion                             80
+       de ellos AUSENTES enteros del almacen hoy               1
+       de ellos con la obs FUERA de la banda ganadora         15
+    n hoy: 19   ->   n tras reingestar: 119   (escalera de 11 bandas en los 119)
     rango: 2026-04-08 -> 2026-08-23
 
 **Este número NO puede usarse para elegir población, lead, banda, modelo ni
 estadístico.** Sirve para una sola cosa: decidir si la reparación merece el trabajo.
-Merece: ×6,2 en n y la partición completa en los 118.
+Merece: ×6,3 en n y la partición completa en los 119.
+
+*Dos correcciones al propio dimensionado, ambas hechas antes de usar el número:*
+
+*(i) La primera versión partía de los eventos de `markets`. Eso deja fuera **por
+construcción** los eventos de los que el almacén no tiene NINGUNA banda: el catálogo trae
+196 eventos de Londres por slug y 187 por `station_identifier` —no son el mismo conjunto,
+y se toma la UNIÓN a propósito— contra 163 en `markets`. **36 eventos enteros ausentes.**
+Dimensionar una reparación partiendo de lo que la reparación va a arreglar es contar con
+la población recortada.*
+
+*(ii) La primera versión deducía la ganadora de nuestro máximo observado. Se cuenta con
+`winning_outcome` del catálogo, que es lo que §5 exige. Los 119 la traen declarada, uno y
+sólo uno por evento.*
 
 *Y una advertencia de método sobre el propio dimensionado: su primera versión devolvió
 `0` para los 163 eventos, y era un bug —`endDate` es un VARCHAR ISO en el catálogo, así
@@ -98,11 +112,26 @@ reejecución:
 - **b.** exactamente **una** banda ganadora por evento.
 - **c.** el máximo observado cae dentro de la banda ganadora en el 100 % de los eventos,
   o se reporta la lista de discrepancias **como resultado propio** (es el desajuste
-  observación/resolución, no un error a tapar).
+  observación/resolución, no un error a tapar). **YA MEDIDO HOY, y por eso el orden de
+  §6bis:** 15 de 119 (12,6 %) caen fuera, **las 15 por debajo y las 15 por exactamente
+  1,0 °C, cero por encima** (A-246). Unilateral y cuantizado en un grado entero no es
+  desajuste de fuente: es la firma del defecto que arregla el PR #49.
 - **d.** ningún `available_at` de pronóstico posterior a `t_asof` (la garantía ex-ante
   que ya vigila `n1_02_temporalidad.py`).
 - **e.** las 19 de A-240 siguen dando **exactamente** el mismo número que dieron
   entonces. Si no, la reingesta cambió algo más que el universo y hay que saber qué.
+
+## 6bis. EL ORDEN NO ES NEGOCIABLE, y la razón está medida
+
+1. **PR #49 fusionado y observaciones de EGLC reingestadas con tipos 3+4.**
+2. **Reingesta de mercados/outcomes** bajo un `dataset_version` nuevo.
+3. **Las cinco comprobaciones de §6.**
+4. **Reejecución del criterio, sin tocarlo.**
+
+Invertir 1 y 2 mediría el modelo contra una verdad que el mercado no usó en el 12,6 % de
+los eventos. Y la predicción de A-246 —las 15 entran, ninguna de las 104 sale— **deja de
+ser observable en cuanto se reingesta**, así que se comprueba en el paso 1 y se reporta
+antes del paso 4.
 
 ## 7. Clasificación
 
