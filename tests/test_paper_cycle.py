@@ -3815,3 +3815,124 @@ def test_the_LAUNCHER_itself_is_driven_and_its_label_survives_the_exec(tmp_path)
 
     assert correr() == "hetzner-launcher"
     assert correr(PMW_GENERATOR="hetzner-cron") == "hetzner-cron"
+
+
+def test_the_shard_says_that_SETTLE_was_skipped_and_why(tmp_path, monkeypatch):
+    """La etapa que mueve el libro mayor era la única que no dejaba rastro.
+
+    Medido en el almacén de producción antes de escribir esto: en 59 ciclos,
+    `forecasts`, `signals`, `paper` y `observations` aparecen 20 veces cada una y
+    `settle` **ninguna**. Quien leyera el almacén no podía distinguir «se saltó porque
+    el ciclo era collect-only» de «no existe» de «reventó antes de registrar».
+
+    Y se lee del SHARD, no de `cy.stages`: la estructura en memoria **siempre** tuvo
+    `status`, y por eso nadie vio que no llegaba al disco. Un test contra ella habría
+    pasado con el defecto intacto.
+    """
+    monkeypatch.setattr(paper_cycle, "stage_discover",
+                        lambda cy, *a, **k: cy.stage("discover", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_collect",
+                        lambda cy, *a, **k: cy.stage("collect:books", paper_cycle.OK))
+    store_root = tmp_path / "store"
+    assert paper_cycle.main([
+        "--target-date", "2026-09-11", "--dataset-version", "ds1",
+        "--store-root", str(store_root), "--db", str(tmp_path / "t.duckdb"),
+        "--collect-only", "--collect-only-reason", "mode_collect",
+        "--summary-json", str(tmp_path / "s.json")]) == 0
+
+    import gzip as _gz
+    fila = json.loads(_gz.open(store.iter_shards(store_root, "cycle_params")[0],
+                               "rt").readline())
+    perfil = {e["stage"]: e for e in json.loads(fila["stage_profile"])}
+    # POR NOMBRE LITERAL, NO POR LA CONSTANTE. La primera version de este test
+    # iteraba `paper_cycle.DECIDE_STAGES`, asi que quitar `settle` de la constante lo
+    # dejaba VERDE: el test afirmaba contra lo que estaba bajo prueba. Comprobado
+    # ejecutando la mutacion, no supuesto -- y es el mismo defecto que este PR
+    # arregla, dentro del test que lo arregla.
+    for st in ("forecasts", "signals", "paper", "observations", "settle"):
+        assert st in perfil, f"{st} no aparece en el shard: {sorted(perfil)}"
+        assert perfil[st]["status"] == paper_cycle.SKIPPED, (st, perfil[st])
+        assert perfil[st]["reason"] == "collect_only", (st, perfil[st])
+
+
+def test_the_decide_path_has_exactly_these_five_stages():
+    """El conjunto, clavado POR NOMBRE y no por si mismo.
+
+    Sin esto, quitar una etapa de `DECIDE_STAGES` no rompe nada: los demas tests
+    recorren la constante. Una sexta etapa del camino de decision tiene que entrar
+    aqui a mano, que es justo el momento en que alguien decide si se declara saltada.
+    """
+    assert set(paper_cycle.DECIDE_STAGES) == {
+        "forecasts", "signals", "paper", "observations", "settle"}
+
+
+def test_the_settle_only_skip_list_is_DERIVED_from_the_decide_stages():
+    """Dos listas escritas a mano no se quedan en paso: una sexta etapa entraría en
+    una y faltaría en la otra, que es el defecto que este cambio arregla un nivel más
+    arriba. `SETTLE_ONLY_SKIPPED` se deriva, así que no puede desincronizarse.
+
+    La cola `--settle-only` SÍ ejecuta `observations` y `settle`; se salta el resto del
+    camino de decisión más las etapas de recolección.
+    """
+    assert set(paper_cycle.SETTLE_ONLY_SKIPPED) == (
+        {"discover", "universe", "collect:books"}
+        | (set(paper_cycle.DECIDE_STAGES) - {"observations", "settle"}))
+    assert "settle" not in paper_cycle.SETTLE_ONLY_SKIPPED
+    assert "observations" not in paper_cycle.SETTLE_ONLY_SKIPPED
+
+
+def test_a_traceback_never_reaches_the_committed_shard():
+    """`paper-state` es append-only y D0 prohíbe borrar: una traza con las rutas de la
+    caja entraría PARA SIEMPRE y sin tope. Y no se inventa política — `Cycle.stage` ya
+    excluye `traceback` de su propia línea impresa."""
+    e = {"stage": "discover", "status": "STOPPED", "at_s": 1.0, "elapsed_s": 1.0,
+         "error": "boom", "traceback": "File x\n  File y\n" * 50}
+    assert "traceback" not in paper_cycle._profile_entry(e)
+    assert paper_cycle._profile_entry(e)["error"] == "boom"
+
+
+def test_a_truncated_error_SAYS_that_it_was_truncated():
+    """Un recorte silencioso se lee como un valor completo — la misma clase de defecto
+    que el centinela `+N mas` del #47 cerró para los detalles de negativa."""
+    largo = "x" * 1000
+    salida = paper_cycle._profile_entry({"stage": "load:markets", "error": largo})["error"]
+    assert salida.startswith("x" * paper_cycle._PROFILE_ERROR_MAX)
+    assert salida.endswith(f"(+{1000 - paper_cycle._PROFILE_ERROR_MAX} car)")
+    corto = "y" * 10
+    assert paper_cycle._profile_entry({"stage": "x", "error": corto})["error"] == corto
+
+
+def test_an_unserialisable_detail_costs_a_FIELD_and_never_the_shard(tmp_path, monkeypatch):
+    """`stage_params` corre bajo un `try` que sólo tiene `finally`, sin `except`: una
+    excepción ahí no cuesta un campo, cuesta el shard entero del ciclo. Por eso el
+    volcado lleva `default=str`.
+
+    Hoy ningún llamador pasa un valor no serializable —`write_shard` ya devuelve
+    `str(path)`, comprobado—, así que esto protege del que alguien añada mañana.
+    """
+    from pathlib import Path as _P
+
+    def discover_raro(cy, *a, **k):
+        return cy.stage("discover", paper_cycle.OK, ruta=_P("/opt/pmw/x.ndjson.gz"))
+
+    monkeypatch.setattr(paper_cycle, "stage_discover", discover_raro)
+    monkeypatch.setattr(paper_cycle, "stage_collect",
+                        lambda cy, *a, **k: cy.stage("collect:books", paper_cycle.OK))
+    store_root = tmp_path / "store"
+    assert paper_cycle.main([
+        "--target-date", "2026-09-11", "--dataset-version", "ds1",
+        "--store-root", str(store_root), "--db", str(tmp_path / "t.duckdb"),
+        "--collect-only", "--collect-only-reason", "mode_collect",
+        "--summary-json", str(tmp_path / "s.json")]) == 0
+    import gzip as _gz
+    shards = store.iter_shards(store_root, "cycle_params")
+    assert shards, "el ciclo no escribio cycle_params: la excepcion se llevo el shard"
+    fila = json.loads(_gz.open(shards[0], "rt").readline())
+    perfil = {e["stage"]: e for e in json.loads(fila["stage_profile"])}
+    assert perfil["discover"]["ruta"] == "/opt/pmw/x.ndjson.gz"
+    # Y LOS OTROS DOS VOLCADOS DEL MISMO DATO. Este test, escrito para el shard,
+    # encontro que `_finish` escribe `cy.summary()` con su propio `json.dumps` sin
+    # `default`: no se llevaba el shard -- ya estaba escrito -- pero si el resumen y
+    # el codigo de salida. Dos politicas para un mismo dato es arreglar la instancia.
+    assert (tmp_path / "s.json").exists(), "el resumen no se escribio"
+    assert json.loads((tmp_path / "s.json").read_text())["stages"]

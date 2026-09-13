@@ -1233,6 +1233,30 @@ def to_core_series(series: str | None) -> str | None:
     return SERIES_CORRESPONDENCE.get(series or "")
 
 
+#: LAS ETAPAS DEL CAMINO DE DECISION, DECLARADAS UNA VEZ.
+#:
+#: Antes estaban escritas a mano, rama por rama, y cada rama declaraba un
+#: subconjunto distinto: la de collect-only declaraba cuatro y olvidaba `settle`; la
+#: de "decide pero sin tau" declaraba dos y olvidaba `forecasts`, `observations` y
+#: `settle`. Medido en el almacen de produccion: en 59 ciclos, `forecasts`, `signals`,
+#: `paper` y `observations` aparecen 20 veces cada una y `settle` NINGUNA. La etapa
+#: que mueve el libro mayor era la unica que no dejaba rastro.
+#:
+#: Y la rama de collect-only tiene DOS causas -- `collect_only` y
+#: `guard_refused_dataset_version` --, y la segunda ocurre en produccion aunque haya
+#: `PAPER_TAU`: el hueco no esperaba a que nadie olvidara `--tau-exec`.
+#:
+#: `SETTLE_ONLY_SKIPPED` se DERIVA de esta tupla en vez de repetirla, para que una
+#: sexta etapa del camino de decision no pueda entrar en una lista y faltar en la
+#: otra. Es el mismo defecto que este cambio arregla, un nivel mas arriba.
+DECIDE_STAGES = ("forecasts", "signals", "paper", "observations", "settle")
+
+#: Lo que la cola `--settle-only` se salta: las etapas de recoleccion, mas las del
+#: camino de decision que esa cola NO ejecuta. `observations` y `settle` si corren.
+SETTLE_ONLY_SKIPPED = ("discover", "universe", "collect:books") + tuple(
+    st for st in DECIDE_STAGES if st not in ("observations", "settle"))
+
+
 #: How long after the station-local day ends before its high is read. NOT the 24 h
 #: of `error_model.ASSUMED_LABEL_LAG` — that is M2's TRAINING assumption about when
 #: a label could first be known, and using it here would delay every settlement by
@@ -1589,6 +1613,56 @@ def stage_settle(cy: Cycle, con, *, dataset_version: str) -> dict:
             "details": salida}
 
 
+#: Cuanto de un `error` llega al shard. El mismo numero que `_non_fatal` ya usaba,
+#: pero aplicado AL SERIALIZAR y no en cada llamada: topar en cada sitio se olvida en
+#: el siguiente `STOPPED`, y se olvido en cuatro de seis (`load:{table}`, `discover`,
+#: `signals:{event_id}`, `dump:{table}:gate` guardaban `repr(exc)` entero).
+_PROFILE_ERROR_MAX = 300
+
+
+def _profile_entry(entry: dict) -> dict:
+    """La entrada de etapa tal como llega al shard: COMPLETA, salvo dos cosas.
+
+    ANTES SE GUARDABAN TRES CLAVES -- `stage`, `at_s`, `elapsed_s` -- y `status` y el
+    motivo se caian al serializar aunque `Cycle.stage` los construyera. Consecuencia
+    medida: en el almacen, una etapa SALTADA era indistinguible de una que corrio en
+    0,00 s, y los 20 `forecasts` de los ciclos de produccion son saltos que nada
+    identifica como tales. Y con ellos se perdia el detalle de `settle` --
+    `positions_open`, `settled`, `refused`, `reasons`, `reason_details` --, que es el
+    trabajo entero de los PR #46 y #47: el dia que haya `PAPER_TAU` y la liquidacion
+    empiece a negarse, el motivo de cada negativa viviria tres horas, hasta que el
+    ciclo siguiente sobrescriba `last_summary.json`.
+
+    `traceback` FUERA. Lo lleva una sola llamada (`discover` STOPPED) y `Cycle.stage`
+    ya lo excluye de su propia linea impresa: el codigo ya lo trata como no apto para
+    una linea. `paper-state` es append-only y D0 prohibe borrar, asi que una traza con
+    las rutas de la caja entraria PARA SIEMPRE y sin tope. Se queda en el log y en
+    `last_summary.json`, que es donde sirve.
+
+    `error` TOPADO, Y DICIENDOLO. Un recorte silencioso se lee como un valor completo,
+    que es la misma clase de defecto que el centinela `+N mas` del #47 cerro para los
+    detalles de negativa. Seria ironico meterlo en este arreglo.
+
+    Y `default=str` en el volcado, no aqui: `stage_params` corre bajo un `try` que
+    solo tiene `finally`, sin `except`, asi que un valor no serializable que alguien
+    anada manana costaria el SHARD ENTERO del ciclo -- el perfil se serializa dentro
+    del `params` que se escribe, antes del `write_shard`.
+
+    HAY UN SEGUNDO VOLCADO Y LO ENCONTRO EL TEST, no el razonamiento: `_finish` escribe
+    `cy.summary()` en `--summary-json` con su propio `json.dumps`, tambien sin
+    `default`. Ese corre DESPUES del shard, asi que no se lo lleva; se lleva el resumen
+    y el codigo de salida. Lleva `default=str` igual, porque dos volcados del mismo
+    dato con dos politicas distintas es exactamente arreglar la instancia y no la
+    clase.
+    """
+    out = {k: v for k, v in entry.items() if k != "traceback"}
+    err = out.get("error")
+    if isinstance(err, str) and len(err) > _PROFILE_ERROR_MAX:
+        out["error"] = (err[:_PROFILE_ERROR_MAX]
+                        + f"... (+{len(err) - _PROFILE_ERROR_MAX} car)")
+    return out
+
+
 def code_commit() -> str | None:
     """Which code produced this row — asked of git when Actions is not there.
 
@@ -1789,8 +1863,7 @@ def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
         # what remains outside is this stage itself, which is irreducible and is
         # therefore DECLARED rather than left to be inferred.
         "stage_profile": json.dumps(
-            [{"stage": e["stage"], "at_s": e.get("at_s"),
-              "elapsed_s": e.get("elapsed_s")} for e in cy.stages]),
+            [_profile_entry(e) for e in cy.stages], default=str),
         "stage_profile_excludes": "params",
         # THE SIZE OF THE STORE WAS COMPUTED EVERY CYCLE AND THROWN AWAY. Session
         # B's third finding of this family: `store_stats` reaches `cy.stage()`
@@ -2311,8 +2384,7 @@ def main(argv: list[str] | None = None) -> int:
             # Nothing is discovered, collected or decided: the tail exists only to
             # close what is already open. Skipping discovery also keeps it from
             # touching `markets.available_at`, which a decision cycle depends on.
-            for st in ("discover", "universe", "collect:books", "forecasts",
-                       "signals", "paper"):
+            for st in SETTLE_ONLY_SKIPPED:
                 cy.stage(st, SKIPPED, reason="settle_only_tail")
             stage_observations(cy, con, dataset_version=args.dataset_version,
                                now=_utcnow())
@@ -2466,14 +2538,16 @@ def main(argv: list[str] | None = None) -> int:
         if not deciding:
             why = ("guard_refused_dataset_version" if guard_refused
                    else "collect_only")
-            cy.stage("forecasts", SKIPPED, reason=why)
-            cy.stage("signals", SKIPPED, reason=why)
-            cy.stage("paper", SKIPPED, reason=why)
-            cy.stage("observations", SKIPPED, reason=why)
+            for st in DECIDE_STAGES:
+                cy.stage(st, SKIPPED, reason=why)
         elif args.tau_signal is None or args.tau_exec is None:
+            # LAS CINCO, no dos. En esta rama no corre NINGUNA: el `else` entero se
+            # salta. Declarar solo `signals` y `paper` dejaba `forecasts`,
+            # `observations` y `settle` sin una sola fila en un ciclo que se creia
+            # decisor.
             missing = "tau_signal" if args.tau_signal is None else "tau_exec"
-            cy.stage("signals", SKIPPED, reason=f"{missing}_not_provided_fail_closed")
-            cy.stage("paper", SKIPPED, reason=f"{missing}_not_provided_fail_closed")
+            for st in DECIDE_STAGES:
+                cy.stage(st, SKIPPED, reason=f"{missing}_not_provided_fail_closed")
         else:
             fc = stage_forecasts(cy, con, dataset_version=args.dataset_version,
                                  target_date=target_date, universe=universe,
@@ -2588,10 +2662,16 @@ def _finish(cy: Cycle, args) -> int:
     summary = cy.summary()
     if args.summary_json:
         Path(args.summary_json).parent.mkdir(parents=True, exist_ok=True)
-        Path(args.summary_json).write_text(json.dumps(summary, indent=2),
+        # `default=str` AQUI TAMBIEN, y lo encontro el test escrito para la otra
+        # mitad. `stage_params` quedo protegido y este volcado no, asi que un valor
+        # no serializable seguia reventando -- no el shard, que ya esta escrito y
+        # commiteado, sino el RESUMEN y el codigo de salida. Dos volcados del mismo
+        # dato con dos politicas distintas es la misma clase de defecto que este PR
+        # arregla: arreglar la instancia y no la clase.
+        Path(args.summary_json).write_text(json.dumps(summary, indent=2, default=str),
                                            encoding="utf-8")
     print("\n=== cycle summary ===")
-    print(json.dumps(summary, indent=2))
+    print(json.dumps(summary, indent=2, default=str))
     # A stopped stage is reported, not raised: the shards are already written, and
     # a red job would hide the fact that collection succeeded.
     return 0
