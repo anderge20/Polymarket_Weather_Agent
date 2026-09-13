@@ -108,5 +108,10 @@ if [ ! -x "$RUNNER" ]; then
   log "  half-running. Point /opt/pmw/REF at a ref that contains ops/hetzner/."
   exit 1
 fi
+# EL GENERADOR, y este es el unico sitio que puede decirlo. Cron llama aqui y
+# solo aqui: el `:-` de `run_cycle.sh` degrada a `hetzner-manual`, asi que un
+# ciclo programado y uno lanzado a mano dejan de ser indistinguibles en el shard.
+export PMW_GENERATOR=hetzner-cron
+
 log "ref=$REF at $(git -C "$REPO" rev-parse --short HEAD) -> $* "
 exec "$RUNNER" "$@"

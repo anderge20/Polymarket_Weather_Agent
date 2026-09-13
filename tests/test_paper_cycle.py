@@ -3434,3 +3434,148 @@ def test_the_WRAPPER_itself_passes_the_reason_in_each_branch(tmp_path):
     b = correr("decide", "9")
     assert "--tau-signal" in b, b
     assert "--collect-only" not in b and "no_paper_tau" not in b, b
+
+
+def test_the_generator_reaches_the_SHARD_when_the_caller_declares_it(tmp_path, monkeypatch):
+    """Quien lanzó el ciclo, leído en el shard y no en la etapa.
+
+    Ningún campo ha nombrado nunca el GENERADOR. La única pista era el prefijo
+    del `session_id`, que sale `col_` en 34 de 34 ciclos venga de donde venga, y
+    ya hubo dos generadores conviviendo en tres tablas —Actions hasta el
+    2026-09-09 y la caja desde entonces— sin nada en los datos que los separe.
+    """
+    monkeypatch.setenv("PMW_GENERATOR", "hetzner-cron")
+    monkeypatch.setattr(paper_cycle, "stage_discover",
+                        lambda cy, *a, **k: cy.stage("discover", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_collect",
+                        lambda cy, *a, **k: cy.stage("collect:books", paper_cycle.OK))
+    store_root = tmp_path / "store"
+    assert paper_cycle.main([
+        "--target-date", "2026-09-11", "--dataset-version", "ds1",
+        "--store-root", str(store_root), "--db", str(tmp_path / "t.duckdb"),
+        "--collect-only", "--collect-only-reason", "mode_collect",
+        "--summary-json", str(tmp_path / "s.json")]) == 0
+
+    import gzip as _gz
+    fila = json.loads(_gz.open(store.iter_shards(store_root, "cycle_params")[0],
+                               "rt").readline())
+    assert fila["generator"] == "hetzner-cron", fila.get("generator")
+
+
+@pytest.mark.parametrize("valor", [None, ""])
+def test_a_generator_nobody_declared_is_None_and_never_a_plausible_guess(
+        tmp_path, monkeypatch, valor):
+    """AUSENTE ES UN VALOR, y es el honesto.
+
+    `None` significa «nadie lo declaró», que distingue una invocación suelta de
+    `paper_cycle.py` de las tres rutas que sí lo declaran. Un defecto como
+    `"unknown"` o, peor, `"hetzner"` convertiría esa distinción en una mentira
+    plausible. Y `""` —lo que deja una interpolación de YAML vacía— se lee como
+    «lo dijo en blanco» en vez de «no lo dijo»: el mismo defecto que el
+    `collect_only_reason` vacío, en el campo de al lado.
+    """
+    if valor is None:
+        monkeypatch.delenv("PMW_GENERATOR", raising=False)
+    else:
+        monkeypatch.setenv("PMW_GENERATOR", valor)
+    monkeypatch.setattr(paper_cycle, "stage_discover",
+                        lambda cy, *a, **k: cy.stage("discover", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_collect",
+                        lambda cy, *a, **k: cy.stage("collect:books", paper_cycle.OK))
+    store_root = tmp_path / "store"
+    paper_cycle.main([
+        "--target-date", "2026-09-11", "--dataset-version", "ds1",
+        "--store-root", str(store_root), "--db", str(tmp_path / "t.duckdb"),
+        "--collect-only", "--collect-only-reason", "mode_collect",
+        "--summary-json", str(tmp_path / "s.json")])
+    import gzip as _gz
+    fila = json.loads(_gz.open(store.iter_shards(store_root, "cycle_params")[0],
+                               "rt").readline())
+    assert fila["generator"] is None, fila["generator"]
+
+
+def test_EVERY_caller_of_paper_cycle_declares_its_generator():
+    """El barrido va por directorio, así que un cuarto llamador entra solo.
+
+    La lección del `--collect-only-reason`: la primera versión de aquel test
+    miraba UN fichero cuando había tres, y los otros dos pasaban la bandera sin
+    motivo. Aquí se pregunta por la clase desde el principio — *todo fichero que
+    invoque `paper_cycle.py` tiene que nombrar su generador*— y el recuento
+    esperado hace que añadir un llamador sin declararlo sea rojo, no silencio.
+    """
+    raiz = Path(__file__).resolve().parents[1]
+    fuentes = sorted(list((raiz / "ops").rglob("*.sh")) +
+                     list((raiz / ".github" / "workflows").rglob("*.yml")))
+    llamadores = [f for f in fuentes if "paper_cycle.py" in f.read_text()]
+    assert llamadores, "ningún fichero invoca paper_cycle.py: revisar este test"
+    sin_declarar = [f.name for f in llamadores
+                    if "PMW_GENERATOR" not in f.read_text()]
+    assert not sin_declarar, f"invocan paper_cycle.py sin declarar generador: {sin_declarar}"
+    assert len(llamadores) == 3, (
+        f"se esperaban tres (run_cycle.sh, paper_cycle.yml, paper_collect.yml); "
+        f"hay {len(llamadores)}: {[f.name for f in llamadores]}")
+
+    # Y EL ENVOLTORIO DE CRON, que no invoca a python y por eso el barrido no lo
+    # ve: es el ÚNICO sitio que puede decir `hetzner-cron`, porque `run_cycle.sh`
+    # degrada a `hetzner-manual` cuando nadie lo ha dicho. Si esta línea
+    # desaparece, los ciclos programados dejan de distinguirse de los manuales y
+    # nada más se pone rojo.
+    launcher = (raiz / "ops" / "hetzner" / "launcher.sh").read_text()
+    assert "export PMW_GENERATOR=hetzner-cron" in launcher
+    assert launcher.index("export PMW_GENERATOR") < launcher.index('exec "$RUNNER"'), \
+        "el export tiene que estar ANTES del exec o no se hereda"
+
+
+def test_the_WRAPPER_exports_the_generator_and_yields_to_the_launcher(tmp_path):
+    """CONDUCIENDO `run_cycle.sh` de verdad, y mirando el ENTORNO que vio python.
+
+    El argv no sirve aquí: el generador viaja por entorno, así que el python de
+    mentira vuelca `PMW_GENERATOR` en vez de sus argumentos. Dos ramas, y la
+    segunda es la que importa — `${PMW_GENERATOR:-hetzner-manual}` tiene que
+    CEDER ante lo que ponga `launcher.sh`, o el camino de cron se etiquetaría a
+    sí mismo como manual.
+    """
+    import os
+    import subprocess
+
+    raiz = Path(__file__).resolve().parents[1]
+    original = (raiz / "ops" / "hetzner" / "run_cycle.sh").read_text()
+    assert original.count("\nROOT=/opt/pmw\n") == 1, "ROOT ya no es sustituible por línea"
+
+    root = tmp_path / "pmw"
+    for sub in ("repo", "state", "venv/bin", "bin"):
+        (root / sub).mkdir(parents=True)
+    (root / "state" / ".git").mkdir()
+    guion = root / "run_cycle.sh"
+    guion.write_text(original.replace("\nROOT=/opt/pmw\n", f"\nROOT={root}\n"))
+    guion.chmod(0o755)
+
+    visto = root / "generator.txt"
+    (root / "venv" / "bin" / "python").write_text(
+        f'#!/bin/sh\nprintf "%s" "${{PMW_GENERATOR-<sin declarar>}}" > {visto}\n')
+    (root / "venv" / "bin" / "python").chmod(0o755)
+    (root / "bin" / "git").write_text(
+        '#!/bin/sh\ncase "$*" in *rev-parse*) echo deadbee;; *status*) :;; *) :;; esac\n')
+    (root / "bin" / "git").chmod(0o755)
+    (root / "bin" / "date").write_text(
+        '#!/bin/sh\ncase "$*" in *"+1 day"*) echo 2026-09-15;; *%FT%TZ*) echo 2026-09-14T00:00:00Z;;'
+        ' *) echo 2026-09-14;; esac\n')
+    (root / "bin" / "date").chmod(0o755)
+
+    def correr(**extra):
+        # Borrar ANTES: una salida 0 que no llegara a llamar a python leería el
+        # fichero de la corrida anterior y el test pasaría en vacío.
+        visto.unlink(missing_ok=True)
+        entorno = dict(os.environ, PATH=f"{root/'bin'}:{os.environ['PATH']}")
+        entorno.pop("PMW_GENERATOR", None)
+        entorno.update(extra)
+        r = subprocess.run(["bash", str(guion), "collect"], env=entorno,
+                           capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0, (r.returncode, r.stdout[-800:], r.stderr[-800:])
+        assert visto.exists(), "el guion salió 0 sin llegar a invocar a python"
+        return visto.read_text()
+
+    # invocado a mano: el guion se nombra a sí mismo
+    assert correr() == "hetzner-manual"
+    # invocado por `launcher.sh` (que exporta antes del exec): el suyo manda
+    assert correr(PMW_GENERATOR="hetzner-cron") == "hetzner-cron"

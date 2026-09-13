@@ -1879,6 +1879,29 @@ def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
                                 if args.collect_only else None),
         "code_commit": code_commit(),
         "run_id": os.environ.get("GITHUB_RUN_ID"),
+        # QUIEN LANZO EL CICLO, DECLARADO POR EL LLAMADOR Y NUNCA OLFATEADO AQUI.
+        #
+        # Ningun campo ha nombrado nunca el GENERADOR de un shard. La unica pista
+        # es el prefijo del `session_id`, que es precisamente lo que se quiere
+        # interpretar: `col_` sale en 34 de 34 ciclos, venga de donde venga. Y ya
+        # hubo dos generadores conviviendo en tres tablas — Actions hasta el
+        # 2026-09-09 y la caja desde entonces — sin que nada en los datos los
+        # separe. Una dependencia que solo se puede comprobar suponiendo la
+        # respuesta no es comprobable.
+        #
+        # SE DECLARA, NO SE DEDUCE, y esa es la decision entera. Mirar
+        # `GITHUB_ACTIONS`, el hostname o el uid seria otra derivacion que se
+        # rompe en silencio el dia que la infraestructura se mueve — que es
+        # exactamente lo que ya paso con `GITHUB_SHA` y `GITHUB_RUN_ID`, campos
+        # que no estaban MAL sino apuntados a una maquina que dejamos de usar.
+        # Aqui el llamador dice su nombre y este fichero lo copia.
+        #
+        # AUSENTE ES UN VALOR, y es el honesto: `None` significa «nadie lo
+        # declaro», que distingue una invocacion suelta de `paper_cycle.py` de
+        # las tres rutas que si lo declaran. Un valor por defecto como
+        # `"unknown"` o `"hetzner"` convertiria esa distincion en una mentira
+        # plausible, que es peor que un hueco.
+        "generator": os.environ.get("PMW_GENERATOR") or None,
         # B's second condition: the cycle records WHICH artifact it used. The id
         # is a sha over the artifact's canonical content, so it names the fit
         # exactly — including a refit that produced identical numbers. When the

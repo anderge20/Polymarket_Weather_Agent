@@ -38,6 +38,13 @@ VENV=$ROOT/venv
 BRANCH=paper-state
 DSV=ds_paper_v1
 MODE=${1:-collect}
+
+# QUIEN LANZA, DICHO POR QUIEN LANZA. `cycle_params.generator` no se deduce
+# dentro de Python: se declara aqui y se hereda por el `exec`. El `:-` deja que
+# `launcher.sh` (el camino de cron) imponga el suyo y solo pone `hetzner-manual`
+# cuando nadie lo ha dicho — que es justo el caso de invocar este guion a mano,
+# el unico que se salta el reset del checkout y el flock.
+export PMW_GENERATOR="${PMW_GENERATOR:-hetzner-manual}"
 LEAD=${2:-24}
 
 log() { printf '%s %s\n' "$(date -u +%FT%TZ)" "$*"; }

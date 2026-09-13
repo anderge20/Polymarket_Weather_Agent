@@ -166,6 +166,12 @@ jobs:
       - name: Run the cycle
         env:
           RUN_ID: ${{ github.run_id }}
+          # El GENERADOR, declarado por el llamador (ver `cycle_params.generator`).
+          # Las programaciones de este flujo estan desactivadas, pero
+          # `workflow_dispatch` sigue vivo: una corrida manual desde aqui tiene
+          # que quedar distinguible de la caja en el shard, no por el prefijo de
+          # un id que no distingue nada.
+          PMW_GENERATOR: github-actions
         run: |
           set -euo pipefail
           mkdir -p results
