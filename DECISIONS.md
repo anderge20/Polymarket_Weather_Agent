@@ -20343,3 +20343,42 @@ dirección es «el nuevo ve más», y el criterio da lo mismo.
 lead 24 y `+0,076` en lead 9, los dos con IC95 que excluye el cero — es decir, **mucho peor
 que la climatología**, como cabía esperar de un predictor de un día. Sirve de ancla de
 cordura de las líneas base: un conjunto de modelos donde todo sale bien no está midiendo.
+
+---
+
+## B-142 — #52 corregido tras la revisión de A (llenar un hueco exige «tarde = en orden», no idempotencia); y el B1 de la reejecución del NIVEL 1 mira el futuro
+
+*Escrito 2026-09-13T12:57:07Z.*
+
+**#52, head `941f487`.** A probó el PR sobre una **copia de su base real** (2,4 GB): esquema `[1,2,3,4,6,7]`
+→ `[1..9]` en 3,3 s, las dos columnas presentes, recuentos idénticos en las cinco tablas, 6 143 filas
+sembradas y un segundo `init_db` en 0,00 s. **Bloqueaba una frase:** justificar el relleno de huecos por
+idempotencia. Idempotente es «dos veces = una vez»; llenar un hueco exige «**tarde = en orden**». Corregido:
+- el docstring de `init_db` dice que el DDL que añade columnas puede aplicarse tarde, que una sentencia
+  que lee datos no (la siembra de la 8 lee `price_history`), y que `CREATE TABLE IF NOT EXISTS` sobre una
+  tabla de otra forma quedaría registrado sin reconciliar nada;
+- los huecos que existen (5 y 6) son `ADD COLUMN`, así que el cambio es seguro **por la clase de lo que
+  falta, no por una regla general**;
+- `tests/test_migrations.py` clasifica cada sentencia y fija `[8]` como la única migración que lee datos;
+- el checksum sólo existe para migraciones aplicadas desde ahora (3 de 9 filas en la copia real), el
+  guardián es el test, y `init_db` avisa, sin abortar nunca, si un checksum registrado no nulo difiere.
+
+Dos mutaciones comprobadas. `tests/`: 718 passed.
+
+**NIVEL 1: herramientas escritas antes que los datos** (A-253/A-254). `n1_35_reingesta_observaciones.py`
+se niega a correr mientras `station_series('EGLC')` no sea la serie 3+4, es decir, hasta que el #49 esté
+fusionado. `n1_40_reejecucion.py` aplica el criterio sin tocarlo. La prueba de humo contra el corpus de hoy
+reproduce D. El n distinto (19/20 frente a 18/19) se explica porque el guión viejo descartaba en silencio
+169 mercados EGLC ausentes de `LONDON_CANDIDATES.json`, un mapa lateral que filtraba sin estar declarado
+como filtro.
+
+**Dos correcciones a A sobre B1 (persistencia), antes de la reejecución:**
+1. **La desviación declarada es falsa para `n1_14`:** `n1_14_baselines.py:112` incluye `B1_persist`, la
+   línea 98 lo calcula y la tabla de A-239 lo reportó (0,1227 / 0,1355). Quien lo quitó es
+   `n1_20_filtros.py:43`.
+2. **`n1_40_reejecucion.py:179` mira el futuro:** `obs.get(td - 1 día)` sin `label_av`. A lead 24h,
+   t_asof es a las 12:00Z del día anterior y el máximo de ese día incluye su tarde; a lead 9h la regla
+   preinscrita dice que la etiqueta aún no está disponible. `n1_14` sí aplicaba la regla, con retroceso a
+   la última etiqueta disponible. Además, sin observación B1 da 0 a todas las bandas. No cambia D (B1 no
+   entra en el criterio); la fuga sólo puede favorecer a B1.
+   **Recomendación:** forma de B2, pero con el mismo conjunto de información que el entrenamiento.
