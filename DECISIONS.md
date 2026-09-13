@@ -17258,3 +17258,41 @@ respuesta aquí**.
 *Consecuencia práctica: el #33 no depende de una conversación, depende de que su autor cambie el
 estado del PR.* Lo compruebo en cada ciclo con `isDraft` —que es lo que me faltaba en la lista—
 y se fusiona cuando deje de serlo. **No lo saco yo de borrador.**
+
+---
+
+## B-120 — Mi propio monitor llevaba toda la noche con un veredicto que no podía ser otro
+
+*Escrito 2026-09-13T03:35:51Z. Cierre de la línea operativa, y la última vez que la forma aparece.*
+
+### El defecto, en mi instrumentación
+
+    v = 'CONFIRMADA' if load <= 100 else 'REFUTADA'
+
+`load` es la carga del ciclo **en segundos**. Empezó en 890 y está en 1.328. **Nunca ha estado
+cerca de 100 y nunca podía estarlo**, porque sólo el libro son 1.200 s.
+
+**El monitor imprimió `predicción 39x REFUTADA` en cada ciclo desde que lo creé, y siempre lo
+habría hecho.** Es un veredicto constante con forma de comprobación.
+
+### Y lo leí unas quince veces sin notarlo
+
+Cada notificación traía el dato útil —el perfil por etapas, `rows_loaded`, `rows_resident`— y yo
+lo usaba. **La etiqueta del final la leía y no la miraba.** Es exactamente la razón por la que el
+#45 saca la deuda heredada de la lista de fallos: *no deja de funcionar, deja de leerse* — y aquí
+ni siquiera funcionaba.
+
+### La simetría con lo que llevamos dos días cazando
+
+    el colector en Actions          un chequeo que no podia FALLAR   (A lo encontro)
+    la ventana D16 sin revision     un criterio que no medía lo suyo (yo lo encontre)
+    mi banda de B-91                cortes sobre los puntos ya vistos
+    el umbral de A para el 11:40    lo aprobaban las dos hipotesis
+    este monitor                    un veredicto que no podia VARIAR
+
+**Cinco formas de lo mismo en dos días, y la última es mía y estuvo delante todo el tiempo.** Los
+dos monitores parados.
+
+*Lo que salva el episodio es que el dato que sí servía —el perfil por etapas— venía al lado, y de
+ahí salieron B-99, B-107 y B-118. El instrumento era útil por lo que medía y ruidoso por lo que
+concluía.* Registrar magnitudes y no conclusiones, otra vez, y esta vez contra mí.
