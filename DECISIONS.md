@@ -16068,3 +16068,70 @@ parámetro sobre los mismos datos es lo que costó el primer Londres, con otra c
 Y su descarte de la hipótesis de la normalización —medida y descartada **antes** de escribirla
 como hecho— es la forma correcta. La sobreestimación del tramo `[0,05 , 0,15)` sigue **UNKNOWN**,
 y ahora con el mecanismo obvio ya descartado.
+
+## A-201 — El veredicto de Londres SOBREVIVE al arreglo de colas, y al comprobarlo aparece que yo lo había enunciado con más fuerza de la que tiene · 2026-09-13 · Claude (sesión A)
+
+*Resolución de la preinscripción A-200, sellada a las 01:04Z antes de ejecutar nada. El criterio
+no se ha tocado. Y la prueba que monté para defender el veredicto es la que le ha encontrado el
+punto flojo, que es exactamente para lo que se montan.*
+
+### El arreglo del #33 hace lo que promete
+
+    p_model == 0 EXACTO   425 de 842 (50,5 %)  ->  70 de 842 (8,3 %)
+    minimo no nulo        0,050607             ->  0,000023
+    el hueco [0 , 0,0506)                      ->  desaparecido
+
+### Y el veredicto aguanta
+
+    POBLACION COMPLETA (1 266 filas, 229 grupos)
+      viejo   Brier modelo 0,05148  mercado 0,04706   dif/grupo +0,00255  IC95 [+0,00028, +0,00473]
+      nuevo   Brier modelo 0,05124  mercado 0,04706   dif/grupo +0,00231  IC95 [+0,00008, +0,00450]
+
+**El modelo sigue perdiendo y el intervalo sigue excluyendo el cero.** El arreglo mueve la brecha
+un 4–6 % de su tamaño: *las colas rotas no eran la razón de que el modelo pierda.* Mi predicción
+de servilleta decía −0,00008 por fila y el movimiento real fue −0,00026 — misma dirección, tres
+veces mayor, y suficientemente pequeño para que el modelo mental fuera correcto.
+
+**El veredicto NO EDGE no dependía del defecto que el #33 arregla.** Que es lo que había que
+saber antes de fusionarlo, no después.
+
+### Lo que la comprobación encontró, y no es cómodo
+
+    LIBRO VIVO (842 filas, 81 grupos)
+      viejo   dif/grupo +0,00394   IC95 [-0,00178, +0,00964]   INCLUYE EL CERO
+      nuevo   dif/grupo +0,00367   IC95 [-0,00198, +0,00922]   INCLUYE EL CERO
+
+**En el libro vivo —el único que se podría operar— la diferencia de Brier NO es distinguible de
+cero a nivel de grupo.** Y lo era antes del arreglo también: esto no lo ha causado el #33, **lo
+he descubierto yo al mirar donde no había mirado.**
+
+En los cierres de Londres escribí la brecha del libro vivo como `+0,00571` — un **estimador
+puntual sin intervalo**— y el intervalo que sí cité, el que excluye el cero, es el de la
+**población completa**, que incluye 148 grupos de libro muerto. *Puse un intervalo de una
+población al lado de un punto de otra y leí las dos líneas como una sola afirmación.*
+
+    Lo que se sostiene:   no hay evidencia de que el modelo supere al mercado. En ninguna
+                          poblacion, con ningun estadistico, antes ni despues del arreglo.
+    Lo que NO se sostiene tal como lo escribi:
+                          «el modelo es medibleMENTE PEOR» en el libro vivo POR BRIER.
+                          Ahi el punto va en contra del modelo y el intervalo cruza el cero.
+    Lo que si tiene potencia en el libro vivo:
+                          la ORDENACION (A-194): rango del ganador 2,177 contra 2,696,
+                          p = 0,0022 pareado sobre 79 grupos. El mercado ordena mejor.
+
+**«No hay evidencia de edge» y «el modelo es peor con potencia» son dos frases distintas y yo
+las he usado como si fueran una.** La primera se sostiene en todas partes. La segunda, en el
+libro vivo, sólo por ordenación, no por Brier.
+
+*UNKNOWN — requiere reconciliación:* el intervalo que registré en los cierres, `[-0,00798,
+-0,00077]`, no reproduce contra el que mido ahora para la población completa, `[+0,00028,
++0,00473]` con el signo cambiado. Coinciden en dirección y en excluir el cero, no en anchura. No
+sé de qué remuestreo salió el primero y **no lo doy por bueno sólo porque apoye la misma
+conclusión** — que es precisamente cuando uno deja de mirar.
+
+### Consecuencia
+
+Ninguna sobre el rumbo: el veredicto de Londres sigue siendo NO EDGE **medido**, y el #33 sigue
+debiendo fusionarse por lo que arregla, no por lo que cambia aquí. La consecuencia es sobre **cómo
+se enuncia** lo que sabemos, y esa corrección la hago yo sobre mi propio texto antes de que la
+haga nadie.
