@@ -79,8 +79,30 @@ def test_init_db_applies_a_migration_numbered_BELOW_the_highest_recorded(tmp_pat
         con.close()
 
 
-#: Statement prefixes that only change the SCHEMA. Anything else reads or writes data.
+#: Statement prefixes that only change the SCHEMA — when nothing after them reads data.
 _DDL_PREFIXES = ("ALTER TABLE", "CREATE TABLE", "CREATE SEQUENCE", "CREATE INDEX", "CREATE UNIQUE INDEX")
+
+
+def _reads_data(statement: str) -> bool:
+    """True when a migration statement reads or writes rows.
+
+    A DDL prefix is not enough: `CREATE TABLE z AS SELECT * FROM markets` starts like
+    DDL and reads a whole table, which is exactly the property the pin below guards
+    (session A). So a statement reads data if it does not start with a schema-only
+    prefix, OR if it contains SELECT as a word anywhere."""
+    import re
+
+    s = " ".join(statement.split()).upper()
+    return (not s.startswith(_DDL_PREFIXES)) or re.search(r"\bSELECT\b", s) is not None
+
+
+def test_the_classifier_flags_what_READS_data_even_behind_a_DDL_prefix():
+    """Session A's four cases. A classifier that cannot flag the case it exists for is a
+    criterion that cannot be violated."""
+    assert _reads_data("INSERT INTO a SELECT * FROM b;")
+    assert _reads_data("CREATE TABLE IF NOT EXISTS z AS SELECT * FROM markets;")
+    assert _reads_data("UPDATE markets SET x = 1;")
+    assert not _reads_data("ALTER TABLE markets ADD COLUMN IF NOT EXISTS y VARCHAR;")
 
 
 def test_the_migrations_that_READ_DATA_are_pinned():
@@ -89,10 +111,7 @@ def test_the_migrations_that_READ_DATA_are_pinned():
     (session A). Migration 8's seed is the only one today. A new data-reading migration
     fails here by name until someone decides whether it can be applied late, and says so
     in the migration."""
-    reading = sorted(
-        m["version"] for m in db.MIGRATIONS
-        if any(not " ".join(st.split()).upper().startswith(_DDL_PREFIXES) for st in m["statements"])
-    )
+    reading = sorted(m["version"] for m in db.MIGRATIONS if any(_reads_data(st) for st in m["statements"]))
     assert reading == [8], reading
 
 
