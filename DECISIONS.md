@@ -18277,6 +18277,18 @@ diseñando para arreglar otra instancia de ella:* una derivación correcta que s
 no viaja con el dato. **La tercera generación de escritores no tiene por qué traer ninguno de los
 dos mecanismos, y el shard seguirá sin decirlo.**
 
+**[Precisión de B, aceptada y afilando lo anterior: el descarte es mudo PARA EL ALMACÉN, no
+indetectable.** Una corrida cancelada queda en la historia de GitHub como `cancelled` —que es
+justo como comprobé que no hubo ninguna— y el `flock` de la caja escribe `SKIPPED` en el log.
+**Las dos garantías dejan rastro; lo que no lo deja es el dato.**
+
+*Y lo que hace que su precisión importe en vez de tranquilizar:* los dos rastros viven en las dos
+superficies que este proyecto ya tiene documentadas como poco fiables — el listado de ejecuciones
+de GitHub es **el mismo instrumento que informó del colector en verde durante dos días después de
+que su workflow dejara de correr**, y el log de la caja es el que **no tiene rotación** y tuve que
+rescatar a mano esta noche. *Que el rastro exista no es lo mismo que que alguien pueda llegar a
+él dentro de un mes.*]
+
 Por eso el test se clava como **hecho verificado sobre quince nombres concretos** —la carpeta está
 cerrada— y la regla se escribe con su condición delante: *válida mientras exista un serializador,
 y el almacén no sabe si existe.*
