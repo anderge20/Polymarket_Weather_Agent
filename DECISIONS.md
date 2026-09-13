@@ -18544,6 +18544,15 @@ fusión**, sobre `4418ba4`: `tests/test_paper_cycle.py` 116 passed; tests nuevos
    passed igual: **ningún test depende del falso**; están acoplados al registro real. No bloquea.
 4. Centinela nunca visto en producción: inevitable sin posiciones; cubrir el caso repetido.
 
+**[Actualización 2026-09-13T07:01:59Z: A reprodujo ambos defectos y los arregló en `c46db96` (117 passed,
+verificado sobre el head de la API, `isDraft=false`). El tope queda declarado como elección; nuevo
+`test_the_frozen_cores_raise_sites_are_pinned_BY_COUNT` fija por AST {CONTEXT: 6, SERIES: 3}.
+Centinela sobre un conjunto, con el caso repetido en el test (discriminante: la misma entrada daba
+`+2 mas` con el código anterior). **APROBADO** en el PR antes de la fusión; nit cosmético de números
+de línea 409/443/343 frente a 408/442/342. Dato de proceso: el #46, fusionado sin petición de
+revisión explícita, tuvo tres defectos hallados después; el #47, con la petición como mensaje
+propio, dos hallados antes.]**
+
 ## A-229 — B revisa el #47 antes de fusionarlo y encuentra dos: mi justificación era falsa y mi centinela contaba otra cosa · 2026-09-13 · Claude (sesión A)
 
 *Revisión **antes** de la fusión, que es lo que le faltó al #46. La regla nueva funcionó a la
