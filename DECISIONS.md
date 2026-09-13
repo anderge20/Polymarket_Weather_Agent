@@ -15254,3 +15254,103 @@ en entrenamiento, congelarlo y evaluarlo fuera de muestra, y con 81 grupos vivos
 por qué no sabemos más: no es que el modelo esté mal calibrado, es que el precio separa donde el
 modelo ya no separa.** Eso es una respuesta utilizable por lo siguiente que se intente, que un
 «no» a secas no era.
+
+## A-194 — B-106 se sostiene, pero NO por el argumento que da: su contraste está confundido por restricción de rango, y la unidad correcta lo confirma por otro camino · 2026-09-13 · Claude (sesión A)
+
+*Validación hostil de B-106 (A-29.4). Las dos tablas de B se reproducen al decimal. La
+conclusión sobrevive. El razonamiento que la sostiene, no — y el `nan` de su primera fila, que
+él deja como curiosidad, resulta ser el mecanismo entero.*
+
+### 1. El `nan` no es una nota al pie: es la mitad del libro
+
+    banda [0,00 , 0,05) de p_model:  n = 425 de 842 filas vivas (50,5 %)
+      min = 0   max = 0   valores distintos = 1
+      ganadores reales dentro: 6  (1,41 %)
+
+**`p_model` vale CERO EXACTO en la mitad del libro vivo.** La correlación no es `nan` por poca
+muestra: es `nan` porque **no hay variable**. El modelo no ordena mal esas 425 filas — *declina
+ordenarlas*. Y seis de ellas ocurrieron.
+
+Eso reescribe la frase de cierre de B. No es «el precio separa donde el modelo ya no separa»
+como un hecho sobre la calidad relativa de dos ordenaciones: en la mitad de la muestra **el
+modelo no emite ordenación alguna**, y ahí el mercado separa con +0,178 de correlación. La
+resolución que falta no está repartida: está concentrada en un cero duro.
+
+### 2. Su contraste compara una variable comprimida con una que no lo está
+
+B concluye de sus dos tablas que «fijando el modelo el mercado sabe algo; fijando el mercado el
+modelo no añade nada», comparando **dentro de cada tabla** la correlación residual de una con la
+de la otra. Esa comparación está confundida y la confusión es medible — añado las columnas que
+a su tabla le faltan:
+
+    DENTRO de bandas de p_model     sd(p_model)   sd(p_mid)      <- se condiciona por p_model
+      [0,05 , 0,15)  n=189            0,0248       0,1156           el modelo comprimido 4,7x
+      [0,15 , 0,30)  n=179            0,0438       0,1577           comprimido 3,6x
+
+    DENTRO de bandas de p_mid       sd(p_model)   sd(p_mid)      <- se condiciona por p_mid
+      [0,05 , 0,15)  n= 69            0,1039       0,0271           el mercado comprimido 3,8x
+      [0,15 , 0,30)  n= 94            0,0939       0,0409           comprimido 2,3x
+
+**Condicionar por una variable le quita su propio rango.** En cada tabla, la variable que da las
+bandas llega al contraste con entre 2 y 5 veces menos dispersión que la otra: su correlación está
+atenuada *por construcción*, diga lo que diga la realidad. La comparación intra-tabla de B mide
+en buena parte cuál de las dos fue la que definió las bandas.
+
+**La comparación válida es cruzada** —cada una con su propio handicap, frente a la otra con el
+suyo— y **ahí la conclusión de B aguanta**:
+
+    correlacion residual con `won`      [0,00-0,05)  [0,05-0,15)  [0,15-0,30)  [0,30-0,60)
+      del MERCADO, fijado el modelo        +0,178       +0,216       +0,302       +0,172
+      del MODELO, fijado el mercado        +0,071       -0,112       +0,281       +0,030
+
+Cuatro de cuatro a favor del mercado. *El resultado es suyo; el argumento no lo era.*
+
+### 3. Y las ocho celdas violan la regla de independencia del encargo
+
+Son correlaciones sobre 842 filas que son **bandas mutuamente excluyentes de 81 eventos**. Dentro
+de un evento gana exactamente una: las filas no son observaciones independientes, y el encargo
+dice literalmente *«nunca tratar las bandas mutuamente excluyentes del mismo evento como
+observaciones independientes»*. Como **descripción** la tabla vale; como **contraste** no tiene
+grados de libertad que declarar, y B no le pone intervalo a ninguna de las ocho.
+
+### 4. Prueba a la unidad correcta — preinscrita antes de correrla
+
+Unidad `(fecha, lead_h)`, libro vivo, grupos con exactamente un ganador: **79 grupos**, 10,58
+bandas por grupo. Preinscrito: *primaria* acierto top-1 (¿la banda más alta de cada ordenación
+contiene al ganador?), McNemar exacto; *secundaria* rango medio del ganador. Dirección
+preinscrita: B se confirma si el mercado gana; se refuta si el modelo empata o gana.
+Empates tratados a **mid-rank** y top-1 fraccionado 1/k —hay 5 grupos cuyo ganador está empatado
+bajo `p_model`, todos por el cero duro, y sin esa corrección el resultado dependería del orden
+de llegada de las filas.
+
+    acierto top-1     mercado 34,2 %   modelo 30,4 %   discordantes 15/12   p = 0,70
+    rango del ganador mercado 2,177    modelo 2,696    (azar 5,791)
+      diferencia pareada por grupo +0,519, permutacion de signos 200 000 replicas:  p = 0,0022
+      el mercado ordena mejor en 36 de 50 grupos no empatados               binomial p = 0,0026
+
+**Mi primaria no tenía potencia y sólo lo supe al correrla.** Top-1 tira toda la información por
+debajo del rango 1 en grupos de 10,6 bandas; con 27 discordantes no podía detectar nada. Es el
+mismo defecto del que tengo escrito —*un umbral afirmado sobre una magnitud que nadie había
+medido*— aplicado esta vez a la potencia del estadístico, no a su valor. Lo digo como falla mía
+y no como matiz: **la que responde es la secundaria.** Con Bonferroni por las dos, p = 0,0043.
+
+### 5. Veredicto
+
+**B-106 VALIDADA en su conclusión, corregida en su fundamento y ahora sostenida a la unidad que
+el encargo exige.** Con dos precisiones que cambian lo que se puede hacer con ella:
+
+- La ventaja del mercado es de **ordenación completa, no de acierto**: ordena mejor el conjunto
+  (p = 0,0022) y **no** acierta más veces la banda ganadora (p = 0,70). Quien lo lea como «el
+  mercado sabe cuál va a salir» lo estará leyendo mal.
+- Ambas ordenaciones están **muy por encima del azar** (2,18 y 2,70 frente a 5,79). El modelo
+  sabe bastante; sólo sabe menos, y donde menos sabe es donde dice cero.
+
+Sigue en pie lo de A-193 y lo que B suscribe: **esto no autoriza a tocar nada en `[0,15 , 0,30)`**.
+Y añado el corolario que sí es accionable y no es post-hoc, porque no sale de mirar resultados
+sino de mirar el dominio del modelo: **lo próximo que se intente debe preguntarse primero qué
+hace con el 50,5 % de filas a las que hoy asigna cero exacto** —si un suelo, si otra
+parametrización de colas, si simplemente no operarlas—. Esa decisión es anterior a cualquier
+medición de edge y no depende de estos 81 grupos.
+
+*Instrumentos: `/Users/mariaaleu/.claude/jobs/324ffe40/tmp/val_b106.py` y `val_b106b.py`; población
+`LONDON_CANDIDATES.json` restringida a libro vivo (81 grupos, 842 filas).*
