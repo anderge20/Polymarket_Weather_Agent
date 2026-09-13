@@ -1,0 +1,79 @@
+==============================================================================================
+PUNTO 9 — REGISTRO TEMPORAL. Cada P(YES) reconstruible con information_time <= t_asof
+==============================================================================================
+  lead   issue_time   available_at   prediction_time   margen   train cutoff
+    24 06-22 06:00Z 06-22 10:45:36Z 06-22 12:00Z    1.24h     2026-06-20
+     9 06-22 18:00Z 06-22 22:45:36Z 06-23 03:00Z    4.24h     2026-06-21
+
+  ejemplo mostrado: target 2026-06-23
+  ADVERTENCIA MANTENIDA: available_at = issue_time + 4:45:36 es una HIPOTESIS
+  OPERACIONAL NO VALIDADA EXTERNAMENTE. No se modifica retrospectivamente (tarea #75).
+  OK  lead 24: available_at <= t_asof en los 95 eventos
+  OK  lead 24: train cutoff con etiqueta disponible en t_asof
+  OK  lead 9: available_at <= t_asof en los 96 eventos
+  OK  lead 9: train cutoff con etiqueta disponible en t_asof
+
+==============================================================================================
+PUNTO 7 — PROBABILIDADES: suma, rango, y DIRECCION ante una perturbacion
+==============================================================================================
+  OK  lead 24: suman 1 con tolerancia <= 1e-12   maximo 0.00e+00
+  OK  lead 24: 0 <= p <= 1 ANTES del recorte   0 fuera
+  OK  lead 24: 0 <= p <= 1 DESPUES del recorte
+  OK  lead 9: suman 1 con tolerancia <= 1e-12   maximo 1.11e-16
+  OK  lead 9: 0 <= p <= 1 ANTES del recorte   0 fuera
+  OK  lead 9: 0 <= p <= 1 DESPUES del recorte
+
+  -- DIRECCION: subir el pronostico debe mover masa a las bandas ALTAS --
+    forecast +3.0 C  ->  centro de masa de B4 se mueve +2.820 bandas   (mismo signo en 95 de 95)
+    forecast -3.0 C  ->  centro de masa de B4 se mueve -2.779 bandas   (mismo signo en 95 de 95)
+  OK  subir el pronostico sube la masa y bajarlo la baja: la direccion es la esperada
+
+==============================================================================================
+PUNTO 6 — SENSIBILIDAD AL RECORTE. Brier y Log Loss POR SEPARADO
+INSTRUMENTO, no resultado: no se ordenan modelos ni se elige epsilon por el numero
+==============================================================================================
+
+  lead 24 h · 95 eventos
+
+  modelo               Brier |    LL@1e-08    LL@1e-06    LL@1e-04    LL@1e-03    LL@1e-02   sensibilidad
+  B0_clima           0.10154 |     0.67091     0.57396     0.47703     0.42878     0.38252   LL varia  0.288 · Brier 3.94e-04
+  B1_persist         0.15502 |     2.85565     2.14174     1.42791     1.07171     0.72240   LL varia  2.133 · Brier 3.00e-03
+  B2_fc_crudo        0.12440 |     2.29157     1.71868     1.14587     0.86021     0.58169   LL varia  1.710 · Brier 2.39e-03
+  B3_fc_sesgo        0.12057 |     2.22106     1.66579     1.11062     0.83378     0.56410   LL varia  1.657 · Brier 2.31e-03
+  B4_fc_prob         0.07113 |     0.28978     0.27215     0.25456     0.24606     0.24036   LL varia  0.049 · Brier 4.16e-05
+
+  Brier es practicamente INSENSIBLE al recorte. Log Loss NO.
+  Y en B1/B2/B3 el Log Loss es ARITMETICA DEL RECORTE, no calibracion:
+    B1_persist       fallos  81/95  formula exacta = 2.14173550  medido 2.14173550  IDENTICO  (delta 2.2e-12, acumulacion en coma flotante sobre 1045 terminos)
+    B2_fc_crudo      fallos  65/95  formula exacta = 1.71867683  medido 1.71867683  IDENTICO  (delta 1.8e-12, acumulacion en coma flotante sobre 1045 terminos)
+    B3_fc_sesgo      fallos  63/95  formula exacta = 1.66579450  medido 1.66579450  IDENTICO  (delta 1.7e-12, acumulacion en coma flotante sobre 1045 terminos)
+
+  -> el Log Loss de los deterministas es artificialmente DESFAVORABLE y su
+     magnitud la fija epsilon, no el modelo. Se reporta, no se compara.
+
+==============================================================================================
+PUNTO 10 — SENSIBILIDAD AL PROXY (medicion, no modelo)
+==============================================================================================
+  T_WU  temperatura contractual real       NO existe serie historica independiente
+  T_IEM proxy observado (METAR de IEM)     es lo que tenemos
+  C     winning_outcome                    la ETIQUETA; NO se sustituye por B
+
+  acuerdo proxy <-> resolucion (A-276):  136 coinciden · 1 discrepa · 50 sin observacion
+    tasa medida de discrepancia: 1/137 = 0.73 %
+
+  IMPACTO MAXIMO de una discrepancia de ±1 C:
+    con bandas de 1 C, ±1 C mueve la banda SIEMPRE: el impacto por evento afectado
+    es TOTAL. Lo que acota el dano es la TASA, no la magnitud.
+    si la tasa real fuese la medida (0,73 %): ~0.7 de 95 eventos
+    si fuese diez veces peor (7,3 %):        ~6.9 de 95 eventos
+
+  efecto sobre la distribucion empirica de error (lo que alimenta B4):
+    bias actual +0.1863 C sobre 117 pares
+    si 1 par estuviera mal por +1 C: el bias se mueve +0.0085 C  (4.6 % del bias)
+    si 10 pares estuviera mal por +1 C: el bias se mueve +0.0855 C  (45.9 % del bias)
+
+  NO se corrige el desacuerdo IEM/Wunderground aqui. Queda cuantificado.
+
+==============================================================================================
+RESULTADO: TODAS LAS COMPROBACIONES PASAN
+==============================================================================================

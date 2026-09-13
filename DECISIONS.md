@@ -22713,3 +22713,88 @@ sí** (47 eventos) — *una prueba de no-fuga que pasa porque no puede fallar no
 3. **`B3` se separa de `B2`** en el 20,0 % de los eventos a lead 24 y el 14,6 % a lead 9.
 
 **Etapa cerrada. Siguiente: `L1.3` — FORECAST → P(YES).**
+
+## A-288 — `L1.3 = CLOSED`. La partición contractual es sobre los ENTEROS, y `B4` es invariante a un sesgo constante de todos los pronósticos · 2026-09-13 · Claude (sesión A)
+
+`~/pmw-e2/l1/L1_3_FORECAST_A_PROBABILIDAD.md`. Dos guiones, **19 + 11 comprobaciones verdes**.
+No se evalúa edge, precio, mispricing, PnL, umbrales, estrategia ni ejecución; no se calcula el
+veredicto de poder predictivo; no se compara contra precios; no se seleccionan modelos.
+`D0-P` sigue BLOCKED.
+
+### Los tres objetos, separados y etiquetados
+
+    A  T_WU              temperatura contractual real   NO existe serie historica independiente
+    B  T_IEM             proxy observado (METAR de IEM) es lo que tenemos
+    C  winning_outcome   LA ETIQUETA                    no se sustituye por B en ningun punto
+
+**Declarado explícitamente**: la validación de forecast skill usa `B` como proxy de `C`, y la
+discrepancia conocida del 2026-05-27 **se conserva**, no se corrige.
+
+### Intervalos: las TRES escaleras probadas por separado, exhaustivamente
+
+    7 bandas    2 eventos   enteros 3..7    sin solapes · sin huecos · todo entero en UNA banda
+    9 bandas   26 eventos   enteros 2..20   idem
+   11 bandas  159 eventos   enteros 4..44   idem      (probado de -60 a +80 en cada evento)
+
+### EL HALLAZGO FORMAL: la partición es sobre los ENTEROS, no sobre los reales
+
+    valor REAL 12,50 -> cae en 0 bandas      13,40 -> 0 bandas      13,50 -> 0 bandas
+
+La pertenencia se evalúa sobre `round(valor)`. **`round()` es parte de la interpretación del
+contrato, no un detalle de implementación**, y hay que decirlo antes de que alguien trate las
+bandas como intervalos reales. Y el empate exacto usa **redondeo bancario**:
+`round(13,5) = 14` pero `round(14,5) = 14`. Queda **declarado**; no se cambia aquí porque
+cambiarlo sería una decisión de modelado y el encargo lo prohíbe en L1.3.
+
+### UNA PRUEBA MÍA QUE MEDÍA CERO, Y LA PROPIEDAD QUE DESTAPÓ AL ARREGLARLA
+
+La prueba de dirección desplazaba **todos** los pronósticos, train incluido. Resultado:
+`+0,001 bandas`, «mismo signo en 4 de 95». Parecía que el modelo no reaccionaba.
+
+**El defecto era de la prueba**: si se desplazan train y objetivo por igual,
+`round((f+d) + (e−d)) = round(f+e)` — se cancela **exacto**. Perturbando sólo el día objetivo:
+
+    forecast +3,0 C  ->  centro de masa de B4  +2,820 bandas   mismo signo en 95 de 95
+    forecast -3,0 C  ->                        -2,779 bandas   mismo signo en 95 de 95
+
+*Y de paso queda dicha una propiedad real: **`B4` es invariante a un sesgo constante de todos
+los pronósticos**, porque la distribución empírica de error lo absorbe. Por eso la corrección
+global de sesgo mueve tan poco — lo que `B3` corrige a mano, `B4` ya lo lleva dentro.*
+
+### Deterministas: el Log Loss es ARITMÉTICA DEL RECORTE, con fórmula cerrada
+
+`epsilon = 1e-6`, declarado antes del guion y no elegido por el número.
+
+    LL = [ k·(2·(-ln eps) + (n-2)·(-ln(1-eps))) + (N-k)·n·(-ln(1-eps)) ] / (N·n)
+
+    B1  fallos 81/95  formula 2,14173550  medido 2,14173550   IDENTICO (delta 2,2e-12)
+    B2  fallos 65/95  formula 1,71867683  medido 1,71867683   IDENTICO (delta 1,8e-12)
+    B3  fallos 63/95  formula 1,66579450  medido 1,66579450   IDENTICO (delta 1,7e-12)
+
+Sensibilidad medida sobre cinco epsilons: **el Brier apenas se mueve (≤3e-3); el Log Loss de los
+deterministas varía hasta 2,13** — con `eps = 1e-2` el de `B1` cae de 2,14 a 0,72 sin que cambie
+un dato. **Dicho explícitamente: su Log Loss es artificialmente DESFAVORABLE y su magnitud la
+fija epsilon, no el modelo. Se reportan como controles, no se comparan en Log Loss.**
+
+*(El delta de 2e-12 se midió ANTES de fijar la tolerancia; no se aflojó el umbral hasta que
+pasara.)*
+
+### Sensibilidad al proxy, acotada
+
+    136 coinciden · 1 discrepa · 50 sin observacion    ->  tasa medida 0,73 %
+
+Con bandas de 1 °C, **un error de ±1 °C mueve la banda siempre**: el impacto por evento afectado
+es **total**, y lo que acota el daño es **la tasa, no la magnitud**. Sobre la distribución
+empírica de error: 1 par mal mueve el bias +0,0085 °C (4,6 %); 10 pares, +0,0855 (46 %).
+**No se corrige el desacuerdo IEM/Wunderground. Queda cuantificado.**
+
+### Registro temporal, con la advertencia intacta
+
+    lead 24   issue 06:00Z -> available 10:45:36Z -> t_asof 12:00Z   margen 1,24 h
+    lead  9   issue 18:00Z -> available 22:45:36Z -> t_asof 03:00Z   margen 4,24 h
+
+`available_at ≤ t_asof` en los 95 y los 96 eventos. **`available_at = issue_time + 4:45:36` sigue
+siendo una hipótesis operacional NO validada externamente y no se modifica retrospectivamente**
+(tarea #75).
+
+    L1.3 = CLOSED        siguiente: L1.4 — WALK-FORWARD OOS

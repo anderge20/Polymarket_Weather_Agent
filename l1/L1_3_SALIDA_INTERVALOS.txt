@@ -1,0 +1,105 @@
+============================================================================================
+PUNTO 3 — INTERVALOS CONTRACTUALES, POR ESCALERA Y POR SEPARADO
+============================================================================================
+
+--------------------------------------------------------------------------------------------
+ESCALERA DE 7 BANDAS · 2 eventos
+--------------------------------------------------------------------------------------------
+  ejemplo (event 130710, unidad C):
+    2°C or below            ->  (-inf, 2]
+    3°C                     ->  [3, 3]
+    4°C                     ->  [4, 4]
+    5°C                     ->  [5, 5]
+    6°C                     ->  [6, 6]
+    7°C                     ->  [7, 7]
+    8°C or higher           ->  [8, +inf)
+  OK  7 bandas · sin solapamientos   0 eventos con solape
+  OK  7 bandas · sin huecos   0 eventos con hueco
+  OK  7 bandas · TODO entero de -60 a +80 cae en EXACTAMENTE una banda   0 eventos fallan
+  tramo cerrado observado: enteros 3 .. 7
+
+--------------------------------------------------------------------------------------------
+ESCALERA DE 9 BANDAS · 26 eventos
+--------------------------------------------------------------------------------------------
+  ejemplo (event 211510, unidad C):
+    1°C or below            ->  (-inf, 1]
+    2°C                     ->  [2, 2]
+    3°C                     ->  [3, 3]
+    4°C                     ->  [4, 4]
+    5°C                     ->  [5, 5]
+    6°C                     ->  [6, 6]
+    7°C                     ->  [7, 7]
+    8°C                     ->  [8, 8]
+    9°C or higher           ->  [9, +inf)
+  OK  9 bandas · sin solapamientos   0 eventos con solape
+  OK  9 bandas · sin huecos   0 eventos con hueco
+  OK  9 bandas · TODO entero de -60 a +80 cae en EXACTAMENTE una banda   0 eventos fallan
+  tramo cerrado observado: enteros 2 .. 20
+
+--------------------------------------------------------------------------------------------
+ESCALERA DE 11 BANDAS · 159 eventos
+--------------------------------------------------------------------------------------------
+  ejemplo (event 265843, unidad C):
+    5°C or below            ->  (-inf, 5]
+    6°C                     ->  [6, 6]
+    7°C                     ->  [7, 7]
+    8°C                     ->  [8, 8]
+    9°C                     ->  [9, 9]
+    10°C                    ->  [10, 10]
+    11°C                    ->  [11, 11]
+    12°C                    ->  [12, 12]
+    13°C                    ->  [13, 13]
+    14°C                    ->  [14, 14]
+    15°C or higher          ->  [15, +inf)
+  OK  11 bandas · sin solapamientos   0 eventos con solape
+  OK  11 bandas · sin huecos   0 eventos con hueco
+  OK  11 bandas · TODO entero de -60 a +80 cae en EXACTAMENTE una banda   0 eventos fallan
+  tramo cerrado observado: enteros 4 .. 44
+
+============================================================================================
+PUNTO 8 — FRONTERAS. La particion es sobre ENTEROS, y eso hay que decirlo
+============================================================================================
+  escalera de prueba: <= 5 · 6..14 sueltos · >= 15
+  OK  entero limite inferior exacto   g=   5 -> 5°C or below   esperado 5°C or below
+  OK  entero limite inferior + 1      g=   6 -> 6°C
+  OK  entero limite superior exacto   g=  15 -> 15°C or higher   esperado 15°C or higher
+  OK  entero limite superior - 1      g=  14 -> 14°C
+  OK  entero muy por debajo           g= -40 -> 5°C or below   esperado 5°C or below
+  OK  entero muy por encima           g=  60 -> 15°C or higher   esperado 15°C or higher
+  OK  entero cero                     g=   0 -> 5°C or below   esperado 5°C or below
+  OK  entero negativo                 g=  -5 -> 5°C or below   esperado 5°C or below
+
+  -- LOS REALES NO ESTAN PARTICIONADOS, Y NO TIENEN QUE ESTARLO --
+    valor REAL 12.50  cae en 0 banda(s): []
+    valor REAL 13.40  cae en 0 banda(s): []
+    valor REAL 13.50  cae en 0 banda(s): []
+    valor REAL 13.60  cae en 0 banda(s): []
+    -> la pertenencia se evalua sobre round(valor), no sobre el real.
+       `round()` es PARTE de la interpretacion del contrato, no un detalle.
+
+  -- ±0,01 ALREDEDOR DE UN LIMITE DE REDONDEO --
+     13.49 -> round  13 -> 13°C
+     13.50 -> round  14 -> 14°C
+     13.51 -> round  14 -> 14°C
+     14.49 -> round  14 -> 14°C
+     14.50 -> round  14 -> 14°C
+     14.51 -> round  15 -> 15°C or higher
+
+  -- EL EMPATE EXACTO: Python redondea a PAR, no 'medio arriba' --
+    round( 12.50) =   12   ('medio arriba' daria   13)
+    round( 13.50) =   14   ('medio arriba' daria   14)
+    round( 14.50) =   14   ('medio arriba' daria   15)
+    round( 15.50) =   16   ('medio arriba' daria   16)
+    round( 16.50) =   16   ('medio arriba' daria   17)
+    round( -0.50) =    0   ('medio arriba' daria   -1)
+    round( -1.50) =   -2   ('medio arriba' daria   -2)
+  OK  confirmado: redondeo bancario (a par) en los empates exactos
+     CUANTIFICADO en el guion de probabilidades: cuantos empates exactos ocurren.
+
+  -- UNIDADES: esta escalera es C; las de F se prueban aparte --
+    unidades de los eventos de EGLC: {'C': 187}
+  OK  EGLC es enteramente Celsius: no hay conversion que probar aqui
+
+============================================================================================
+RESULTADO: INTERVALOS Y FRONTERAS VERIFICADOS
+============================================================================================
