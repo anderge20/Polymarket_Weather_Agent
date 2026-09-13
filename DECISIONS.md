@@ -21776,3 +21776,127 @@ esquivaba entero y entraba por `default=str`: 5 000 caracteres contra un tope
 declarado de 300 — y lo fije con una septima mutacion en rojo. Pero una
 autorrevision es un instrumento mas debil, y el hecho de que encontrara algo no
 demuestra que encontrara todo. La peticion a B sigue abierta.
+
+## A-278 — NIVEL 0.75 CERRADO. La corrección del dataset NO mueve la métrica sobre lo que ya estaba bien, y los deltas que se ven son de ESTACIÓN · 2026-09-13 · Claude (sesión A)
+
+Cinco documentos, todos espejados: `N075_AISLAMIENTO_CAUSAL.md` (punto 3, escrito y
+espejado **antes** de calcular nada, commit `e432837` 18:39:13Z), `N075_OLD_VS_CORRECTED.md`
+(puntos 1 y 2), `N075_SUSTRATO_LIQUIDACION.md` (punto 5), `N075_REPRODUCIBILIDAD.md`
+(punto 6) y `N075_REDTEAM_Y_CIERRE.md` (punto 7 y veredicto). El punto 4 ya estaba en A-276.
+
+### Lo que decidió el resultado fue PARARSE ANTES DE COMPARAR
+
+El encargo lo pedía —«si algún elemento cambia, detenerse y documentarlo antes de comparar
+resultados»— y al hacerlo salió que **la comparación natural cambiaba SIETE cosas y ninguna
+era la población**: `n1_20` sacaba su universo de `LONDON_CANDIDATES.json`, que es la salida
+de un backtest de Strategy A **que mira el precio**; más ventana temporal, serie de
+observación, dos `dataset_version` sin filtrar, número de modelos y definición de B1.
+
+**El resultado histórico no es el brazo OLD y queda fuera.** Los dos brazos se reconstruyen
+con **una sola implementación** y un solo parámetro, `markets.dataset_version`.
+
+### Y aun así el tratamiento arrastraba un confusor, que es el hallazgo central
+
+    poblacion puntuable   OLD       40 fechas   2026-04-08 -> 2026-05-19
+                          CORRECTED 117 fechas  2026-04-08 -> 2026-08-23
+    maximo observado      comunes (40)  16,70 C      nuevas (77)  26,27 C     +9,57 C
+
+Las 77 fechas que añade la corrección **no están intercaladas: son verano**. Así que se
+reportan tres comparaciones y la primaria se declara antes de verla: **C1, sobre las 40
+fechas comunes**, la única causalmente limpia.
+
+    C1  lead 24, 18 eventos, 198 contratos
+        REF_uniforme  B1  B2  B3  B4   IGUALDAD EXACTA EN COMA FLOTANTE
+        B0_clima30    0,09201840 -> 0,09210819    delta +8,98e-5
+    C1  lead 9, 19 eventos: identico salvo B0, +8,51e-5
+
+**La corrección del dataset no mueve la métrica sobre la población que las dos versiones
+comparten**, que es exactamente lo que uno quiere de una corrección de datos. Y la única
+diferencia está **localizada en un evento**: el 2026-05-19, donde `markets_v2` contiene una
+segunda escalera de 11 bandas desplazada un grado y el desempate la prefiere. Sólo `B0` lo
+nota porque sólo `B0` cuenta días históricos dentro de las bandas de **borde**, que son las
+que se mueven.
+
+Los deltas de C2 (hasta −0,0099 de Brier en B3) **se reproducen dentro de un solo dataset**
+separando las 77 nuevas (C3). Son estacionales. **CORRECCIÓN DE DATASET VALIDADA — no alfa,
+no mejora predictiva, no ventaja económica.**
+
+### El control que hace creíble todo lo anterior
+
+`REF_uniforme`, `p = 1/n_bandas`, no mira datos: es estructura del contrato. Vale
+**0,082645 de Brier y 0,30464 de Log Loss en los cuatro cuadrantes** (dos brazos × dos
+leads). *El código de puntuación no depende de la población.* Cualquier diferencia entre
+brazos viene de las features, nunca del instrumento.
+
+Y la puerta de entrenamiento resultó invariante al brazo **por igualdad de CONJUNTOS, no de
+recuentos**: caen las mismas 22 fechas al lead 24 y las mismas 21 al lead 9.
+
+### Dos defectos míos, encontrados al escribir el segundo guion
+
+1. **`n1_40_reejecucion.py:120` une `outcomes` sin `AND o.dataset_version = m.dataset_version`.**
+   Los 807 `market_id` de `backfill_2b_v1` están **también** en `markets_v2` (intersección
+   medida: 807 de 807), así que cada evento compartido recibía sus bandas **duplicadas** y la
+   prueba de partición las rechazaba: 24 fechas elegibles de 186 en vez de 186 de 187. Es el
+   mismo defecto que yo le señalé a B en la tarea #16, catorce días después.
+2. **Estuve a punto de publicar una refutación falsa.** Medí que 33 slugs de EGLC no empiezan
+   por `highest-temperature-in-london` y eso contradice literalmente el punto 1 que el usuario
+   aceptó. Antes de escribirlo comprobé a qué conjunto pertenecen: **los 3 eventos `arch-`
+   están entre los 49 VIEJOS**, no entre los 138 nuevos. La afirmación del usuario es cierta
+   tal como está enunciada y falsa sólo si se extiende a los 187 — la extensión la iba a hacer
+   yo.
+
+### El ataque a H1 falló INVERTIDO, y ése es el hallazgo no obvio
+
+Los atributos con los que se había verificado la homogeneidad (`resolution_source`, `unit`,
+`rounding_rule`) son **constantes en los 187**: no podían fallar. Buscando los que sí varían:
+
+                          49 viejos (529 mercados)     138 nuevos (1 468 mercados)
+    tick_size             522 x 0,001 + 7 x 0,01       1 468 x 0,001
+    uma_resolution        528 resolved + 1 proposed    1 468 resolved
+    prefijo arch-         33 mercados, 3 eventos       0
+
+**Las anomalías están en los datos que ya teníamos, no en los que añadió la reingesta.** Es
+la respuesta directa a la precaución 11 del encargo: aquí más datos son también datos más
+limpios.
+
+### SETTLEMENT SUBSTRATE: NO VALIDADO, y la guarda miente
+
+`measurement_rule_code` y `contract_source` son **NULL en 85 878 de 85 878**. Ejecutado sobre
+`pmw.duckdb` sin modificar nada:
+
+    settle_substrate_missing(pmw.duckdb) -> []          "Empty list == ready to settle"
+    select_operator(None, None, 'C', 'whole_degree')
+      -> SettlementUnavailable: terna outside the 11-class partition
+
+La guarda sólo mira `column_names`. **Pregunta si la columna está declarada, nunca si tiene
+un valor** — y `database.py:958` ya documenta que `discovery.ingest_event` decide **con esa
+misma primitiva** si escribe la columna. El falso OK convierte «no hay sustrato» en «el
+núcleo rechazó estos mercados»: cambia un diagnóstico único por N genéricos. Cambio mínimo
+propuesto con su ámbito (las posiciones abiertas, no la tabla entera) y **producción sin
+tocar**, como pedía el encargo.
+
+Y al escribir la propuesta llamé a `db.query_one`, **que no existe**. Un `grep` lo arregló.
+El comentario de `_station_tz` en el propio `paper_cycle.py` explica por qué importa: adivinar
+un nombre de API es cómo se coló la degradación silenciosa a `None` del timezone.
+
+### H4 no está validada: está SIN EJERCITAR, y lo digo porque la tentación era la contraria
+
+    REF_uniforme por escalera:   7 bandas 0,12245   9 bandas 0,09877   11 bandas 0,08264
+
+El recorrido 7->11 es **0,0398 de Brier**; el mayor delta OLD<->CORRECTED de todo el punto 1
+es **0,00991**. La contaminación por escalera sería **cuatro veces mayor que el efecto**. No
+ocurre aquí porque la población puntuada es **100 % de once bandas en los dos brazos** — los
+28 eventos de 7 y 9 bandas son anteriores al 2026-04-08 y no hay observación ni pronóstico de
+EGLC antes de esa fecha. **Disparador escrito: el primer evento de 7 o 9 bandas en una
+población puntuada obliga a fijar la normalización ANTES de mirar el resultado.**
+
+### VEREDICTO
+
+    LEVEL_0.75 = CLOSED
+      DATASET VALIDATION   CERRADO
+      SETTLEMENT SUBSTRATE NO VALIDADO
+      OLD vs CORRECTED     correccion validada; los deltas visibles son estacionales
+      riesgos restantes    siete, listados en N075_REDTEAM_Y_CIERRE.md
+
+**La revisión hostil la hice yo.** Encontró dos cosas reales —el `JOIN` sin `dataset_version`
+y la refutación falsa— y no es sustituto de B. **Nada de esto levanta el gate D0.**

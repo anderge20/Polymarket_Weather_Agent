@@ -1,0 +1,139 @@
+fechas: OLD 40  CORRECTED 185  comunes 40  nuevas 145
+
+====================================================================================================
+C1 — AISLADA (primaria): solo las fechas comunes · lead 24 h
+====================================================================================================
+brazo/ambito               lead  evs  contr  YESrate modelo            Brier/contr  Brier/evento   LL/contr  LL/evento
+OLD  (comunes)               24   18    198  0.09091 REF_uniforme          0.08264       0.08264    0.30464    0.30464
+OLD  (comunes)               24   18    198  0.09091 B0_clima30            0.09202       0.09202    0.48124    0.48124
+OLD  (comunes)               24   18    198  0.09091 B1_persistencia       0.16162       0.16162    2.23281    2.23281
+OLD  (comunes)               24   18    198  0.09091 B2_fc_crudo           0.13131       0.13131    1.81416    1.81416
+OLD  (comunes)               24   18    198  0.09091 B3_fc_error           0.08087       0.08087    0.42465    0.42465
+OLD  (comunes)               24   18    198  0.09091 B4_fc_bias            0.07442       0.07442    0.24093    0.24093
+CORRECTED (comunes)          24   18    198  0.09091 REF_uniforme          0.08264       0.08264    0.30464    0.30464
+CORRECTED (comunes)          24   18    198  0.09091 B0_clima30            0.09211       0.09211    0.48130    0.48130
+CORRECTED (comunes)          24   18    198  0.09091 B1_persistencia       0.16162       0.16162    2.23281    2.23281
+CORRECTED (comunes)          24   18    198  0.09091 B2_fc_crudo           0.13131       0.13131    1.81416    1.81416
+CORRECTED (comunes)          24   18    198  0.09091 B3_fc_error           0.08087       0.08087    0.42465    0.42465
+CORRECTED (comunes)          24   18    198  0.09091 B4_fc_bias            0.07442       0.07442    0.24093    0.24093
+
+====================================================================================================
+C2 — COMPLETA (confundida con la estacion) · lead 24 h
+====================================================================================================
+brazo/ambito               lead  evs  contr  YESrate modelo            Brier/contr  Brier/evento   LL/contr  LL/evento
+OLD  (todo)                  24   18    198  0.09091 REF_uniforme          0.08264       0.08264    0.30464    0.30464
+OLD  (todo)                  24   18    198  0.09091 B0_clima30            0.09202       0.09202    0.48124    0.48124
+OLD  (todo)                  24   18    198  0.09091 B1_persistencia       0.16162       0.16162    2.23281    2.23281
+OLD  (todo)                  24   18    198  0.09091 B2_fc_crudo           0.13131       0.13131    1.81416    1.81416
+OLD  (todo)                  24   18    198  0.09091 B3_fc_error           0.08087       0.08087    0.42465    0.42465
+OLD  (todo)                  24   18    198  0.09091 B4_fc_bias            0.07442       0.07442    0.24093    0.24093
+CORRECTED (todo)             24   95   1045  0.09091 REF_uniforme          0.08264       0.08264    0.30464    0.30464
+CORRECTED (todo)             24   95   1045  0.09091 B0_clima30            0.10154       0.10154    0.57396    0.57396
+CORRECTED (todo)             24   95   1045  0.09091 B1_persistencia       0.15502       0.15502    2.14174    2.14174
+CORRECTED (todo)             24   95   1045  0.09091 B2_fc_crudo           0.12440       0.12440    1.71868    1.71868
+CORRECTED (todo)             24   95   1045  0.09091 B3_fc_error           0.07096       0.07096    0.27125    0.27125
+CORRECTED (todo)             24   95   1045  0.09091 B4_fc_bias            0.07014       0.07014    0.23773    0.23773
+
+====================================================================================================
+C3 — DESCOMPOSICION dentro de CORRECTED · lead 24 h
+====================================================================================================
+brazo/ambito               lead  evs  contr  YESrate modelo            Brier/contr  Brier/evento   LL/contr  LL/evento
+CORRECTED comunes (40)       24   18    198  0.09091 REF_uniforme          0.08264       0.08264    0.30464    0.30464
+CORRECTED comunes (40)       24   18    198  0.09091 B0_clima30            0.09211       0.09211    0.48130    0.48130
+CORRECTED comunes (40)       24   18    198  0.09091 B1_persistencia       0.16162       0.16162    2.23281    2.23281
+CORRECTED comunes (40)       24   18    198  0.09091 B2_fc_crudo           0.13131       0.13131    1.81416    1.81416
+CORRECTED comunes (40)       24   18    198  0.09091 B3_fc_error           0.08087       0.08087    0.42465    0.42465
+CORRECTED comunes (40)       24   18    198  0.09091 B4_fc_bias            0.07442       0.07442    0.24093    0.24093
+CORRECTED nuevas (77)        24   77    847  0.09091 REF_uniforme          0.08264       0.08264    0.30464    0.30464
+CORRECTED nuevas (77)        24   77    847  0.09091 B0_clima30            0.10375       0.10375    0.59562    0.59562
+CORRECTED nuevas (77)        24   77    847  0.09091 B1_persistencia       0.15348       0.15348    2.12045    2.12045
+CORRECTED nuevas (77)        24   77    847  0.09091 B2_fc_crudo           0.12279       0.12279    1.69636    1.69636
+CORRECTED nuevas (77)        24   77    847  0.09091 B3_fc_error           0.06864       0.06864    0.23539    0.23539
+CORRECTED nuevas (77)        24   77    847  0.09091 B4_fc_bias            0.06914       0.06914    0.23698    0.23698
+
+--- escaleras presentes, lead 24 h
+    OLD todo               contratos {11: 198}   eventos {11: 18}
+    CORRECTED todo         contratos {11: 1045}   eventos {11: 95}
+
+--- AUDITORIA DE PROBABILIDADES (punto 2), lead 24 h
+    OLD todo         REF_uniforme     p=0     0 (y=1 en   0)   p=1    0 (y=0 en   0)   recortados     0   LL de recortados   0.00%
+    OLD todo         B0_clima30       p=0    53 (y=1 en   3)   p=1    0 (y=0 en   0)   recortados    53   LL de recortados  43.50%
+    OLD todo         B1_persistencia  p=0   180 (y=1 en  16)   p=1   18 (y=0 en  16)   recortados   198   LL de recortados 100.00%
+    OLD todo         B2_fc_crudo      p=0   180 (y=1 en  13)   p=1   18 (y=0 en  13)   recortados   198   LL de recortados 100.00%
+    OLD todo         B3_fc_error      p=0    84 (y=1 en   3)   p=1    0 (y=0 en   0)   recortados    84   LL de recortados  49.29%
+    OLD todo         B4_fc_bias       p=0    82 (y=1 en   0)   p=1    0 (y=0 en   0)   recortados    82   LL de recortados   0.00%
+    CORRECTED todo   REF_uniforme     p=0     0 (y=1 en   0)   p=1    0 (y=0 en   0)   recortados     0   LL de recortados   0.00%
+    CORRECTED todo   B0_clima30       p=0   277 (y=1 en  22)   p=1    1 (y=0 en   0)   recortados   278   LL de recortados  50.67%
+    CORRECTED todo   B1_persistencia  p=0   950 (y=1 en  81)   p=1   95 (y=0 en  81)   recortados  1045   LL de recortados 100.00%
+    CORRECTED todo   B2_fc_crudo      p=0   950 (y=1 en  65)   p=1   95 (y=0 en  65)   recortados  1045   LL de recortados 100.00%
+    CORRECTED todo   B3_fc_error      p=0   363 (y=1 en   4)   p=1    0 (y=0 en   0)   recortados   363   LL de recortados  19.50%
+    CORRECTED todo   B4_fc_bias       p=0   364 (y=1 en   1)   p=1    0 (y=0 en   0)   recortados   364   LL de recortados   5.56%
+
+====================================================================================================
+C1 — AISLADA (primaria): solo las fechas comunes · lead 9 h
+====================================================================================================
+brazo/ambito               lead  evs  contr  YESrate modelo            Brier/contr  Brier/evento   LL/contr  LL/evento
+OLD  (comunes)                9   19    209  0.09091 REF_uniforme          0.08264       0.08264    0.30464    0.30464
+OLD  (comunes)                9   19    209  0.09091 B0_clima30            0.09486       0.09486    0.53284    0.53284
+OLD  (comunes)                9   19    209  0.09091 B1_persistencia       0.17225       0.17225    2.37971    2.37971
+OLD  (comunes)                9   19    209  0.09091 B2_fc_crudo           0.12440       0.12440    1.71868    1.71868
+OLD  (comunes)                9   19    209  0.09091 B3_fc_error           0.06583       0.06583    0.25644    0.25644
+OLD  (comunes)                9   19    209  0.09091 B4_fc_bias            0.06978       0.06978    0.26619    0.26619
+CORRECTED (comunes)           9   19    209  0.09091 REF_uniforme          0.08264       0.08264    0.30464    0.30464
+CORRECTED (comunes)           9   19    209  0.09091 B0_clima30            0.09495       0.09495    0.53289    0.53289
+CORRECTED (comunes)           9   19    209  0.09091 B1_persistencia       0.17225       0.17225    2.37971    2.37971
+CORRECTED (comunes)           9   19    209  0.09091 B2_fc_crudo           0.12440       0.12440    1.71868    1.71868
+CORRECTED (comunes)           9   19    209  0.09091 B3_fc_error           0.06583       0.06583    0.25644    0.25644
+CORRECTED (comunes)           9   19    209  0.09091 B4_fc_bias            0.06978       0.06978    0.26619    0.26619
+
+====================================================================================================
+C2 — COMPLETA (confundida con la estacion) · lead 9 h
+====================================================================================================
+brazo/ambito               lead  evs  contr  YESrate modelo            Brier/contr  Brier/evento   LL/contr  LL/evento
+OLD  (todo)                   9   19    209  0.09091 REF_uniforme          0.08264       0.08264    0.30464    0.30464
+OLD  (todo)                   9   19    209  0.09091 B0_clima30            0.09486       0.09486    0.53284    0.53284
+OLD  (todo)                   9   19    209  0.09091 B1_persistencia       0.17225       0.17225    2.37971    2.37971
+OLD  (todo)                   9   19    209  0.09091 B2_fc_crudo           0.12440       0.12440    1.71868    1.71868
+OLD  (todo)                   9   19    209  0.09091 B3_fc_error           0.06583       0.06583    0.25644    0.25644
+OLD  (todo)                   9   19    209  0.09091 B4_fc_bias            0.06978       0.06978    0.26619    0.26619
+CORRECTED (todo)              9   96   1056  0.09091 REF_uniforme          0.08264       0.08264    0.30464    0.30464
+CORRECTED (todo)              9   96   1056  0.09091 B0_clima30            0.10119       0.10119    0.56902    0.56902
+CORRECTED (todo)              9   96   1056  0.09091 B1_persistencia       0.15909       0.15909    2.19792    2.19792
+CORRECTED (todo)              9   96   1056  0.09091 B2_fc_crudo           0.11553       0.11553    1.59611    1.59611
+CORRECTED (todo)              9   96   1056  0.09091 B3_fc_error           0.06505       0.06505    0.23716    0.23716
+CORRECTED (todo)              9   96   1056  0.09091 B4_fc_bias            0.06885       0.06885    0.22869    0.22869
+
+====================================================================================================
+C3 — DESCOMPOSICION dentro de CORRECTED · lead 9 h
+====================================================================================================
+brazo/ambito               lead  evs  contr  YESrate modelo            Brier/contr  Brier/evento   LL/contr  LL/evento
+CORRECTED comunes (40)        9   19    209  0.09091 REF_uniforme          0.08264       0.08264    0.30464    0.30464
+CORRECTED comunes (40)        9   19    209  0.09091 B0_clima30            0.09495       0.09495    0.53289    0.53289
+CORRECTED comunes (40)        9   19    209  0.09091 B1_persistencia       0.17225       0.17225    2.37971    2.37971
+CORRECTED comunes (40)        9   19    209  0.09091 B2_fc_crudo           0.12440       0.12440    1.71868    1.71868
+CORRECTED comunes (40)        9   19    209  0.09091 B3_fc_error           0.06583       0.06583    0.25644    0.25644
+CORRECTED comunes (40)        9   19    209  0.09091 B4_fc_bias            0.06978       0.06978    0.26619    0.26619
+CORRECTED nuevas (77)         9   77    847  0.09091 REF_uniforme          0.08264       0.08264    0.30464    0.30464
+CORRECTED nuevas (77)         9   77    847  0.09091 B0_clima30            0.10273       0.10273    0.57793    0.57793
+CORRECTED nuevas (77)         9   77    847  0.09091 B1_persistencia       0.15584       0.15584    2.15307    2.15307
+CORRECTED nuevas (77)         9   77    847  0.09091 B2_fc_crudo           0.11334       0.11334    1.56587    1.56587
+CORRECTED nuevas (77)         9   77    847  0.09091 B3_fc_error           0.06486       0.06486    0.23240    0.23240
+CORRECTED nuevas (77)         9   77    847  0.09091 B4_fc_bias            0.06862       0.06862    0.21944    0.21944
+
+--- escaleras presentes, lead 9 h
+    OLD todo               contratos {11: 209}   eventos {11: 19}
+    CORRECTED todo         contratos {11: 1056}   eventos {11: 96}
+
+--- AUDITORIA DE PROBABILIDADES (punto 2), lead 9 h
+    OLD todo         REF_uniforme     p=0     0 (y=1 en   0)   p=1    0 (y=0 en   0)   recortados     0   LL de recortados   0.00%
+    OLD todo         B0_clima30       p=0    56 (y=1 en   4)   p=1    0 (y=0 en   0)   recortados    56   LL de recortados  49.62%
+    OLD todo         B1_persistencia  p=0   190 (y=1 en  18)   p=1   19 (y=0 en  18)   recortados   209   LL de recortados 100.00%
+    OLD todo         B2_fc_crudo      p=0   190 (y=1 en  13)   p=1   19 (y=0 en  13)   recortados   209   LL de recortados 100.00%
+    OLD todo         B3_fc_error      p=0   108 (y=1 en   1)   p=1    0 (y=0 en   0)   recortados   108   LL de recortados  25.78%
+    OLD todo         B4_fc_bias       p=0   107 (y=1 en   1)   p=1    0 (y=0 en   0)   recortados   107   LL de recortados  24.83%
+    CORRECTED todo   REF_uniforme     p=0     0 (y=1 en   0)   p=1    0 (y=0 en   0)   recortados     0   LL de recortados   0.00%
+    CORRECTED todo   B0_clima30       p=0   276 (y=1 en  22)   p=1    1 (y=0 en   0)   recortados   277   LL de recortados  50.58%
+    CORRECTED todo   B1_persistencia  p=0   960 (y=1 en  84)   p=1   96 (y=0 en  84)   recortados  1056   LL de recortados 100.00%
+    CORRECTED todo   B2_fc_crudo      p=0   960 (y=1 en  61)   p=1   96 (y=0 en  61)   recortados  1056   LL de recortados 100.00%
+    CORRECTED todo   B3_fc_error      p=0   447 (y=1 en   3)   p=1    0 (y=0 en   0)   recortados   447   LL de recortados  16.55%
+    CORRECTED todo   B4_fc_bias       p=0   459 (y=1 en   1)   p=1    0 (y=0 en   0)   recortados   459   LL de recortados   5.72%

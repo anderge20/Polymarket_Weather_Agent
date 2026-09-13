@@ -1,0 +1,19 @@
+HUELLA DEL DATASET  (lo que hay que reproducir para repetir OLD y CORRECTED)
+
+  markets                filas totales 85878
+  outcomes               filas totales 171756
+  weather_observations   filas totales 1486
+  weather_forecasts      filas totales 2727
+
+  EGLC backfill_2b_v1   markets   807  eventos  163  market_id   807  outcomes  1614
+  EGLC markets_v2       markets  1997  eventos  187  market_id  1997  outcomes  3994
+
+  obs EGLC IEM_ASOS_METAR          118  2026-04-08 14:50:00+00:00 -> 2026-08-23 14:50:00+00:00
+  obs EGLC IEM_ASOS_METAR_RT34     138  2026-04-08 14:20:00+00:00 -> 2026-08-23 14:50:00+00:00
+  fc  EGLC 236 filas  2026-04-08 -> 2026-08-23
+
+  sha256 de las filas ordenadas que alimentan el analisis:
+    markets+outcomes EGLC backfill_2b_v1   47f60af01e0b9bd33f3e0ed140218d1032b27b7ae6ae33e23cf766f35aef5fbd
+    markets+outcomes EGLC markets_v2       59e3caa5ac372549816ba868dd0c2c88509eca9e1a900c07b0f9a6553d2050a7
+    weather_observations EGLC          f323903ee8576ee457edc836eb49119ba69d6ab0be53031491b44e22b19079d8
+    weather_forecasts EGLC             0574207e43467c2e23b7095ba14f9caad82789530bda4b6985392b22bf9b6c30
