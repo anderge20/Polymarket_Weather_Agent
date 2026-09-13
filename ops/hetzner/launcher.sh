@@ -4,12 +4,22 @@
 # =============================================================================
 # WHY IT IS SEPARATE, and this is not tidiness.
 #
-# `run_cycle.sh` starts by doing `git reset --hard` on the checkout it lives in.
-# If the target ref does not contain `ops/hetzner/`, that reset DELETES THE
-# RUNNING SCRIPT while bash is still reading it — a half-executed file, no error
-# anyone would recognise, and a schedule that silently stops. It nearly happened:
-# `ops/` was only on a branch while the cron already existed, so pointing it at
-# `main` would have wiped it on the first firing.
+# UPDATING THE CHECKOUT FROM INSIDE IT DELETES THE RUNNING SCRIPT. If the target
+# ref does not contain `ops/hetzner/`, a `git reset --hard` wipes the file bash
+# is still reading — a half-executed script, no error anyone would recognise,
+# and a schedule that silently stops. It nearly happened: `ops/` was only on a
+# branch while the cron already existed, so pointing it at `main` would have
+# wiped it on the first firing.
+#
+# THIS SENTENCE USED TO SAY «`run_cycle.sh` starts by doing `git reset --hard` on
+# the checkout it lives in», in the present tense, as the reason for the split.
+# IT DOES NOT AND MUST NOT: the reset moved HERE, and `run_cycle.sh` says so in
+# its own section 1 — «deliberately not here». The old wording survived the
+# change it describes and was read as current fact by session A on 2026-09-13,
+# which cost a design decision in PR #48 (a test declared impossible to write
+# because this comment said the script touches its own checkout; it does not,
+# and the test exists). A comment about ANOTHER file is the one kind that
+# nothing makes you re-read.
 #
 # So cron calls this, which lives at /opt/pmw/bin/launcher.sh — outside the
 # checkout, updated only by install.sh — and it:

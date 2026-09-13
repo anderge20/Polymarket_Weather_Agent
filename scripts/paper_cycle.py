@@ -1191,6 +1191,24 @@ def _station_tz(icao: str | None) -> str | None:
 #:       a rule of the contractual source". The NAME says T-group; the THING is
 #:       tmpf rounded to 1 F.
 #:
+#:   IEM_ASOS_METAR_1C_RT34 -> metar_body_c
+#:       The same METAR-body Celsius value, built from IEM report types 3 AND 4
+#:       (`observations.REPORT_TYPES_ALL`) — the series every NEW Celsius row carries.
+#:       Type 3 alone had been throwing away the half-hourly routine reports (B-131),
+#:       and against real Wunderground settlement the 3+4 series is right on all 18
+#:       days where the two differ (B-134). The frozen core's `metar_body_c` does not
+#:       restrict the report type, so this needs no amendment. `IEM_ASOS_METAR_1C`
+#:       stays mapped above so the labels already written under it remain readable;
+#:       nothing is overwritten.
+#:
+#:   MIXING BOTH NAMES IN ONE WINDOW IS HARMLESS FOR THE VALUE, and by construction
+#:   rather than luck: the 3+4 set contains the type-3 set (0 type-3 rows missing
+#:   from 3+4 over 55 stations, B-133) and the core aggregates with MAX, so the
+#:   maximum over both rows is the 3+4 value. WHAT IT CANNOT SAY is which series
+#:   produced that maximum: the settlement result carries no series, so "is this
+#:   label from the corrected series?" has no field that answers it (session A).
+#:   The answer lives in `weather_observations.series` for that station-day.
+#:
 #: `IEM_ASOS_TMPF_0.1F` stays unmapped, and the reason is no longer uncertainty.
 #: Its only station is KBKF, whose audited row carries P_NOAA_HourlyData — stratum
 #: 9 — which the frozen core already fails closed on `series_filter_unverified`
@@ -1205,6 +1223,7 @@ def _station_tz(icao: str | None) -> str | None:
 #: in either direction is the error.
 SERIES_CORRESPONDENCE = {
     "IEM_ASOS_METAR_1C": settlement.SERIES_METAR_C,
+    "IEM_ASOS_METAR_1C_RT34": settlement.SERIES_METAR_C,
     "IEM_ASOS_TMPF_1F": settlement.SERIES_METAR_F,
 }
 
@@ -1218,9 +1237,9 @@ def to_core_series(series: str | None) -> str | None:
 #: of `error_model.ASSUMED_LABEL_LAG` — that is M2's TRAINING assumption about when
 #: a label could first be known, and using it here would delay every settlement by
 #: a day for no reason. This is the operational margin for the last METAR of the
-#: day to reach IEM, and it is deliberately small: routine METARs are hourly, so
-#: two hours covers the last observation plus a late feed without pushing the
-#: settlement into the next cycle.
+#: day to reach IEM, and it is deliberately small: routine METARs come every half
+#: hour at many stations and every hour at the rest, so two hours covers the last
+#: observation plus a late feed without pushing the settlement into the next cycle.
 LABEL_PUBLICATION_MARGIN = timedelta(hours=2)
 
 #: How much of a refusal's `detail` reaches the stage row. Bounded because this
@@ -1357,12 +1376,17 @@ def stage_observations(cy: Cycle, con, *, dataset_version: str, now: datetime) -
         if now < day_end + LABEL_PUBLICATION_MARGIN:
             pending += 1
             continue
+        # A ROW OF THE CURRENT SERIES, not any row. A label written under a
+        # superseded series (`IEM_ASOS_METAR_1C`, type 3 only) must not stop the
+        # corrected one from being fetched: "the row exists, skip it" is exactly how
+        # a wrong label becomes permanent. The refetch this allows is bounded by the
+        # station-days open positions wait on, so it carries no quota exposure.
         have = db.query(
             con,
             "SELECT 1 FROM weather_observations WHERE station = ? "
             "AND observation_time >= ? AND observation_time < ? "
-            "AND dataset_version = ? LIMIT 1",
-            [icao, day_start, day_end, dataset_version],
+            "AND dataset_version = ? AND series = ? LIMIT 1",
+            [icao, day_start, day_end, dataset_version, obs.station_series(icao)[0]],
         )
         if have:
             already += 1
@@ -1855,6 +1879,39 @@ def stage_params(cy: Cycle, *, root: str, session_id: str, args, timing: dict,
         "market_sum_min": args.market_sum_min,
         "market_sum_max": args.market_sum_max,
         "collect_only": bool(args.collect_only),
+        # WHY, WHICH THE SHARD COULD NOT SAY. `collect_only=True` in 37 of 37
+        # cycles means one of TWO things and they are not the same event:
+        #
+        #   the cron fired `collect`        -> the launcher asked for books only
+        #   the cron fired `decide`, and `run_cycle.sh:97` added `--collect-only`
+        #   because `$ROOT/PAPER_TAU` does not exist -- a decide that did not
+        #   decide, which is the only kind of cycle that could ever open a
+        #   position
+        #
+        # Six of the 34 attributable cycles are the second kind and NOTHING in
+        # the store distinguished them: the session id prefix is `col_` in 34 of
+        # 34, `collect_only` is True in 37 of 37 and `tau_signal` is None in 37
+        # of 37. Three fields that look like discriminators and are constants.
+        #
+        # THE REASON WAS NEVER MISSING, ONLY UNTRANSPORTED. The shell already
+        # logs it verbatim -- `no /opt/pmw/PAPER_TAU -- collect-only
+        # (fail-closed, R24 P12)` -- on a box with no logrotate, which is the
+        # surface this project has twice had to rescue by hand. `paper_cycle.py`
+        # never sees that it was launched as a decide, so it is not that the
+        # program declines to record the fact: it does not have it. The wrapper
+        # passes it now.
+        # `or None`, NO SOLO EL TERNARIO. La cadena vacia y `None` son valores
+        # distintos en el shard y el lector no puede saber si `""` significa «no
+        # lo dijo» o «lo dijo en blanco» -- que es exactamente la conflacion que
+        # este campo existe para quitar, un nivel mas abajo.
+        #
+        # Y no es hipotetico: el llamador de `paper_cycle.yml` interpola
+        # `${{ steps.gate.outputs.collect_only_reason }}`, que sale VACIO si
+        # alguien anade una tercera rama a la puerta y olvida el `echo`. El
+        # barrido de lectura no lo veria: veria un motivo presente. Es el mismo
+        # agujero que la sesion B encontro en la puerta, una capa mas abajo.
+        "collect_only_reason": ((args.collect_only_reason or None)
+                                if args.collect_only else None),
         "code_commit": code_commit(),
         "run_id": os.environ.get("GITHUB_RUN_ID"),
         # B's second condition: the cycle records WHICH artifact it used. The id
@@ -2159,6 +2216,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--max-pages", type=int, default=20)
     p.add_argument("--collect-only", action="store_true",
                    help="Books only: skip signals, paper and settlement.")
+    p.add_argument("--collect-only-reason", default=None,
+                   help="WHY this cycle is collect-only. `collect_only=True` has "
+                        "meant two different things in 37 of 37 cycles and the "
+                        "shard could not tell them apart -- see the field's note "
+                        "in `cycle_params`.")
     p.add_argument("--settle-only", action="store_true",
                    help="THE SETTLEMENT TAIL (R24 §5). Ingest the labels that open "
                         "positions wait on and settle them; discover nothing, "

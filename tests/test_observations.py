@@ -140,7 +140,9 @@ def test_series_carries_resolution_not_only_scale():
     FLOOR stop being the same label for 97.7 F."""
     assert obs.station_series("KATL")[2] == 1.0
     assert obs.station_series("KBKF")[2] == 0.1
-    assert obs.station_series("EHAM") == (obs.SERIES_1C, "C", 1.0)
+    # The DEFAULT Celsius series is the one built from report types 3+4 (B-131);
+    # `SERIES_1C` only names labels already written from type 3 alone.
+    assert obs.station_series("EHAM") == (obs.SERIES_1C_RT34, "C", 1.0)
 
 
 def test_grid_is_a_property_of_the_station_not_the_value():
@@ -162,3 +164,120 @@ def test_off_grid_value_refuses_rather_than_rounding():
 def test_unknown_station_grid_falls_back_to_celsius_only_when_whole():
     assert obs.detect_grid("ZZZZ", 21.0, 69.8)[:2] == ("C", 21.0)
     assert obs.detect_grid("ZZZZ", 21.3, 70.34)[0] == "UNKNOWN"
+
+
+def test_celsius_is_built_from_types_3_and_4_and_fahrenheit_from_3_only():
+    """Type 3 alone drops the half-hourly ROUTINE METARs at Celsius stations (B-131),
+    so Celsius takes 3+4. Fahrenheit keeps 3 on purpose, not by omission: adding 4
+    there puts the new maximum off the whole-F grid on six measured days (B-133),
+    which would turn a low label into a refusal."""
+    assert obs.report_types("EGLC") == (3, 4)
+    assert obs.report_types("EHAM") == (3, 4)
+    assert obs.report_types("KATL") == (3,)
+    assert obs.report_types("KBKF") == (3,)
+
+
+def test_every_series_a_station_can_carry_declares_its_report_types():
+    """A series name is a promise about its contents: none may reach the fetcher
+    without saying which report types it is built from."""
+    carried = {s for s, _, _ in obs.STATION_SERIES.values()} | {obs.DEFAULT_SERIES[0]}
+    assert carried <= set(obs.SERIES_REPORT_TYPES), carried - set(obs.SERIES_REPORT_TYPES)
+    # And the superseded name keeps saying what its stored rows are.
+    assert obs.SERIES_REPORT_TYPES[obs.SERIES_1C] == (3,)
+    # And every one of them says which `source` its rows are written under: the two
+    # maps are total over the same series, or a series reuses a source and overwrites.
+    assert set(obs.SERIES_SOURCE) == set(obs.SERIES_REPORT_TYPES)
+
+
+def test_a_series_forgotten_in_the_source_map_RAISES_instead_of_overwriting(con, monkeypatch):
+    """Session A's reproduction of the fallback, driven through the REAL path.
+
+    A new series declared where the station and the fetch need it — `STATION_SERIES`
+    and `SERIES_REPORT_TYPES` — and forgotten where the row's `source` comes from. With
+    a `.get` fallback it reused `IEM_ASOS_METAR` and overwrote the old label. Indexed,
+    `to_row` raises before `ingest_daily_high` writes anything.
+
+    The first version called `source_for` directly after patching only the report-types
+    map, which `source_for` never reads: it looked like it exercised the relationship
+    between the two maps and exercised one (session A)."""
+    new_series = "IEM_ASOS_METAR_1C_RT345"
+    monkeypatch.setitem(obs.STATION_SERIES, ICAO, (new_series, "C", 1.0))
+    monkeypatch.setitem(obs.SERIES_REPORT_TYPES, new_series, (3, 4, 5))
+    assert new_series not in obs.SERIES_SOURCE
+
+    with pytest.raises(KeyError):
+        obs.ingest_daily_high(con, ICAO, TARGET, TZ, DSV, fetcher=_fetcher(_full_local_day()))
+    assert db.query(con, "SELECT count(*) AS n FROM weather_observations")[0]["n"] == 0
+
+
+def test_a_corrected_label_lands_BESIDE_the_old_one_never_over_it(con, monkeypatch):
+    """Labels are never overwritten, and the primary key has no series.
+
+    The measured failure: an old `IEM_ASOS_METAR_1C` label and a new 3+4 label whose
+    highs fall on the SAME instant (a peak at :50, which both series see) share every
+    key column, and the upsert replaced the old row. With the 3+4 rows under their own
+    `source`, both rows stay — the old one with its value intact."""
+    peak = _utc(21, 12, 50)
+
+    def half_hourly(icao, start, end, timeout=90):
+        out, t = [], _utc(20, 21, 20)
+        while t < _utc(21, 21):
+            out.append((t, 25.0 if t == peak else 10.0))
+            t += timedelta(minutes=30)
+        return [(t, v) for t, v in out if start <= t <= end]
+
+    monkeypatch.setitem(obs.STATION_SERIES, ICAO, (obs.SERIES_1C, "C", 1.0))
+    obs.ingest_daily_high(con, ICAO, TARGET, TZ, DSV, fetcher=half_hourly)
+    monkeypatch.delitem(obs.STATION_SERIES, ICAO)
+    obs.ingest_daily_high(con, ICAO, TARGET, TZ, DSV, fetcher=half_hourly)
+
+    rows = db.query(con, "SELECT source, series, observation_time, tmax_observed "
+                         "FROM weather_observations ORDER BY series")
+    assert [(r["source"], r["series"]) for r in rows] == [
+        ("IEM_ASOS_METAR", obs.SERIES_1C),
+        ("IEM_ASOS_METAR_RT34", obs.SERIES_1C_RT34),
+    ], rows
+    assert {r["observation_time"] for r in rows} == {peak}, "same instant: the collision case"
+    assert [r["tmax_observed"] for r in rows] == [25.0, 25.0]
+
+
+def test_observed_tmax_reads_the_CURRENT_series_when_both_labels_exist(con, monkeypatch):
+    """The one reader that picks a single row, and the day it would pick wrong.
+
+    With corrected labels written beside the superseded ones, a station-day holds an
+    `IEM_ASOS_METAR_1C` label (type 3 alone) and an `IEM_ASOS_METAR_1C_RT34` one, both
+    at record_version 1. Ordering by revision alone returns whichever row comes first
+    — here the old, lower one. The label read back has to be the corrected one."""
+    def day(peak_c, peak_minute):
+        def fetch(icao, start, end, timeout=90):
+            out, t = [], _utc(20, 21, 20)
+            while t < _utc(21, 21):
+                hot = t.day == 21 and (t.hour, t.minute) == (12, peak_minute)
+                out.append((t, peak_c if hot else 10.0))
+                t += timedelta(minutes=30)
+            return [(x, v) for x, v in out if start <= x <= end]
+        return fetch
+
+    monkeypatch.setitem(obs.STATION_SERIES, ICAO, (obs.SERIES_1C, "C", 1.0))
+    obs.ingest_daily_high(con, ICAO, TARGET, TZ, DSV, fetcher=day(26.0, 50))
+    monkeypatch.delitem(obs.STATION_SERIES, ICAO)
+    obs.ingest_daily_high(con, ICAO, TARGET, TZ, DSV, fetcher=day(27.0, 20))
+
+    assert db.query(con, "SELECT count(*) AS n FROM weather_observations")[0]["n"] == 2
+    assert obs.observed_tmax(con, ICAO, TARGET, TZ, DSV) == 27.0
+
+
+def test_the_observation_key_is_the_same_in_all_three_places(con):
+    """The key is written in the DDL, in `store.CONFLICT_COLS` and in
+    `observations.CONFLICT_COLS`, and nothing compared them. The literal in
+    `ingest_daily_high` wins over the store map for prospective ingestion, so fixing the
+    key in one place and not the others would have left the overwrite in place."""
+    from weather_agent import store
+
+    pk = con.execute(
+        "SELECT constraint_column_names FROM duckdb_constraints() "
+        "WHERE table_name = 'weather_observations' AND constraint_type = 'PRIMARY KEY'"
+    ).fetchall()
+    assert len(pk) == 1, pk
+    assert tuple(pk[0][0]) == tuple(store.CONFLICT_COLS["weather_observations"]) == obs.CONFLICT_COLS
+

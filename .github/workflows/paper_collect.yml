@@ -149,7 +149,7 @@ jobs:
               --session-id "col_${RUN_ID}_${D}" \
               --store-root state/paper_state \
               --max-pages "$MAX_PAGES" \
-              --collect-only \
+              --collect-only --collect-only-reason mode_collect \
               --summary-json "results/collect_${D}.json"
             echo "::endgroup::"
           done

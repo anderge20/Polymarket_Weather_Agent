@@ -703,8 +703,10 @@ def test_settle_closes_against_a_row_THE_INGESTER_WROTE(con, monkeypatch):
     assert dh.tmax_c == 17.0 and dh.n_obs == 24
     row = db_mod.query(con, "SELECT observed_unit, observed_value, series "
                             "FROM weather_observations")[0]
+    # The series a Celsius station's row carries NOW: built from report types 3+4
+    # (B-131). `SERIES_1C` only names labels written from type 3 alone.
     assert (row["observed_unit"], row["observed_value"], row["series"]) == \
-        ("C", 17.0, obs_mod.SERIES_1C)
+        ("C", 17.0, obs_mod.SERIES_1C_RT34)
 
     out = paper_cycle.stage_settle(_cycle(), con, dataset_version="ds1")
     assert out["settled"] == 1, out
@@ -1100,7 +1102,14 @@ def test_the_label_is_fetched_only_once_the_station_local_day_has_ended(con, mon
 
 
 def test_a_label_already_in_the_table_is_not_fetched_again(con, monkeypatch):
+    """A label OF THE STATION'S CURRENT SERIES is not fetched again.
+
+    The row used to be inserted with no `series` at all and still counted as "had".
+    Since the check filters by the current series (B-131), such a row no longer
+    blocks a fetch — which is the point — so the row here names the series a
+    Celsius station now carries."""
     from weather_agent import observations as obs
+    _with_b_substrate(con)
     calls = []
     monkeypatch.setattr(obs, "ingest_daily_high",
                         lambda con, i, d, tz, dsv: calls.append(i))
@@ -1108,14 +1117,40 @@ def test_a_label_already_in_the_table_is_not_fetched_again(con, monkeypatch):
     _open_position(con)
     con.execute(
         "INSERT INTO weather_observations (station, source, observation_time, "
-        "tmax_observed, ingestion_timestamp, dataset_version, record_version) "
-        "VALUES (?,?,?,?,?,?,?)",
+        "tmax_observed, series, ingestion_timestamp, dataset_version, record_version) "
+        "VALUES (?,?,?,?,?,?,?,?)",
         ["EGLC", "METAR", datetime(2026, 9, 10, 14, tzinfo=timezone.utc), 21.0,
-         T0, "ds1", 1])
+         obs.SERIES_1C_RT34, T0, "ds1", 1])
     out = paper_cycle.stage_observations(
         _cycle(), con, dataset_version="ds1",
         now=datetime(2026, 9, 12, tzinfo=timezone.utc))
     assert calls == [] and out["ingested"] == 0
+
+
+def test_a_label_of_a_SUPERSEDED_series_does_not_block_the_corrected_one(con, monkeypatch):
+    """"The row exists, skip it" is how a wrong label becomes permanent.
+
+    A station-day already holding an `IEM_ASOS_METAR_1C` label — built from report
+    type 3 alone, which drops the half-hourly routine METARs (B-131) — must still
+    get the corrected label fetched. Nothing is overwritten: the old row stays, and
+    the new one lands beside it under its own series."""
+    from weather_agent import observations as obs
+    _with_b_substrate(con)
+    calls = []
+    monkeypatch.setattr(obs, "ingest_daily_high",
+                        lambda con, i, d, tz, dsv: calls.append(i))
+    monkeypatch.setattr("weather_agent.stations.timezone_of", lambda i: "Europe/London")
+    _open_position(con)
+    con.execute(
+        "INSERT INTO weather_observations (station, source, observation_time, "
+        "tmax_observed, series, ingestion_timestamp, dataset_version, record_version) "
+        "VALUES (?,?,?,?,?,?,?,?)",
+        ["EGLC", "METAR", datetime(2026, 9, 10, 14, tzinfo=timezone.utc), 16.0,
+         obs.SERIES_1C, T0, "ds1", 1])
+    out = paper_cycle.stage_observations(
+        _cycle(), con, dataset_version="ds1",
+        now=datetime(2026, 9, 12, tzinfo=timezone.utc))
+    assert calls == ["EGLC"] and out["ingested"] == 1
 
 
 def test_observations_stop_on_a_rate_limit_and_never_retry_through(con, monkeypatch):
@@ -3245,3 +3280,293 @@ def test_the_frozen_cores_raise_sites_are_pinned_BY_COUNT():
     assert cuenta["R_SERIES_MISMATCH"] == 3, (
         "el caso que motivo `reason_details`: serie, unidad y quantization=NONE "
         "bajo un unico codigo de razon")
+
+
+# ------------------------------------------------------- report types (B-131, real payload)
+_IEM_FIXTURES = Path(__file__).resolve().parent / "fixtures"
+_EGLC_DAY = date(2026, 4, 14)
+
+
+def _iem_served_by_report_type(monkeypatch):
+    """Serve the RECORDED IEM body matching the `report_type` values the query asks for.
+
+    Both fixtures are verbatim responses to the query `fetch_metar` builds for EGLC
+    on 2026-04-14 (window 2026-04-13 .. 04-16), one with `report_type=3&report_type=4`
+    and one with `report_type=3`. Patched at `urlopen`, so the query building, the
+    CSV parsing and the conversion are all the code under test, and a query asking
+    for any OTHER combination has no body to receive and fails loudly."""
+    import io
+    import urllib.parse
+
+    bodies = {
+        ("3", "4"): (_IEM_FIXTURES / "iem_eglc_20260414_rt34.csv").read_text(),
+        ("3",): (_IEM_FIXTURES / "iem_eglc_20260414_rt3.csv").read_text(),
+    }
+    requests = []
+
+    class _Response(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    def urlopen(req, *a, **k):
+        url = getattr(req, "full_url", req)
+        qs = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)
+        types = tuple(qs.get("report_type", []))
+        requests.append((qs["station"][0], types, qs["day1"][0], qs["day2"][0]))
+        return _Response(bodies[types].encode())
+
+    monkeypatch.setattr("urllib.request.urlopen", urlopen)
+    return requests
+
+
+def _settle_the_real_eglc_day(con):
+    _with_b_substrate(con)
+    tid = _settleable_market(con, band="17°C", outcome="Yes", write_obs=False)
+    con.execute("UPDATE paper_trades SET target_date = ? WHERE paper_trade_id = ?",
+                [_EGLC_DAY, tid])
+    dh = obs_mod.ingest_daily_high(con, "EGLC", _EGLC_DAY, "Europe/London", "ds1")
+    row = con.execute("SELECT observed_value, observed_unit, series FROM weather_observations "
+                      "WHERE station = 'EGLC'").fetchall()
+    out = paper_cycle.stage_settle(_cycle(), con, dataset_version="ds1")
+    paid = con.execute("SELECT settlement FROM paper_trades WHERE paper_trade_id = ?",
+                       [tid]).fetchone()[0]
+    return dh, row, out, paid
+
+
+def test_a_real_EGLC_day_whose_high_is_at_20_settles_to_the_band_the_market_paid(con, monkeypatch):
+    """SETTLEMENT FIRST, on a real payload: the day that made B-131 visible.
+
+    On 2026-04-14 EGLC's high was 17 C, reported at :20 — a half-hourly ROUTINE METAR
+    that IEM files as type 4. The market (Wunderground) paid the 17 C band. With the
+    Celsius series built from types 3+4 the chain from the recorded IEM response to
+    `stage_settle` pays exactly that band. The other half of the pair is the next
+    test: the same day with type 3 alone."""
+    requests = _iem_served_by_report_type(monkeypatch)
+    dh, row, out, paid = _settle_the_real_eglc_day(con)
+
+    assert requests == [("EGLC", ("3", "4"), "13", "16")], requests
+    assert dh.tmax_c == pytest.approx(17.0) and dh.when_utc.minute == 20, dh
+    assert row == [(17.0, "C", obs_mod.SERIES_1C_RT34)], row
+    assert out["settled"] == 1, out
+    assert paid == 1.0
+
+
+def test_the_same_real_day_with_type_3_alone_pays_the_WRONG_band(con, monkeypatch):
+    """The other half of the pair, and the defect itself: same day, same market, same
+    position, and the only variable is the report types.
+
+    Type 3 alone never sees the :20 report, so the day's high comes out 16 C at :50,
+    the 17 C position loses, and the ledger records a loss the market never booked.
+    Driven through the superseded series on purpose, which also pins that labels
+    already stored under `IEM_ASOS_METAR_1C` stay settleable — and stay low."""
+    monkeypatch.setitem(obs_mod.STATION_SERIES, "EGLC", (obs_mod.SERIES_1C, "C", 1.0))
+    requests = _iem_served_by_report_type(monkeypatch)
+    dh, row, out, paid = _settle_the_real_eglc_day(con)
+
+    assert requests == [("EGLC", ("3",), "13", "16")], requests
+    assert dh.tmax_c == pytest.approx(16.0) and dh.when_utc.minute == 50, dh
+    assert row == [(16.0, "C", obs_mod.SERIES_1C)], row
+    assert out["settled"] == 1, out
+    assert paid == 0.0
+
+
+def test_a_fahrenheit_station_still_asks_for_type_3_only(monkeypatch):
+    """Not an omission: on six measured days adding type 4 puts a US station's NEW
+    maximum off the whole-F grid (B-133), which would turn a label that is low into a
+    refusal. What the resolver does with such a SPECI is to be measured first."""
+    requests = _iem_served_by_report_type(monkeypatch)
+    obs_mod.fetch_metar("KATL", datetime(2026, 4, 13, tzinfo=timezone.utc),
+                        datetime(2026, 4, 14, 23, tzinfo=timezone.utc))
+    assert [r[1] for r in requests] == [("3",)], requests
+
+
+def test_the_shard_says_WHY_it_is_collect_only(con, tmp_path, monkeypatch):
+    """`collect_only=True` significó dos cosas distintas en 37 de 37 ciclos.
+
+    Seis de los treinta y cuatro ciclos atribuibles son `decide` que no
+    decidieron —el envoltorio les añadió `--collect-only` por no existir
+    `PAPER_TAU`— y **nada en el almacén los distinguía**: el prefijo del
+    `session_id` es `col_` en 34 de 34, `collect_only` es True en 37 de 37 y
+    `tau_signal` es None en 37 de 37. Tres campos que parecen discriminadores y
+    son constantes.
+    """
+    monkeypatch.setattr(paper_cycle, "stage_discover",
+                        lambda cy, *a, **k: cy.stage("discover", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_collect",
+                        lambda cy, *a, **k: cy.stage("collect:books", paper_cycle.OK))
+    store_root = tmp_path / "store"
+    assert paper_cycle.main([
+        "--target-date", "2026-09-11", "--dataset-version", "ds1",
+        "--store-root", str(store_root), "--db", str(tmp_path / "t.duckdb"),
+        "--collect-only", "--collect-only-reason", "no_paper_tau",
+        "--summary-json", str(tmp_path / "s.json")]) == 0
+
+    import gzip as _gz
+    fila = json.loads(_gz.open(store.iter_shards(store_root, "cycle_params")[0],
+                               "rt").readline())
+    assert fila["collect_only"] is True
+    assert fila["collect_only_reason"] == "no_paper_tau"
+
+
+def test_an_EMPTY_reason_is_not_stated_rather_than_stated_blank(tmp_path, monkeypatch):
+    """`""` y `None` son valores distintos y sólo uno de ellos es honesto.
+
+    El llamador de `paper_cycle.yml` interpola la salida de la puerta, que sale
+    **vacía** si alguien añade una tercera rama y olvida el `echo`. El barrido de
+    lectura no lo vería —vería un motivo presente— así que el shard escribiría
+    `""`, que se lee como «lo dijo en blanco» en vez de «no lo dijo».
+    """
+    monkeypatch.setattr(paper_cycle, "stage_discover",
+                        lambda cy, *a, **k: cy.stage("discover", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_collect",
+                        lambda cy, *a, **k: cy.stage("collect:books", paper_cycle.OK))
+    store_root = tmp_path / "store"
+    paper_cycle.main([
+        "--target-date", "2026-09-11", "--dataset-version", "ds1",
+        "--store-root", str(store_root), "--db", str(tmp_path / "t.duckdb"),
+        "--collect-only", "--collect-only-reason", "",
+        "--summary-json", str(tmp_path / "s.json")])
+    import gzip as _gz
+    fila = json.loads(_gz.open(store.iter_shards(store_root, "cycle_params")[0],
+                               "rt").readline())
+    assert fila["collect_only"] is True
+    assert fila["collect_only_reason"] is None, fila["collect_only_reason"]
+
+
+def test_a_deciding_cycle_carries_no_collect_only_reason(tmp_path, monkeypatch):
+    """La otra mitad: sin `--collect-only` el campo es None aunque se pase.
+
+    Un motivo de algo que no ocurrió es peor que ningún motivo — se lee como que
+    el ciclo fue collect-only cuando no lo fue.
+    """
+    monkeypatch.setattr(paper_cycle, "stage_discover",
+                        lambda cy, *a, **k: cy.stage("discover", paper_cycle.OK))
+    monkeypatch.setattr(paper_cycle, "stage_collect",
+                        lambda cy, *a, **k: cy.stage("collect:books", paper_cycle.OK))
+    store_root = tmp_path / "store"
+    paper_cycle.main([
+        "--target-date", "2026-09-11", "--dataset-version", "ds1",
+        "--store-root", str(store_root), "--db", str(tmp_path / "t.duckdb"),
+        "--tau-signal", "0.02", "--collect-only-reason", "no_paper_tau",
+        "--summary-json", str(tmp_path / "s.json")])
+    import gzip as _gz
+    fila = json.loads(_gz.open(store.iter_shards(store_root, "cycle_params")[0],
+                               "rt").readline())
+    assert fila["collect_only"] is False
+    assert fila["collect_only_reason"] is None
+
+
+def test_every_collect_only_in_EVERY_caller_carries_its_reason():
+    """TODOS los llamadores, no sólo el que yo estaba mirando.
+
+    La primera versión escaneaba `run_cycle.sh` y nada más. Session B encontró
+    otros dos —`paper_collect.yml` y `paper_cycle.yml`— que pasaban
+    `--collect-only` sin motivo. Sus programaciones están desactivadas, pero
+    `workflow_dispatch` sigue vivo: una corrida manual escribía `True` sin decir
+    por qué, que es el defecto entero.
+
+    *Un test que mira un fichero cuando hay tres no es un test débil: es un test
+    que responde otra pregunta.* El barrido va por directorio, así que un cuarto
+    llamador entra solo.
+    """
+    raiz = Path(__file__).resolve().parents[1]
+    fuentes = sorted(list((raiz / "ops").rglob("*.sh")) +
+                     list((raiz / ".github" / "workflows").rglob("*.yml")))
+
+    def es_llamada(linea):
+        """Una linea que PASA `--collect-only`, no una que lo menciona."""
+        t = linea.strip()
+        if t.startswith("#"):
+            return False
+        codigo = t.split("#", 1)[0]      # un motivo en un comentario final no cuenta
+        return "--collect-only" in codigo
+
+    lineas = [(f.name, l.strip()) for f in fuentes
+              for l in f.read_text().splitlines() if es_llamada(l)]
+    assert lineas, "ningun llamador pasa --collect-only: revisar este test"
+    sin_motivo = [(n, l) for n, l in lineas
+                  if "--collect-only-reason" not in l.split("#", 1)[0]]
+    assert not sin_motivo, f"`--collect-only` sin motivo: {sin_motivo}"
+    assert len(lineas) == 4, (
+        f"se esperaban cuatro llamadas (run_cycle.sh x2, paper_collect.yml, "
+        f"paper_cycle.yml); hay {len(lineas)}: {lineas}")
+
+
+def test_the_WRAPPER_itself_passes_the_reason_in_each_branch(tmp_path):
+    """EL ENVOLTORIO, CONDUCIDO DE VERDAD — y mi premisa para no hacerlo era falsa.
+
+    Escribí que `run_cycle.sh` no se puede ejecutar desde la suite porque «hace
+    `git fetch` y `git rebase` sobre el checkout en el que vive». **No lo hace.**
+    Eso lo hace `launcher.sh`; `run_cycle.sh` toca `$STATE`, y sobre `$REPO` sólo
+    hace un `rev-parse` de lectura. Su propia sección 1 lo dice —*«deliberately
+    not here»*— catorce líneas encima del código que yo estaba editando.
+
+    Lo que leí fue `launcher.sh:7`, que afirma en presente que `run_cycle.sh`
+    empieza haciendo ese reset. Es la justificación histórica de por qué se
+    separaron los dos ficheros, escrita como si siguiera siendo verdad. *Una
+    cita correcta sosteniendo una afirmación falsa: la cita es lo que impide
+    abrir el fichero.*
+
+    Session B lo condujo y me pasó la receta. Esto es su receta: una copia con
+    `ROOT=` sustituido, `git` y `date` interceptados en el PATH, y un `python`
+    de mentira que vuelca su argv.
+    """
+    import os
+    import subprocess
+
+    raiz = Path(__file__).resolve().parents[1]
+    original = (raiz / "ops" / "hetzner" / "run_cycle.sh").read_text()
+    assert original.count("\nROOT=/opt/pmw\n") == 1, "ROOT ya no es sustituible por linea"
+
+    root = tmp_path / "pmw"
+    for sub in ("repo", "state", "venv/bin", "bin"):
+        (root / sub).mkdir(parents=True)
+    (root / "state" / ".git").mkdir()
+    guion = root / "run_cycle.sh"
+    guion.write_text(original.replace("\nROOT=/opt/pmw\n", f"\nROOT={root}\n"))
+    guion.chmod(0o755)
+
+    argv = root / "argv.txt"
+    (root / "venv" / "bin" / "python").write_text(
+        f'#!/bin/sh\nprintf "%s\\n" "$@" > {argv}\n')
+    (root / "venv" / "bin" / "python").chmod(0o755)
+    # `git status --porcelain` vacio -> el guion sale por "nothing new to commit"
+    # sin tocar ningun repositorio de verdad.
+    (root / "bin" / "git").write_text(
+        '#!/bin/sh\ncase "$*" in *rev-parse*) echo deadbee;; *status*) :;; *) :;; esac\n')
+    (root / "bin" / "git").chmod(0o755)
+    # BSD `date` no tiene -d, y el guion lo usa para el target date.
+    (root / "bin" / "date").write_text(
+        '#!/bin/sh\ncase "$*" in *"+1 day"*) echo 2026-09-15;; *%FT%TZ*) echo 2026-09-14T00:00:00Z;;'
+        ' *) echo 2026-09-14;; esac\n')
+    (root / "bin" / "date").chmod(0o755)
+
+    entorno = dict(os.environ, PATH=f"{root/'bin'}:{os.environ['PATH']}")
+
+    def correr(*args):
+        # BORRAR ANTES, no confiar en que se sobrescriba: una salida 0 que no
+        # llegara a llamar a python leeria el argv de la corrida anterior y el
+        # test pasaria sin haber ejecutado nada. Es el pase en vacio con otra
+        # cara, dentro del test escrito para conducir de verdad.
+        argv.unlink(missing_ok=True)
+        r = subprocess.run(["bash", str(guion), *args], env=entorno,
+                           capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0, (r.returncode, r.stdout[-800:], r.stderr[-800:])
+        assert argv.exists(), "el guion salio 0 sin llegar a invocar a python"
+        return argv.read_text().split()
+
+    assert "--collect-only" in correr("collect")
+    assert "mode_collect" in correr("collect")
+
+    # `decide` SIN PAPER_TAU: la rama de cierre en falso.
+    a = correr("decide", "24")
+    assert "--collect-only" in a and "no_paper_tau" in a, a
+
+    # `decide` CON PAPER_TAU: ni collect-only ni motivo.
+    (root / "PAPER_TAU").write_text("0.02\n")
+    b = correr("decide", "9")
+    assert "--tau-signal" in b, b
+    assert "--collect-only" not in b and "no_paper_tau" not in b, b
