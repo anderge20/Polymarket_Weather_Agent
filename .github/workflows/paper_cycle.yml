@@ -187,7 +187,11 @@ jobs:
           if [ "${{ inputs.settle_only }}" = "true" ]; then
             ARGS+=(--settle-only)
           elif [ "${{ steps.gate.outputs.collect_only }}" = "true" ]; then
-            ARGS+=(--collect-only)
+            # El motivo viaja tambien por aqui. Las programaciones de este
+            # workflow estan desactivadas, pero `workflow_dispatch` sigue vivo:
+            # una corrida manual escribiria `collect_only=True` sin decir por
+            # que, que es el defecto entero.
+            ARGS+=(--collect-only --collect-only-reason no_paper_tau)
           else
             ARGS+=(
               --tau-signal "${{ steps.gate.outputs.tau }}"

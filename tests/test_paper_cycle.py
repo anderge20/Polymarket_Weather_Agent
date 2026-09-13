@@ -3298,26 +3298,101 @@ def test_a_deciding_cycle_carries_no_collect_only_reason(tmp_path, monkeypatch):
     assert fila["collect_only_reason"] is None
 
 
-def test_every_collect_only_in_the_WRAPPER_carries_its_reason():
-    """EL DEFECTO VIVE EN LA LLAMADA, y la llamada está en un script de shell.
+def test_every_collect_only_in_EVERY_caller_carries_its_reason():
+    """TODOS los llamadores, no sólo el que yo estaba mirando.
 
-    El campo de arriba no vale nada si el envoltorio no lo pasa, y `run_cycle.sh`
-    no lo ejecuta ninguna prueba: hace `git fetch` y `git rebase` sobre el
-    checkout en el que vive, así que conducirlo desde la suite no es una opción
-    razonable.
+    La primera versión escaneaba `run_cycle.sh` y nada más. Session B encontró
+    otros dos —`paper_collect.yml` y `paper_cycle.yml`— que pasaban
+    `--collect-only` sin motivo. Sus programaciones están desactivadas, pero
+    `workflow_dispatch` sigue vivo: una corrida manual escribía `True` sin decir
+    por qué, que es el defecto entero.
 
-    Así que se fija por lectura, que es débil y es lo único disponible: **cada
-    `--collect-only` del envoltorio tiene que ir acompañado de su motivo**. Una
-    tercera rama que se añada sin él falla aquí en vez de escribir un `True` mudo
-    durante semanas.
+    *Un test que mira un fichero cuando hay tres no es un test débil: es un test
+    que responde otra pregunta.* El barrido va por directorio, así que un cuarto
+    llamador entra solo.
     """
-    ruta = Path(__file__).resolve().parents[1] / "ops" / "hetzner" / "run_cycle.sh"
-    lineas = [l.strip() for l in ruta.read_text().splitlines()
-              if "--collect-only" in l and not l.strip().startswith("#")]
-    assert lineas, "el envoltorio ya no pasa --collect-only: revisar este test"
-    for l in lineas:
-        assert "--collect-only-reason" in l, (
-            f"`--collect-only` sin motivo en run_cycle.sh: {l!r}")
-    assert len(lineas) == 2, (
-        f"se esperaban las dos ramas conocidas (mode_collect y no_paper_tau), "
-        f"hay {len(lineas)}: {lineas}")
+    raiz = Path(__file__).resolve().parents[1]
+    fuentes = sorted(list((raiz / "ops").rglob("*.sh")) +
+                     list((raiz / ".github" / "workflows").rglob("*.yml")))
+    lineas = [(f.name, l.strip()) for f in fuentes
+              for l in f.read_text().splitlines()
+              if "--collect-only" in l and not l.strip().lstrip("-").startswith("#")
+              and "--collect-only-reason" not in l.strip().split("--collect-only")[0]]
+    lineas = [(n, l) for n, l in lineas if "--collect-only" in l]
+    assert lineas, "ningun llamador pasa --collect-only: revisar este test"
+    sin_motivo = [(n, l) for n, l in lineas if "--collect-only-reason" not in l]
+    assert not sin_motivo, f"`--collect-only` sin motivo: {sin_motivo}"
+    assert len(lineas) == 4, (
+        f"se esperaban cuatro llamadas (run_cycle.sh x2, paper_collect.yml, "
+        f"paper_cycle.yml); hay {len(lineas)}: {lineas}")
+
+
+def test_the_WRAPPER_itself_passes_the_reason_in_each_branch(tmp_path):
+    """EL ENVOLTORIO, CONDUCIDO DE VERDAD — y mi premisa para no hacerlo era falsa.
+
+    Escribí que `run_cycle.sh` no se puede ejecutar desde la suite porque «hace
+    `git fetch` y `git rebase` sobre el checkout en el que vive». **No lo hace.**
+    Eso lo hace `launcher.sh`; `run_cycle.sh` toca `$STATE`, y sobre `$REPO` sólo
+    hace un `rev-parse` de lectura. Su propia sección 1 lo dice —*«deliberately
+    not here»*— catorce líneas encima del código que yo estaba editando.
+
+    Lo que leí fue `launcher.sh:7`, que afirma en presente que `run_cycle.sh`
+    empieza haciendo ese reset. Es la justificación histórica de por qué se
+    separaron los dos ficheros, escrita como si siguiera siendo verdad. *Una
+    cita correcta sosteniendo una afirmación falsa: la cita es lo que impide
+    abrir el fichero.*
+
+    Session B lo condujo y me pasó la receta. Esto es su receta: una copia con
+    `ROOT=` sustituido, `git` y `date` interceptados en el PATH, y un `python`
+    de mentira que vuelca su argv.
+    """
+    import os
+    import subprocess
+
+    raiz = Path(__file__).resolve().parents[1]
+    original = (raiz / "ops" / "hetzner" / "run_cycle.sh").read_text()
+    assert original.count("\nROOT=/opt/pmw\n") == 1, "ROOT ya no es sustituible por linea"
+
+    root = tmp_path / "pmw"
+    for sub in ("repo", "state", "venv/bin", "bin"):
+        (root / sub).mkdir(parents=True)
+    (root / "state" / ".git").mkdir()
+    guion = root / "run_cycle.sh"
+    guion.write_text(original.replace("\nROOT=/opt/pmw\n", f"\nROOT={root}\n"))
+    guion.chmod(0o755)
+
+    argv = root / "argv.txt"
+    (root / "venv" / "bin" / "python").write_text(
+        f'#!/bin/sh\nprintf "%s\\n" "$@" > {argv}\n')
+    (root / "venv" / "bin" / "python").chmod(0o755)
+    # `git status --porcelain` vacio -> el guion sale por "nothing new to commit"
+    # sin tocar ningun repositorio de verdad.
+    (root / "bin" / "git").write_text(
+        '#!/bin/sh\ncase "$*" in *rev-parse*) echo deadbee;; *status*) :;; *) :;; esac\n')
+    (root / "bin" / "git").chmod(0o755)
+    # BSD `date` no tiene -d, y el guion lo usa para el target date.
+    (root / "bin" / "date").write_text(
+        '#!/bin/sh\ncase "$*" in *"+1 day"*) echo 2026-09-15;; *%FT%TZ*) echo 2026-09-14T00:00:00Z;;'
+        ' *) echo 2026-09-14;; esac\n')
+    (root / "bin" / "date").chmod(0o755)
+
+    entorno = dict(os.environ, PATH=f"{root/'bin'}:{os.environ['PATH']}")
+
+    def correr(*args):
+        r = subprocess.run(["bash", str(guion), *args], env=entorno,
+                           capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0, (r.returncode, r.stdout[-800:], r.stderr[-800:])
+        return argv.read_text().split()
+
+    assert "--collect-only" in correr("collect")
+    assert "mode_collect" in correr("collect")
+
+    # `decide` SIN PAPER_TAU: la rama de cierre en falso.
+    a = correr("decide", "24")
+    assert "--collect-only" in a and "no_paper_tau" in a, a
+
+    # `decide` CON PAPER_TAU: ni collect-only ni motivo.
+    (root / "PAPER_TAU").write_text("0.02\n")
+    b = correr("decide", "9")
+    assert "--tau-signal" in b, b
+    assert "--collect-only" not in b and "no_paper_tau" not in b, b
