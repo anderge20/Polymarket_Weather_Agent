@@ -90,6 +90,49 @@ def quantiles_to_distribution(
     # (k = ln(0.10 / 1e-4) ~= 6.9 decay lengths). A discrete distribution needs
     # finite support; cutting at a mass the integer grid cannot represent is a
     # rounding decision, not a modelling one.
+    #
+    # THE TRADE-OFF THIS MAKES, NAMED — because choosing silently is the defect
+    # this project keeps finding. With a ONE-PARAMETER exponential you can have
+    # DENSITY CONTINUITY at p10/p90 or the CORRECT TAIL WEIGHT. Not both.
+    #
+    # Continuity is what is chosen here, and the reason is that lambda is then
+    # DERIVED rather than fitted: no free parameter is estimated on the data the
+    # model is then scored against. What it costs is that the tail comes out too
+    # LIGHT, because continuity pins the tail's initial slope to the interior of
+    # the distribution while the real tail decays more slowly.
+    #
+    # Measured by session A against the real training pairs (n = 1 348 at 24 h),
+    # reported here as their measurement — this session could not reach that
+    # substrate to reproduce it:
+    #
+    #     mass below p10      empirical   this model   the old linear tail
+    #       0.5 C beyond         5.71 %      4.35 %         5.00 %
+    #       1.0                  3.78 %      1.89 %         0.00 %
+    #       2.0                  1.48 %      0.36 %         0.00 %
+    #       4.0                  0.22 %      0.01 %         0.00 %
+    #
+    # The old model was wrong by INFINITY past one degree; this one is wrong by a
+    # factor of 2 to 20, growing with distance, in the same direction in all eight
+    # comparisons across both tails and both leads. That is a systematic residual,
+    # not noise. A maximum-likelihood lambda on the exceedances runs 1.65-1.92x
+    # larger than the continuity one and would put the mass beyond 2 C at 1.33 %
+    # against an empirical 1.48 %.
+    #
+    # AND THE 6.9-LAMBDA CUTOFF STILL CALLS IMPOSSIBLE THINGS THAT HAPPENED. The
+    # support at lead 24 is [-5.54, +6.90] C of error (verified here from the
+    # versioned artifact) and 5 of the 1 348 pairs — 0.37 % — fall outside it,
+    # with extremes at -5.94 and +10.00 C. Far better than before, and not zero.
+    #
+    # CHANGING LAMBDA IS NOT A CODE CHANGE, IT IS A MODELLING DECISION. An MLE
+    # lambda fitted on the same pairs the model is scored against is exactly what
+    # this project preregisters: it must be fixed on train, frozen, and evaluated
+    # out of sample walk-forward. Doing it inside a PR under review would smuggle
+    # a fitted parameter in through the back door.
+    #
+    # AND A BETTER TAIL IS NOT AN EDGE. Replacing a zero with a small correct
+    # number improves the model's Brier on those rows and says NOTHING about
+    # whether it beats the market. That is a different question, already measured,
+    # and the answer was no.
     values = [value for _, value in ordered]
 
     #: 6.9 decay lengths — see the truncation note above.
