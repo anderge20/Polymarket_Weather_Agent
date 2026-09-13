@@ -15958,3 +15958,48 @@ falta que le costó el primer resultado a Londres, con otra cara.
 cola mejor NO es un edge.* Cambiar el cero por un número pequeño y correcto mejora el Brier del
 modelo en esas filas y **no dice nada** sobre si supera al mercado. Pregunta distinta, ya medida,
 y la respuesta fue que no.
+
+## A-200 — PREINSCRIPCIÓN: ¿sobrevive el veredicto de Londres al arreglo de las colas? · 2026-09-13 · Claude (sesión A)
+
+*Escrita 2026-09-13T01:07Z, ANTES de correr nada. El instrumento está preparado y no lo he
+ejecutado.*
+
+### Por qué hay que preguntarlo
+
+A-198 establece que `p_model` vale **cero exacto en el 50,5 %** de las filas vivas de Londres por
+un defecto estructural del soporte. El veredicto de Londres —**NO EDGE**, mercado 0,04706 contra
+modelo 0,05148 de Brier— se midió con **ese** modelo. La objeción obvia, y la tiene que plantear
+alguien antes de que la plantee el resultado: *¿el modelo pierde porque es peor, o porque tenía
+las colas rotas?*
+
+**Si no se pregunta ahora, el día que se fusione el #33 el veredicto queda sin base y nadie lo
+notará.**
+
+### El instrumento
+
+Regenerar `LONDON_CANDIDATES` con el **árbol de fusión** `origin/main` + `a230cde6` (el #33, 672
+verdes verificados en A-199), mismo `gen_lon.py`, mismo duckdb, mismas fechas `2026-04-08` a
+`2026-08-23`, misma restricción a libro vivo (`sum(p_mid) >= 0,50`). Sólo cambia el código de la
+distribución.
+
+### Criterio, fijado antes de mirar
+
+    Estadistico: diferencia pareada de Brier (modelo - mercado) sobre el libro vivo,
+    y su intervalo por grupos (fecha, lead_h), exactamente como en A-190/A-192.
+
+    valor con el modelo VIEJO:  +0,00571  (positivo = el mercado gana)
+
+    EL VEREDICTO SOBREVIVE   si la diferencia sigue siendo POSITIVA y su intervalo
+                             por grupos sigue EXCLUYENDO el cero.
+    EL VEREDICTO SE CAE      si la diferencia pasa a <= 0, o su intervalo incluye el cero.
+    ZONA GRIS declarada:     diferencia positiva pero intervalo que cruza el cero -> el
+                             veredicto pasa de NO EDGE MEDIDO a NO CONCLUYENTE, que no es
+                             lo mismo y habria que decirlo asi.
+
+**Predicción mía, registrada para poder equivocarme:** sobrevive, y el movimiento será pequeño.
+Aritmética de servilleta: las 419 filas perdedoras con p = 0 pasarían de aportar 0 a ~0,0004 cada
+una, y las 6 ganadoras de 1,0 a ~0,96 — neto ≈ −0,00008 en Brier contra una brecha de 0,00571,
+**dos órdenes de magnitud por debajo**. Si el resultado real se aparta mucho de eso, mi modelo
+mental del efecto está mal y eso es lo interesante, no el veredicto.
+
+*No cambio el criterio después de ver el número. Si sale que el veredicto se cae, se cae.*
