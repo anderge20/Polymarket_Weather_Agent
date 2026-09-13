@@ -22019,3 +22019,108 @@ propia. Lo que NO se toca es `n075_poblacion.py`: su `sha256` está citado en
 `N075_REPRODUCIBILIDAD.md` y su resultado publicado en A-278, y en EGLC —Celsius, enteros
 sueltos— las tres funciones coinciden, así que **ninguna conclusión de A-278 se mueve**.
 Queda en la tarea #70 la decisión de sustituirlo y reemitir el registro con el sha nuevo.
+
+## A-280 — `H4 = INVALIDADA`. La escalera no mueve sólo el nulo: comprime TODA la escala, y ni la ponderación ni el skill score lo arreglan · 2026-09-13 · Claude (sesión A)
+
+Unidades, ponderación y regla de veredicto declaradas y espejadas a las **19:11:08Z**
+(`391c5f3`) **antes** de calcular nada — incluyendo una lista explícita de lo que yo ya había
+visto del ciclo anterior, para que no pareciera que llegaba ciego. Guion `n75_h4.py`, salida
+`N075_H4_SALIDA.txt`, informe `N075_H4_RESULTADO.md`.
+
+### B — derivación cerrada, verificada a 1e-12 para n = 2…15
+
+    Brier    suma por evento  (n-1)/n      media por contrato  (n-1)/n^2     d/dn = (2-n)/n^3 < 0
+    LogLoss  media por contrato  [ln n + (n-1) ln(n/(n-1))] / n
+
+               7 bandas     9 bandas    11 bandas    recorrido 7->11
+    Brier      0,122449     0,098765     0,082645    +0,039804   (48,2 %)
+    LogLoss    0,410116     0,348832     0,304636    +0,105480   (34,6 %)
+
+**El salto de escalera es cuatro veces el mayor delta OLD↔CORRECTED de todo el nivel 0.75
+(0,00991).**
+
+### Y LO QUE DECIDE NO ES EL NULO: es que la escala entera se comprime
+
+Familia de **calidad fija** —probabilidad `c` a la ganadora, resto uniforme—:
+
+    Brier por contrato = (1-c)^2 / (n-1)          (con c = 1/n devuelve el nulo)
+
+    c = 0,35   ->   n=7 0,070417   n=9 0,052813   n=11 0,042250
+
+**A calidad idéntica, más bandas dan mejor puntuación.** Un modelo que pone exactamente la
+misma probabilidad sobre la verdad puntúa un 37 % «mejor» sólo por pasar de 7 a 11 bandas.
+*La objeción de que un nulo móvil no impide comparar modelos es falsa, y ésta es la
+medición que la mata.*
+
+La **única** cantidad invariante en `n` es `-ln(q_ganadora)` — pero su nulo, `ln n`, sí
+depende de `n`, así que es invariante como estadístico y no comparable como evidencia.
+
+### C — ninguno de los tres esquemas lo neutraliza
+
+    W1 por contrato    un evento de 11 bandas pesa 11/7 = 1,571 veces uno de 7
+    W2 por evento      pesos iguales... promediando (n-1)/n^2, que depende de n
+    W3 evento x lead   idem
+
+**Igualar pesos no iguala escalas.** Es la condición exacta que la regla escrita exigía para
+`INVALIDADA`.
+
+### Y normalizar TAMPOCO lo arregla, que era la objeción obvia
+
+    BSS(c,n) = 1 - (1-c)^2 · n^2/(n-1)^2      sigue siendo funcion de n
+
+    rango de BSS entre 7/9/11:   c=0,20 -> 0,0967   c=0,50 -> 0,0378   c=0,90 -> 0,0015
+
+El residuo es **mayor donde viven los modelos reales** (`c ≈ 0,2-0,35` sobre once bandas a
+24 h) y sólo desaparece cuando el modelo ya es casi perfecto. Mi declaración ya preveía el
+rescate: *«si la respuesta es “no en crudo, sí tras normalizar”, eso NO es VALIDADA»*. Y
+resulta que ni siquiera tras normalizar.
+
+### D — la confusión temporal es TOTAL, y es global, no de EGLC
+
+    escalera  7  [2025-12-30 .. 2026-01-01]     escalera 9  [2026-02-18 .. 2026-03-15]
+    escalera 11  [2026-03-16 .. 2026-09-04]
+
+De las 52 estaciones, 20 tienen más de una escalera y **el corte cae en las mismas fechas en
+todas**. **Fechas del catálogo entero con más de un tamaño de escalera: UNA**, el 2026-05-19
+con `{1, 3, 11}`, y es el duplicado `arch`/vivo degenerado de A-278.
+
+    observaciones en o antes del 2026-01-01 (fin de la 7):    0
+    observaciones en o antes del 2026-03-15 (fin de la 9):    0
+
+**Las escaleras de 7 y 9 tienen cero días etiquetables en las 52 estaciones.** Estación del
+año, distribución de temperatura, régimen de mercado y calidad del pronóstico cambian
+exactamente en las mismas fechas que la escalera: **ninguno es separable.**
+
+### E — y una precisión sobre A-278 que no estaba escrita
+
+Escribí que la constancia de `REF_uniforme` en los cuatro cuadrantes «prueba que el código de
+puntuación no depende de la población». Es cierto para lo que comprobaba —invariancia al
+brazo y al tamaño de muestra— pero **el control es constante también porque `n` es
+constante**. Si `n` variara, el control variaría con él, y esa variación sería **correcta**.
+*Un control estructural sólo certifica invariancia dentro de una `n` fija.* No es
+retractación: es el límite de lo que ese control puede certificar, y faltaba decirlo.
+
+### VEREDICTO y metodología corregida
+
+    H4 = INVALIDADA
+
+Regla corregida, escrita: unidad primaria `evento × lead`; **estratificar por `n` siempre y
+no agregar nunca entre escaleras**; publicar el nulo del estrato junto a cada número;
+acompañar con `BSS_n`/`LSS_n` **declarando que igualan el ancla, no la escala**; reportar
+`-ln(q_ganadora)` con su nulo `ln n` al lado; **la ponderación no es el remedio, la
+estratificación sí**.
+
+Sanity controls re-ejecutados bajo ella, con una comprobación previa que no había hecho: las
+probabilidades **suman 1 dentro de cada evento con error máximo 2,22e-16**, así que la lectura
+categórica es legítima. Como la población puntuada es 100 % de once bandas, **la corrección no
+mueve ni uno de los números de A-278**; sólo les pone al lado el nulo de su estrato.
+
+### Reetiquetado, y la cita que habría quedado obsoleta
+
+`N075_OLD_VS_CORRECTED.md`, `n075_metricas.py` y `N075_METRICAS_SALIDA.txt` llevan ahora
+cabecera **`REFERENCE / SANITY CONTROLS — NOT LEVEL 1`**, y `REF_uniforme` queda nombrado
+**CONTROL ESTRUCTURAL**, no modelo predictivo. Cambió el texto, ni un número — **pero cambian
+sus `sha256`, que estaban citados en `N075_REPRODUCIBILIDAD.md`**. Reemitidos ahí mismo en vez
+de dejar una cita muerta; los anteriores quedan en el commit `b148cef`.
+
+**Level 1 NO se abre.** Gate D0 abajo, producción sin tocar.

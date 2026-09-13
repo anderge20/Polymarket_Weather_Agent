@@ -58,14 +58,25 @@ son sobre el **contenido leído**, que es la condición que de verdad hay que re
 
 ## Guiones y salidas, con hash
 
+> **Actualizado el 2026-09-13 tras `H4 = INVALIDADA` (A-280).** Tres artefactos se
+> **reetiquetaron** como `REFERENCE / SANITY CONTROLS — NOT LEVEL 1`
+> (`N075_OLD_VS_CORRECTED.md`, `n075_metricas.py`, `N075_METRICAS_SALIDA.txt`). **Sólo cambió
+> el texto de cabecera: ni un número.** Sus `sha256` cambian por eso, y se reemiten aquí en
+> vez de dejar en pie una cita obsoleta. Los hashes anteriores quedan en el historial de
+> `research/modelsel-artifacts` (commit `b148cef`).
+
 ```
 da1d2cbbb20d1805b35ed25697d43d7ec01adc5a7ec46ac6c8b7ababf290dbba  n075_poblacion.py
-2e15cb14cab1544dc9d1f09a3f989df236c72bcbe0132778c7534fd4c5683ee0  n075_metricas.py
-ceac8158bf612731c38382ed5b41b5e186aad1a00e97c7de539b6990ddefbfcb  N075_METRICAS_SALIDA.txt
+4a331adbec3a0b33b5d655ebb56941e23635bb637a1c5e5954bc0663371b779b  n075_metricas.py
+1e522bd837f60788be73c7deae746bf05bbe3a74907d24a578e31d23d50f321e  N075_METRICAS_SALIDA.txt
 5787852e77b038d4abb9cbbab92495b32a9e9a6c21562d908460c4189a747908  N075_HUELLA_DATASET.txt
 91344b14e59ce50c12f79cac4b2a0adaf6ea2ef8b0a269d350e8a1ec5cabd6d2  N075_AISLAMIENTO_CAUSAL.md
-59cc060dcc52f4c9d9e664a1c068aa76a52d07a0c5b62167bd7398256a7c9848  N075_OLD_VS_CORRECTED.md
+5324c7ed6b0d2e7f3fa83d22dc759e5780158dfc8f419d18f872fc269b55e242  N075_OLD_VS_CORRECTED.md
 15afdfeb4b44021682665814a4258824b9b4c71f895c4ceec344457b81b67883  N075_SUSTRATO_LIQUIDACION.md
+c97d25e6d4663d7abf1eebe11bb5b2989a3daa7bbe559c3284d700c1628fa476  n75_h4.py
+7ce8d909c4a8f2318b96b6156a9b9b496e7e454ea4ea5a7cb6d775bce6ef6237  N075_H4_SALIDA.txt
+466a301d9b858e4169ec4c062d066e8ccf1626cc7d3051acca5b4ab6a42eedf0  N075_H4_DECLARACION.md
+7c3e4ce0dba21ac7952e7e98bab219348c9825c78bc74ca0007b6626e9a297b1  N075_H4_RESULTADO.md
 ```
 
 Todo bajo `~/pmw-e2/fase2/`, espejado en la rama `research/modelsel-artifacts`.

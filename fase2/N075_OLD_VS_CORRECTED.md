@@ -1,5 +1,19 @@
 # NIVEL 0.75 · puntos 1 y 2 — Brier y Log Loss, `OLD` vs `CORRECTED`
 
+> ## REFERENCE / SANITY CONTROLS — NOT LEVEL 1
+>
+> **Reetiquetado el 2026-09-13 tras el veredicto `H4 = INVALIDADA`** (`N075_H4_RESULTADO.md`,
+> A-280). Todas las cifras de Brier y Log Loss de este documento son **controles de cordura
+> del instrumento**, no una evaluación predictiva. No ordenan modelos, no miden poder
+> predictivo, no miden edge y no autorizan ninguna conclusión de Level 1.
+>
+> `REF_uniforme` (`p = 1/n_bandas`) es un **CONTROL ESTRUCTURAL**, no un modelo predictivo:
+> vale `(n-1)/n²` por derivación y no mira ni un dato.
+>
+> `B0`…`B4` son **líneas base de referencia**. Se conservan con sus números intactos —la
+> población puntuada es 100 % de once bandas, así que la metodología corregida no mueve
+> ninguno— pero su lectura correcta y sus nulos por estrato están en `N075_H4_RESULTADO.md`.
+
 **Esto no es Nivel 1.** No hay bootstrap, no hay intervalo de confianza, no se evalúa el
 criterio CONFIRMA/REFUTA, no se ordenan modelos y no se declara poder predictivo. Las
 métricas se usan aquí como **instrumento de validación del dataset**: la pregunta es si la

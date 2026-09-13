@@ -1,3 +1,7 @@
+REFERENCE / SANITY CONTROLS - NOT LEVEL 1  (reetiquetado tras H4 = INVALIDADA, A-280)
+No es evaluacion predictiva. REF_uniforme es un CONTROL ESTRUCTURAL, no un modelo.
+No agregar entre escaleras distintas: N075_H4_RESULTADO.md
+======================================================================================
 fechas: OLD 40  CORRECTED 185  comunes 40  nuevas 145
 
 ====================================================================================================

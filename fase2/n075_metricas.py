@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 """NIVEL 0.75 · puntos 1 y 2 — Brier y Log Loss, OLD vs CORRECTED.
 
+REFERENCE / SANITY CONTROLS — NOT LEVEL 1.  (reetiquetado tras H4 = INVALIDADA, A-280)
+Todo lo que produce este guion son controles de cordura del instrumento. `REF_uniforme`
+es un CONTROL ESTRUCTURAL, no un modelo predictivo. `B0`..`B4` son lineas base de
+referencia. Nada de esto ordena modelos ni mide poder predictivo. Y NUNCA agregar estas
+puntuaciones entre eventos con distinto numero de bandas: ver `N075_H4_RESULTADO.md`.
+
 ESTO NO ES NIVEL 1. El encargo dice «NO ejecutes todavia ningun modelo de Level 1», y
 aqui no se ejecuta ninguno: no hay bootstrap, no hay intervalo de confianza, no se evalua
 el criterio CONFIRMA/REFUTA, no se ordenan modelos y no se declara poder predictivo. Las
