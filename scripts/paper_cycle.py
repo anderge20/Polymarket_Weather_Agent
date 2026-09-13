@@ -1218,6 +1218,55 @@ LABEL_PUBLICATION_MARGIN = timedelta(hours=2)
 #: WHICH.
 _REFUSAL_DETAIL_MAX = 160
 
+#: HOW MANY DISTINCT details per reason, and why it is not one.
+#:
+#: PR #46 kept the FIRST detail per reason, and session B found that this
+#: reopens INSIDE one cycle the conflation the PR closes BETWEEN cycles.
+#: `R_SERIES_MISMATCH` has THREE raise sites in the frozen core -- the series
+#: check, the unit check and `quantization=NONE requires an on-grid value` -- so
+#: `{"series_mismatch": 2}` with one detail says how MANY there were and hides
+#: how many KINDS.
+#:
+#: THREE IS A CHOICE, NOT A DERIVATION, and the first version of this comment
+#: claimed otherwise -- "the raise count of the busiest reason". Session B
+#: counted it by AST and it is false: `R_CONTEXT_OUT_OF_SNAPSHOT` raises with a
+#: detail SIX times against three for `R_SERIES_MISMATCH`. Three is what fits in
+#: a line a human reads, and what makes any bound safe is the sentinel below,
+#: not the number.
+#:
+#: THE LINE NUMBERS ARE GONE ON PURPOSE. The first version cited 409/443/343 in
+#: one paragraph and 342/408/442 in the next, for the same three sites -- the
+#: line of the `raise` and the line of its reason argument, one apart. Session B
+#: caught the pair. Two numbers for one thing is the defect this whole file
+#: keeps finding, and a comment cannot be kept in step with a file it does not
+#: import: the TEST below carries the counts, and counts are what the argument
+#: rests on.
+#:
+#: `test_the_frozen_cores_raise_sites_are_pinned_BY_COUNT` pins those counts, so
+#: an amendment that adds a branch under an existing code fails by name instead
+#: of silently widening what one detail hides. Nothing else in the suite pins
+#: anything about the core's shape: the freeze lives in the document.
+#:
+#: And DISTINCT strings rather than kinds, because classifying a detail by its
+#: branch means parsing the core's prose, which is what this boundary refused to
+#: do in #46 and refuses again here.
+#:
+#: THE SENTINEL IS THE POINT. Distinct strings alone would be the same defect
+#: wearing another face: the details carry variable values (`got {value!r}`, a
+#: sorted unit list), so three quantization variants could fill the quota and
+#: bury a series one. A row that drops information without saying so is exactly
+#: what the night this was written was spent cataloguing, so when the cap bites
+#: the list ends in `+N mas` and the reader knows to go to the log.
+#:
+#: AND THE LIMIT OF THE SENTINEL, WRITTEN DOWN SO NOBODY READS IT AS MORE THAN
+#: IT IS (session B): it counts omitted DETAILS, not omitted KINDS. Since the
+#: values vary, `+17 mas` can be seventeen values of the same quantization
+#: branch, or sixteen of those plus THE ONLY series one. It says THAT it hides,
+#: never WHAT. With the core frozen and prose-parsing ruled out there is no
+#: remedy that separates them here; the row points at the log, and the log has
+#: every detail.
+_REFUSAL_DETAIL_KINDS = 3
+
 
 def stage_observations(cy: Cycle, con, *, dataset_version: str, now: datetime) -> dict:
     """Ingest the realized daily high for the station-days open positions wait on.
@@ -1358,7 +1407,12 @@ def stage_settle(cy: Cycle, con, *, dataset_version: str) -> dict:
 
     settled = 0
     refusals: dict[str, int] = {}
-    details: dict[str, str] = {}
+    details: dict[str, list[str]] = {}
+    # UN CONJUNTO, no un contador. La primera version contaba OCURRENCIAS: con
+    # AAA BBB CCC DDD DDD decia "+2 mas" habiendo omitido UNA sola cadena
+    # distinta. Un centinela cuyo numero no cuenta lo que su nombre dice es el
+    # mismo defecto que todo esto arregla, dos capas abajo.
+    detalles_omitidos: dict[str, set] = {}
     for pos in open_rows:
         rows = db.query(
             con,
@@ -1469,11 +1523,18 @@ def stage_settle(cy: Cycle, con, *, dataset_version: str) -> dict:
             result, reason, detail = None, exc.reason, exc.detail
         if result is None:
             refusals[reason] = refusals.get(reason, 0) + 1
-            # FIRST detail per reason, not the last and not all of them: the
-            # count already says how many, and an unbounded map of prose would
-            # grow with the ledger and land in a stage row read by a human.
-            if detail and reason not in details:
-                details[reason] = detail[:_REFUSAL_DETAIL_MAX]
+            # Up to `_REFUSAL_DETAIL_KINDS` DISTINCT details per reason, and a
+            # count of what did not fit. Unbounded prose would grow with the
+            # ledger and land in a stage row a human reads; one detail would
+            # hide the second kind.
+            if detail:
+                visto = details.setdefault(reason, [])
+                corto = detail[:_REFUSAL_DETAIL_MAX]
+                if corto not in visto:
+                    if len(visto) < _REFUSAL_DETAIL_KINDS:
+                        visto.append(corto)
+                    else:
+                        detalles_omitidos.setdefault(reason, set()).add(corto)
             continue
         won = settlement.band_key_wins(m["band_label"], result.band_key, m["unit"])
         # The position is on a specific token. A 'Yes' token pays when the band
@@ -1484,11 +1545,13 @@ def stage_settle(cy: Cycle, con, *, dataset_version: str) -> dict:
                                  exit_time=_iso(_utcnow()))
         settled += 1
 
+    salida = {k: (v + [f"+{len(detalles_omitidos[k])} mas"] if k in detalles_omitidos else v)
+              for k, v in details.items()}
     cy.stage("settle", OK, positions_open=n_open, settled=settled,
              refused=n_open - settled, reasons=json.dumps(refusals),
-             reason_details=json.dumps(details))
+             reason_details=json.dumps(salida))
     return {"positions_open": n_open, "settled": settled, "refusals": refusals,
-            "details": details}
+            "details": salida}
 
 
 def code_commit() -> str | None:
