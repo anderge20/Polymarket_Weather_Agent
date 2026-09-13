@@ -23216,3 +23216,88 @@ transformación para salvarlo.**
 sobrevive es el que tiene MAYOR margen de disponibilidad** (4,24 h). La fase B es menos
 peligrosa para el superviviente de lo que habría sido para el lead 24 — pero más decisiva,
 porque ahora el caso entero descansa sobre un solo lead.
+
+## A-295 — FASE B: `CONDITIONALLY VALIDATED`, y una corrección mía que va antes del resultado: `available_at` NO era una convención · 2026-09-13 · Claude (sesión A)
+
+`postl1/B_availability/`. No se toca L1 ni la fase A. `D0-P` = BLOCKED · `L2` = BLOCKED.
+
+### LA CORRECCIÓN, primero
+
+En A-293 escribí —y lo repetí en la tarea #75— que `available_at = issue_time + 4:45:36` era
+**«una convención del backfill»** con **«0 observaciones reales de publicación»**. **Es falso.**
+
+`4:45:36` es `L_MAX['icon_seamless'] = 4,76 h`, y su procedencia está **en el docstring del
+módulo que llevo toda la noche leyendo**:
+
+    weather.py:17-19  "L_MAX the MAXIMUM publication latency observed per model, not the
+                       median: fail-closed. Values from the F-3 availability audit
+                       (n=307 passes, 20 dates, Jun-Sep 2026), preregistered in
+                       PREREG_MODELSEL_ASOF_V2.md §2."
+
+**Es una cota empírica fail-closed sobre 307 pasadas**, con preinscripción congelada, informe de
+cierre (`F3-CLOSURE-REPORT.md`, 2026-09-05) y crudo (3 840 filas) **en el corpus**.
+
+*Quinta vez esta noche que el proyecto ya había hecho el trabajo y yo no miré —`band_integrity`,
+`tmax_observed`, la terna de `discovery`, `resolution.py`, y ahora la auditoría F-3—. **Ésta es
+la peor: emití un veredicto formal cuya limitación central se apoyaba en no haber mirado.***
+
+### La evidencia, y es de NIVEL 1
+
+    created_at de data_run/<model>/<run>/meta.json   escrito POR EL PROVEEDOR
+    Last-Modified del objeto temperature_2m.om      cabecera HTTP del almacen del proveedor
+
+    ICON, latencia created_at - init, n=78:
+      min 3,44 · p05 3,58 · mediana 3,83 · p95 4,17 · MAX 4,76 h
+    El proyecto adopto el MAXIMO, no la mediana. Fail-closed por diseno.
+
+    lead 9: t_asof = init + 9,00 h
+      margen sobre la mediana +5,17 h · sobre el p95 +4,83 h · sobre el MAXIMO +4,24 h
+      para que hubiera look-ahead la latencia real tendria que superar 9,00 h:
+      2,35x la mediana medida y 1,89x el maximo de 78 pasadas
+
+### EL HALLAZGO NUEVO DE LA FASE B: la cobertura es del 66,7 %
+
+La auditoría cubre **2026-06-03 → 2026-09-04**, y su propio §8 declara
+**2026-04-02 → 2026-06-02 = UNKNOWN**. La ventana puntuada del lead 9 empieza el **2026-05-01**:
+
+    eventos lead 9 con evidencia F-3:  64 de 96  (66,7 %)
+    eventos lead 9 en periodo UNKNOWN: 32 de 96  (33,3 %)
+
+Restringido por ese corte —**declarado por su motivo, no por su resultado**: la auditoría se
+congeló ocho días antes de todo L1—:
+
+    lead 9  TODOS             n=96  -0,01181 [-0,01608,-0,00770]
+            con evidencia     n=64  -0,01292 [-0,01815,-0,00757]   LIGERAMENTE MAS FUERTE
+            periodo UNKNOWN   n=32  -0,00958 [-0,01649,-0,00363]   tambien excluye el cero
+
+**El resultado del lead 9 no depende del periodo sin evidencia.**
+
+*(lead 24, ya descartado: con evidencia −0,00914; en el periodo UNKNOWN **+0,00034**, IC que
+incluye el cero. Se reporta, no se usa.)*
+
+### Red team: lo que la propia auditoría refuta
+
+**101 de 230** objetos tienen `Last-Modified` **posterior** a `created_at`, con retraso máximo
+**93,7 min** — por eso la cota usa `max(created_at, LastModified)`. Y `DELTA_API` tiene **n = 1**
+(+2,0 min): la API expone sólo la última pasada, así que **la disponibilidad histórica de la API
+no es recuperable**. Aviso registrado: el máximo **creció** al pasar de 20 a 307 observaciones,
+**la cola no está caracterizada**.
+
+**Y una ventaja del diseño que conviene nombrar:** la evidencia son **timestamps del proveedor**,
+no nuestro polling. **No hay un `first_seen_at` nuestro que confundir con la publicación** — que
+es el ataque nº 8 del encargo y aquí no aplica.
+
+### Decisión
+
+    FASE B = CONDITIONALLY VALIDATED     ->  CONTINUAR A FASE C
+
+**No `NOT VALIDATED`** porque hay evidencia de nivel 1, preregistrada, fail-closed, con 4,24 h de
+margen sobre el máximo. **No `VALIDATED`** porque `DELTA_API` es `n = 1`, la cola está sin
+caracterizar y **un tercio de la muestra vive en periodo `UNKNOWN`**.
+
+**La condición viaja con el candidato:** *el lead 9 de Londres tiene su disponibilidad
+evidenciada en el 66,7 % de la muestra y acotada —no demostrada— en el resto.*
+
+Diseño prospectivo mínimo especificado (polling cada 5 min entre init+3,0 h e init+6,0 h,
+≥ 100 pasadas, guardando las **dos** cotas y nunca `first_available = t_con`). **No
+implementado**: requiere su propio lock y §34.
