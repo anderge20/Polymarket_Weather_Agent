@@ -23015,3 +23015,68 @@ metodológico. Sigue todo condicionado a `available_at` (tarea #75), al hecho de
 cubre abril**, y a que esto es **una ciudad, una estación, cuatro meses**.
 
 Siguiente: `L1.7` — FINAL RED TEAM.
+
+## A-292 — `L1.7 = CLOSED`. La cifra honesta se deflacta TRES veces, y la escalera del mercado ya bate al azar sin mirar el tiempo · 2026-09-13 · Claude (sesión A)
+
+Cinco ataques declarados y espejados **antes** de ejecutarlos (`d3207b3`, 21:22:12Z); **los
+cinco ejecutados y los cinco reportados**. `D0-P` = BLOCKED. No se emite el veredicto: es L1.8.
+
+### A1 — el ataque que más muerde: LA GEOMETRÍA DE LA ESCALERA
+
+`CTRL_escalera` **ignora el pronóstico por completo** y reparte masa sobre las 7 bandas
+centrales. Aun así:
+
+    CTRL_escalera - uniforme   -0,00390 [-0,00472,-0,00281]   lead 24
+                               -0,00391 [-0,00472,-0,00283]   lead 9
+    fraccion de la ventaja de B4 atribuible a la GEOMETRIA:  33,9 %  y  22,6 %
+    B4 - CTRL_escalera         -0,00761 [-0,01224,-0,00286]  y  -0,01340 [-0,01760,-0,00891]
+
+**El mercado centra su escalera cerca de la verdad**: la desviación media de la ganadora
+respecto al centro es **1,23 bandas** contra **2,73** que daría el uniforme.
+
+> **LA CIFRA SE DEFLACTA TRES VECES, Y LAS TRES DEFLACIONES SON MÍAS:**
+>
+>     B4 - B0             -0,0304 / -0,0359   PRE-REGISTRADA ... pero B0 es peor que el azar
+>     B4 - uniforme       -0,0115 / -0,0173   tras descontar lo malo que es B0
+>     B4 - CTRL_escalera  -0,0076 / -0,0134   tras descontar el centrado de la escalera
+>
+> **El titular pre-registrado sobrestima la señal por un factor de ~4 (lead 24) y ~2,7
+> (lead 9).** `B4` sobrevive a las tres —el IC sigue excluyendo el cero— pero **el tamaño real
+> del efecto es la tercera cifra, no la primera.**
+
+*Y el control no se vende mejor de lo que es: usa la dispersión de `B4` como anchura; otra
+anchura daría otra fracción.*
+
+### A2 — la ventaja NO vive en las bandas abiertas
+
+    INTERIOR  n=92  -0,01042 [-0,01440,-0,00637]      n=93  -0,01676 [-0,02069,-0,01282]
+    abiertas  n=1 y n=2: se muestran y NO se interpretan
+
+### A3 — 56 comparaciones con IC, contadas de verdad
+
+Ejecutadas, no reportadas: 8 + 10 + 4 + 12 + 2 + 2 + 18 = **56**. Bonferroni `α/56 = 0,00089`;
+el bootstrap de la primaria dio **0 de 10 000** con signo contrario (`p < 1e-4`). **Sobrevive.**
+
+### A4 — la escalera sabe casi tanto como nosotros
+
+    corr(centro escalera, obs) +0,957     corr(pronostico, obs) +0,973 / +0,979
+    MAE centro escalera 1,26-1,27 C       MAE pronostico 1,014 / 0,885 C
+
+**Nuestro pronóstico gana por 0,25 °C (lead 24) y 0,39 °C (lead 9). Por poco.** *Es el hallazgo
+de R21 —«el mercado está mejor calibrado que el modelo»— reapareciendo una capa más arriba, y
+es la pregunta central de la fase económica. Aquí sólo se mide.*
+
+### A5 — robustez al mínimo de entrenamiento: los cuatro valores
+
+    lead 24  20: -0,01151 · 30: -0,01316 · 40: -0,01381 · 50: -0,01355   los cuatro excluyen el cero
+    lead  9  20: -0,01731 · 30: -0,01752 · 40: -0,01743 · 50: -0,01718   idem
+
+**No depende del parámetro**, y el preinscrito sigue siendo 20.
+
+### Defectos
+
+**Bloqueantes: NINGUNO. Requieren corrección: NINGUNO.** Ocho documentables, encabezados por
+los dos que salieron hoy: **el titular pre-registrado sobrestima ×4/×2,7** y **el lead 24 es
+heterogéneo entre mitades**.
+
+    L1.7 = CLOSED     siguiente: L1.8 — VEREDICTO DE LEVEL 1

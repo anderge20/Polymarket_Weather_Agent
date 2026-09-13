@@ -1,0 +1,95 @@
+
+====================================================================================================
+LEAD 24 h · 95 eventos · B4-uniforme -0.01151 (-0.015889585365081456, -0.007001325218476492)
+====================================================================================================
+
+----------------------------------------------------------------------------------------------------
+A1 · GEOMETRIA DE LA ESCALERA — un control que IGNORA el pronostico
+----------------------------------------------------------------------------------------------------
+  dispersion media de B4: 7.18 bandas con masa -> el control usa 7 bandas centradas
+  CTRL_escalera - uniforme   -0.00390  IC95 [-0.00472, -0.00281]  MEJORA -> la geometria SOLA ya bate al uniforme
+  B4          - uniforme   -0.01151
+  -> fraccion de la ventaja de B4 atribuible a la geometria: 33.9 %
+  B4 - CTRL_escalera         -0.00761  IC95 [-0.01224, -0.00286]  B4 APORTA sobre la geometria
+  posicion de la ganadora respecto al centro: {-5: 2, -3: 2, -2: 12, -1: 27, 0: 25, 1: 13, 2: 7, 3: 6, 5: 1}
+    |desviacion| media 1.23 bandas (uniforme daria 2.73)
+
+----------------------------------------------------------------------------------------------------
+A2 · BANDAS ABIERTAS CONTRA INTERIORES
+----------------------------------------------------------------------------------------------------
+  abierta INFERIOR   n=  2  delta  -0.03647  IC95 [+nan, +nan]
+  INTERIOR           n= 92  delta  -0.01042  IC95 [-0.01440, -0.00637]
+  abierta SUPERIOR   n=  1  delta  -0.06245  IC95 [+nan, +nan]
+  -> si la ventaja viviera SOLO en las abiertas, el grupo INTERIOR no mejoraria
+
+----------------------------------------------------------------------------------------------------
+A4 · ¿SABE LA ESCALERA ALGO QUE EL PRONOSTICO NO SEPA?
+----------------------------------------------------------------------------------------------------
+  corr(centro de la escalera, observacion) = +0.957
+  corr(pronostico,            observacion) = +0.973
+  MAE del centro de la escalera contra la observacion: 1.263 C
+  MAE del pronostico                                 : 1.014 C
+
+----------------------------------------------------------------------------------------------------
+A5 · ROBUSTEZ AL MINIMO DE ENTRENAMIENTO (se reportan los CUATRO)
+----------------------------------------------------------------------------------------------------
+  MIN_TRAIN 20  n= 95  delta  -0.01151  IC95 [-0.01577, -0.00726]  excluye el cero
+  MIN_TRAIN 30  n= 85  delta  -0.01316  IC95 [-0.01768, -0.00882]  excluye el cero
+  MIN_TRAIN 40  n= 76  delta  -0.01381  IC95 [-0.01837, -0.00925]  excluye el cero
+  MIN_TRAIN 50  n= 66  delta  -0.01355  IC95 [-0.01866, -0.00875]  excluye el cero
+
+====================================================================================================
+LEAD 9 h · 96 eventos · B4-uniforme -0.01731 (-0.021338257261753302, -0.013185421716857368)
+====================================================================================================
+
+----------------------------------------------------------------------------------------------------
+A1 · GEOMETRIA DE LA ESCALERA — un control que IGNORA el pronostico
+----------------------------------------------------------------------------------------------------
+  dispersion media de B4: 6.33 bandas con masa -> el control usa 7 bandas centradas
+  CTRL_escalera - uniforme   -0.00391  IC95 [-0.00472, -0.00283]  MEJORA -> la geometria SOLA ya bate al uniforme
+  B4          - uniforme   -0.01731
+  -> fraccion de la ventaja de B4 atribuible a la geometria: 22.6 %
+  B4 - CTRL_escalera         -0.01340  IC95 [-0.01760, -0.00891]  B4 APORTA sobre la geometria
+  posicion de la ganadora respecto al centro: {-5: 2, -3: 2, -2: 12, -1: 27, 0: 25, 1: 13, 2: 8, 3: 6, 5: 1}
+    |desviacion| media 1.24 bandas (uniforme daria 2.73)
+
+----------------------------------------------------------------------------------------------------
+A2 · BANDAS ABIERTAS CONTRA INTERIORES
+----------------------------------------------------------------------------------------------------
+  abierta INFERIOR   n=  2  delta  -0.02461  IC95 [+nan, +nan]
+  INTERIOR           n= 93  delta  -0.01676  IC95 [-0.02069, -0.01282]
+  abierta SUPERIOR   n=  1  delta  -0.05408  IC95 [+nan, +nan]
+  -> si la ventaja viviera SOLO en las abiertas, el grupo INTERIOR no mejoraria
+
+----------------------------------------------------------------------------------------------------
+A4 · ¿SABE LA ESCALERA ALGO QUE EL PRONOSTICO NO SEPA?
+----------------------------------------------------------------------------------------------------
+  corr(centro de la escalera, observacion) = +0.957
+  corr(pronostico,            observacion) = +0.979
+  MAE del centro de la escalera contra la observacion: 1.271 C
+  MAE del pronostico                                 : 0.885 C
+
+----------------------------------------------------------------------------------------------------
+A5 · ROBUSTEZ AL MINIMO DE ENTRENAMIENTO (se reportan los CUATRO)
+----------------------------------------------------------------------------------------------------
+  MIN_TRAIN 20  n= 96  delta  -0.01731  IC95 [-0.02135, -0.01299]  excluye el cero
+  MIN_TRAIN 30  n= 86  delta  -0.01752  IC95 [-0.02172, -0.01316]  excluye el cero
+  MIN_TRAIN 40  n= 77  delta  -0.01743  IC95 [-0.02195, -0.01289]  excluye el cero
+  MIN_TRAIN 50  n= 67  delta  -0.01718  IC95 [-0.02217, -0.01209]  excluye el cero
+
+====================================================================================================
+A3 · MULTIPLES COMPARACIONES, contadas de verdad
+====================================================================================================
+  L1.4 primaria, B1..B4 contra B0, dos leads             8
+  L1.4 control uniforme, cinco modelos, dos leads       10
+  L1.5 mitades temporales, dos leads                     4
+  L1.6 placebo A, seis desplazamientos, dos leads       12
+  L1.6 placebo B, dos leads                              2
+  L1.6 test de heterogeneidad, dos leads                 2
+  L1.7 A1/A2/A5, dos leads                              18
+  TOTAL con IC ejecutados                               56
+
+  Bonferroni sobre la primaria: alfa 0,05 / 56 = 0.00089
+  el IC95 de B4-uniforme a lead 9 es [-0,02132, -0,01296]; su p bilateral
+  aproximado por el bootstrap fue 0 de 10 000 -> p < 1e-4 < 0.00089
+  -> la primaria SOBREVIVE a Bonferroni incluso contando las 56 comparaciones
