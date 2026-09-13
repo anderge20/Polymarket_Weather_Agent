@@ -15198,3 +15198,59 @@ exactamente la selección post-hoc que costó el primer resultado. **El tramo se
 mirando el conjunto completo**; para usarlo haría falta hallarlo en entrenamiento, congelarlo
 y evaluarlo fuera de muestra — y con 81 grupos vivos, de los cuales el 97,9 % son dos meses,
 no hay con qué.
+
+---
+
+## B-106 — No es calibración, es resolución: el precio separa donde el modelo ya no separa
+
+*Escrito 2026-09-13T00:25:13Z. Cierre real de Londres.*
+
+### Ninguna historia sobre medias de banda explica el resultado
+
+    banda            dif predicha por las MEDIAS   dif MEDIDA fila a fila
+    [0,05 , 0,15)              +0,00187                  -0,00053    SIGNO OPUESTO
+    [0,15 , 0,30)              +0,00140                  +0,02493    factor 17,7x
+
+Y el error absoluto tampoco: en `[0,05-0,15)` el modelo yerra 6,35 pp y el mercado 4,64; en
+`[0,15-0,30)` el modelo 4,73 y el mercado 2,88. **El modelo yerra MÁS en la primera y GANA en la
+primera.** Ni el cociente —la explicación de A— ni la diferencia —la mía— funcionan.
+
+### Lo que sí lo explica, y es un contraste que ninguno había corrido
+
+    DENTRO de cada banda de p_model:      corr(p_mid, won)   corr(p_model, won)
+      [0,00 , 0,05)   n=425                    +0,178               nan
+      [0,05 , 0,15)   n=189                    +0,216            -0,028
+      [0,15 , 0,30)   n=179                    +0,302            -0,103
+      [0,30 , 0,60)   n= 46                    +0,172            +0,078
+
+    DENTRO de cada banda de p_mid:        corr(p_model, won)   corr(p_mid, won)
+      [0,00 , 0,05)   n=561                    +0,071            +0,143
+      [0,05 , 0,15)   n= 69                    -0,112            +0,145
+      [0,15 , 0,30)   n= 94                    +0,281            +0,309
+      [0,30 , 0,60)   n=115                    +0,030            +0,071
+
+**Fijando el número del modelo, el mercado todavía sabe algo** —correlación positiva en las
+cuatro bandas—. **Fijando el del mercado, el modelo no añade nada:** su correlación residual es
+menor que la del propio mercado en las cuatro, y negativa en una.
+
+***Es RESOLUCIÓN, no calibración.*** La palabra de A —«ordenación»— era la correcta desde el
+principio; lo que estaba mal situado era la banda y lo que faltaba era este contraste.
+
+*Caveat: dos de las ocho celdas son pequeñas (n=46 y n=69). El patrón es consistente en las
+cuatro bandas y en los dos sentidos.*
+
+### El aviso de A, suscrito
+
+**Esto NO autoriza a ajustar el modelo en `[0,15 , 0,30)`.** El tramo se descubrió mirando el
+conjunto completo: es la misma selección post-hoc que costó el primer resultado de Londres, con
+otra cara —entonces banda de precio, ahora banda de `p_model`—. Para usarlo habría que hallarlo
+en entrenamiento, congelarlo y evaluarlo fuera de muestra, y con 81 grupos vivos de los que el
+97,9 % son dos meses **no hay con qué**.
+
+### Cierre
+
+**Formulación de A, adoptada, con media línea añadida:** el sustrato dio para responder
+*«¿sabemos más que el mercado?»* —no— y no dio para *«¿hay edge explotable?»*. **Y ahora sabemos
+por qué no sabemos más: no es que el modelo esté mal calibrado, es que el precio separa donde el
+modelo ya no separa.** Eso es una respuesta utilizable por lo siguiente que se intente, que un
+«no» a secas no era.
