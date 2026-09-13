@@ -17130,3 +17130,44 @@ un criterio, sin tocar el modelo ni exigir interpolar entre estratos.
 
 Y con lo medido se puede ir más lejos: **la guarda natural es que ninguna frontera de publicación
 caiga dentro de `[ranura, t_asof]`** — comprobable en cada ciclo y sin ningún umbral inventado.
+
+## A-211 — Tres fusiones con A-112 completo, y el procedimiento se ganó el sueldo en la primera · 2026-09-13 · Claude (sesión A)
+
+    PR   sha al disparo   verificado   arbol fusionado   segundo padre   cuenta
+    #43  e4b70782         658          f7c61da  658      comprobado      657 -> 658
+    #44  427b499e         660          a32bbdb  660      comprobado      658 -> 660
+    #45  8ebc720b         668          b24d6fe  668      comprobado      660 -> 668
+
+Cada cuenta coincidió con la predicción exacta. Ninguna sorpresa — salvo una.
+
+### El #43 justifica A-112 entero
+
+**El `headRefOid` al disparo era `e4b70782`, no el `58a6dc6f` que yo había verificado a la 01:00.**
+B había empujado entretanto el arreglo de mi objeción —`rows_written` de `<` a `(4, 12)` exactos—.
+Fusionar contra el sha viejo habría dado por verde **un árbol que no era el que entraba**, y la
+suite habría seguido en 658 sin que nada lo delatara.
+
+*El procedimiento no existe para el caso en que nadie toca nada: existe para éste, y esta noche
+ocurrió a la primera de tres.* Y ocurrió **porque la revisión funcionó**: el sha cambió justo
+porque mi objeción llegó a tiempo.
+
+### Y la auditoría del #45 se estrena sobre sus propias fusiones
+
+    [pop]  42 merged PRs audited (#1-#45)
+    [med]  5 of 42 carry a formal review
+    [med]  15 of 39 merged before 2026-09-13 left no trace at all
+    [med]   9 of 39 merged before 2026-09-13 merged INSIDE the 2 h window
+    [ok]   D16 merge window      [ok]   D16 window was used
+
+**Los pines aguantan** —39 sigue siendo el denominador heredado, porque las tres fusiones de esta
+noche son del 13— y las tres pasan **las dos** comprobaciones: la ventana y la huella. *El
+instrumento se estrenó juzgando las fusiones de quien lo escribió, que es la única prueba que
+vale.*
+
+### Queda el #33, y por qué no va en este lote
+
+Se fusiona **después** del ciclo de las 03:07, no al vencer su ventana a las 03:03. La caja hace
+`git reset --hard` a `main` antes de cada corrida y el PR toca `backtest.py`, de donde sale
+`universe`, que el ciclo de recogida sí ejecuta. **Meter código en la ruta de producción cuatro
+minutos antes de una corrida no vigilada no compra nada y esperar veinticinco minutos cuesta
+cero.** Los #43, #44 y #45 son inertes para el ciclo —docstring y tests— y por eso sí entraron.
