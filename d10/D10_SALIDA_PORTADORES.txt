@@ -1,0 +1,65 @@
+========================================================================================================
+PORTADORES SEMANTICOS POR MODULO  (l=lee  e=escribe  T=TRANSFORMA)
+========================================================================================================
+            modulo                                                series  measurement_   observacion         label  winning_outc
+  ----------------------------------------------------------------------------------------------------
+  src       src/weather_agent/backtest.py                              l             ·             ·             ·             l
+  src       src/weather_agent/collector.py                             ·             ·            el             ·             ·
+  src       src/weather_agent/database.py                             el            el            el             ·            el
+  src       src/weather_agent/features.py                              ·             ·           Tel             ·            el
+  src       src/weather_agent/labeling.py                              ·             ·             ·             ·            Tl
+  src       src/weather_agent/labels.py                               el            el            el            Tl            el
+  src       src/weather_agent/m2.py                                    ·             ·             l             ·             ·
+  src       src/weather_agent/observations.py                        Tel             ·            el             ·             ·
+  src       src/weather_agent/polymarket/__init__.py                   ·             l             ·             ·             l
+  src       src/weather_agent/polymarket/discovery.py                  ·           Tel             ·             ·            el
+  src       src/weather_agent/polymarket/prices.py                     l             ·            el             ·             ·
+  src       src/weather_agent/polymarket/resolution.py                el            el             ·             ·            el
+  src       src/weather_agent/settlement.py                           Tl            Tl             ·             l             l
+  src       src/weather_agent/store.py                                 l             ·            el             ·             ·
+  src       src/weather_agent/strategy/strategy_a.py                   ·             ·             l             ·           Tel
+  src       src/weather_agent/weather.py                              el             ·            el             ·             ·
+  scripts   scripts/backfill_markets.py                                l             ·             ·             ·            el
+  scripts   scripts/backfill_observations.py                           ·             ·             l             ·             ·
+  scripts   scripts/backfill_prices.py                                el             ·             ·             ·             ·
+  scripts   scripts/fit_m2.py                                          ·             ·             l             ·             ·
+  scripts   scripts/fit_m2_v3.py                                       ·             ·             l             ·             ·
+  scripts   scripts/fit_quantile_artifact.py                           ·             ·             l             ·             ·
+  scripts   scripts/label_bias_pnl.py                                  ·             ·             l             ·             l
+  scripts   scripts/paper_cycle.py                                   Tel           Tel            el             ·             l
+  scripts   scripts/validate_2b.py                                     ·           Tel             ·             ·            el
+  scripts   scripts/validate_2c.py                                     ·             ·             l             ·             ·
+  scripts   scripts/validate_2d.py                                     ·             ·            el             ·            el
+  scripts   scripts/validate_r29_catalog.py                            ·             l             ·             ·             ·
+  analisis  ~/pmw-e2/fase2/n075_identidades.py                         l             ·             l             ·             l
+  analisis  ~/pmw-e2/fase2/n075_poblacion.py                           l             ·             l             ·             l
+  analisis  ~/pmw-e2/fase2/n1_02_temporalidad.py                       ·             ·             l             ·             ·
+  analisis  ~/pmw-e2/fase2/n1_03_estimando.py                          l             ·             l             ·             l
+  analisis  ~/pmw-e2/fase2/n1_04_error.py                              ·             ·             l             ·             ·
+  analisis  ~/pmw-e2/fase2/n1_09_hetero.py                             ·             ·             l             ·             ·
+  analisis  ~/pmw-e2/fase2/n1_20_filtros.py                            ·             ·             l             ·             l
+  analisis  ~/pmw-e2/fase2/n1_30_dimensionado_reingesta.py             ·             ·             l             ·             l
+  analisis  ~/pmw-e2/fase2/n1_35_reingesta_observaciones.py             l             ·             ·             ·             ·
+  analisis  ~/pmw-e2/fase2/n1_40_reejecucion.py                        ·             ·             l             ·             l
+  analisis  ~/pmw-e2/fase2/n63_conflictos_ventana.py                   l             ·             ·             ·             l
+  analisis  ~/pmw-e2/fase2/n63_particion_general.py                    ·             ·             ·             ·             l
+  analisis  ~/pmw-e2/fase2/n75_h4.py                                   ·             ·             l             ·             ·
+  analisis  ~/pmw-e2/fase2/s01_ventana_hora_cero.py                    ·             ·             l             ·             ·
+  analisis  ~/pmw-e2/fase2/s02_ventana_estricta.py                     l             ·             ·             ·             ·
+  analisis  ~/pmw-e2/d09/d09_cadena.py                                 l             l             l             l             l
+  analisis  ~/pmw-e2/d09/d09_grafo.py                                  l             ·             ·             ·             ·
+  analisis  ~/pmw-e2/d09/d09_series_sustrato.py                        l            Tl             ·             ·             ·
+  analisis  ~/pmw-e2/d09/d09_spec_labels.py                           Tl           Tel             ·             ·             ·
+
+  CANDIDATOS A FRONTERA (transforman algun portador):
+    src       src/weather_agent/features.py                  -> ['observacion']
+    src       src/weather_agent/labeling.py                  -> ['winning_outcome']
+    src       src/weather_agent/labels.py                    -> ['label']
+    src       src/weather_agent/observations.py              -> ['series']
+    src       src/weather_agent/polymarket/discovery.py      -> ['measurement_rule']
+    src       src/weather_agent/settlement.py                -> ['series', 'measurement_rule']
+    src       src/weather_agent/strategy/strategy_a.py       -> ['winning_outcome']
+    scripts   scripts/paper_cycle.py                         -> ['series', 'measurement_rule']
+    scripts   scripts/validate_2b.py                         -> ['measurement_rule']
+    analisis  ~/pmw-e2/d09/d09_series_sustrato.py            -> ['measurement_rule']
+    analisis  ~/pmw-e2/d09/d09_spec_labels.py                -> ['series', 'measurement_rule']

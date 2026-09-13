@@ -1,0 +1,49 @@
+
+====================================================================================
+EGLC
+====================================================================================
+  fecha 2026-04-08   observed_value 26.0 C   tmax_observed 26.00 C   forecast_tmax 25.00 C   unidad del mercado C
+  OK  (1) la unidad del MERCADO coincide con la de `observed_value`   mercado C · observacion C
+      banda con observed_value (26.0 C) : 24°C or higher
+      banda con tmax_observed  (26.00 C)    : 24°C or higher
+  OK  (3) en Celsius coinciden -> por eso el defecto es invisible aqui
+  OK  (1) la banda de `observed_value` es la GANADORA declarada   24°C or higher
+      error CORRECTO   tmax_observed - forecast_tmax = +1.00 C
+      error INCORRECTO observed_value - forecast_tmax = +1.00
+  OK  (2) el error en Celsius es de magnitud meteorologica   +1.00 C
+  OK  (2) en Celsius las dos formas coinciden exactamente
+
+====================================================================================
+KHOU
+====================================================================================
+  fecha 2026-04-08   observed_value 78.0 F   tmax_observed 25.56 C   forecast_tmax 25.80 C   unidad del mercado F
+  OK  (1) la unidad del MERCADO coincide con la de `observed_value`   mercado F · observacion F
+      banda con observed_value (78.0 F) : 78-79°F
+      banda con tmax_observed  (25.56 C)    : 67°F or below
+  OK  (3) en Fahrenheit las dos lecturas dan bandas DISTINTAS -> no son la misma variable
+  OK  (1) la banda de `observed_value` es la GANADORA declarada   78-79°F
+      error CORRECTO   tmax_observed - forecast_tmax = -0.24 C
+      error INCORRECTO observed_value - forecast_tmax = +52.20
+  OK  (2) el error en Celsius es de magnitud meteorologica   -0.24 C
+  OK  (2) el error sin convertir NO lo es, y no levanta ninguna excepcion   +52.20
+
+====================================================================================
+KORD
+====================================================================================
+  fecha 2026-04-08   observed_value 71.0 F   tmax_observed 21.67 C   forecast_tmax 19.00 C   unidad del mercado F
+  OK  (1) la unidad del MERCADO coincide con la de `observed_value`   mercado F · observacion F
+      banda con observed_value (71.0 F) : 50°F or higher
+      banda con tmax_observed  (21.67 C)    : 31°F or below
+  OK  (3) en Fahrenheit las dos lecturas dan bandas DISTINTAS -> no son la misma variable
+  OK  (1) la banda de `observed_value` es la GANADORA declarada   50°F or higher
+      error CORRECTO   tmax_observed - forecast_tmax = +2.67 C
+      error INCORRECTO observed_value - forecast_tmax = +52.00
+  OK  (2) el error en Celsius es de magnitud meteorologica   +2.67 C
+  OK  (2) el error sin convertir NO lo es, y no levanta ninguna excepcion   +52.00
+
+====================================================================================
+RESULTADO: TODAS LAS AFIRMACIONES SE CUMPLEN
+====================================================================================
+REGLA: `observed_value` (rejilla del mercado) para PERTENENCIA A BANDA;
+       `tmax_observed` (Celsius) para el ERROR contra `forecast_tmax`.
+       Son dos variables, no una. A-283.

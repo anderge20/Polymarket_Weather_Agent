@@ -22400,3 +22400,95 @@ que decirlo con la misma claridad con que dije lo otro.
 `n075_poblacion.py` cambia (la guarda), así que su `sha256` cambia y estaba citado en
 `N075_REPRODUCIBILIDAD.md`. Reemitido allí, con la nota de que **la salida de métricas es
 idéntica byte a byte**; los hashes anteriores quedan en `research/modelsel-artifacts`.
+
+## A-284 — D10: el mapa de fronteras crece de cuatro a SIETE, y la que más consecuencias tiene no tenía un solo test. `D10 = BLOCKED` · 2026-09-13 · Claude (sesión A)
+
+`~/pmw-e2/d10/D10_SEMANTIC_BOUNDARIES.md`, con los trece campos por frontera para las cadenas
+R y P. Guiones y salidas espejados. **Ningún arreglo de producción implementado.**
+
+### El método, que es lo que hizo que aparecieran
+
+Listar las fronteras que ya conocía habría confirmado lo que ya creía. En vez de eso, barrido
+por AST de **cinco portadores semánticos** —`series`, `measurement_rule`, observación, `label`,
+`winning_outcome`— contra los 48 módulos de `src/`, `scripts/` y el corpus de análisis,
+marcando **lee / escribe / TRANSFORMA**. *El candidato lo elige el barrido.* Seis módulos
+salieron como transformadores y **tres no estaban en ninguna auditoría anterior.**
+
+### LA FRONTERA QUE EXPLICA LOS 85 878 NULL, Y NO ES LA QUE YO CREÍA
+
+`discovery.ingest_event` **sí escribe la terna** —`contract_source` y `measurement_rule_code`,
+el CÓDIGO, no la prosa—, líneas 378-398. Entonces, ¿por qué está NULL en todas partes?
+
+    markets por source:   CATALOG_V2  85 878 filas   contract_source 0   measurement_rule_code 0
+                          gamma            0 filas
+    ingestion_timestamp NULL en las 85 878
+
+**Cero filas del almacén pasaron por `discovery`.** Las escribió todas
+`scripts/backfill_markets.py`, cuyo `upsert` **no incluye la terna en el dict de la fila**: no
+la omite por una guarda, es que no está.
+
+    modulo                     tests que lo mencionan
+    backfill_markets.py        NINGUNO
+
+> **La frontera con más consecuencias del repositorio —construyó el 100 % del almacén sobre el
+> que se ha auditado todo— no tiene guarda, no tiene contrato escrito y no tiene un solo
+> test.** Y el efecto es exacto: el almacén de análisis **no puede ser settlement-ready por
+> construcción**, y que los dos comprobadores digan READY sobre él es por tanto doblemente
+> falso — no sólo no miran población, es que la población no podía existir.
+
+Esto **reatribuye** el defecto otra vez, como en A-283: `discovery` no está roto. Lo que falta
+es el contrato de la otra ruta de ingesta.
+
+### Las otras dos nuevas
+
+* **`strategy/strategy_a.py`** transforma `winning_outcome` — fuera de la ruta de Level 1, pero
+  interpreta la ganadora y no estaba mapeada.
+* **`features.py`** compara `observation_time` para el as-of; descrita, no contratada.
+
+### Clasificación pedida (punto 4), con una entrada nueva
+
+    D09-1  unidad forecast/observation        C  analisis   (REFUTED AS PRODUCTION DEFECT)
+    D09-2  parse_band(banda,"C") fijo         C  analisis
+    D09-3  los dos comprobadores READY        A  infraestructura / guard
+    D09-4  context_for pasa prosa por codigo  B  semantica de produccion
+    D09-5  build_label deja pasar NaT         B  semantica de produccion
+    D09-6  series fuera de la libreria        B  semantica de produccion
+    D10-7  backfill_markets omite la terna    B  semantica de produccion   <- NUEVA
+
+**Los cinco de categoría B esperan revisión independiente §34. No se fusiona ninguno.**
+
+### `READY != column_exists`, especificación mínima
+
+Cinco condiciones sobre **las filas que la ruta va a leer**, nunca sobre la tabla entera:
+esquema · no-null obligatorio · semántica compatible · traducción disponible · **capacidad
+efectiva**. La quinta es la que convierte la promesa en hecho: *ejecutar la frontera siguiente
+sobre una fila real y exigir que no se niegue.* Cuesta una fila y es la única que no se puede
+satisfacer por accidente.
+
+**Invariante que hay que poder afirmar:** *si el comprobador devuelve vacío y la ruta se niega
+después, el defecto es del comprobador.* Hoy esa frase es falsa para los dos.
+
+### Punto 9: las dos semánticas, demostradas con filas reales y en verde
+
+    KHOU 2026-04-08   observed_value 78,0 F         tmax_observed 25,56 C
+      banda por observed_value : 78-79°F           <- COINCIDE con la ganadora declarada
+      banda por tmax_observed  : 67°F or below     <- otra banda, la MISMA fila
+      error correcto   -0,24 C        error sin convertir  +52,20 (sin excepcion)
+    EGLC 2026-04-08   las dos dan la MISMA banda -> por eso el defecto es invisible aqui
+
+Y confirma que `observed_value` es la lectura **correcta** para pertenencia a banda: es la que
+coincide con la ganadora. No era «la columna equivocada»: era **una variable haciendo dos
+trabajos**.
+
+### VEREDICTO
+
+    D10 = BLOCKED
+
+Fallan dos condiciones de cierre —«no existe una tercera frontera no auditada» y «se conocen
+sus tests»— y **las causa la misma frontera**: `backfill_markets`.
+
+Lo que NO cambia: las cadenas **R y P están limpiamente separadas**, verificado por grafo de
+importaciones —el análisis importa **una** cosa de la librería, `resolution.parse_band`— y la
+cadena R no depende de ningún defecto de categoría B.
+
+**Level 1 sigue cerrado. D0 = BLOCKED. D09-1 no se reabre.**
