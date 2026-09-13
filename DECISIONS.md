@@ -15424,3 +15424,94 @@ a cualquier medición de edge.**
        aguanta igual, cuatro de cuatro.
     3  mis ocho celdas no tienen intervalo: 842 filas de 81 eventos. Valen como descripcion, no
        como contraste.
+
+## A-195 — El #42 en producción: mi preinscripción se CUMPLE y no vale nada, porque el código VIEJO también la habría cumplido · 2026-09-13 · Claude (sesión A)
+
+*Resolución de la tarea #48, preinscrita en A-186 antes del suceso. Se cumple al pie de la letra
+y la doy por INFORMATIVAMENTE NULA. El criterio era de los que no pueden fallar.*
+
+### Lo que salió
+
+Ciclo `col_20260913T000706Z_40b22d`, empujado a las 00:29:48Z (22 min 42 s de principio a fin).
+
+    code_commit = 33f1eca9da5560d5f631a9b41ccf9e0b05729d50   <- la caja pulló el #42, confirmado
+    load:markets = 60,91 s                                    <- banda de confirmacion [40, 70]
+    total = 1362,3 s = 22,7 min                               <- prediccion "~22 min"
+
+Contra el ciclo anterior (21:07, sha `c424ea54`): `load:markets` 546,7 → 60,9 s, **9,0×**.
+Contra el número que yo cité al preinscribir (462 s, ciclo de las 18:07): **7,6×**.
+`load:outcomes` 438,5 → 53,1 s. Total 2244,8 → 1362,3 s. Todo apunta a que el laboratorio se
+trasladó entero.
+
+**Y es falso.**
+
+### El control emparejado, que es lo que había que mirar
+
+`load:markets` no es una constante con ruido: **es un diente de sierra diario** que se reinicia
+a medianoche. Los nueve ciclos de ayer, en orden:
+
+    00:07   03:07   06:07   09:07   11:40   12:09   15:07   18:07   21:07
+     68,2   149,3   201,3   237,3   304,2   348,8   422,9   462,2   546,7   s
+
+Comparar las 21:07 con las 00:07 **mide la fase del diente, no el código.** El control correcto es
+la misma hora:
+
+    2026-09-12T00:07  sha None (anterior al #38)   load:markets  68,2 s   76 874 filas cargadas
+    2026-09-13T00:07  sha 33f1eca9  (con el #42)   load:markets  60,9 s   94 130 filas cargadas
+
+**1,12× en pared, con un 22 % más de filas; 1,37× por fila** (887 → 647 µs/fila). Eso —y nada
+más— es lo que el #42 tiene medido en producción a esta hora.
+
+### El defecto del criterio, que es lo que importa de esta entrada
+
+**Mi banda de confirmación era [40, 70] s. El código viejo, a la misma hora, marcaba 68,2 s —
+dentro de mi banda.** Preinscribí un umbral que la hipótesis nula también supera. No es un
+criterio: es un enunciado que sólo podía salir bien.
+
+La causa es exacta y la puedo nombrar: **anclé la banda en 462 s, que es un número con forma de
+las 18:07, y la fui a contrastar contra una medición con forma de las 00:07.** El estadístico
+tiene una amplitud diaria de 8× y yo comparé a través de su fase. De las dos preguntas que tengo
+escritas —*¿qué haría esto imposible de satisfacer?* y *¿qué lo haría imposible de violar?*—
+volví a hacer sólo la primera. Es la segunda vez en dos días que la forma permisiva se me cuela,
+y las dos veces por no medir la magnitud sobre la que afirmo el umbral.
+
+*Nota de método: la preinscripción se cumple en sus términos literales y la registro como
+CUMPLIDA, no la reescribo. Lo que declaro nulo es su valor informativo, no su resultado. Cambiar
+el criterio después de ver los datos es lo que el encargo prohíbe; decir que el criterio no
+servía, con la prueba de por qué, es lo contrario.*
+
+### Lo que sí está medido y lo que sigue sin medirse
+
+**MEDIDO:** la caja corre el #42; a hora emparejada gana 1,37× por fila; el ciclo completo bajó
+de 37,4 a 22,7 min —pero ese total arrastra el mismo diente de sierra, así que tampoco es
+atribuible todavía.
+
+**NO MEDIDO — y es justo la promesa del PR:** el #42 reordena el catálogo de más nuevo a más
+viejo y se salta las claves ya vistas. Su efecto no es bajar el nivel de la curva sino
+**aplanarla**: el diente de sierra ES la acumulación intradía de shards duplicados que el PR dice
+eliminar. Si el 9,5× del laboratorio existe en producción, aparece **al final del día, no al
+principio.**
+
+*UNKNOWN — requiere verificación:* por qué el contador `store_rows_loaded` se reinicia a
+medianoche (76 874 el 12, 156 776 a las 21:07 del 12, 94 130 el 13). No lo sé y no lo supongo;
+es el confundidor, sea cual sea su mecanismo.
+
+### PREINSCRIPCIÓN — el día entero como experimento (escrita 2026-09-13T00:34Z, antes de los sucesos)
+
+Pendiente del código viejo, ciclos 00:07 → 03:07 → 06:07 de ayer: **+81,1 y +52,0 s**.
+
+    ME CONFIRMA (el #42 aplana, el 9,5x se traslada):
+       03:07 de hoy  load:markets <=  90 s   Y   store_rows_loaded <= 100 000
+       06:07 de hoy  load:markets <= 110 s
+       21:07 de hoy  load:markets <= 150 s   (el viejo marcó 546,7)
+
+    ME REFUTA (el #42 no toca la acumulación; el 9x de arriba era la fase del diente):
+       03:07 de hoy  load:markets >= 130 s   (pendiente indistinguible de +81 s)
+       o store_rows_loaded >= 110 000
+
+    ZONA GRIS declarada de antemano: 90–130 s a las 03:07 = efecto parcial, decide el 06:07.
+
+Y la comprobación que el criterio anterior no tenía: **el código viejo NO pasa esta banda** —a las
+03:07 marcaba 149,3 s, fuera de los 90 y por encima de los 130. *Esta vez la nula puede fallar.*
+
+*Instrumento: perfiles `stage_profile` de `paper_state/cycle_params/`, rama `paper-state`.*
