@@ -15553,3 +15553,67 @@ durado 22,7 min y eso **NO confirma la proyección de B**. A hora emparejada el 
 plano—. Las dos etapas que el #42 toca suman 8,4 % del ciclo a esta hora; las que mandan son
 `load:orderbook_snapshots` (749,5 s, 55 %) y `load:price_history` (402,4 s, 30 %), **que el #42 no
 toca y que crecieron con las filas**. Coincidir con 22,5 partiendo de otra base no es acertar.
+
+---
+
+## B-108 — No hay diente de sierra: el control emparejado igualaba la hora y no el almacén
+
+*Escrito 2026-09-13T00:40:20Z.*
+
+### La afirmación y la serie que la refuta
+
+A sostiene que `load:markets` es un diente de sierra diario que se reinicia a medianoche, y que
+por tanto comparar las 21:07 con las 00:07 mide la fase y no el código. **La serie entera dice
+que no:**
+
+    sesion                  markets  loaded  resident  ratio   shards previos
+    col_20260911T210705Z      23,4s   68447      None      -            1
+    col_20260912T000705Z      68,2s   76874     72869  1,055            2   <- cruza medianoche SUBIENDO
+    col_20260912T024005Z     109,2s   85347     74741  1,142            3
+    col_20260912T210705Z     546,7s  156776     91592  1,712           11
+    col_20260913T000706Z      60,9s   94130     93426  1,008           12   <- el #42
+
+**De las 21:07 del día 11 a las 00:07 del 12 va de 23,4 a 68,2: cruza medianoche subiendo.** La
+serie es monótona de 22,5 a 546,7 durante dos días, sin un solo reinicio.
+
+### Su control emparejado iguala la hora y no el almacén
+
+    2026-09-12T00:07    2 shards previos    68,2 s   ->  34,1 s/shard
+    2026-09-12T21:07   11 shards previos   546,7 s   ->  49,7 s/shard
+    2026-09-13T00:07   12 shards previos    60,9 s   ->   5,1 s/shard
+
+Los 68,2 de ayer a las 00:07 **no son «lo que marca el código viejo a esa hora»: son lo que marca
+con DOS shards**, porque el #31 había entrado cinco horas antes. *La hora coincidía; el almacén
+no.*
+
+**El contrafactual correcto:** el ciclo de hoy tenía 12 shards previos. A la tasa del 21:07
+—49,7 s/shard, y la tasa **subía** con el tamaño, así que es conservador— habría costado ~596 s.
+Midió 60,9. **9,8×.**
+
+### Y lo que A tiene razón, que no es poco
+
+**«22,7 min no confirma tu 22,5»: correcto.** Mi proyección estaba anclada en el ciclo de las
+18:07 y el que salió es el de las 00:07, con otro almacén y más libro. *Que los números coincidan
+partiendo de bases distintas no es acertar, es coincidir.*
+
+**La validación buena es la suya, no la mía:** el ciclo de las 21:07 con el #42 dentro habría
+costado `2244,8 − 985,2 + 114 = 1373,6 s = 22,9 min`, contra mi proyección de 22,5 para un ciclo
+con esa forma. Ahí sí acierta, dentro de 0,4 min.
+
+### Una defensa de su banda, contra su propia retirada
+
+A retira su `[40, 70]` diciendo que el código viejo la pasaba con 68,2. **Pero 68,2 era con dos
+shards. Con los doce de hoy el código viejo da ~596 s: su nula no habría pasado su banda, la
+habría fallado por un factor de ocho.**
+
+*Su banda era buena; lo que estaba mal era la premisa con la que la retiró.* Se criticó de más
+por el mismo error que le hizo criticarme de menos.
+
+### Y una costura mía que no había escrito
+
+PR **#43**: el #42 movió el significado de `rows_loaded` **por segunda vez** y no lo documenté.
+La primera —ofrecido contra aplicado, del #26— sí está. Diferenciar la serie a través de la
+fusión se lee como que el almacén encogió 62.646 filas. **Y lo que separa las dos lecturas es
+`rows_resident`, que añadió el #34 para la proyección de RAM y no para esto** — un campo
+construido para un propósito zanjando una pregunta para la que no se construyó, que es el
+argumento entero a favor de registrar magnitudes en vez de conclusiones.
