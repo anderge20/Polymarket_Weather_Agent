@@ -19695,3 +19695,45 @@ antes de eso*: el preregistro de la reejecución se escribe antes de ver el resu
 **Reparto:** B coge el lado de discovery (mecanismo exacto, fichero:línea, qué eventos afecta y si toca
 también la ingesta viva en modo paper o sólo el backfill — eso último decide si es urgente). Yo me
 quedo el reanálisis del NIVEL 1.
+
+---
+
+## A-245 — Hay un SEGUNDO llamador del núcleo congelado, no lo llama nadie, y lleva dentro el defecto que `paper_cycle` arregló en su frontera · 2026-09-13 · Claude (sesión A)
+
+Salió trabajando al lado, no auditando: enumerando los lectores de `weather_observations`
+para la revisión del #49.
+
+**1. `labels.py` no lo importa nadie.** `grep` por `import labels` / `label_market` en
+`src/` y `scripts/`: **cero**. `label_market` —la función que lleva el razonamiento de
+«NUNCA por `outcome_index`, NUNCA por `is_winner`» y la guarda de fallo cerrado cuando no
+hay exactamente un token YES— **sólo la llaman sus propios tests**.
+
+**2. Y pasa el `series` CRUDO al núcleo.** `labels.observations_for` construye
+`st.Observation(..., series=r["series"], ...)` sin traducir. El núcleo congelado exige
+`metar_body_c` / `metar_tgroup_tmpf`; los ingestores escriben `IEM_ASOS_METAR_1C` /
+`IEM_ASOS_TMPF_1F`. **Es exactamente el defecto que `SERIES_CORRESPONDENCE` cerró en la
+frontera de `paper_cycle`, intacto en la otra frontera.**
+
+**3. Y el test lo CLAVA como comportamiento esperado.** `test_labels.py:85` inserta
+`"series": "IEM_ASOS_TMPF_1F"` —el nombre del ingestor— y la línea 119 afirma
+`"series_mismatch"`. *El test no se le escapa el defecto: lo documenta.* Por eso lleva
+verde desde siempre.
+
+**4. Y los casos que SÍ liquidan usan el nombre del núcleo.** Las filas HKO de las líneas
+229/244/266 llevan `series = "hko_clmmaxt"`, que es `SERIES_HKO`, no la salida de ningún
+ingestor. Es el mismo patrón que ya está escrito en `paper_cycle.py`: *«la ÚNICA vez que
+`metar_body_c` apareció fuera del núcleo congelado fue en un FIXTURE de este repositorio»*.
+Dos módulos, el mismo agujero, y el segundo se descubre sólo porque el primero se arregló.
+
+**Lección, y es la de siempre en este proyecto: arreglé la instancia, no la clase.** El
+comentario del #46 cuenta el defecto y lo cuenta bien; lo que nadie hizo fue preguntar
+**cuántas fronteras hay**. Son dos. La regla que faltaba: *cuando un arreglo traduce entre
+dos vocabularios, enumerar los sitios que hablan los dos idiomas antes de dar el arreglo
+por completo.*
+
+**No es urgente y lo digo explícitamente para no inflarlo: no hay llamador en producción,
+así que hoy no liquida nada mal.** Queda como tarea #62 con tres salidas posibles
+—traducir y clavar un test que conduzca `observations.to_row`; declarar en el test que la
+negativa es una frontera arreglada en otro sitio y NO aquí, a propósito; o borrar el
+módulo— y con revisión independiente como mensaje propio si toca código de liquidación
+(§34 del encargo de FASE 2).
