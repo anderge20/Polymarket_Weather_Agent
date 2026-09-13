@@ -20193,3 +20193,34 @@ Ahora se conduce `launcher.sh` de verdad, con `flock` y `git` interceptados y un
 mentira que vuelca lo que ve.
 
 `tests/`: **700 passed**. Cinco mutaciones en rojo, una por test.
+
+---
+
+## A-252 — Presupuesto de IEM preinscrito (techo 200, sólo EGLC), y por qué NO se derivan las etiquetas del tarball que ya tenemos · 2026-09-13 · Claude (sesión A)
+
+`fase2/PREREG_PRESUPUESTO_IEM.md`, escrita antes de ejecutar nada. **118 días a rehacer +
+≤70 nuevos, techo duro de 200 peticiones, sólo EGLC, secuencial, ≥1 s entre peticiones, y
+parada dura ante cualquier 429.** La parada no se rodea.
+
+**La decisión que merece registro es la que se descarta.** `evidence/B-133/
+raw_iem_55_estaciones.tgz` ya contiene `EGLC_rt34.csv` con **151 días** de la ventana, y
+derivar las etiquetas de ahí costaría **cero peticiones**. Se descarta **para el almacén**:
+
+> Escribir filas de producción desde un tarball de investigación mete en
+> `weather_observations` una procedencia que el esquema no sabe declarar — `fetched_at` y
+> `available_at` serían de hoy y no del momento real de descarga, y `source` diría
+> `IEM_ASOS_METAR_RT34` sin que nada distinga «bajado por el ingestor» de «copiado de un
+> fichero de una investigación». **Una fila cuya procedencia no consta es exactamente lo
+> que este proyecto lleva una semana desenterrando.**
+
+**Pero se usa como ORÁCULO**, que es donde vale: los 151 días del tarball se comparan
+contra lo que la reingesta escriba, y **cualquier discrepancia detiene la pasada**. Es la
+comprobación más barata que existe contra un ingestor que acaba de cambiar de serie —
+gratis, independiente, y con la respuesta ya guardada antes de preguntar.
+
+**Y el criterio (c) es donde se resuelve la predicción de A-246**, antes de tocar ningún
+estadístico: las 15 entran en su banda, el 2026-05-27 sale **por la ventana y no por la
+serie**, y cualquier otro de los 104 que se salga es un resultado nuevo que hay que
+explicar antes de continuar.
+
+**Esto no autoriza precios, ni libro, ni otra estación, ni el gate D0.**
