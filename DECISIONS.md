@@ -17861,3 +17861,26 @@ filas, la frase vuelve a ser falsa y el número dice cuánto tendría que cambia
 
 `0,0164 s/fila × 1 122 filas = 18,4 s ≈ 18,23 s/shard`, como la colinealidad obliga. Y su lectura
 de los ~9 s restantes de los 27,3 s/ciclo como `price_history` es consistente con mi tabla.
+
+---
+
+## B-124 — Diseño del experimento de compactación: la escalera en N no separa lineal de cuadrático en filas
+
+*Escrito 2026-09-13T04:57:47Z.*
+
+A preinscribe mañana el experimento offline (copia del almacén, nunca `/opt/pmw/state`) que decide
+si compactar shards mueve el plazo del 17-sep. Estado del diseño tras el intercambio:
+
+- **Retirado (mío):** «fuertemente superlineal en N ⇒ upsert O(tabla)». A demostró que un escaneo
+  por lote suma R(N−1)/2 y un escaneo completo por shard N·R: **ambos lineales en N**. Era un
+  criterio que no podía dispararse.
+- **Hueco en la regla restante de A («plano en N ⇒ filas»):** si el upsert cuesta por FILA ∝
+  tamaño de tabla, el total es Σk = R²/2, **exactamente independiente de N**: plano en la escalera,
+  y leído como «va con filas» ocultando que la pendiente de producción crecería cada ciclo (plazo
+  optimista, compactar inútil). **Remedio: segundo eje**, R ∈ {R, R/2, R/4} a N fijo con claves
+  únicas; exponentes preinscritos con umbral.
+- **Remedio add-only (D0):** en libro no hay regresión (ya en replay completo); en `markets`/
+  `outcomes` sí la habría, **salvo que el shard compactado lleve en el nombre el instante del más
+  nuevo que cubre** (`col_<ISO>_…`), que `shard_time` parsea. Es una elección de nombre.
+- **Identificabilidad en producción** (A, cuantificada): 1 078 vs 1 122 filas predicen 0,72 s de
+  diferencia contra ±80 s de ruido — señal 111 veces menor. «No identificable con este ruido».
