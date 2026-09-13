@@ -396,7 +396,27 @@ def load_shards(
     shard written so far (measured: zero repeated conflict keys anywhere in the
     store), and `applied` is the better quantity for that purpose — what occupies
     memory is what lands in the database, not what was read off disk. But a
-    series must never be differenced ACROSS the seam."""
+    series must never be differenced ACROSS the seam.
+
+    AND THERE IS NOW A SECOND SEAM, at the commit that added `newest_first`
+    below. In that mode the rows a newer shard already claimed are never offered
+    to `upsert_many`, so `rows_written` stops meaning "applied out of everything
+    the store holds" and starts meaning "applied out of what was not already
+    superseded". The two regimes are not off by a rounding error:
+
+        ciclo    rows_loaded  rows_resident  redundantes      sha
+        21:07        156 776         91 592       65 184   c424ea54
+        00:07         94 130         93 426          704   33f1eca9
+
+    Differencing that series across the merge reads as the store SHRINKING by
+    62 646 rows, which never happened: the shards are all still there and
+    `rows_read` still counts every one of them. What collapsed is the redundancy,
+    from 41,6 % to 0,7 %, and `rows_resident` — added by PR #34 for the RAM
+    projection, not for this — is what makes the two readings separable.
+
+    The seam is written here for the same reason the first one was: the field is
+    correct at every point and the SERIES is not continuous, and a reader who
+    differences it without knowing that gets a number that never occurred."""
     cols = tuple(conflict_cols) if conflict_cols else CONFLICT_COLS.get(table)
     if not cols:
         raise ValueError(
