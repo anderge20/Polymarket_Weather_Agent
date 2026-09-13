@@ -16245,3 +16245,60 @@ prueba de unidad lo vería.
 
 *Ventanas abiertas esta noche: #43 (de B) a las 02:40Z, #44 a las 02:50Z, #33 a las 03:03Z,
 #45 a las 03:20Z.*
+
+## A-203 — La atribución rescatada, y lo que aparece al leerla: el prefijo `col_` no distingue nada · 2026-09-13 · Claude (sesión A)
+
+*Cierra la tarea #42. Y confirma la #43 con un recuento, que es distinto de confirmarla con un
+argumento.*
+
+### El rescate
+
+`CYCLE_COMMIT_ATTRIBUTION.tsv`, 34 ciclos desde 2026-09-09, espejado. Extraído de las líneas
+`launcher: ref=X at SHA -> MODO` seguidas de `paper_cycle session=ID` en `/opt/pmw/log`. **Es el
+único registro de qué código produjo cada shard para los ciclos anteriores al PR #38**, que es
+cuando `code_commit` dejó de escribir `None`. La caja no tiene logrotate y esto no estaba copiado
+en ninguna parte.
+
+Extraje **sólo la tabla, no el log entero**: la propuesta de B, y es la correcta — menos
+superficie que auditar, en vez de más material que revisar.
+
+### Y al leerla aparece lo que no se buscaba
+
+    prefijos de session_id:   34 de 34 empiezan por `col_`
+    modo real del lanzador:   28 collect   ·   6 decide
+
+**El prefijo es una constante.** No distingue nada, y *parece* que sí. Quien clasifique ciclos por
+`sid.startswith("col")` acierta en 28 y se equivoca exactamente en los 6 que importan — los
+`decide`, que son los únicos que podrían abrir una posición.
+
+**Lo hice yo mismo esta noche**, en las tablas de perfiles por etapa de A-195 y A-196: etiqueté
+`col_20260912T024005Z` y `col_20260912T114005Z` como *collect* y son los `decide` de las 02:40 y
+las 11:40. No cambió ninguna conclusión porque medía tiempos de carga, que no dependen del modo.
+*Esta vez.*
+
+### Y el shard tampoco lo dice
+
+    col_20260912T024005Z_dffd86  collect_only=True  tau_signal=None  lead 9h    <- lanzado DECIDE
+    col_20260912T114005Z_e79a6c  collect_only=True  tau_signal=None  lead 24h   <- lanzado DECIDE
+    col_20260913T000706Z_40b22d  collect_only=True  tau_signal=None  lead 24h   <- lanzado COLLECT
+
+**`collect_only=True` es correcto en los tres y significa dos cosas distintas.** En el tercero, el
+ciclo se lanzó con `--collect-only`. En los dos primeros, el ciclo se lanzó como `decide` y
+**degradó a collect por falta de `PMW_TAU`** —el cierre en falso por diseño que la auditoría ya
+había encontrado—. El campo dice *qué hizo* y no dice *por qué*, y las dos historias son
+**indistinguibles desde el shard**.
+
+Eso es exactamente el `collect_only_reason` de la tarea #43, y ahora tiene número: **6 de 34
+ciclos** son decide-que-no-decidió, invisibles en los datos. Hasta hoy, lo único que los separaba
+era una línea de log en una máquina sin rotación.
+
+### La parte que sí es derivable, y por qué no es la misma
+
+El tipo de ciclo **sí** sale del instante de disparo más el cron: `07` pasada la hora es collect,
+`02:40` y `11:40` son decide. Y eso es de la clase benigna que tengo escrita —*dependencia
+externa pero VERSIONADA*—: el cron está commiteado, no ha cambiado nunca, y si cambiara quedaría
+fechado en la historia.
+
+**Lo peligroso no es que el tipo sea derivable: es que el prefijo PARECE derivarlo y no lo
+deriva.** Una dependencia externa sin registrar se reconoce porque no hay dónde mirar; ésta se
+disfraza de campo.
