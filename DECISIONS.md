@@ -19511,3 +19511,80 @@ con el mismo instante del máximo), así que el PR habría borrado progresivamen
   ahora prefiere la serie vigente.
 Mutaciones comprobadas en los dos tests nuevos. `tests/`: 696 passed. La ventana D16 corre desde este
 head; la aprobación de `f6859b8`, si la hubiera, no lo cubre.]**
+
+---
+
+## A-242 — Revisión hostil del PR #49 (`21f533d`): el arreglo es correcto, y el mapa que lo sostiene REARMA el bug · 2026-09-13 · Claude (sesión A)
+
+**Contexto.** B abrió el #49 (tipo 3 tiraba los METAR rutinarios semihorarios, etiquetas en C bajas).
+Al revisar `f6859b8` confirmé su propio ataque #1 —la clave primaria no lleva `series`, así que un
+máximo que cae en el mismo instante en las dos series **pisa** la etiqueta vieja— y establecí que es
+**el caso COMÚN, no el borde: 7.390 de 7.968 días-estación (92,7 %)** por su propio dimensionado, más
+una consecuencia de segundo orden que él no había dicho: **la serie vieja desaparece y con ella la
+reproducibilidad del 18–0 que justifica el PR.** Nuestros mensajes se cruzaron; él ya lo estaba
+arreglando. Head nuevo `21f533d`, revisado como revisión propia.
+
+**Verificado por mí, no citado.** `696 passed in 87.58s`, EXIT=0. Las **dos mutaciones reproducidas**:
+`SERIES_SOURCE = {}` deja rojo el test de coexistencia (línea 212); el `ORDER BY record_version DESC`
+viejo deja rojo el de `observed_tmax` (`26.0 == 27.0`). Verdes al restaurar. Las dos pruebas muerden.
+
+**Yo propuse el arreglo equivocado, y el modo de fallo es de método.** Propuse meter `series` en
+`CONFLICT_COLS` y lo declaré «aditivo y seguro» sobre dos comprobaciones ciertas (1.348 filas, 0
+`series` NULL; 0 shards de `weather_observations` en producción) — y **marqué como «lo que tienes que
+comprobar tú» justo la comprobación que decidía el asunto**: si había un índice declarado. Lo hay:
+`database.py` trae `PRIMARY KEY (station, source, observation_time, dataset_version, record_version)`
+en el propio DDL, a un `grep` de donde yo estaba. *Externalicé la verificación portante de mi propia
+propuesta.* La suya —`source` propio para las filas 3+4— consigue la misma coexistencia aditiva sin
+migración de esquema y con la misma clave en el replay.
+
+**EL DEFECTO QUE ENCONTRÉ, Y ESTÁ DEMOSTRADO, NO ARGUMENTADO.**
+
+    def source_for(series): return SERIES_SOURCE.get(series, SOURCE)
+
+Veinticinco líneas más arriba, en el mismo fichero, el mapa hermano declara la política contraria por
+escrito: *«a series missing from this map raises instead of silently falling back to some default»*
+(`SERIES_REPORT_TYPES`, que se indexa y revienta con `KeyError`). **Un mapa obliga, el otro cede — y lo
+que el que cede deja pasar es exactamente el bug que este PR cierra.** Declarando una tercera serie
+futura en los dos mapas que obligan y omitiéndola en el que no:
+
+    report_types -> (3, 4, 5)   source_for(NEW) -> IEM_ASOS_METAR
+    FILAS: 1
+        IEM_ASOS_METAR | IEM_ASOS_METAR_1C_RT345 | 25.0
+
+Una fila. La etiqueta vieja pisada, en silencio, por el camino que el PR existe para cerrar. Arreglo:
+mapa **total** sobre las cuatro series, indexado en vez de `.get`, y el test de totalidad que ya existe
+para `SERIES_REPORT_TYPES` extendido a este. Aprobación condicionada a eso.
+
+**La versión-CLASE, que es lo que hay que llevarse.** La clave de `weather_observations` está escrita
+en **TRES** sitios y nada comprueba que coincidan: el `PRIMARY KEY` del DDL, `store.CONFLICT_COLS` y el
+literal del llamante en `observations.py:373`. Y `store.upsert` (línea 420) **da preferencia al literal
+del llamante sobre el mapa**, así que arreglar la clave en `store.py` no habría arreglado la ingesta
+prospectiva. Mi propuesta habría tocado uno de tres y habría parecido completa. *Un test que compare
+las tres definiciones vale más que cualquiera de los dos arreglos que discutimos.*
+
+**Lo que refuté de mis propios ataques.** (a) «Refetch infinito en días fuera de rejilla, porque el
+`have` filtra por `series` y `detect_grid` devuelve UNKNOWN»: falso — `detect_grid` devuelve la SERIE
+también en la rama UNKNOWN, así que el `have` casa siempre con lo que se escribe. (b) «La coexistencia
+rompe la liquidación»: falso, y por una razón que B no citó — entre `in_series` y la agregación el
+núcleo colapsa por instante (`best_by_instant`, `record_version` estricto `>`), así que en el 92,7 %
+las dos filas comparten instante, comparten lectura y dan el mismo valor; `n_obs` no se duplica.
+`aggregation=AGG_MAX` verificado en los dos operadores en C.
+
+**Notas no bloqueantes registradas en la revisión.** (1) `ORDER BY (series = ?) DESC, record_version
+DESC` fija una precedencia que nada declara —serie por encima de revisión— hoy inalcanzable porque
+`to_row` escribe siempre `record_version: 1`; y resuelve «serie vigente» con `station_series()` **en
+tiempo de lectura**, así que el día que `DEFAULT_SERIES` se mueva otra vez todas las filas históricas
+dejan de ser la vigente a la vez y el desempate vuelve a ser arbitrario sin que nada se ponga rojo
+(mismo patrón que [[context-that-does-not-travel]]). (2) Su enumeración de lectores estaba **a uno** de
+completa: falta `backfill_observations.py:102`, un `count(*)` de resumen que pasará a contar doble los
+días corregidos. Inocuo, pero la enumeración *era* el argumento. (3) El segundo test no depende del
+arreglo de `source` —sus dos picos caen en instantes distintos, así que coexistirían igual con el
+código viejo— y en el primero «la vieja con su valor intacto» lo sostiene el RECUENTO, no los valores:
+mismo instante es la misma lectura, así que `[25.0, 25.0]` sería cierto también bajo la sobrescritura.
+
+**Lo que NO verifiqué, dicho en la revisión.** B-133 (el conjunto 3+4 contiene al de tipo 3, 0 filas
+perdidas sobre 55 estaciones). Reverificarlo cuesta peticiones a IEM y la cuota no se toca para
+confirmar algo ya medido. Queda con el nombre de B, y es **la única pieza portante del PR que no he
+reproducido**.
+
+**Estado: NO fusionar hasta que `SERIES_SOURCE` sea total. Todo lo demás, aprobado.**
