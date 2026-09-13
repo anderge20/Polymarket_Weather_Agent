@@ -15354,3 +15354,73 @@ medición de edge y no depende de estos 81 grupos.
 
 *Instrumentos: `/Users/mariaaleu/.claude/jobs/324ffe40/tmp/val_b106.py` y `val_b106b.py`; población
 `LONDON_CANDIDATES.json` restringida a libro vivo (81 grupos, 842 filas).*
+
+---
+
+## B-107 — El #42 medido en la caja, y el cero duro del modelo tiene un hueco
+
+*Escrito 2026-09-13T00:32:44Z.*
+
+### La preinscripción del #42, resuelta
+
+    ciclo    total    filas   markets  outcomes    libro  precios  sha
+    18:07    35,42   152157    462,2s    425,6s   759,4s   382,1s  c424ea54
+    21:07    37,41   156776    546,7s    438,5s   771,7s   394,5s  c424ea54
+    00:07    22,70    94130     60,9s     53,1s   749,5s   402,4s  33f1eca9   <- el #42
+
+    load:markets    546,7 -> 60,9 s   -89 %
+    load:outcomes   438,5 -> 53,1 s   -88 %
+    ciclo           37,41 -> 22,70 min
+
+**La proyección decía 35,4 → 22,5. Salió 37,41 → 22,70: acierta dentro de 0,2 min sobre un
+cambio de 14,7.**
+
+**Y resuelve la duda que yo mismo levanté en B-102.** Avisé de que el punto de las 21:07 —filas
+abajo y tiempo arriba— ponía en duda que el tiempo siguiera al recuento, y que por eso el ahorro
+debía leerse UNKNOWN sobre la caja. *El experimento controlado tenía razón y mi cautela, correcta
+de enunciar, no se materializó.* Las dos cosas a la vez: la advertencia estaba bien puesta y el
+resultado la desmiente.
+
+### El reparto cambia de dueño
+
+    catalogo         114,0 s    8,4 %
+    libro+precios  1.151,9 s   84,6 %    <- ahora es todo
+
+**El catálogo deja de crecer**: carga el equivalente a un shard pase lo que pase. Queda el
+término del libro, +0,47 min/ciclo:
+
+    decide 02:40 del 13-sep    23,2 min   pasa con 19 de margen
+    decide 11:40 del 13-sep    26,9 min   pasa
+    el limite de 42 min        a 41 ciclos = 4,3 dias
+
+*El plazo pasa de «mañana con un tercio de probabilidad» a cuatro días, y lo que queda es el
+término irreducible que A nombró desde el principio: los libros no se borran.*
+
+### El cero duro, confirmado, y con un hueco que lo explica
+
+A encontró que `p_model` vale cero exacto en 425 de 842 filas vivas. Confirmado, y va más lejos:
+
+    con p_model == 0,0 EXACTO: 425 (50,5 %)   valores distintos: 1   ganaron 6
+    los p_model no nulos mas pequenos: 0,050607 · 0,051852 · 0,052083 · 0,054000 · 0,054886
+
+**Hay un HUECO: `p_model` es cero exacto o ≥ 0,0506. Nada en medio.** Eso no es un modelo que
+asigne probabilidad pequeña: **es una distribución con las colas truncadas** — cualquier banda
+fuera del soporte interpolado recibe cero, y la primera que cae dentro ya vale cinco puntos.
+
+Las seis que ganaron con `p_model = 0` el mercado las precio en 0,0015 · 0,0055 · 0,0135 ·
+0,0325 · 0,1095 · **0,1315**. En dos pagaba más del 10 %.
+
+**Y el corolario de A tiene un PR abierto que lo ataca:** el **#33**, *«A2: the distribution tails
+were a magic constant»*, abierto desde el 2026-09-11 y de la sesión de la nube. Si el corolario
+es correcto —y lo es— ese PR no es un pendiente cualquiera: **es exactamente la decisión anterior
+a cualquier medición de edge.**
+
+### Las tres correcciones de A, aceptadas
+
+    1  el nan no era poca muestra: era una variable de UN solo valor en la mitad de la muestra.
+       Lo vi, lo explique como poca varianza y no mire.
+    2  condicionar por una variable le quita su rango, asi que mi contraste intra-tabla medía en
+       parte cual definia las bandas. La comparacion valida es la cruzada -- donde el resultado
+       aguanta igual, cuatro de cuatro.
+    3  mis ocho celdas no tienen intervalo: 842 filas de 81 eventos. Valen como descripcion, no
+       como contraste.
