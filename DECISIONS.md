@@ -18519,3 +18519,27 @@ del resumen del ciclo merece sobrevivir al ciclo— y van juntas o no van.
 estaba en `main` y nadie lo había leído**, que es más importante que el contador — y de esa
 revisión salieron tres defectos reales. **El contador mide la ausencia de revisión; la revisión
 tardía arregla el código y deja el contador en rojo, y las dos cosas son correctas a la vez.**
+
+---
+
+## B-129 — Revisión del #47 antes de fusionar: el tres no es el máximo y el centinela cuenta ocurrencias
+
+*Escrito 2026-09-13T06:56:48Z.*
+
+A abrió el #47 (seguimiento del #46: hasta tres detalles distintos por razón más centinela
+`+N mas`) y pidió revisión expresa como mensaje propio. **Revisado y comentado en el PR antes de la
+fusión**, sobre `4418ba4`: `tests/test_paper_cycle.py` 116 passed; tests nuevos verdes aislados.
+
+**Cambios pedidos antes de fusionar (fuera de la ruta de dinero):**
+1. **Justificación falsa del tope:** «three is the raise count of the busiest reason». Por AST,
+   `R_CONTEXT_OUT_OF_SNAPSHOT` tiene 6 raises con `detail` (≥5 en el grafo de `settle`) y
+   `R_SERIES_MISMATCH` 3. Propuesto: test por AST que fije el recuento por razón. **Nada en
+   `tests/` fija el sha de `settlement.py`: la congelación está en el documento, no en un test.**
+2. **Centinela incoherente con la lista:** la lista son cadenas distintas y el centinela cuenta
+   ocurrencias. Medido con AAA, BBB, CCC, DDD, DDD: `+2 mas` para una sola cadena omitida.
+
+**Preocupaciones de A, medidas:**
+3. `_fake_stations` no se aplica **deterministamente**: las importaciones de cabecera del fichero
+   de tests ya fijan `weather_agent.stations` en el paquete. Con el falso hecho efectivo, 116
+   passed igual: **ningún test depende del falso**; están acoplados al registro real. No bloquea.
+4. Centinela nunca visto en producción: inevitable sin posiciones; cubrir el caso repetido.
