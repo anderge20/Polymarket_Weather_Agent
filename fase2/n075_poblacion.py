@@ -29,6 +29,7 @@ import duckdb
 
 REPO = os.environ.get("PMW_REPO", "/Users/mariaaleu/.claude/jobs/324ffe40/tmp/wt-main")
 sys.path.insert(0, os.path.join(REPO, "src"))
+from weather_agent import stations                           # noqa: E402
 from weather_agent.polymarket.resolution import parse_band   # noqa: E402
 
 LON = ZoneInfo("Europe/London")
@@ -90,11 +91,20 @@ def observaciones(con, station="EGLC"):
     (las 16 diferencias son todas RT34 = METAR + 1,0). La regla declarada es RT34, y el
     `max` la reproduce exactamente en estos datos -- hecho medido, no supuesto.
     """
+    #: LA ZONA HORARIA ES LA DE LA ESTACION, NO `Europe/London`. Estaba fija, con un
+    #: parametro `station` que prometia generalidad que el cuerpo no tenia: `exige_celsius`
+    #: deja pasar CYYZ (Toronto) y 2 de sus 27 dias caian en una FECHA distinta al
+    #: agruparlos por Londres. En EGLC no cambia nada -- su zona ES Europe/London -- y esa
+    #: es justamente la razon por la que el defecto era invisible. D11, A-285.
+    #:
+    #: `stations.timezone_of` es la funcion de PRODUCCION que ya resuelve esto, y levanta
+    #: en vez de degradar a UTC si la estacion es desconocida.
+    zona = ZoneInfo(stations.timezone_of(station))
     obs = {}
     for t, v in con.execute(
             "SELECT observation_time, observed_value FROM weather_observations WHERE station = ?",
             [station]).fetchall():
-        d = t.astimezone(LON).date()
+        d = t.astimezone(zona).date()
         if d not in obs or v > obs[d]:
             obs[d] = v
     return obs

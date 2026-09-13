@@ -22492,3 +22492,90 @@ importaciones —el análisis importa **una** cosa de la librería, `resolution.
 cadena R no depende de ningún defecto de categoría B.
 
 **Level 1 sigue cerrado. D0 = BLOCKED. D09-1 no se reabre.**
+
+## A-285 — `D11-R = CLOSED`, `D0-R = READY`, `D0-P = BLOCKED`. Y los metadatos de liquidación SÍ son recuperables — sólo que recuperarlos diría que el 91 % no es liquidable · 2026-09-13 · Claude (sesión A)
+
+`~/pmw-e2/d11/D11_R_EXPERIMENTAL_INTEGRITY.md`. **22 comprobaciones sobre la cadena R, todas
+verdes, 0 defectos de alto impacto.** Producción sin tocar.
+
+### Lo que encontré y arreglé (categoría C)
+
+`n075_poblacion.observaciones()` llevaba **`Europe/London` FIJO** con un parámetro `station`
+que prometía una generalidad que el cuerpo no tenía. `exige_celsius` deja pasar CYYZ y **2 de
+sus 27 días caían en una FECHA distinta**. Arreglado con `stations.timezone_of` — la función
+de producción que ya resolvía esto, otra vez. **En EGLC no cambia nada porque su zona ES
+`Europe/London`, y por eso el defecto era invisible.** La salida de métricas sigue siendo
+**idéntica byte a byte**.
+
+### Una bandera que era de mi comprobación, no de los datos
+
+Marqué «4 días con más de una fila» agrupando por `CAST(observation_time AS DATE)` —**día
+UTC**— cuando `observaciones()` agrupa por **día local**. Las filas de las 23:20/23:50 UTC son
+del día local siguiente (00:20/00:50 BST). Por día local: **256 pares, 0 duplicados**. Medido
+antes de publicarlo.
+
+### LA SUPOSICIÓN QUE SOSTIENE TODO EL «SIN LOOK-AHEAD», y es una sola
+
+    retardos distintos entre available_at e issue_time:  1     valor 4:45:36 en las 236 filas
+    margen hasta t_asof:   lead 24 -> 1,24 h    lead 9 -> 4,24 h   (constante)
+
+**`available_at` es una CONVENCIÓN, no una medición.** Si el retardo real de publicación fuera
+más de **1,24 h** mayor que el declarado, **todos** los pronósticos de lead 24 serían
+look-ahead. No es un defecto de la cadena —es un hecho externo sobre el proveedor— pero **es
+lo único cuya falsedad invalidaría Level 1 entero**, y no se puede comprobar con este corpus:
+las 2 727 filas son backfill (`fetched_at` 2026-09-09). **Se comprueba hacia delante con el
+colector en vivo.**
+
+### Lo demás, verificado ejecutando
+
+* **Forecast**: un solo modelo (`icon_seamless`) → sin selección con retrovisión;
+  `available_at >= issue_time` 236/236; `available_at != fetched_at` 236/236; **0 violaciones**
+  de `available_at <= t_asof`.
+* **Observation**: las dos semánticas separadas (A para banda, B para error); una fila por
+  `(estación, serie, día local)`; **ninguna observación posterior a `t_asof` en las features**,
+  en los dos leads y todos los eventos.
+* **Target**: sale de `markets.winning_outcome`; **no** usa `is_winner`, **no** `outcome_index`,
+  **no** toca ninguna observación; una fecha → un evento; `won` sólo se escribe como `y`.
+* **Probability**: suman 1 (error máx **1,11e-16**); un `y=1` por evento; toda `p ∈ [0,1]`
+  **antes** del recorte; y **correspondencia probada por PERTURBACIÓN** — mover la banda
+  ganadora 100 grados cambia SU probabilidad (0,35000 → 0,00000): la `p` va con el contrato,
+  no con la posición.
+* **Scoring**: un solo estrato `{11}`; control estructural contra su fórmula cerrada a `1e-12`.
+
+### D10-7: la procedencia, contestada con datos
+
+`CATALOG_V2.dsc.desc` tiene la descripción completa en **93 221 de 93 221** mercados.
+`mk.measurement_rule` es un **resumen** y alimentarlo al clasificador da `P_UNKNOWN`: **la
+descripción completa es la única entrada válida.** Re-ejecutar el clasificador de producción
+sobre texto primario preservado **no es inferencia post-hoc** — no usa escalera, ni
+`winning_outcome`, ni observación, ni resultado. Sobre los 1 997 de EGLC:
+
+    ('WU', 'P_byForecast')                 1 018      source_confidence = VERIFIED
+    ('WU', 'P_WU_GENERIC_sin_calificador')   792
+    ('WU', 'P_WU_DailyObservations')         187
+
+**Y el resultado que cambia la lectura:**
+
+    P_byForecast                  ->  no_settlement_operator:by_forecast
+    P_WU_GENERIC_sin_calificador  ->  no_settlement_operator:Y_undefined_by_contract
+    P_WU_DailyObservations        ->  ACEPTA
+
+**Sólo 187 de 1 997 son liquidables, y los 1 810 restantes caen en estratos fail-closed
+DECLARADOS: el núcleo los rechaza POR DISEÑO.** Los 187 son **17 eventos × 11 bandas** —
+comprobado, porque «187 mercados» y «187 eventos» son números iguales y cosas distintas.
+
+*Recuperar los metadatos convertiría «todo NULL, causa desconocida» en «el 91 % de los
+contratos de EGLC es de un tipo que el núcleo rechaza a propósito». Eso es lo que el diseño
+fail-closed existe para decir, y es un RESULTADO, no un arreglo.*
+
+### VEREDICTO
+
+    D11-R = CLOSED
+    D0-R  = READY     integridad experimental (EGLC), con la suposicion del retardo declarada
+    D0-P  = BLOCKED   sin cambios: cinco de categoria B esperando §34
+
+**`D0-R = READY` no autoriza a tocar producción.** Level 1 queda abierto **exclusivamente como
+investigación histórica**: prohibidos producción, settlement, ejecución, paper trading, PnL
+operativo y activación del bot. El objetivo es sólo determinar si el pronóstico disponible en
+`prediction_time` tiene poder predictivo **fuera de muestra** sobre `P(YES)`. **No se buscan
+estrategias hasta demostrarlo.**

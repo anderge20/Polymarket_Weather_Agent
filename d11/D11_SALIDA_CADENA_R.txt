@@ -1,0 +1,62 @@
+
+======================================================================================
+F · FORECAST
+======================================================================================
+  OK  un solo modelo de pronostico: no hay seleccion con retrovision   [('icon_seamless', 2727)]
+  OK  available_at >= issue_time en todas las filas   236 de 236
+      retardo publicacion: min 4:45:36 · max 4:45:36
+  OK  available_at NO es el instante de descarga (`fetched_at`)   coinciden en 0 de 236; fetched_at 2026-09-09 00:44:33.862506+00:00 .. 2026-09-09 01:05:49.435169+00:00
+      filas con available_at posterior a las 12:00 UTC del target_date: 0
+      (existen, y por eso el filtro `available_at <= t_asof` es obligatorio)
+  OK  el pronostico elegido cumple available_at <= t_asof en TODOS los pares   violaciones 0
+  OK  forecast_tmax nunca NULL en lo elegido
+  OK  sólo los dos leads declarados
+      t_asof = end_date(12:00 UTC) - lead   ·  pares 236
+
+======================================================================================
+O · OBSERVATION
+======================================================================================
+  OK  una fila por (estacion, serie, DIA LOCAL): la ventana diaria ya viene agregada   256 pares, duplicados 0
+  OK  unidad unica en la estacion del experimento   (1, 'C')
+
+  -- ZONA HORARIA: la funcion lleva `Europe/London` FIJO --
+  OK  la zona de CYYZ sale del registro de produccion   America/Toronto
+  OK  y el arreglo muerde: con `Europe/London` fijo, CYYZ caia en otra fecha   2 dias afectados — ahora se agrupa por su propia zona
+
+  -- SIN INFORMACION FUTURA EN LAS FEATURES --
+  OK  ninguna observacion posterior a t_asof entra en las features
+      ejemplo 2026-06-07 lead 24: t_asof 2026-06-06 12:00Z · ultimo dia entrenable 2026-06-04 (etiqueta disponible 06-05 23:00Z)
+      ejemplo 2026-06-07 lead  9: t_asof 2026-06-07 03:00Z · ultimo dia entrenable 2026-06-05 (etiqueta disponible 06-06 23:00Z)
+
+======================================================================================
+T · TARGET (winning_outcome)
+======================================================================================
+  OK  la ganadora sale de markets.winning_outcome
+  OK  NO se usa `is_winner`
+  OK  NO se usa `outcome_index`
+  OK  la poblacion NO toca ninguna observacion: el target no se infiere del proxy IEM
+  OK  exactamente UNA ganadora por evento elegido   {1: 185}
+  OK  una fecha -> un evento: sin duplicacion   max 1
+  OK  sin event_id repetido en la poblacion
+  OK  `won` sólo se escribe como y; nunca entra en ninguna probabilidad
+
+======================================================================================
+P · PROBABILITY
+======================================================================================
+  OK  las probabilidades suman 1 dentro de cada evento, en los seis controles   error maximo 1.11e-16
+  OK  exactamente un y=1 por evento   max 1.0
+  OK  toda probabilidad en [0,1] ANTES del recorte   0 fuera
+  OK  el recorte es simetrico y el mismo en los dos brazos   EPS=1e-06
+  OK  mover la banda mueve SU probabilidad: la p va con el contrato, no con la posicion   0.35000 -> 0.00000
+
+======================================================================================
+S · SCORING
+======================================================================================
+  OK  un solo estrato de escalera en la poblacion puntuada   {11}
+  OK  el control estructural coincide con su formula cerrada   Brier 0.08264463 vs 0.08264463 · LL 0.30463610 vs 0.30463610
+  OK  estratificacion por n obligatoria y nunca agregar entre escaleras (A-280)   regla escrita
+
+======================================================================================
+DEFECTOS DE ALTO IMPACTO: 0
+observaciones menores: 0
+======================================================================================
