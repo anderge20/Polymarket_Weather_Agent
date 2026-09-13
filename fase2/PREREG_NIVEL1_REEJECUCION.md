@@ -79,7 +79,12 @@ se toca el mínimo de 20 pares.** Si el criterio refutaba con 19 eventos y confi
 Un evento entra si y sólo si, **después** de la reingesta:
 
 1. tiene la escalera completa en `markets` — un `«N or below»`, un `«M or higher»` y
-   todos los enteros entre medias, sin huecos (la función `particion()` que ya existe);
+   todos los enteros entre medias, sin huecos (la función `particion()` que ya existe).
+   **LA REGLA ES LA PARTICIÓN, NUNCA EL RECUENTO**, y está medido por qué importa: los 187
+   eventos EGLC del catálogo son los 187 particiones completas, **en tres tamaños** —
+   `{7: 2, 9: 26, 11: 159}`. Un criterio escrito como «11 bandas» habría excluido 28
+   eventos sanos sin que nada avisara. (Que los 119 dimensionados salgan todos de 11 es
+   un hecho de la ventana de observación, no una propiedad de la regla.);
 2. tiene observación EGLC para su día local de Londres;
 3. tiene pronóstico disponible en `t_asof` para el lead que se evalúa.
 
