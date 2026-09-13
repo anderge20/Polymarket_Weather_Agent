@@ -57,7 +57,13 @@ pero en lead 24 el intervalo toca el cero.
 
 Y las líneas base se comportan como tienen que comportarse, que es la única señal barata
 de que la maquinaria discrimina: **B1 (persistencia) sale claramente PEOR que la
-climatología** (+0,079 y +0,076, los dos excluyendo el cero).
+climatología** (+0,070 en lead 24 y +0,076 en lead 9, los dos excluyendo el cero).
+
+*Ese B1 es el corregido. La primera versión de mi guión leía el máximo del día anterior
+**sin la regla de disponibilidad**, y en lead 24 el `t_asof` son las 12:00Z del día
+anterior: «el máximo de ayer» incluía una tarde que aún no había ocurrido. Informacion del
+futuro, en el nivel cuya regla absoluta es ex-ante. Corregido (A-255), B1 pasa de 0,17225 a
+0,16268 en lead 24; **B0, B2, B3, B4 y el criterio no se mueven**.*
 
 ## 4. Por qué n = 19 y no 119
 
