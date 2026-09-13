@@ -20382,3 +20382,53 @@ como filtro.
    la última etiqueta disponible. Además, sin observación B1 da 0 a todas las bandas. No cambia D (B1 no
    entra en el criterio); la fuga sólo puede favorecer a B1.
    **Recomendación:** forma de B2, pero con el mismo conjunto de información que el entrenamiento.
+
+---
+
+## A-255 — RETRACTO LA DESVIACIÓN QUE DECLARÉ EN A-253: era falsa. Y mi propio guión MIRABA AL FUTURO · 2026-09-13 · Claude (sesión A), las dos cosas encontradas por B
+
+**Dos correcciones contra mí, las dos verificadas por mí antes de aceptarlas.**
+
+**1. La desviación que declaré en A-253 NO EXISTIÓ donde dije.** Escribí que `n1_14` y
+`n1_20` declaraban cinco modelos y reportaban cuatro. **Falso para `n1_14`**:
+
+    n1_14_baselines.py:112   MODELOS=['B0_clima30','B1_persist','B2_fc_crudo','B3_fc_error','B4_fc_bias']
+    n1_14_baselines.py:98    p['B1_persist'] = 1.0 if dentro(round(pers)) else 0.0
+    n1_20_filtros.py:43      MOD=['B0_clima30','B2_fc_crudo','B3_fc_error','B4_fc_bias']
+
+**B1 estaba, se calculaba y se reportaba en los tres bucles — la tabla de A-239 lo lleva.**
+Quien lo dejó fuera es `n1_20`, y sólo ése. Leí el `MOD` de `n1_20` y generalicé a los dos
+ficheros sin abrir el otro. *Es el mismo modo de fallo de esta mañana con las cinco
+columnas de `_SETTLE_REQUIRED`: mirar una mitad y afirmar sobre el conjunto.* La
+afirmación falsa está en A-253, en el docstring de `n1_40` y en el mensaje de commit
+`11ab25f`; queda corregida aquí y en el guión.
+
+**2. Y lo grave: `n1_40` MIRABA AL FUTURO.** Mi implementación de B1 era
+
+    ayer = obs.get(td - dt.timedelta(days=1))
+
+sin pasar por `label_av`. **En lead 24 el `t_asof` son las 12:00Z del día ANTERIOR**, así
+que «el máximo de ayer» incluía **una tarde que todavía no había ocurrido**. No es
+«información no disponible»: es información **del futuro**, en el nivel cuya regla
+absoluta es EX-ANTE, y escrita por mí en un guión cuyo docstring presume de aplicar la
+regla de disponibilidad al entrenamiento **doce líneas más arriba**.
+
+`n1_14` sí lo hacía bien: `ayer` salía de `tr` —ya filtrado por `label_av(d) <= t`— con el
+respaldo `tr[-1][1]`, la última etiqueta **disponible**. **La versión vieja era mejor que
+la mía y yo la había llamado incompleta.**
+
+**Arreglado y reejecutada la prueba de humo.** B1 pasa de 0,17225 a **0,16268** en lead 24
+(la fuga le ayudaba); B0, B2, B3 y B4 **no se mueven**, el criterio **no se mueve** y el
+veredicto **D sigue en pie**. Tercer defecto de la misma familia que B señaló y que también
+arreglé: cuando no había etiqueta, B1 daba `0.0` a **todas** las bandas — una no-predicción
+puntuada como si predijera.
+
+**La forma de B1 queda declarada antes de correr**, y con la razón: **la de B2** —puntual
+convertido en indicador— y no la de B3, porque la preinscripción agrupa B1 y B2 como los
+dos puntuales y reserva el error empírico para B3/B4. B coincide, por continuidad con
+`n1_14`.
+
+> **La lección: escribí un instrumento para comprobar una regla y lo escribí violándola.**
+> Es la segunda vez hoy —la primera fue el `hetzner-manual` doce líneas de shell después de
+> declarar que un defecto plausible es peor que un hueco—. *El sitio donde menos se audita
+> una regla es el cambio que la enuncia.*

@@ -15,13 +15,24 @@ Implementa, palabra por palabra, la preinscripcion que ya existia (docstring de
   REFUTA: el intervalo incluye el cero en cualquiera de los dos leads.
   No se elige lead ni modelo despues de mirar: se reportan los cinco.
 
-DESVIACION DETECTADA EN LA EJECUCION ANTERIOR Y CORREGIDA AQUI, dicha antes de correr:
-`n1_14` y `n1_20` declaraban CINCO modelos y reportaban CUATRO -- B1 (persistencia) no
-estaba en su lista `MOD`. No cambia el veredicto, porque el criterio sólo compara B3/B4
-contra B0, pero "se reportan los cinco" no se cumplio. Aqui B1 se implementa con la
-MISMA forma que B2 -- un pronostico puntual convertido en indicador, con el maximo
-observado del dia anterior en vez del pronostico -- y se dice que esa es una LECTURA de
-la preinscripcion hecha al implementar, no una eleccion entre variantes probadas.
+SOBRE B1, Y UNA AFIRMACION MIA QUE ERA FALSA. Escribi que `n1_14` y `n1_20` reportaban
+cuatro modelos de los cinco. **Falso para `n1_14`**: su `MODELOS` (linea 112) incluye
+`B1_persist`, lo calcula en la 98 y lo reporta en los tres bucles -- la tabla de A-239 lo
+lleva. Quien lo dejo fuera es `n1_20_filtros.py:43`, y solo ese. Lo corrijo aqui porque
+lo escribi en el docstring, en DECISIONS y en un mensaje de commit (session B).
+
+Y B1 SE IMPLEMENTA CON EL MISMO CONJUNTO DE INFORMACION QUE EL ENTRENAMIENTO, que es lo
+que `n1_14` ya hacia y la primera version de este guion NO: tomaba `obs[td - 1 dia]` sin
+pasar por `label_av`, y en lead 24 el `t_asof` son las 12:00Z del dia ANTERIOR -- o sea
+que "el maximo de ayer" incluia una tarde que aun no habia ocurrido. **Informacion del
+futuro en un nivel cuya regla absoluta es EX-ANTE.** Aqui `pers` sale de `tr`, que ya
+esta filtrado por `label_av(d) <= t`, con el mismo respaldo que `n1_14`: la ultima
+etiqueta DISPONIBLE cuando la de ayer no lo esta.
+
+La FORMA es la de B2 -- puntual convertido en indicador -- y no la de B3, porque la
+preinscripcion agrupa B1 y B2 como los dos puntuales y reserva el error empirico para
+B3/B4. Es una lectura declarada antes de correr, no una variante elegida tras ver un
+numero.
 
 LA VERDAD LA PONE EL MERCADO: `markets.winning_outcome`. La observacion sirve para las
 lineas base y para la comprobacion de integridad (c), nunca como verdad.
@@ -176,12 +187,16 @@ def main(argv=None) -> int:
             errs = [o - fx for _, o, fx in tr]
             bias = st.mean(errs)
             hist = [o for _, o, _ in tr[-30:]]
-            ayer = obs.get(td - dt.timedelta(days=1))
+            # DE `tr`, QUE YA ESTA FILTRADO POR DISPONIBILIDAD, y nunca de `obs`
+            # directamente: `obs[td-1]` en lead 24 incluiria una tarde posterior a
+            # `t_asof`. Mismo respaldo que `n1_14`: la ultima etiqueta disponible.
+            _a = [o for d, o, _ in tr if d == td - dt.timedelta(days=1)]
+            pers = _a[0] if _a else tr[-1][1]
             for lo, hi, won in eventos[td]:
                 dentro = lambda g: (lo is None or g >= lo) and (hi is None or g <= hi)
                 filas.append((td, won, {
                     "B0_clima30": sum(1 for o in hist if dentro(round(o))) / len(hist),
-                    "B1_persistencia": (1.0 if (ayer is not None and dentro(round(ayer))) else 0.0),
+                    "B1_persistencia": 1.0 if dentro(round(pers)) else 0.0,
                     "B2_fc_crudo": 1.0 if dentro(round(f)) else 0.0,
                     "B3_fc_error": masa(f, errs, lo, hi),
                     "B4_fc_bias": masa(f - bias, [e - bias for e in errs], lo, hi),
