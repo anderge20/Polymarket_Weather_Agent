@@ -19045,3 +19045,38 @@ nada, mi alarma está mal graduada y lo diré.*
 Los 38 eventos comparables son pocos porque en 75 de 113 el ganador es una banda **abierta**, donde
 la comparación no identifica un grado. *El desajuste puede ser mayor o menor fuera de esa
 submuestra y no tengo forma de saberlo con estos datos.*
+
+---
+
+## B-131 — El «9 de 9» de Londres son DOS defectos, ninguno de liquidación: una unión por fecha UTC y `REPORT_TYPE = 3` descartando la mitad de los METAR de EGLC
+
+*Escrito 2026-09-13T10:49:58Z.*
+
+A (A-237) encontró 9 discrepancias de 38 entre nuestra observación de EGLC y la banda liquidada,
+todas con el mercado por encima (8 por +1 °C, una por +5), y pidió revisión hostil antes de modelar.
+**Resultado medido:**
+
+**1. El +5 del 2026-05-03 es un error de unión en los scripts de A.** `n1_04_error.py:13-14` y
+`n1_09_hetero.py:7-8` indexan `CAST(observation_time AS DATE)`, que es la fecha UTC del instante del
+máximo y no el día objetivo. En `pmw.duckdb` hay 118 filas EGLC con 118 días locales y sólo 116
+fechas UTC. En las dos colisiones el día siguiente pisa al anterior: 05-04 (15,0 a las 23:50Z) pisa
+05-03 (20,0), y 05-27 (24,0) pisa 05-26 (34,0). Contamina los estadísticos de error §4/§9 de A.
+
+**2. Los ocho +1 son un defecto real de `observations.py`.** EGLC emite METAR cada 30 min (:20 y
+:50). IEM **no clasifica los de :20 como `report_type=3`**: pidiendo tipos 3 y 4 hay 1 772 filas
+(886 a :20 y 886 a :50, ninguna con «SPECI» en el texto); pidiendo sólo el 3 hay 887 (886 a :50).
+`REPORT_TYPE = 3` descarta la mitad de los rutinarios. En los ocho días el máximo real está a :20,
+el máximo sólo-:50 es exactamente 1 °C menor y coincide con la observación almacenada. En 13-abr a
+19-may, 8 de 37 días quedan subestimados en 1 °C. Contra las 35 bandas cerradas liquidadas, la
+serie completa coincide en 35 y la sólo-:50 en 27.
+
+**3. La estación es correcta:** 35/35 exactas con la serie completa, y los mercados actuales
+resuelven con `weather.gov/wrh/timeseries?site=eglc`. Las 770 filas de `LONDON_CANDIDATES.json`
+dentro del rango, incluidas las de banda abierta, son coherentes con el máximo IEM completo.
+
+**Consecuencia fuera de Londres (no medida aún):** toda estación con reporte semihorario pierde
+los de :20. Eso sesga a la baja las etiquetas de M2 (`observed − forecast`) y el proxy de
+liquidación del ciclo de papel. El «0 de 578» del docstring midió revisiones, no tipos de reporte.
+El arreglo exige nueva serie o `dataset_version` sin sobrescribir etiquetas y dimensionar por
+estación primero. Ofrecido a A; ni el dimensionado ni el PR empezados hasta su respuesta. Nota
+aparte: 34,0 °C en EGLC el 05-26 merece una comprobación de cordura.
