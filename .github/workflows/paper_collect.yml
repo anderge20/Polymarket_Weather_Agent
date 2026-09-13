@@ -138,6 +138,8 @@ jobs:
           # A new firing gets a new run_id and therefore a new cycle.
           RUN_ID: ${{ github.run_id }}
           MAX_PAGES: ${{ github.event.inputs.max_pages || '6' }}
+          # El GENERADOR, declarado por el llamador (ver `cycle_params.generator`).
+          PMW_GENERATOR: github-actions
         run: |
           set -euo pipefail
           mkdir -p results

@@ -65,9 +65,12 @@ END='# <<< pmw paper mode <<<'
 NEW=$(cat <<CRON
 $BEGIN
 # UTC. Collector every 3 h; a missed book slot is not recoverable.
-7 */3 * * * $ROOT/bin/launcher.sh collect    >> $ROOT/log/collect.log 2>&1
-40 2 * * *  $ROOT/bin/launcher.sh decide 9   >> $ROOT/log/cycle.log   2>&1
-40 11 * * * $ROOT/bin/launcher.sh decide 24  >> $ROOT/log/cycle.log   2>&1
+# PMW_GENERATOR: la linea del crontab es el UNICO sitio que sabe que esto lo
+# dispara cron. El launcher se declara `hetzner-launcher` y `run_cycle.sh` no
+# inventa nada, asi que los tres casos quedan distinguibles en `cycle_params`.
+7 */3 * * * PMW_GENERATOR=hetzner-cron $ROOT/bin/launcher.sh collect    >> $ROOT/log/collect.log 2>&1
+40 2 * * *  PMW_GENERATOR=hetzner-cron $ROOT/bin/launcher.sh decide 9   >> $ROOT/log/cycle.log   2>&1
+40 11 * * * PMW_GENERATOR=hetzner-cron $ROOT/bin/launcher.sh decide 24  >> $ROOT/log/cycle.log   2>&1
 $END
 CRON
 )

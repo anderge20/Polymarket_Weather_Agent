@@ -38,6 +38,22 @@ VENV=$ROOT/venv
 BRANCH=paper-state
 DSV=ds_paper_v1
 MODE=${1:-collect}
+
+# ESTE GUION NO INVENTA SU GENERADOR, y la primera version de este PR si lo hacia:
+# ponia `hetzner-manual` cuando nadie lo declaraba. Session B demostro que eso es
+# una MENTIRA PLAUSIBLE en produccion. El launcher que cron ejecuta vive en
+# `$ROOT/bin/launcher.sh`, una COPIA que solo actualiza `install.sh`
+# (install.sh:77); este fichero, en cambio, vive en el checkout y se actualiza en
+# cada ciclo. Asi que tras fusionar, el ciclo siguiente correria este guion nuevo
+# BAJO EL LAUNCHER VIEJO, que no exporta nada, y habria escrito `hetzner-manual`
+# en todos los ciclos programados hasta que alguien reejecutara `install.sh`.
+#
+# Y el fondo es el mismo que `paper_cycle.py` declara sobre `None`: deducir de la
+# AUSENCIA es inventar. Este guion no puede distinguir «me llamo una persona» de
+# «me llamo un launcher que no sabe declararse», asi que no elige: pasa lo que le
+# hayan dicho, y si no le han dicho nada pasa vacio, que `paper_cycle.py`
+# convierte en `None`.
+export PMW_GENERATOR="${PMW_GENERATOR-}"
 LEAD=${2:-24}
 
 log() { printf '%s %s\n' "$(date -u +%FT%TZ)" "$*"; }
