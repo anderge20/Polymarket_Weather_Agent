@@ -17171,3 +17171,23 @@ Se fusiona **después** del ciclo de las 03:07, no al vencer su ventana a las 03
 `universe`, que el ciclo de recogida sí ejecuta. **Meter código en la ruta de producción cuatro
 minutos antes de una corrida no vigilada no compra nada y esperar veinticinco minutos cuesta
 cero.** Los #43, #44 y #45 son inertes para el ciclo —docstring y tests— y por eso sí entraron.
+
+### B-118 bis — el tercer criterio cierra: el `collect` de las 03:07 no esperó nada
+
+*Añadido 2026-09-13T03:34:08Z.*
+
+    decide 02:40    ranura 02:40:00   arranca 02:40:05   retraso 6 s   termina 03:03:55   23,83 min
+    collect 03:07   ranura 03:07:00   arranca 03:07:05   retraso 6 s   termina 03:30:50   23,75 min
+
+**Seis segundos** — la latencia de base de todos los ciclos, no una espera de lock. El criterio
+de A era < 60 s. **A-206 confirma en los cuatro.**
+
+    ayer   el decide de las 11:40 termino 132 s DESPUES de su ranura siguiente; el collect espero 139 s
+    hoy    el decide de las 02:40 termino 190 s ANTES  de su ranura siguiente; el collect no espero nada
+
+Los dos ciclos de esta madrugada están en **23,8 min**: bajo el hueco de 27 y a diecinueve
+minutos del presupuesto de 42. *El margen de identificación sale del rojo, el de no-perder-ranura
+pasa del 69 % al 57 %, y ninguno exigió tocar el cron.*
+
+**La línea operativa de la noche queda cerrada.** Lo que sigue vivo es de investigación: el #33,
+el v3 sin desplegar de B-115, y la guarda de frontera de publicación de B-119.
