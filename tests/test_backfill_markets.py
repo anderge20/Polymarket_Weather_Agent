@@ -77,7 +77,7 @@ def test_a_dry_run_writes_nothing_and_counts_every_exclusion_by_reason(catalog, 
     assert out["events"] == 3 and out["events_writable"] == 1 and out["markets_writable"] == 3
     assert out["excluded"] == {
         backfill_markets.EXCLUDED_MARKET_WITHOUT_UNIT: 1,
-        backfill_markets.EXCLUDED_UNPARSEABLE_TOKENS: 1,
+        backfill_markets.EXCLUDED_NO_BAND_ROWS: 1,
         "no_station_identifier": 1,
     }
 

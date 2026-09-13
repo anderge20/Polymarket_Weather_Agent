@@ -113,6 +113,13 @@ WRITER_COLUMNS = (
 )
 
 EXCLUDED_MARKET_WITHOUT_UNIT = "market_without_unit"
+#: NO BANDS, not "not tradeable" — the two lead to opposite conclusions (session A).
+#: `outcomes` is keyed on (token_id, dataset_version, record_version): without a token
+#: there is no outcomes row, without that row there is no band, and without the band
+#: the event cannot be labelled. Measured on the catalogue: the two such events (504566
+#: Jinan, 504568 Zhengzhou, 2026-05-22) have no token, no winner and no resolution on
+#: any of their 11 bands.
+EXCLUDED_NO_BAND_ROWS = "market_without_token_ids_so_no_band_row"
 EXCLUDED_UNPARSEABLE_TOKENS = "unparseable_tokens_or_outcomes"
 
 
@@ -143,6 +150,9 @@ def validate_events(selection: "bu.Selection") -> tuple[dict[str, list[dict]], d
         markets = by_event[event_id]
         if any((_s(m.get("unit")) or "").upper() not in ("C", "F") for m in markets):
             excluded[EXCLUDED_MARKET_WITHOUT_UNIT] = excluded.get(EXCLUDED_MARKET_WITHOUT_UNIT, 0) + 1
+            continue
+        if any(bu.present(m.get("clobTokenIds")) is None for m in markets):
+            excluded[EXCLUDED_NO_BAND_ROWS] = excluded.get(EXCLUDED_NO_BAND_ROWS, 0) + 1
             continue
         if any(_parse_tokens(m) is None for m in markets):
             excluded[EXCLUDED_UNPARSEABLE_TOKENS] = excluded.get(EXCLUDED_UNPARSEABLE_TOKENS, 0) + 1

@@ -23,17 +23,27 @@ NO LAUNCH WITHOUT FILTERS
 -------------------------
 A run with no filter would price the whole catalogue — about 80 000 requests. That
 has to be an act written on the command line, not the absence of a flag, so a
-launch without `--stations`, `--since`, `--until`, `--require-forecast` or
-`--max-events` exits with an error. `--dry-run` needs no filter: it spends nothing,
-and it is how a budget is sized.
+launch without `--stations`, `--since`, `--until` or `--require-forecast` exits with
+an error. `--max-events` does not count: a cap bounds a universe, it does not choose
+one. `--dry-run` needs no filter: it spends nothing, and it is how a budget is sized.
+
+A DRY RUN CHANGES NOTHING. It never calls `init_db`, so it never migrates the
+database it reads: it opens an existing one read-only and creates none. A rehearsal
+that migrates the database it is sizing is not a rehearsal.
 
 WHAT WAS ASKED FOR IS RECORDED
 ------------------------------
 Each fetch writes its status to `price_fetch_attempts`. "Pending" is every YES token
-of the selection without a FINAL attempt (OK or EMPTY) in this dataset_version, so
-the dry run's request count is exact, and a token that came back EMPTY is not asked
-for again. One request per market: the YES side. The NO side is a separate decision
-with its own budget.
+of the selection that has neither rows in `price_history` nor a FINAL attempt (OK or
+EMPTY) in this dataset_version — `price_history` counts too, so the number is exact
+even on a database that migration 8 has not reached yet. A token that came back EMPTY
+is not asked for again. One request per market: the YES side. The NO side is a
+separate decision with its own budget.
+
+PENDING IS PER dataset_version. Prices already held under ANOTHER version still count
+as pending in a new one; the dry run reports how many, so a budget can choose between
+completing an existing version and re-fetching into a new one. That choice is not
+made here.
 
 RATE LIMITS: a 429 stops the walk immediately and the script exits non-zero. It is
 never retried and never worked around (gate D0). The token stays pending; re-running
@@ -64,7 +74,10 @@ WINDOW_HOURS = 48
 FINAL_STATUSES = (prices.S_OK, prices.S_EMPTY)
 ATTEMPT_SOURCE = "clob /prices-history"
 
-FILTER_FLAGS = "--stations, --since, --until, --require-forecast, --max-events"
+#: The flags that choose WHICH universe. `--max-events` is deliberately not one: a cap
+#: says HOW MUCH of a universe, and `--max-events 999999` alone would price the whole
+#: catalogue while satisfying the gate whose own text says that must be written out.
+FILTER_FLAGS = "--stations, --since, --until, --require-forecast"
 
 
 def yes_token(clob_token_ids) -> str:
@@ -88,14 +101,32 @@ def _forecast_pairs(con, dataset_version: str) -> set[tuple[str, str]]:
 
 
 def _final_tokens(con, dataset_version: str) -> set[str]:
+    """Tokens not to ask for again in this dataset_version: those with rows in
+    `price_history` (proof of a fetch that returned points) and those with a final
+    attempt, when the attempts table exists."""
+    final = {
+        r["token_id"]
+        for r in db.query(con, "SELECT DISTINCT token_id FROM price_history WHERE dataset_version = ?",
+                          [dataset_version])
+    }
+    if "price_fetch_attempts" in db.table_names(con):
+        final |= {
+            r["token_id"]
+            for r in db.query(
+                con,
+                f"SELECT token_id FROM price_fetch_attempts WHERE dataset_version = ? "
+                f"AND status IN ({', '.join('?' * len(FINAL_STATUSES))})",
+                [dataset_version, *FINAL_STATUSES],
+            )
+        }
+    return final
+
+
+def _priced_elsewhere(con, dataset_version: str) -> set[str]:
     return {
         r["token_id"]
-        for r in db.query(
-            con,
-            f"SELECT token_id FROM price_fetch_attempts WHERE dataset_version = ? "
-            f"AND status IN ({', '.join('?' * len(FINAL_STATUSES))})",
-            [dataset_version, *FINAL_STATUSES],
-        )
+        for r in db.query(con, "SELECT DISTINCT token_id FROM price_history WHERE dataset_version <> ?",
+                          [dataset_version])
     }
 
 
@@ -133,20 +164,22 @@ def main(argv=None) -> int:
                     help="print the selection and the exact number of requests pending; request nothing")
     args = ap.parse_args(argv)
 
-    filtered = any([args.stations, args.since, args.until, args.require_forecast,
-                    args.max_events is not None])
+    filtered = any([args.stations, args.since, args.until, args.require_forecast])
     if not filtered and not args.dry_run:
         print(
             "REFUSED: no filter given, which would price the whole catalogue (~80 000 "
             "requests). Launching the full universe has to be written on the command "
             f"line, not left to a missing flag. Accepted filters: {FILTER_FLAGS}. "
-            "--dry-run needs none.",
+            "--max-events is a bound, not a scope, and does not count. --dry-run needs none.",
             file=sys.stderr, flush=True,
         )
         return 2
 
-    db_exists = os.path.exists(args.db)
-    con = db.init_db(db.connect(args.db)) if (db_exists or not args.dry_run) else None
+    if args.dry_run:
+        # NEVER init_db here: a dry run must not migrate the database it reads.
+        con = db.connect(args.db, read_only=True) if os.path.exists(args.db) else None
+    else:
+        con = db.init_db(db.connect(args.db))
 
     forecast_pairs = None
     if args.require_forecast:
@@ -160,6 +193,7 @@ def main(argv=None) -> int:
     selection = bu.select_events(rows, stations=args.stations, since=args.since, until=args.until,
                                  forecast_pairs=forecast_pairs, max_events=args.max_events)
     final = _final_tokens(con, args.dataset_version) if con is not None else set()
+    elsewhere = _priced_elsewhere(con, args.dataset_version) if con is not None else set()
 
     pending, unpriceable = [], 0
     for m in selection.rows:
@@ -177,9 +211,12 @@ def main(argv=None) -> int:
         "markets_unpriceable": unpriceable,
         "tokens_already_final": len(selection.rows) - unpriceable - len(pending),
         "requests_pending": len(pending),
+        "pending_with_prices_in_other_dataset_versions": sum(1 for _, tok in pending if tok in elsewhere),
     })
     print(json.dumps(summary, indent=1, default=str), flush=True)
     if args.dry_run:
+        if con is not None:
+            con.close()
         return 0
 
     session = prices.default_session()

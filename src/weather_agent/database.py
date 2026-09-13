@@ -646,6 +646,23 @@ _DDL_V8 = [
         PRIMARY KEY (token_id, dataset_version)
     );
     """,
+    # SEEDED FROM WHAT IS ALREADY THERE (session A). A table born empty counts every
+    # token already fetched as pending: measured on the real store, 807 EGLC YES tokens
+    # already had prices and a dry run called them pending — 1 997 against 1 190, 40 %
+    # off on the number this table exists to make exact, and 6 143 requests of quota
+    # re-spent on data already held. A row in `price_history` IS proof that the token
+    # was asked for and returned points, so it seeds an `OK` attempt. EMPTY results of
+    # the past cannot be recovered, and need not be: the NO side was never asked for.
+    """
+    INSERT INTO price_fetch_attempts (token_id, market_id, dataset_version, status,
+        points_written, attempted_at, source, source_timestamp, ingestion_timestamp,
+        record_version)
+    SELECT token_id, min(market_id), dataset_version, 'OK', count(*), max(fetched_at),
+           'seeded_from_price_history', max(fetched_at), now(), 1
+    FROM price_history
+    GROUP BY token_id, dataset_version
+    ON CONFLICT DO NOTHING;
+    """,
 ]
 
 
