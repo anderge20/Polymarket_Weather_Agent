@@ -15889,3 +15889,72 @@ A en revisión: asserté `rows_written` con `<` cuando el fixture da 4 contra 12
 tesis es que la costura no es un redondeo, y `<` pasaría con 11 contra 12 — el mundo en el que
 mi tesis es falsa.** Cambiado a `(4, 12)` exactos. *Tercera forma permisiva del día entre los
 dos, y la primera que no era suya.*
+
+## A-199 — Revisión del PR #33: la cola nueva es 2–20× demasiado ligera, y la culpa es de la derivación, no del código · 2026-09-13 · Claude (sesión A)
+
+*Revisión adversarial del PR que arregla lo que A-198 acaba de caracterizar. Verificado: fusión
+de prueba `origin/main` + `a230cde6` sin conflicto, **672 verdes sobre el ÁRBOL DE FUSIÓN**
+(main sola: 657), con la rama 61 commits por detrás. La derivación de λ la comprobé a mano y es
+correcta. **El PR debe fusionarse.** Lo que sigue no lo bloquea.*
+
+### La medición que al PR le falta
+
+Reconstruí los pares de entrenamiento con `m2.load_pairs` sobre el duckdb real —n = 1 348 a 24 h,
+n = 1 347 a 9 h, mismos pares con los que se ajustó el artefacto— y comparé la masa empírica más
+allá de los cuantiles contra los dos modelos de cola:
+
+    lead 24 h, por DEBAJO de P10     empirico   exponencial   lineal 1C (viejo)
+      0,5 C mas alla                    5,71%        4,35%          5,00%
+      1,0                               3,78%        1,89%          0,00%
+      2,0                               1,48%        0,36%          0,00%
+      3,0                               0,52%        0,07%          0,00%
+      4,0                               0,22%        0,01%          0,00%
+
+    lead 24 h, por ENCIMA de P90      empirico   exponencial
+      1,0                               4,15%        2,23%
+      2,0                               1,56%        0,50%
+      4,0                               0,37%        0,02%
+
+**El modelo viejo erraba por infinito; el nuevo erra por un factor de 2 a 20, creciendo con la
+distancia.** Las ocho comparaciones van en la misma dirección, en las dos colas y en los dos
+leads: es sesgo, no ruido.
+
+### La causa está en la derivación, y es un compromiso que el PR no nombra
+
+λ sale de igualar la densidad en P10 con la del tramo P10–P25. Eso fija la **pendiente inicial**
+de la cola al interior de la distribución — y la cola real decae más despacio. Ajustando λ por
+máxima verosimilitud sobre los excesos:
+
+    lead 24, cola inferior    continuidad 0,600    MLE 0,993    1,65x mas ancha
+    lead 24, cola superior    continuidad 0,667    MLE 1,221    1,83x
+    lead  9, cola inferior    continuidad 0,511    MLE 0,982    1,92x
+
+Con la λ ajustada, la masa más allá de 2 C sale **1,33 %** contra **1,48 %** empírico. Con la del
+PR, 0,36 %.
+
+**El compromiso: con una exponencial de UN parámetro se puede tener continuidad de densidad o el
+peso correcto de la cola, no las dos.** Elegir la continuidad es defendible; lo que falta es
+decir que se eligió y qué cuesta.
+
+### Y el cero duro no desaparece, sólo encoge
+
+El corte en 6,9 λ deja el soporte a 24 h en `[−5,54, +6,90] C` de error, y **5 de los 1 348 pares
+(0,37 %) caen fuera**, con extremos en −5,94 y +10,00 C. A 9 h, 4 de 1 347.
+
+***El modelo nuevo sigue llamando imposible a algo que ya ocurrió en el conjunto con el que se
+ajustó.*** Mucho menos que antes —de 3,8 % a 0,37 %, un factor de diez— pero no cero, y la
+afirmación del PR de que ningún outcome alcanzable recibe p = 0 es cierta de su comprobación y no
+de los pares de entrenamiento.
+
+### Lo que NO hago, y por qué
+
+**No propongo cambiar λ dentro de este PR.** Ajustar un parámetro sobre los mismos datos es
+exactamente lo que este proyecto obliga a preinscribir: λ por MLE hay que fijarla en
+entrenamiento, congelarla y evaluarla **fuera de muestra, walk-forward**. Meterla en un PR que ya
+está en revisión sería colar una decisión de modelado por la puerta de atrás — y sería la misma
+falta que le costó el primer resultado a Londres, con otra cara.
+
+*Y la cautela que vale para cuando se toque, repetida porque es la que más fácil se pierde: una
+cola mejor NO es un edge.* Cambiar el cero por un número pequeño y correcto mejora el Brier del
+modelo en esas filas y **no dice nada** sobre si supera al mercado. Pregunta distinta, ya medida,
+y la respuesta fue que no.
