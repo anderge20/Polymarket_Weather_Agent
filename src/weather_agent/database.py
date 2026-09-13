@@ -756,8 +756,12 @@ MIGRATIONS: list[dict] = [
 def migration_checksum(migration: dict) -> str:
     """sha256 over a migration's statements, whitespace-normalised per statement.
 
-    Written into `schema_version.checksum` when the migration is applied, and pinned
-    in the tests: the body of a published migration is never edited."""
+    Written into `schema_version.checksum` when a migration is applied FROM NOW ON.
+    Rows recorded earlier stay NULL for good — measured on a copy of session A's
+    database, 3 of 9 rows carry one after this change, the three just applied — so the
+    database cannot vouch for its own history. The guard is the test that pins every
+    published migration's checksum; `init_db` only WARNS when a recorded, non-null
+    checksum differs from the code, and never aborts on it."""
     import hashlib
 
     body = "\n".join(" ".join(str(st).split()) for st in migration["statements"])
@@ -832,12 +836,39 @@ def init_db(con=None, db_path: str | None = None):
     `measurement_rule_code` — while the paper cycle, which builds a fresh schema in
     `:memory:` every run, always had it. Production and analysis ran on different
     schemas with nothing to say so, and the suite could not see it because it always
-    builds a new database. Every statement in MIGRATIONS is idempotent, so applying a
-    lower-numbered migration on a database that already holds later ones is safe."""
+    builds a new database.
+
+    WHEN FILLING A GAP IS SAFE, stated narrowly because the broad version is false
+    (session A). Idempotent means "twice equals once"; filling a gap needs "LATE
+    equals IN ORDER", a different property. Pure DDL that adds columns satisfies it:
+    `ADD COLUMN IF NOT EXISTS` applied after later migrations yields the same schema.
+    Two kinds of statement do not:
+      * a statement that READS DATA — migration 8 seeds `price_fetch_attempts` from
+        `price_history`; filled late, after some later migration had changed that
+        table, it would seed from a table other than the one it describes;
+      * `CREATE TABLE IF NOT EXISTS` over a table that already exists with another
+        shape — it reconciles nothing, and the migration would be RECORDED as applied,
+        which is worse than the gap.
+    The gaps that exist (5 and 6) are both `ADD COLUMN`, so this change is safe BY THE
+    CLASS OF WHAT IS MISSING, not by a general rule. `tests/test_migrations.py` pins
+    which migrations read data, so a new one fails by name until someone decides
+    whether it can be applied late."""
     if con is None:
         con = connect(db_path)
     _ensure_schema_version_table(con)
-    recorded = {int(v) for (v,) in con.execute("SELECT version FROM schema_version").fetchall()}
+    recorded_rows = con.execute("SELECT version, checksum FROM schema_version").fetchall()
+    recorded = {int(v) for v, _ in recorded_rows}
+    by_version = {m["version"]: m for m in MIGRATIONS}
+    for v, checksum in recorded_rows:
+        mig = by_version.get(int(v))
+        if checksum is not None and mig is not None and checksum != migration_checksum(mig):
+            # A WARNING, never an abort: a database must still open. It says that the
+            # body of an applied migration was edited, which reaches no database.
+            import warnings
+            warnings.warn(
+                f"schema_version {v} ({mig['name']}) was recorded with a checksum that no "
+                "longer matches its statements: a published migration was edited",
+                UserWarning, stacklevel=2)
     for mig in sorted(MIGRATIONS, key=lambda m: m["version"]):
         if mig["version"] in recorded:
             continue

@@ -77,3 +77,40 @@ def test_init_db_applies_a_migration_numbered_BELOW_the_highest_recorded(tmp_pat
         assert sorted(v for (v,) in con.execute("SELECT version FROM schema_version").fetchall()) == recorded
     finally:
         con.close()
+
+
+#: Statement prefixes that only change the SCHEMA. Anything else reads or writes data.
+_DDL_PREFIXES = ("ALTER TABLE", "CREATE TABLE", "CREATE SEQUENCE", "CREATE INDEX", "CREATE UNIQUE INDEX")
+
+
+def test_the_migrations_that_READ_DATA_are_pinned():
+    """Filling a gap is safe for DDL that adds columns, not for a statement that reads
+    data: applied LATE it can read a table that later migrations have changed
+    (session A). Migration 8's seed is the only one today. A new data-reading migration
+    fails here by name until someone decides whether it can be applied late, and says so
+    in the migration."""
+    reading = sorted(
+        m["version"] for m in db.MIGRATIONS
+        if any(not " ".join(st.split()).upper().startswith(_DDL_PREFIXES) for st in m["statements"])
+    )
+    assert reading == [8], reading
+
+
+def test_a_recorded_checksum_that_differs_WARNS_and_never_aborts(con):
+    import pytest
+
+    con.execute("UPDATE schema_version SET checksum = 'edited' WHERE version = 3")
+    with pytest.warns(UserWarning, match="published migration was edited"):
+        assert db.init_db(con) is con
+
+
+def test_a_NULL_checksum_from_before_this_change_does_not_warn(con):
+    """Rows recorded before checksums were written stay NULL forever; that is history,
+    not an edit."""
+    import warnings
+
+    con.execute("UPDATE schema_version SET checksum = NULL WHERE version <= 7")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        db.init_db(con)
+
