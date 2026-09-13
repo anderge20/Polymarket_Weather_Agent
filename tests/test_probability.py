@@ -489,3 +489,51 @@ def test_the_linear_tail_leaves_a_probability_GAP_and_the_exponential_does_not()
     assert min(exponential) < 0.001
     assert exponential[len(exponential) // 2] < 0.01, \
         "the exponential tail reintroduced a gap"
+
+
+def test_an_open_ended_band_can_never_carry_probability_zero():
+    """The cleanest case for A2, and it is a LOGICAL impossibility rather than a
+    calibration error.
+
+    Session A found it at EGLC on 2026-06-23, lead 9 h: a band "32 or less" —
+    open at the bottom — that the model called IMPOSSIBLE, the market priced at
+    0.1095, and which WON. An open-ended tail cannot have probability zero under
+    any honest specification: there is no lower bound to exclude.
+
+    The mechanism is the old support, `range(floor(p10), ceil(p90) + 1)` — SIX
+    integers on both real strata. Anything below it got exactly 0.0, open band or
+    not. Session A measured the consequence on the live book: the maximum number
+    of non-zero bands per group is exactly 6 and is NEVER exceeded, which makes
+    the support arithmetic a hard ceiling rather than a tendency, and accounts for
+    42.3 of the 50.5 points of hard zeros.
+
+    Reproduced here from the versioned artifact, so it does not depend on their
+    substrate.
+
+    NOTE THE FIX IS PARTIAL AND THE TEST SAYS SO: 0.0196 against a market price of
+    0.1095 is still light by more than 5x, which is the same residual session A's
+    review measures. What changes is POSSIBLE vs IMPOSSIBLE, and only that is
+    asserted here.
+    """
+    import json
+    from weather_agent.probability import (quantiles_to_distribution,
+                                           band_probability, TAIL_LINEAR_R21)
+    art = json.load(open("artifacts/m2_quantiles.json"))
+    qc = {int(k): v for k, v in art["strata"]["9"]["values"].items()}
+    lev = {l: 34.5 + qc[l] for l in (10, 25, 50, 75, 90)}   # a heatwave forecast
+    kw = {f"p{k}": lev[k] for k in lev}
+
+    old = quantiles_to_distribution(**kw, tail_model=TAIL_LINEAR_R21)
+    new = quantiles_to_distribution(**kw)
+
+    # the old support is the six-integer window, so "32 or less" is a strict zero
+    assert (min(old), max(old)) == (33, 37)
+    assert band_probability(old, lo=None, hi=32.0) == 0.0, \
+        "the defect is gone from the reproduction path"
+
+    # the fix makes it POSSIBLE. It does not make it right.
+    p_new = band_probability(new, lo=None, hi=32.0)
+    assert p_new > 0.0, "an open-ended band was still called impossible"
+    assert p_new < 0.1095, \
+        "the exponential tail is still lighter than the market price; if this " \
+        "ever fails the residual has been fixed and the comment must be updated"
