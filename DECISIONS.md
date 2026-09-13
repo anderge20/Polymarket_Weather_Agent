@@ -20861,3 +20861,56 @@ verlo como una etapa sin fila.
 declaraciones de salto se escriben rama por rama con subconjuntos distintos, y el arreglo es
 de clase. **Lo que cambia: el arreglo necesita la segunda mitad, y sin ella habría sido una
 regresión disfrazada de mejora.**
+
+---
+
+## A-263 — El detalle de `settle` se pierde por la MISMA proyección, y ahí es donde vive todo el trabajo del #46/#47 · 2026-09-13 · Claude (sesión A)
+
+**Verificada primero la afirmación de B en B-145** —«la rama completa registra fila incluso
+sin posiciones abiertas»—: cierta, y por dos caminos (`paper_cycle.py:1399` y `1404`):
+
+    if not n_open:  cy.stage("settle", OK, positions_open=0, settled=0)
+    if missing:     cy.stage("settle", SKIPPED, reason="substrate_incomplete", ...)
+
+**Pero al mirarlo salió algo que ninguno de los dos había dicho, y es mayor que A-262.** La
+llamada real cuando sí hay trabajo (línea 1550) es:
+
+    cy.stage("settle", OK, positions_open=n_open, settled=settled,
+             refused=n_open - settled, reasons=json.dumps(refusals),
+             reason_details=json.dumps(salida))
+
+**`reasons` y `reason_details` son EXACTAMENTE el trabajo de los PR #46 y #47** — separar
+los tres sitios de `R_SERIES_MISMATCH`, el tope de tres detalles por motivo, el centinela
+`+N mas`. Un día entero de trabajo cuyo propósito era que el libro mayor dejara de llamar
+dos defectos por el mismo nombre.
+
+**Y la proyección de `stage_profile` lo tira todo.** Sólo sobrevive en
+`$ROOT/last_summary.json`: fuera de `paper_state`, **sobrescrito cada ciclo y nunca
+versionado**. El día que haya `PAPER_TAU` y la liquidación empiece a negarse, el motivo de
+cada negativa vivirá **tres horas**, hasta el ciclo siguiente.
+
+**No se ha perdido nada todavía, porque `settle` no ha corrido nunca en producción. La
+pérdida es PROSPECTIVA**, y cae justo sobre la medición de la que depende R24. *Es el mismo
+patrón que el `store_stats` que el propio fichero documenta doce líneas más abajo: un valor
+que llega a la etapa y muere ahí.*
+
+**UN PELIGRO QUE COMPROBÉ Y QUEDA REFUTADO, antes de escribirlo como hallazgo.** Iba a
+afirmar que serializar la entrada entera reventaría en las etapas `dump:*`, porque pasan
+`path=out["path"]` y `json.dumps` no sabe serializar un `Path`:
+
+    json.dumps(Path(...))  ->  TypeError: Object of type PosixPath is not JSON serializable
+    write_shard            ->  return {"path": str(path), ...}      <- YA es str
+
+**`write_shard` ya devuelve `str(path)`. El peligro no existe.** Lo mido y lo digo porque
+la frase era del tipo que entra en el corpus con aspecto de hallazgo.
+
+**Lo que sí queda como decisión de diseño, y por una asimetría real:** el volcado del perfil
+debe serializar con un `default` de respaldo (`default=str`), porque `stage_params` corre
+dentro de un `try` que **sólo tiene `finally`, sin `except`** (2521). Un valor no
+serializable que alguien añada mañana no costaría un campo: **costaría el shard entero del
+ciclo**. Fallar hacia lo legible es lo correcto justo aquí.
+
+**Consecuencia para la tarea #65:** la parte (b) no es «añadir `status` y `reason`», es
+**persistir la entrada completa** — estado, motivo y detalle— con respaldo de serialización.
+Y eso no es ampliar el alcance: es que la mitad (a) sin la (b) completa es una regresión, y
+la (b) a medias deja fuera precisamente lo que el #46/#47 existían para escribir.
