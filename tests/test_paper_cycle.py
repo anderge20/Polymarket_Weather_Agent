@@ -737,14 +737,52 @@ def test_an_off_grid_observation_never_settles(con, monkeypatch):
     assert con.execute("SELECT settlement, exit_time FROM paper_trades "
                        "WHERE paper_trade_id = ?", [tid]).fetchone() == (None, None)
 
-    # AND THE LEDGER CALLS IT THE WRONG THING — asserted as it IS, not as it
-    # should be. The core raises `R_SERIES_MISMATCH` for BOTH the series check and
-    # the unit check, distinguishing them only in `detail`, which `try_settle`
-    # drops on the floor. So a cycle whose observations were perfectly named comes
-    # back reading `series_mismatch`, and whoever reads that summary goes looking
-    # for a naming bug that is not there. Recorded here so the day it is fixed
-    # this assertion has to change on purpose.
+    # THE DAY IT IS FIXED THE ASSERTION CHANGES ON PURPOSE, and this is that day.
+    # The core still raises `R_SERIES_MISMATCH` for both the series check and the
+    # unit check — it is frozen and that enum is closed — but the boundary no
+    # longer throws away the `detail` that tells them apart.
     assert out["refusals"] == {"series_mismatch": 1}, out["refusals"]
+    assert "UNKNOWN" in out["details"]["series_mismatch"], out["details"]
+    assert "operator" in out["details"]["series_mismatch"], out["details"]
+
+
+def test_the_two_refusals_the_core_calls_series_mismatch_are_TOLD_APART(con, monkeypatch):
+    """The same reason code, two different defects, and now two different rows.
+
+    Before this, a cycle whose observations were named perfectly came back
+    reading `series_mismatch` because an observation had no UNIT, and whoever
+    read that summary went looking for a naming bug that was not there. The
+    counts were identical; only the prose the core had already written could
+    separate them, and it was being dropped.
+
+    Asserted as a PAIR rather than one at a time: each detail alone proves
+    nothing, since the claim is not "this string appears" but "these two cases
+    do not produce the same row".
+    """
+    _with_b_substrate(con); _fake_stations(monkeypatch)
+    _settleable_market(con, band="17°C", outcome="Yes", write_obs=False)
+    _ingested_observation(con, tmax_c=17.5)                    # off grid -> no unit
+    sin_unidad = paper_cycle.stage_settle(_cycle(), con, dataset_version="ds1")
+
+    # La posicion sigue ABIERTA —la primera negativa no la toca— asi que basta
+    # cambiarle la observacion debajo y volver a liquidar: mismo mercado, mismo
+    # operador, misma posicion, y la unica variable es la serie.
+    con.execute("DELETE FROM weather_observations")
+    # A Fahrenheit series on a market whose operator requires Celsius: the OTHER
+    # branch of the same reason code, reached with a perfectly gridded value.
+    con.execute(
+        "INSERT INTO weather_observations (station, observation_time, tmax_observed, "
+        "observed_value, observed_unit, series, source, ingestion_timestamp, "
+        "dataset_version, record_version) VALUES (?,?,?,?,?,?,?,?,?,?)",
+        ["EGLC", datetime(2026, 9, 10, 14, tzinfo=timezone.utc), 17.0, 63.0, "F",
+         obs_mod.SERIES_1F, "IEM", T0, "ds1", 1])
+    serie_mala = paper_cycle.stage_settle(_cycle(), con, dataset_version="ds1")
+
+    assert sin_unidad["refusals"] == serie_mala["refusals"] == {"series_mismatch": 1}
+    a = sin_unidad["details"]["series_mismatch"]
+    b = serie_mala["details"]["series_mismatch"]
+    assert a != b, f"mismo detalle para los dos casos: {a!r}"
+    assert "UNKNOWN" in a and "requires" in b, (a, b)
 
 
 

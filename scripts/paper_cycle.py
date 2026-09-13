@@ -1212,6 +1212,12 @@ def to_core_series(series: str | None) -> str | None:
 #: settlement into the next cycle.
 LABEL_PUBLICATION_MARGIN = timedelta(hours=2)
 
+#: How much of a refusal's `detail` reaches the stage row. Bounded because this
+#: lands in a line a human reads, and an operator id plus a unit list fits well
+#: inside it; the count in `reasons` carries the magnitude, this carries the
+#: WHICH.
+_REFUSAL_DETAIL_MAX = 160
+
 
 def stage_observations(cy: Cycle, con, *, dataset_version: str, now: datetime) -> dict:
     """Ingest the realized daily high for the station-days open positions wait on.
@@ -1352,6 +1358,7 @@ def stage_settle(cy: Cycle, con, *, dataset_version: str) -> dict:
 
     settled = 0
     refusals: dict[str, int] = {}
+    details: dict[str, str] = {}
     for pos in open_rows:
         rows = db.query(
             con,
@@ -1437,9 +1444,36 @@ def stage_settle(cy: Cycle, con, *, dataset_version: str) -> dict:
         # instant, not a real availability (A-30), so an as-of gate here would be
         # a claim we cannot support. The result carries Y_FINAL_UNKNOWN_ASOF and
         # says so.
-        result, reason = settlement.try_settle(obs, ctx, asof=None)
+        # `settle` DIRECTLY, not `try_settle`, and the difference is one field.
+        #
+        # THE LEDGER WAS CALLING TWO DIFFERENT DEFECTS BY THE SAME NAME. The frozen
+        # core raises `R_SERIES_MISMATCH` from two places -- the series check and
+        # the unit check -- separating them only in `exc.detail`, and `try_settle`
+        # drops `detail` on the floor. So a cycle whose observations were named
+        # perfectly came back reading `series_mismatch`, and whoever read that
+        # summary went looking for a naming bug that was not there.
+        #
+        # `test_an_off_grid_observation_never_settles` pinned that as it WAS, with
+        # a note saying the day it is fixed the assertion has to change on
+        # purpose. This is that day, and it does.
+        #
+        # THE DETAIL IS RECORDED, NOT PARSED. The alternative was to re-derive the
+        # discriminator here -- ask whether every observation's series matches the
+        # operator's -- and that is a second, divergent implementation of the
+        # core's own section 4, which this file already refuses to write for the
+        # window predicate thirty lines above. The core already computed it and
+        # already said it; the only defect was throwing it away.
+        try:
+            result, reason, detail = settlement.settle(obs, ctx, asof=None), None, None
+        except settlement.SettlementUnavailable as exc:
+            result, reason, detail = None, exc.reason, exc.detail
         if result is None:
             refusals[reason] = refusals.get(reason, 0) + 1
+            # FIRST detail per reason, not the last and not all of them: the
+            # count already says how many, and an unbounded map of prose would
+            # grow with the ledger and land in a stage row read by a human.
+            if detail and reason not in details:
+                details[reason] = detail[:_REFUSAL_DETAIL_MAX]
             continue
         won = settlement.band_key_wins(m["band_label"], result.band_key, m["unit"])
         # The position is on a specific token. A 'Yes' token pays when the band
@@ -1451,8 +1485,10 @@ def stage_settle(cy: Cycle, con, *, dataset_version: str) -> dict:
         settled += 1
 
     cy.stage("settle", OK, positions_open=n_open, settled=settled,
-             refused=n_open - settled, reasons=json.dumps(refusals))
-    return {"positions_open": n_open, "settled": settled, "refusals": refusals}
+             refused=n_open - settled, reasons=json.dumps(refusals),
+             reason_details=json.dumps(details))
+    return {"positions_open": n_open, "settled": settled, "refusals": refusals,
+            "details": details}
 
 
 def code_commit() -> str | None:
