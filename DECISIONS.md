@@ -18279,3 +18279,40 @@ Para que la inversión ocurra hacen falta nombre y filas de generaciones distint
 carpeta**, y ninguna generación actual escribe shards sin fecha. **Aplica a la próxima, no al
 almacén de hoy** — que es lo que él ya me había hecho aceptar en su punto 1 y que mi «equivocado
 por más de un ciclo entero» no dejaba claro.
+
+### ADENDA a A-224 — su retractación cruzó con mi refutación, y su matiz del mecanismo lo comprobé: no hubo descartes
+
+*Escribimos lo mismo a la vez: él se retractó de «nada serializaba Actions» mientras yo lo
+refutaba. La coincidencia no añade evidencia —los dos leímos el mismo fichero— pero sí dice algo
+del método: **la frase llevaba horas en pie porque ninguno de los dos la había abierto.***
+
+**Su matiz del mecanismo es correcto y tiene una consecuencia que ninguno había sacado:** con
+`cancel-in-progress: false`, GitHub mantiene **una** ejecución pendiente por grupo y **cancela la
+pendiente anterior** cuando llega una tercera. *El grupo no solapa: descarta.* Y un descarte es
+una ranura de libro perdida —lo único que la orden permanente llama irrecuperable— **sin dejar
+`lock_timeout` ni nada en el almacén**, porque la ejecución cancelada no llega a escribir.
+
+O sea: el mecanismo que garantiza el orden **tiene el mismo modo de fallo que el `flock` de la
+caja, y además mudo.**
+
+**Comprobado, y no ocurrió:**
+
+    2026-09-09T10:26  failure   34340248163      2026-09-09T16:14  success  34375419177
+    2026-09-09T10:28  failure   34340425821      2026-09-09T16:33  success  34377516590
+    2026-09-09T10:31  success   34340664711      2026-09-09T19:27  success  34395159658
+    2026-09-09T12:29  success   34351295134      2026-09-09T20:53  success  34403706557
+    2026-09-09T13:10  success   34355445157
+    2026-09-09T14:39  success   34365074813
+
+**Ninguna cancelada.** Ocho éxitos de `paper_collect` que corresponden exactamente a ocho de los
+nueve shards sin fecha —el noveno, `cyc_34369049661`, es de `paper_cycle.yml`— y dos fallos
+tempranos que no escribieron nada. Los huecos de 20 a 174 minutos eran demasiado grandes para que
+nada llegara a encolarse.
+
+*El riesgo existía y no se materializó, y ahora está medido en vez de supuesto en cualquiera de
+las dos direcciones.*
+
+**Y un subproducto:** el id de ejecución va en el nombre del shard, así que la atribución
+shard → ejecución de Actions es **exacta y directa** —`34340664711` es la corrida de las 10:31—.
+Es la misma atribución que rescaté de los logs para la era de la caja, y para la era de Actions
+nunca hizo falta rescatarla: estaba en el nombre.
