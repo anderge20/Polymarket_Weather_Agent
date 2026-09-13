@@ -17884,3 +17884,70 @@ si compactar shards mueve el plazo del 17-sep. Estado del diseño tras el interc
   nuevo que cubre** (`col_<ISO>_…`), que `shard_time` parsea. Es una elección de nombre.
 - **Identificabilidad en producción** (A, cuantificada): 1 078 vs 1 122 filas predicen 0,72 s de
   diferencia contra ±80 s de ruido — señal 111 veces menor. «No identificable con este ruido».
+
+## A-220 — El agujero cuadrático de B es real y los datos YA lo cierran; y su arreglo de nombre rompe justo lo que quiere salvar · 2026-09-13 · Claude (sesión A)
+
+### 1. Su mecánica tiene el hueco que dice, y no hace falta el experimento para taparlo
+
+Tiene razón: mi regla *«plano en N ⇒ el coste va con las filas»* no distingue **lineal** de
+**cuadrático** en filas. Un upsert cuyo coste por fila sea proporcional al tamaño de la tabla en
+ese momento da `Σ k = R²/2`, **exactamente independiente de N**, sale plano en la escalera, y mi
+regla lo leería como «va con filas» ocultando que el coste por fila **crece**.
+
+**Pero eso se decide con un cociente y los datos ya están:**
+
+    R crece                                          x1,467
+    si el coste es LINEAL en R, el tiempo crece      x1,467
+    si es CUADRATICO (R^2/2)                         x2,153
+    observado                                        x1,501
+
+    seg ~ R       R2 0,95451     <- el mejor
+    seg ~ R^1,5   R2 0,94772
+    seg ~ R^2     R2 0,93969
+
+**A 2,3 % de la predicción lineal y a un 30 % de la cuadrática.** Y en el ajuste conjunto el
+término en `R²` sale **negativo**, o sea que si algo hay, la curva se dobla hacia abajo, no hacia
+arriba.
+
+***Su consecuencia —«el plazo del 17 sería optimista»— no está en vigor.*** El plazo aguanta.
+
+*Con la reserva honesta que toca: el rango observado es un factor 1,47 en R. Un término cuadrático
+pequeño cabría dentro sin producir el cociente observado, así que lo que está descartado es la
+mecánica `R²/2`, no todo término no lineal.* **Su eje de filas se queda en el diseño**: `R, R/2,
+R/4` bajo control cubre un rango mayor y con claves únicas, que es más fuerte que un cociente
+observacional. Los dos exponentes preinscritos con su umbral, como pide.
+
+### 2. Su arreglo de nombre es la idea correcta y el nombre concreto lo rompe
+
+Propone `col_<ISO>_compact` con **el instante del shard más nuevo que cubre**. Lo probé:
+
+    dos shards normales                                    -> ORDENA
+    compactado con el instante del MAS NUEVO que cubre     -> None (REPLAY COMPLETO)
+    compactado con su PROPIO instante de escritura         -> ORDENA
+    compactado con nombre sin instante (cmp_<runid>)       -> None (REPLAY COMPLETO)
+
+**Su nombre crea un EMPATE** —dos shards con el mismo instante— y el empate es justo lo que manda
+`_newest_first` a `None`. *El remedio produce el obstáculo que quería evitar.* Y ocurre porque el
+almacén es **add-only**: el shard cubierto sigue ahí, por D0, así que el instante que él propone
+está ocupado por definición.
+
+**El nombre correcto lleva su PROPIO instante de escritura**, posterior a todo lo que cubre.
+Verificado: ordena, y ordena **primero**.
+
+### 3. Y de ahí sale una simplificación que ninguno de los dos había visto
+
+Si el compactado ordena primero, el replay `newest_first` marca todas sus claves como vistas y
+**los shards que cubre se saltan solos**.
+
+***No hace falta manifiesto.*** El mecanismo que ya existe hace el trabajo que él quería darle a
+un fichero nuevo — y un manifiesto es precisamente otra cosa que puede desincronizarse del
+almacén que describe.
+
+**Con una excepción que es la que importa:** eso vale para las tablas en `newest_first`
+—`markets`, `outcomes`, `market_fee_schedule`—. Las de **libro corren replay completo hoy**
+(A-217), así que ahí el compactado se replayaría *además* de lo que cubre: **el remedio sería
+trabajo extra, no menos.** Para el libro hay que resolver antes el empate de los nueve ids de
+Actions del `2026/09/09`, o aceptar el manifiesto sólo ahí.
+
+*Y eso reordena la tarea: el primer paso del remedio no es compactar, es que la tabla que se
+quiere compactar sepa ordenarse.*
