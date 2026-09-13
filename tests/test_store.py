@@ -476,3 +476,54 @@ def test_shard_time_reads_only_the_boxs_own_ids(tmp_path):
         assert store.shard_time(otro) is None, (
             f"{otro}: un id de Actions no lleva instante, y devolver algo aqui "
             "seria inventarse el orden que esta funcion existe para no inventar")
+
+
+def test_rows_written_counts_what_was_OFFERED_not_what_the_store_holds(tmp_path):
+    """The second seam in `rows_loaded`, pinned so it cannot be read as continuous.
+
+    In `newest_first` mode the rows a newer shard already claimed are never
+    offered to `upsert_many`, so `rows_written` falls without anything leaving
+    the store. Measured across the merge on the box:
+
+        21:07   rows_loaded 156 776   resident 91 592   redundantes 65 184
+        00:07   rows_loaded  94 130   resident 93 426   redundantes    704
+
+    Differencing that series reads as the store shrinking by 62 646 rows, which
+    never happened. `rows_read` is the invariant: it counts every row in every
+    shard in both modes, which is what makes the seam detectable rather than
+    silent.
+    """
+    from weather_agent import database as db
+    raiz = tmp_path / "store"
+    for h in (9, 12, 15):
+        store.write_shard(_snapshot(4, tick=0.01), table="markets",
+                          run_id=f"col_20260912T{h:02d}0705Z_aaaaaa", root=raiz,
+                          when=dt.datetime(2026, 9, 12, h, 7, tzinfo=dt.timezone.utc))
+
+    con = db.init_db(db.connect(":memory:"))
+    nuevo = store.load_shards(con, table="markets", root=raiz)
+    con.close()
+    assert nuevo["replay"] == "newest_first"
+
+    import weather_agent.store as _s
+    orig, _s._newest_first = _s._newest_first, lambda shards: None
+    try:
+        con = db.init_db(db.connect(":memory:"))
+        viejo = store.load_shards(con, table="markets", root=raiz)
+        con.close()
+    finally:
+        _s._newest_first = orig
+
+    assert viejo["replay"] == "full"
+    assert nuevo["rows_read"] == viejo["rows_read"] == 12, (
+        "`rows_read` tiene que ser el INVARIANTE entre los dos modos: es lo que "
+        "hace la costura detectable en vez de silenciosa")
+    # LOS VALORES EXACTOS, no `<`. Sesion A en revision: la tesis de esta entrada
+    # es que la costura NO es un redondeo, y un `<` pasaria con 11 contra 12 --
+    # que es precisamente el mundo en el que la tesis es falsa. El fixture es
+    # determinista: tres instantaneas de las MISMAS cuatro claves, asi que el
+    # replay completo ofrece 12 y el nuevo-primero 4.
+    assert (nuevo["rows_written"], viejo["rows_written"]) == (4, 12), (
+        f"{nuevo['rows_written']} contra {viejo['rows_written']}: se esperaban "
+        "4 y 12 exactos. Un margen menor no distingue esta costura de un "
+        "redondeo, que es lo unico que este test existe para distinguir")
