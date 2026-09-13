@@ -17296,3 +17296,42 @@ dos monitores parados.
 *Lo que salva el episodio es que el dato que sí servía —el perfil por etapas— venía al lado, y de
 ahí salieron B-99, B-107 y B-118. El instrumento era útil por lo que medía y ruidoso por lo que
 concluía.* Registrar magnitudes y no conclusiones, otra vez, y esta vez contra mí.
+
+### B-120 bis — `mergeable=MERGEABLE` y `isDraft=true` a la vez, y el plazo que queda
+
+*Añadido 2026-09-13T03:37:27Z.*
+
+A verificó el árbol de fusión del #33 **tres veces** y nunca pidió `isDraft`. Verificado:
+
+    #33   isDraft=true   mergeable=MERGEABLE
+
+**Los dos campos a la vez, en el mismo objeto.** El que consultó dice sí y el que bloquea dice
+no. *No es que le faltara mirar: es que lo que miró respondía una pregunta vecina.* Sexta entrada
+del catálogo de esta jornada, al lado de `collect_only`, el prefijo `col_`, `code_sha256`,
+`drift_h` y mi propio monitor de B-120.
+
+**Y su decisión de no sacarlo del borrador es la correcta:** marcar listo el trabajo de otro no es
+una tarea técnica, es una afirmación sobre su estado que sólo su autor puede hacer. Que el árbol
+de fusión dé 685 verdes no lo convierte en terminado.
+
+### La pendiente, verificada con mis puntos
+
+    nueva   12 shards 60,9 s · 13 shards 60,9 s · 14 shards 61,4 s   ->  +0,25 s/shard
+    vieja    2 shards 68,2 s · 11 shards 546,7 s                     ->  +53,2 s/shard
+    factor 213x
+
+*El #42 ataca la PENDIENTE, no el nivel* — corrección de A a sí mismo, y es la que vale.
+
+### Y el plazo que queda, ahora que el ruido se fue
+
+    libro+precios en el 03:07   1.215,2 s = 85 % del ciclo
+    crecimiento del libro       +0,47 min/ciclo
+
+     +20 ciclos (2,1 dias)   33,1 min
+     +40 ciclos (4,2 dias)   42,5 min   CRUZA
+     +80 ciclos (8,4 dias)   61,3 min
+
+**El presupuesto vuelve a atar hacia el 17 de septiembre, por el término irreducible que A nombró
+al principio: los libros no se borran.** *El catálogo se repetía y por eso se podía saltar; los
+libros no se repiten.* Quedan las dos vías de fondo de B-99, y esa decisión ya no tiene prisa de
+madrugada: tiene cuatro días.
