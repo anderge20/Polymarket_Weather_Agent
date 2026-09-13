@@ -108,10 +108,13 @@ if [ ! -x "$RUNNER" ]; then
   log "  half-running. Point /opt/pmw/REF at a ref that contains ops/hetzner/."
   exit 1
 fi
-# EL GENERADOR, y este es el unico sitio que puede decirlo. Cron llama aqui y
-# solo aqui: el `:-` de `run_cycle.sh` degrada a `hetzner-manual`, asi que un
-# ciclo programado y uno lanzado a mano dejan de ser indistinguibles en el shard.
-export PMW_GENERATOR=hetzner-cron
+# ESTE FICHERO SABE QUE ES EL LANZADOR; NO SABE QUE LE HAYA LLAMADO CRON. Es
+# tambien el camino manual correcto -- el flock que evita el solape del 21:03Z
+# del 09-09 vive aqui -- asi que quien lanza a mano con cuidado pasa por aqui.
+# Poner `hetzner-cron` desde este fichero seria afirmar algo que no consta.
+# El unico sitio que sabe que es cron es la linea del crontab (install.sh), y es
+# alli donde se declara; aqui solo se cede ante quien si lo sepa.
+export PMW_GENERATOR="${PMW_GENERATOR:-hetzner-launcher}"
 
 log "ref=$REF at $(git -C "$REPO" rev-parse --short HEAD) -> $* "
 exec "$RUNNER" "$@"

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import sys
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -3494,46 +3495,88 @@ def test_a_generator_nobody_declared_is_None_and_never_a_plausible_guess(
     assert fila["generator"] is None, fila["generator"]
 
 
+def _codigo(path: Path) -> str:
+    """El fichero SIN comentarios.
+
+    `"PMW_GENERATOR" in f.read_text()` cuenta un fichero que sólo lo MENCIONA en un
+    comentario como si lo declarara, y cuenta como llamador a uno que sólo nombra
+    `paper_cycle.py` de pasada. Es la misma debilidad que session B encontró en el
+    barrido del `--collect-only-reason`, y se cierra igual: el texto que decide es el
+    código.
+    """
+    return "\n".join(l.split("#", 1)[0] for l in path.read_text().splitlines())
+
+
 def test_EVERY_caller_of_paper_cycle_declares_its_generator():
     """El barrido va por directorio, así que un cuarto llamador entra solo.
 
-    La lección del `--collect-only-reason`: la primera versión de aquel test
-    miraba UN fichero cuando había tres, y los otros dos pasaban la bandera sin
-    motivo. Aquí se pregunta por la clase desde el principio — *todo fichero que
-    invoque `paper_cycle.py` tiene que nombrar su generador*— y el recuento
-    esperado hace que añadir un llamador sin declararlo sea rojo, no silencio.
+    La lección del `--collect-only-reason`: la primera versión de aquel test miraba UN
+    fichero cuando había tres. Aquí se pregunta por la clase desde el principio — *todo
+    fichero que invoque `paper_cycle.py` tiene que nombrar su generador*— sobre el
+    CÓDIGO y no sobre el texto, y el recuento esperado hace que añadir un llamador sin
+    declararlo sea rojo en vez de silencio.
     """
     raiz = Path(__file__).resolve().parents[1]
     fuentes = sorted(list((raiz / "ops").rglob("*.sh")) +
                      list((raiz / ".github" / "workflows").rglob("*.yml")))
-    llamadores = [f for f in fuentes if "paper_cycle.py" in f.read_text()]
+    llamadores = [f for f in fuentes if "paper_cycle.py" in _codigo(f)]
     assert llamadores, "ningún fichero invoca paper_cycle.py: revisar este test"
-    sin_declarar = [f.name for f in llamadores
-                    if "PMW_GENERATOR" not in f.read_text()]
+    sin_declarar = [f.name for f in llamadores if "PMW_GENERATOR" not in _codigo(f)]
     assert not sin_declarar, f"invocan paper_cycle.py sin declarar generador: {sin_declarar}"
     assert len(llamadores) == 3, (
         f"se esperaban tres (run_cycle.sh, paper_cycle.yml, paper_collect.yml); "
         f"hay {len(llamadores)}: {[f.name for f in llamadores]}")
 
-    # Y EL ENVOLTORIO DE CRON, que no invoca a python y por eso el barrido no lo
-    # ve: es el ÚNICO sitio que puede decir `hetzner-cron`, porque `run_cycle.sh`
-    # degrada a `hetzner-manual` cuando nadie lo ha dicho. Si esta línea
-    # desaparece, los ciclos programados dejan de distinguirse de los manuales y
-    # nada más se pone rojo.
-    launcher = (raiz / "ops" / "hetzner" / "launcher.sh").read_text()
-    assert "export PMW_GENERATOR=hetzner-cron" in launcher
+
+def test_the_crontab_is_the_only_place_that_KNOWS_it_is_cron():
+    """Las tres etiquetas, declaradas por quien puede saberlas.
+
+    La primera versión de este PR ponía `hetzner-cron` en `launcher.sh` y
+    `hetzner-manual` por defecto en `run_cycle.sh`. **Las dos afirmaban lo que no les
+    consta** y session B lo refutó en producción: `$ROOT/bin/launcher.sh` es una COPIA
+    que sólo actualiza `install.sh` (install.sh:77), mientras que `run_cycle.sh` vive en
+    el checkout y se actualiza CADA ciclo — así que al fusionar, el guión nuevo habría
+    corrido bajo el launcher viejo y **habría escrito `hetzner-manual` en todos los
+    ciclos programados**. Una mentira plausible, que es justo lo que el comentario de
+    `paper_cycle.py` declara peor que un hueco.
+
+    El launcher sabe que es el launcher, no que le haya llamado cron: es también el
+    camino manual correcto, porque el flock vive ahí. **Sólo la línea del crontab lo
+    sabe.**
+    """
+    raiz = Path(__file__).resolve().parents[1] / "ops" / "hetzner"
+    install = _codigo(raiz / "install.sh")
+    # POR HORARIO, no por mención: `install -m 0755 ... "$ROOT/bin/launcher.sh"` también
+    # nombra el launcher y no es una línea de cron.
+    cron = [l for l in install.splitlines()
+            if "$ROOT/bin/launcher.sh" in l and re.match(r"^\s*[\d*]", l)]
+    assert len(cron) == 3, f"se esperaban tres líneas de cron; hay {len(cron)}: {cron}"
+    sin = [l.strip() for l in cron if "PMW_GENERATOR=hetzner-cron" not in l]
+    assert not sin, f"líneas de cron sin declarar el generador: {sin}"
+
+    launcher = _codigo(raiz / "launcher.sh")
+    assert 'export PMW_GENERATOR="${PMW_GENERATOR:-hetzner-launcher}"' in launcher
     assert launcher.index("export PMW_GENERATOR") < launcher.index('exec "$RUNNER"'), \
         "el export tiene que estar ANTES del exec o no se hereda"
+
+    # Y EL QUE NO SABE NADA NO INVENTA. Un defecto aquí es el defecto de producción.
+    runner = _codigo(raiz / "run_cycle.sh")
+    assert 'export PMW_GENERATOR="${PMW_GENERATOR-}"' in runner, \
+        "run_cycle.sh no puede poner un valor por defecto: no sabe quién lo llamó"
 
 
 def test_the_WRAPPER_exports_the_generator_and_yields_to_the_launcher(tmp_path):
     """CONDUCIENDO `run_cycle.sh` de verdad, y mirando el ENTORNO que vio python.
 
     El argv no sirve aquí: el generador viaja por entorno, así que el python de
-    mentira vuelca `PMW_GENERATOR` en vez de sus argumentos. Dos ramas, y la
-    segunda es la que importa — `${PMW_GENERATOR:-hetzner-manual}` tiene que
-    CEDER ante lo que ponga `launcher.sh`, o el camino de cron se etiquetaría a
-    sí mismo como manual.
+    mentira vuelca `PMW_GENERATOR` en vez de sus argumentos.
+
+    **La rama que importa es la PRIMERA**: sin declaración, este guión no inventa. La
+    versión anterior ponía `hetzner-manual`, y session B demostró que en producción eso
+    habría etiquetado como manual TODOS los ciclos de cron — el launcher que cron
+    ejecuta es una copia que sólo `install.sh` actualiza, mientras que este fichero se
+    actualiza en cada ciclo, así que el guión nuevo habría corrido bajo el launcher
+    viejo.
     """
     import os
     import subprocess
@@ -3575,7 +3618,64 @@ def test_the_WRAPPER_exports_the_generator_and_yields_to_the_launcher(tmp_path):
         assert visto.exists(), "el guion salió 0 sin llegar a invocar a python"
         return visto.read_text()
 
-    # invocado a mano: el guion se nombra a sí mismo
-    assert correr() == "hetzner-manual"
-    # invocado por `launcher.sh` (que exporta antes del exec): el suyo manda
+    # SIN declaración: pasa vacío y NO inventa. Es el caso del launcher viejo, que es
+    # exactamente donde la primera versión de este PR mentía.
+    assert correr() == ""
+    # con declaración: la pasa tal cual, venga del launcher o del crontab
+    assert correr(PMW_GENERATOR="hetzner-launcher") == "hetzner-launcher"
+    assert correr(PMW_GENERATOR="hetzner-cron") == "hetzner-cron"
+
+
+def test_the_LAUNCHER_itself_is_driven_and_its_label_survives_the_exec(tmp_path):
+    """El launcher, CONDUCIDO, y no comprobado por la posición del `export` en el texto.
+
+    La versión anterior de este test afirmaba la herencia leyendo el fichero: que el
+    `export` apareciera antes del `exec`. Eso comprueba el orden de dos líneas, no que
+    el valor llegue. Session B dio la receta y tenía razón: se conduce igual que
+    `run_cycle.sh`, con `ROOT=` sustituido, `flock` y `git` interceptados, y un
+    `run_cycle.sh` de mentira en `$ROOT/repo/ops/hetzner` que vuelca lo que ve.
+
+    Las dos ramas que importan: **sin declaración** el launcher pone la suya
+    (`hetzner-launcher`, lo único que le consta), y **con la del crontab** cede.
+    """
+    import os
+    import subprocess
+
+    raiz = Path(__file__).resolve().parents[1]
+    original = (raiz / "ops" / "hetzner" / "launcher.sh").read_text()
+    assert original.count("\nROOT=/opt/pmw\n") == 1, "ROOT ya no es sustituible por línea"
+
+    root = tmp_path / "pmw"
+    (root / "repo" / "ops" / "hetzner").mkdir(parents=True)
+    (root / "bin").mkdir()
+    (root / "log").mkdir()
+    guion = root / "launcher.sh"
+    guion.write_text(original.replace("\nROOT=/opt/pmw\n", f"\nROOT={root}\n"))
+    guion.chmod(0o755)
+    (root / "REF").write_text("main\n")
+
+    visto = root / "generator.txt"
+    runner = root / "repo" / "ops" / "hetzner" / "run_cycle.sh"
+    runner.write_text(f'#!/bin/sh\nprintf "%s" "${{PMW_GENERATOR-<sin declarar>}}" > {visto}\n')
+    runner.chmod(0o755)
+
+    # `flock` no existe en macOS y `git` no debe tocar nada real.
+    (root / "bin" / "flock").write_text('#!/bin/sh\nexit 0\n')
+    (root / "bin" / "git").write_text(
+        '#!/bin/sh\ncase "$*" in *rev-parse*) echo deadbee;; *) :;; esac\n')
+    for n in ("flock", "git"):
+        (root / "bin" / n).chmod(0o755)
+
+    def correr(**extra):
+        visto.unlink(missing_ok=True)
+        entorno = dict(os.environ, PATH=f"{root/'bin'}:{os.environ['PATH']}")
+        entorno.pop("PMW_GENERATOR", None)
+        entorno.update(extra)
+        r = subprocess.run(["bash", str(guion), "collect"], env=entorno,
+                           capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0, (r.returncode, r.stdout[-800:], r.stderr[-800:])
+        assert visto.exists(), "el launcher salió 0 sin llegar a ejecutar el runner"
+        return visto.read_text()
+
+    assert correr() == "hetzner-launcher"
     assert correr(PMW_GENERATOR="hetzner-cron") == "hetzner-cron"
