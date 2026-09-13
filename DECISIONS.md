@@ -20511,3 +20511,42 @@ una exposición del 3,56 % no bastan para cambiar una ventana que la auditoría 
 `NO_SEPARABLE_EN_MUESTRA`. Lo que queda es **la medición de la tasa de conflicto real**, y
 ésa necesita las escaleras completas — o sea, la reingesta. Queda en la tarea #63 con el
 número de exposición ya fijado, para que la tasa se compare contra una cota escrita antes.
+
+---
+
+## B-143 — La exposición de `WINDOW_LOCAL_CIVIL_DAY` es sobre todo empates (≈0,8 % estricta); el refetch del #49 no toca la cuota hoy; y el #52 aprobado con un arreglo de clasificador en espera
+
+*Escrito 2026-09-13T13:09:36Z.*
+
+**Exposición de la ventana del día civil local.** A la midió desde las descargas de B-133 (55 estaciones
+× 151 días): el máximo cae en la primera hora local en 292 de 8 202 días-estación (3,56 %), 212 de ellos a
+las 00:00 exactas, igual con tipo 3 que con 3+4. Recalculado aquí sobre días **etiquetables** (regla de
+horas pico de `daily_high`) y separando empates:
+
+    tipo 3   argmax en hora 0: 250/7 968 (3,14 %)   empates 194   ESTRICTO 56 (0,70 %), 28 estaciones
+    3+4      argmax en hora 0: 253/7 979 (3,17 %)   empates 189   ESTRICTO 64 (0,80 %), 32 estaciones
+    EGLC     tipo 3: 2 / 0 estrictos     3+4: 2 / 1 estricto (2026-05-27)
+
+Un día empatado liquida igual con cualquier ventana, así que la cota útil es la estricta, **≈0,8 %**, no
+3,56 %. La afirmación de A de que la exposición es de la ventana y no de la serie vale para el recuento con
+empates; con la definición estricta la serie 3+4 añade 8 casos (56 → 64), la mayoría a los :20, y EGLC
+pasa de 0 a 1. Los recuentos de A (290/292) y los de esta sesión (250/253) difieren por definición
+(redondeo a rejilla, cobertura), sin que se pueda atribuir la diferencia. **Cualquier cota que se
+preinscriba debe nombrar su definición.** No se toca el núcleo congelado: la tasa de conflicto real exige
+las escaleras completas de la reingesta.
+
+**Refetch del #49 en producción (A):** `stage_observations` sólo corre en `--settle-only` y en la rama de
+decisión tras `stage_paper`; los ciclos de hoy (09:07, 11:40 y 12:07) son todos collect-only por no haber
+`PAPER_TAU`, así que el refetch entra dormido y la cota de peticiones a IEM hoy es cero. Predicciones
+fechadas de A, escritas antes de leer shards: el ciclo de las 15:07 debe llevar
+`collect_only_reason = "mode_collect"` y el `decide 9` de las 02:40 de mañana `"no_paper_tau"`.
+
+**#52 aprobado por A en `941f487`** (718 passed). Nota no bloqueante: el clasificador de migraciones que
+leen datos dejaba pasar `CREATE TABLE ... AS SELECT`. Arreglo preparado y comprobado localmente (`846f90a`:
+lee datos lo que no empieza por DDL o contiene `SELECT` como palabra; el pin sigue en `[8]`; mutación en
+rojo; 719 passed), sin empujar, para que salga con la actualización del #52 tras la fusión del #50 y no
+invalide dos veces la aprobación.
+
+**B1 de la reejecución corregido por A** (A-255): forma de B2 con el conjunto de información del
+entrenamiento y el respaldo de `n1_14`; B1 a lead 24h pasa de 0,17225 a 0,16268, la fuga le favorecía;
+D sigue en pie. Frase de A: *«el sitio donde menos se audita una regla es el cambio que la enuncia»*.
