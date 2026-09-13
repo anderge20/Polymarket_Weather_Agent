@@ -18702,3 +18702,40 @@ lo miró, que es lo que nadie medía.*
 
 **+0,5 s/shard sobre cinco puntos**, contra los 53,2 del código viejo. Queda el de las 21:07 con
 diecinueve.
+
+## A-233 — PR #48: el shell sabía por qué y no lo decía · 2026-09-13 · Claude (sesión A)
+
+*Abierto 2026-09-13T09:52Z. Ventana D16 desde este registro: fusionable a partir de las **11:52Z**,
+y en la práctica **después del ciclo de las 12:07**. 688 → 691. Revisión pedida expresamente.*
+
+### Cierra la mitad medible de la tarea #43
+
+`collect_only=True` significa dos cosas y **seis de los 34 ciclos atribuibles son la segunda**:
+un `decide` al que el envoltorio añadió `--collect-only` por no existir `PAPER_TAU`. *El único
+tipo de ciclo que podría abrir una posición, indistinguible en los datos de uno que nunca lo
+intentó.*
+
+Y el motivo **nunca faltó**: `run_cycle.sh` lo escribe literal en cada ciclo cerrado en falso, en
+un log sin rotación. **`paper_cycle.py` no se entera de que lo lanzaron como decide**, así que no
+es que declinara registrarlo: no lo tenía. *«No escrito» no era «perdido», y esta vez ni siquiera
+estaba sin escribir.*
+
+### Las dos decisiones que no son de estilo
+
+**Un motivo de algo que no ocurrió es peor que ningún motivo.** El campo es `None` salvo que
+`--collect-only` esté puesto de verdad, con un test que lo conduce — si no, un `decide` real
+llevaría escrito «no_paper_tau» y se leería al revés de lo que pasó.
+
+**Y el test de cableado es débil a propósito, y lo digo en su docstring.** La llamada vive en un
+script de shell que la suite **no puede ejecutar**: `run_cycle.sh` hace `git fetch` y `git rebase`
+sobre el checkout en el que vive. Así que se fija por **lectura**: cada `--collect-only` del
+envoltorio lleva su motivo, y se afirma el número de ramas.
+
+*Es exactamente el defecto que tengo escrito —«el defecto vive en la llamada»— con la llamada
+fuera del alcance del intérprete que corre los tests. La alternativa honesta no era un test
+mejor, era decir cuál es su alcance.*
+
+### Lo que queda de la #43
+
+El campo que nombre **el generador** de los shards, y el puntero obsoleto del 1096. *Y persistir
+`reasons`/`reason_details`, que B y yo acordamos que va con esto o no va.*
