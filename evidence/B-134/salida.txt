@@ -1,0 +1,1 @@
+WU {'dias': 247, 'completa': 241, 'tipo3': 223, 'difieren': 18, 'dif_completa': 18, 'dif_tipo3': 0}

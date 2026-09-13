@@ -19071,7 +19071,7 @@ el máximo sólo-:50 es exactamente 1 °C menor y coincide con la observación a
 serie completa coincide en 35 y la sólo-:50 en 27.
 
 **3. La estación es correcta:** 35/35 exactas con la serie completa, y los mercados actuales
-resuelven con `weather.gov/wrh/timeseries?site=eglc`. Las 770 filas de `LONDON_CANDIDATES.json`
+resuelven con `weather.gov/wrh/timeseries?site=eglc`. **[Corrección 2026-09-13T11:07:52Z, mía (B-134): los mercados de EGLC de abril a mayo detrás del 35/35 resuelven con Wunderground, no con NOAA; la URL de weather.gov es la de los mercados de septiembre del almacén.]** Las 770 filas de `LONDON_CANDIDATES.json`
 dentro del rango, incluidas las de banda abierta, son coherentes con el máximo IEM completo.
 
 **Consecuencia fuera de Londres (no medida aún):** toda estación con reporte semihorario pierde
@@ -19378,3 +19378,43 @@ línea de SQL y la habría parado tres horas antes.
 **El backfill de mercados está incompleto para 74 de 115 eventos**, y eso es anterior a cualquier
 modelo. Tarea nueva: determinar si los mercados faltan en Polymarket o en nuestra ingesta. *Si es
 lo segundo, el nivel 1 se puede rehacer con n≈115 en vez de n≈19.*
+
+---
+
+## B-134 — Los mercados en C liquidan con la serie completa (18 de 18 días decisivos) y propuesta de diseño del arreglo
+
+*Escrito 2026-09-13T11:07:52Z.*
+
+**Validación con datos de liquidación real.** En `pmw.duckdb` (sólo lectura), todos los mercados en C
+con banda cerrada ganadora dentro de 2026-04-09..09-05, contra el máximo del día local de las
+descargas IEM de B-133: 247 días estación, **todos con fuente de resolución Wunderground**.
+
+    serie completa (3+4) coincide con la banda liquidada   241/247
+    sólo tipo 3 coincide                                   223/247
+    días en que las dos series difieren                     18 -> gana la completa 18, tipo 3 0
+
+Los 18 están en EGLC 8, EPWA 2, WSSS 2 y EDDM, EFHK, LIMC, RCSS, WIHH y WMKK con 1. Los otros 6
+fallos son días en que ambas series coinciden y ninguna acierta: residuo aparte (2,4 %), no atribuible
+al tipo de reporte.
+
+**Estrato 5 (`WU_DAILYOBS_C_PROXY_IEM`) validado con datos; estrato 7 (`NOAA_TEMPCOL_C`) sólo por
+el texto de la regla** («for all times on this day») hasta que haya mercados liquidados por NOAA.
+
+**Núcleo congelado:** `SETTLEMENT_OPERATOR_CORE.v3.md` verificado contra su sha (`a6d92667…`).
+`metar_body_c` no restringe el tipo de reporte, y el único operador «sólo horario» (estrato 9, NOAA
+HourlyData F) está en FAIL_CLOSED. Incluir el tipo 4 en C no requiere enmienda.
+
+**Diseño propuesto a A (un PR, sólo C):**
+1. `report_type` por serie de estación: C → (3, 4) con serie nueva `IEM_ASOS_METAR_1C_RT34`; F y
+   KBKF siguen con tipo 3 y quedan declarados pendientes.
+2. `SERIES_CORRESPONDENCE`: RT34 → `metar_body_c`, conservando la correspondencia antigua. Mezclar
+   ambas en una ventana es inocuo porque max(3+4) ≥ max(3) por construcción y el núcleo agrega con MAX.
+3. La comprobación `have` de `stage_observations` filtra también por la serie vigente.
+4. Primer test, liquidación: fixture IEM literal de EGLC 2026-04-14 con la consulta nueva, conducido
+   hasta `stage_settle`, afirmando la banda de WU (17) y, en par, 16 con sólo tipo 3.
+5. Tests de consulta: C lleva tipos 3 y 4, F sólo 3.
+6. Comentarios obsoletos: `observations.py:59-60/166/239`, `paper_cycle.py:1210`.
+7. Fuera del PR: backfill de etiquetas M2 con `dataset_version` nueva (investigación) y la decisión
+   de F.
+
+Evidencia: `evidence/B-134/` (script y salida).
