@@ -108,7 +108,54 @@ def merged_prs(limit: int = DEFAULT_LIMIT, runner=_run) -> list[dict]:
     return merged
 
 
-def check_d16(limit: int = DEFAULT_LIMIT, runner=_run, merged=None) -> list[str]:
+#: THE DAY THESE CHECKS STARTED BEING GATES RATHER THAN A CENSUS, and the counts
+#: they found when they did. All three are frozen and none may move forward.
+#:
+#: Before this date the repository merged 39 PRs of which 15 left no trace at all.
+#: Those rows cannot be fixed -- the windows are over -- and reprinting all 15 on
+#: every run is how a check stops being read: the same failure mode this file's
+#: own docstring names about a marker that shouts every time. A finding that can
+#: never be actioned is not a finding, it is furniture.
+#:
+#: So the legacy rows become a MEASUREMENT, stated on every run, and the check
+#: fails only on a silent merge it could still have prevented. What stops that
+#: from being the permissive form -- a check that can no longer fail -- is the
+#: PIN: if the legacy count ever differs from the one in `LEGACY_TRACE`, history was
+#: rewritten and that IS a failure, reported as one.
+ENFORCED_FROM = dt.date(2026, 9, 13)
+
+#: THE CUTOFF AND THE COUNT TRAVEL TOGETHER OR NOT AT ALL, and they are one
+#: object for exactly that reason. The first version of this file took them as
+#: two parameters, and session B's review found the hole in ninety seconds:
+#: `enforced_from` without `legacy_short` gives the EXCLUSION WITHOUT THE PIN --
+#: nine rows leave the failure list and nothing checks the count. Nothing in the
+#: signature stopped it.
+#:
+#: What made it a finding rather than a nit is that the wiring test's own
+#: docstring named that failure mode -- "su modo estricto o su modo sin pin
+#: segun el descuido" -- and then guarded it by testing TODAY'S caller. `main`
+#: passes both and the test proves it; a future caller gets the lenient half
+#: alone, silently. Two parameters made the bad state REPRESENTABLE. One pair
+#: does not, which is the difference between detecting a mistake and not having
+#: somewhere to put it.
+LEGACY_TRACE = (ENFORCED_FROM, 15)
+LEGACY_SHORT_WINDOWS = (ENFORCED_FROM, 9)
+
+
+def _legacy(legacy) -> "tuple[dt.date | None, int | None]":
+    """Unpack the frozen-debt policy, refusing the half of it that would be lax."""
+    if legacy is None:
+        return None, None
+    corte, cuenta = legacy
+    if corte is None or cuenta is None:
+        raise ValueError(
+            "legacy=(cutoff, count): a cutoff without a count is the exclusion "
+            "without the pin, and that combination is what this refuses to have")
+    return corte, cuenta
+
+
+def check_d16(limit: int = DEFAULT_LIMIT, runner=_run, merged=None,
+              legacy: "tuple[dt.date, int] | None" = None) -> list[str]:
     """Every merged PR must show >= 2 h between opening and merging.
 
     `createdAt` is a PROXY and it is the permissive one. D16 dates the window from
@@ -117,22 +164,41 @@ def check_d16(limit: int = DEFAULT_LIMIT, runner=_run, merged=None) -> list[str]
     This can therefore UNDER-report and never over-report. It is used anyway
     because it needs no bookkeeping and it caught a real violation on its first
     run; the exact clock stays in the declared deadline written at record time.
+
+    THE SAME LEGACY SPLIT AS THE TRACE CHECK, and for the same reason: nine of
+    these are from 2026-09-09 and 09-11, the windows are over, and no action
+    exists that changes them. Doing this to one check and not the other would
+    have achieved nothing -- the audit would still open with nine permanent
+    failures and the reader would still learn to skip to the bottom. The pin
+    (`LEGACY_SHORT_WINDOWS`) is what keeps it a gate: a tenth short merge fails, and so
+    does the count drifting.
     """
     merged = merged if merged is not None else merged_prs(limit, runner)
+    enforced_from, legacy_short = _legacy(legacy)
 
-    violations = []
+    violations, heredadas = [], 0
     for r in sorted(merged, key=lambda r: -r["number"]):
         waited = _utc(r["mergedAt"]) - _utc(r["createdAt"])
-        if waited < D16_WINDOW:
-            short = (D16_WINDOW - waited).total_seconds() / 60
-            violations.append(
-                f"PR #{r['number']}: waited {waited.total_seconds()/3600:.2f} h, "
-                f"{short:.0f} min short (opened {r['createdAt']}, merged {r['mergedAt']})")
+        if waited >= D16_WINDOW:
+            continue
+        if enforced_from is not None and _utc(r["mergedAt"]).date() < enforced_from:
+            heredadas += 1
+            continue
+        short = (D16_WINDOW - waited).total_seconds() / 60
+        violations.append(
+            f"PR #{r['number']}: waited {waited.total_seconds()/3600:.2f} h, "
+            f"{short:.0f} min short (opened {r['createdAt']}, merged {r['mergedAt']})")
+    if legacy_short is not None and heredadas != legacy_short:
+        violations.append(
+            f"legacy baseline moved: {heredadas} short windows before "
+            f"{enforced_from}, pinned at {legacy_short} -- either history was "
+            f"rewritten or the pin is stale, and both need a human")
     return violations
 
 
 def check_objection_window_was_used(limit: int = DEFAULT_LIMIT, runner=_run,
-                                    merged=None) -> list[str]:
+                                    merged=None,
+                                    legacy: "tuple[dt.date, int] | None" = None) -> list[str]:
     """D16 is a window for OBJECTIONS. `check_d16` can only see the clock.
 
     A PR that waits 2 h 00 and merges with nothing written on it satisfies
@@ -167,8 +233,9 @@ def check_objection_window_was_used(limit: int = DEFAULT_LIMIT, runner=_run,
     comment stream, where no tooling looks for it.
     """
     merged = merged if merged is not None else merged_prs(limit, runner)
+    enforced_from, legacy_silent = _legacy(legacy)
 
-    silent, formales = [], 0
+    silent, heredadas, formales = [], 0, 0
     for r in sorted(merged, key=lambda r: -r["number"]):
         fin = _utc(r["mergedAt"])
         revs = [v for v in (r.get("reviews") or [])
@@ -176,19 +243,74 @@ def check_objection_window_was_used(limit: int = DEFAULT_LIMIT, runner=_run,
         coms = [c for c in (r.get("comments") or [])
                 if c.get("createdAt") and _utc(c["createdAt"]) < fin]
         formales += len(revs)
-        if not revs and not coms:
-            esperado = (fin - _utc(r["createdAt"])).total_seconds() / 3600
-            silent.append(
-                f"PR #{r['number']}: window of {esperado:.2f} h left NO trace -- "
-                f"no review and no comment before the merge")
+        if revs or coms:
+            continue
+        if enforced_from is not None and fin.date() < enforced_from:
+            heredadas += 1
+            continue
+        esperado = (fin - _utc(r["createdAt"])).total_seconds() / 3600
+        silent.append(
+            f"PR #{r['number']}: window of {esperado:.2f} h left NO trace -- "
+            f"no review and no comment before the merge")
 
     out = list(silent)
+    # The pin. Without it the split above would be a way of never failing again.
+    if legacy_silent is not None and heredadas != legacy_silent:
+        out.append(
+            f"legacy baseline moved: {heredadas} silent merges before "
+            f"{enforced_from}, pinned at {legacy_silent} -- either history was "
+            f"rewritten or the pin is stale, and both need a human")
     if formales == 0:
         out.append(
             f"0 formal reviews across {len(merged)} merged PRs: whatever review "
             "happens is in the comment stream, and no check but this one looks "
             "there")
     return out
+
+
+def measure_process_state(merged: list[dict],
+                          enforced_from: dt.date = ENFORCED_FROM) -> list[str]:
+    """Numbers stated on EVERY run, whether or not anything is wrong.
+
+    The separation is the point of this function's existence. `check_*` answers
+    "what is broken"; this answers "what is the state", and the state here is a
+    debt that predates the instrument and can never be paid. Printing it as a
+    failure taught the reader to skip fifteen lines; printing it as a number
+    keeps it in front of them at one line, which is the only version that
+    survives being read every day.
+    """
+    fila = []
+    anteriores = [r for r in merged if _utc(r["mergedAt"]).date() < enforced_from]
+    mudos = 0
+    revisados = 0
+    for r in merged:
+        fin = _utc(r["mergedAt"])
+        revs = [v for v in (r.get("reviews") or [])
+                if v.get("submittedAt") and _utc(v["submittedAt"]) < fin]
+        coms = [c for c in (r.get("comments") or [])
+                if c.get("createdAt") and _utc(c["createdAt"]) < fin]
+        if revs:
+            revisados += 1
+        if not revs and not coms and fin.date() < enforced_from:
+            mudos += 1
+    fila.append(
+        f"{revisados} of {len(merged)} merged PRs carry a formal review; "
+        f"a review here means only that somebody submitted one, never that it "
+        f"was adversarial -- the API cannot tell those apart")
+    fila.append(
+        f"{mudos} of {len(anteriores)} PRs merged before {enforced_from} left no "
+        f"trace at all: frozen debt, not actionable, pinned so it cannot drift")
+    # AND THE SHORT WINDOWS, for the reason the whole split exists: moving them
+    # out of the FAIL list without printing them here would not have made the
+    # audit shorter, it would have made it quieter. Nine violations of the
+    # repository's own merge rule are not allowed to vanish because they are old.
+    cortos = sum(1 for r in anteriores
+                 if _utc(r["mergedAt"]) - _utc(r["createdAt"]) < D16_WINDOW)
+    fila.append(
+        f"{cortos} of {len(anteriores)} PRs merged before {enforced_from} merged "
+        f"INSIDE the 2 h window: same frozen debt, same pin, and the older half "
+        f"of it predates the rule being checked at all")
+    return fila
 
 
 def check_collector(max_age: dt.timedelta = COLLECTOR_MAX_AGE, runner=_run,
@@ -277,12 +399,26 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[UNMEASURABLE] merged-PR population: {exc}")
         return 1
 
-    for name, fn in (("D16 merge window", lambda: check_d16(merged=poblacion)),
+    # Stated before the checks, deliberately: the reader sees the state of the
+    # review trace BEFORE the pass/fail lines, so "D16: ok" is read against a
+    # number rather than instead of one.
+    for linea in measure_process_state(poblacion, ENFORCED_FROM):
+        print(f"[med]  {linea}")
+
+    # THE POLICY IS PASSED HERE, NOT DEFAULTED INSIDE THE CHECKS. A default that
+    # splits history would mean any caller who forgets the argument silently gets
+    # the lenient version -- the permissive form, one layer down. The functions
+    # compute violations; WHICH ERA IS ENFORCED is a decision, and a decision
+    # belongs at the entry point where it can be read.
+    for name, fn in (("D16 merge window",
+                      lambda: check_d16(merged=poblacion,
+                                        legacy=LEGACY_SHORT_WINDOWS)),
                      # Deliberately adjacent to the clock check, and deliberately
                      # after it: the pair is the finding. The first says the rule
                      # was kept, the second says whether it did anything.
                      ("D16 window was used",
-                      lambda: check_objection_window_was_used(merged=poblacion)),
+                      lambda: check_objection_window_was_used(
+                          merged=poblacion, legacy=LEGACY_TRACE)),
                      ("mainline integrity", lambda: check_mainline(args.since)),
                      ("collector freshness", check_collector)):
         try:
