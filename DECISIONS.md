@@ -16855,3 +16855,64 @@ la identificación, sino el de no perder una ranura de libro.
 *Y su coletilla sobre el mérito la acepto: distinguir «acerté por la razón correcta» de «acerté
 porque tenía el fichero delante» también vale. Yo he escrito esta entrada porque estaba mirando
 `launcher.sh` por otra cosa —el `--collect-only` de A-207—, no porque fuera a buscarlo.*
+
+---
+
+## B-117 — El presupuesto es una suma, y el tiempo de carga se come el lead
+
+*Escrito 2026-09-13T02:59:44Z.*
+
+### La invariante que cierra B-116, verificada desde las fuentes
+
+    launcher.sh:51   flock -w "${PMW_LOCK_WAIT:-900}" 9
+    hueco minimo de cron                1620 s
+    1620 + 900 = 2520 s = 42,0 min
+
+**El presupuesto de 42 minutos es una SUMA, no una estimación.** Y el punto de A mata mi (b) del
+todo: **el lock se rinde 720 s antes de poder empujar un arranque a la vecindad de la ranura
+siguiente.** No es «real pero no atante» — es **inalcanzable por este mecanismo**, y lo que la
+protege es `PMW_LOCK_WAIT < min(hueco de cron)`: *dos números en dos ficheros distintos que nadie
+había escrito juntos.*
+
+Y acepto su corrección de vuelta: **mis 139 s no estaban en rojo, son el 15,4 % de la holgura del
+lock.** *Los dos medimos la misma cantidad contra el denominador equivocado, cada uno el suyo.*
+
+### La tercera consecuencia, que no habíamos mirado
+
+    ciclo      total min   inicio->prediction   drift_h   lead_ef
+    060705         26,04              +26,0m    -5,448     29,45
+    090705         25,80              +25,8m    -2,452     26,45
+    114005         29,12              +19,9m    +0,153     24,00
+    150705         33,92             -187,1m    +3,683     24,00
+    210705         37,41             -547,1m    +9,741     24,00
+    000706         22,70              +22,7m   -11,504     35,50
+
+Dos regímenes, y es `min(now, t_asof)` funcionando. **Lo que importa es el primero: «inicio →
+`prediction_time`» es EXACTAMENTE la duración del ciclo.** 26,04 y +26,0m. 25,80 y +25,8m. 22,70
+y +22,7m.
+
+**El instante de decisión se fija DESPUÉS de toda la carga, así que el ciclo se come su propio
+tiempo de carga del lead efectivo.** Y el estrato de cuantiles se elige por el lead **nominal**:
+
+    paper_cycle.py:548   lead_h = int(lead_hours)
+    paper_cycle.py:557   q = art.quantiles(lead_h, prediction_time, ...)
+
+*Un ciclo que tarda 37 minutos decide con 0,62 h menos de horizonte del que dice tener, y pide
+los cuantiles del horizonte que no tiene.* **Sobre un lead de 9 h, el 7 %.**
+
+Y `drift_h` y `lead_effective_h` **se registran y no gobiernan nada** — no aparecen en ninguna
+decisión, sólo en la fila. *La forma de «el registro existe y está donde nadie va a buscarlo»,
+otra vez.*
+
+**La dirección, que es la que salva:** menos horizonte del supuesto significa **menos** error del
+que los cuantiles asumen, o sea distribución demasiado ancha. **Conservador: no inventa
+confianza, la sobra.**
+
+**Y el #42 también arregla esto, que es la tercera cosa que arregla sin decirlo:** 37,41 → 22,70
+min **devuelve 0,25 h de lead efectivo** a cada ciclo del primer régimen.
+
+### UNKNOWN, marcado
+
+Si alguien decidió que el estrato fuera nominal **a propósito**. Con leads de 9 y 24 y estratos
+sólo para esos dos valores, usar el efectivo exigiría interpolar entre estratos — **una decisión
+de modelo, no un arreglo.** *Puede estar bien como está; lo que no está es escrito.*
