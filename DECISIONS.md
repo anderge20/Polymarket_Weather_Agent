@@ -22948,3 +22948,70 @@ Corrección de sesgo **condicional** a la temperatura (L1.1 midió −0,55 °C b
 distribución alternativa · el dominio del lead 9 sobre el 24.
 
     L1.5 = CLOSED     RECOMENDACION: continuar a L1.6 — INFERENCE
+
+## A-291 — `L1.6 = CLOSED`. Los doce placebos van al otro lado… y el lead 24 resulta HETEROGÉNEO entre mitades · 2026-09-13 · Claude (sesión A)
+
+`LOCK_L1_6.md` espejado a las 20:57:37Z (`9586f5e`) con los **siete placebos declarados de
+antemano**; integridad de los seis ficheros de lock verificada por `sha256` **dentro del guion**
+antes de calcular. `D0-P` = BLOCKED. **No se emite el veredicto de Level 1**: eso es L1.8.
+
+### Placebo A — desalineamiento temporal: los 12 van al otro lado, y monótonamente
+
+    lead 24   k=+1 +0,00819 · k=+3 +0,02910 · k=+7 +0,04106
+              k=-1 +0,01265 · k=-3 +0,02607 · k=-7 +0,04106
+    lead  9   misma forma, hasta +0,04632
+
+**Un día de desfase borra toda la ventaja; siete la convierten en un perjuicio cuatro veces
+mayor.** Mi expectativa escrita era «el IC debería contener el cero»; **el resultado es más
+fuerte que eso y lo digo en vez de presentarlo como si fuera lo predicho**: un pronóstico
+desalineado no es ruido, es una distribución **confiada y centrada en el día equivocado**. *La
+monotonía en |k| es la firma de una señal que se degrada con la distancia temporal, y es difícil
+de fabricar con un artefacto de estructura.*
+
+### Placebo B — 1 000 permutaciones: `p = 0,0010` en los dos leads, el SUELO
+
+    lead 24  observado -0,01151   nulo +0,01342 [+0,00916,+0,01741]   0/1000
+    lead  9  observado -0,01731   nulo +0,01654 [+0,01162,+0,02085]   0/1000
+
+**El nulo permutado es POSITIVO, y eso es correcto:** contra una ganadora aleatoria, una
+distribución concentrada puntúa peor que la uniforme. *Un nulo centrado en cero habría sido la
+señal de que algo estaba mal.*
+
+### EL HALLAZGO INCÓMODO: el lead 24 es INESTABLE entre mitades
+
+                 1a mitad                    2a mitad              diferencia 1a-2a
+    lead 24  -0,00618 [-0,01265,+0,00006]  -0,01674   +0,01056 [+0,00231,+0,01914] INESTABLE
+    lead  9  -0,01473 [-0,02078,-0,00816]  -0,01988   +0,00515 [-0,00307,+0,01373] estable
+
+**En el lead 24 el IC de la diferencia entre mitades EXCLUYE el cero**, y el de la primera mitad
+**toca** el cero (+0,00006). Separado de la potencia y medido:
+
+    lead 24 1a mitad  n=47  efecto -0,00618  MDE 0,00885  INFRAPOTENCIADA
+    lead 24 2a mitad  n=48  efecto -0,01674  MDE 0,00830  detectable
+    lead  9 las dos mitades detectables
+
+La primera mitad del lead 24 está infrapotenciada por sí sola, **pero el test de heterogeneidad
+compara las dos mitades directamente y no depende de eso: la heterogeneidad es un hallazgo, no
+un artefacto de potencia.** **No se busca otro corte**: el 2026-06-23 estaba pre-registrado.
+
+### Potencia y dependencia entre leads
+
+    lead 24  MDE 0,00625  observado 0,01151  razon 1,84
+    lead  9  MDE 0,00593  observado 0,01731  razon 2,92
+
+    correlacion del delta por evento entre leads: r = +0,595
+    tamano efectivo ~ 119, no 190
+
+**Presentar «191 observaciones evento × lead» sobrestimaría la información en un ~60 %.**
+
+### Cierre
+
+    L1.6 = CLOSED
+
+**Con la limitación pegada al cierre:** el criterio **C — STRONG** del preregistro exige
+«consistente en varios periodos», y **el lead 24 no lo cumple**; el lead 9 sí. Ningún placebo
+sobrevive, el IC primario se reproduce, la potencia está cuantificada y no hay defecto
+metodológico. Sigue todo condicionado a `available_at` (tarea #75), al hecho de que **el test no
+cubre abril**, y a que esto es **una ciudad, una estación, cuatro meses**.
+
+Siguiente: `L1.7` — FINAL RED TEAM.
