@@ -97,6 +97,33 @@ def _literales_de_llamada() -> dict[str, list[tuple[str, int, tuple[str, ...]]]]
     return out
 
 
+def test_el_parser_del_DDL_declara_de_que_depende():
+    """La suposicion sobre la que se apoya `_pk_por_tabla`, fijada en vez de supuesta.
+
+    El parser lee los `CREATE TABLE` y se queda con el ULTIMO de cada tabla. Eso es
+    correcto **mientras ninguna migracion cambie una clave con `ALTER TABLE`**: si
+    alguna lo hiciera, el parser compararia contra un `CREATE TABLE` rancio y la guarda
+    de abajo pasaria estando ciega -- una derivacion apoyada en algo que no declara.
+
+    Medido hoy: 0 migraciones tocan claves y cada tabla tiene exactamente UN
+    `CREATE TABLE`. Se fija para que el dia que eso cambie falle ESTO, que dice donde
+    mirar, y no la otra prueba, que diria que todo coincide.
+    """
+    tocan_clave = [
+        ln for ln in DDL.splitlines()
+        if "ALTER TABLE" in ln and re.search(r"PRIMARY KEY|CONSTRAINT|UNIQUE", ln, re.I)
+    ]
+    assert not tocan_clave, (
+        "hay migraciones que alteran claves; `_pk_por_tabla` solo mira `CREATE TABLE` "
+        "y se ha quedado ciega:\n" + "\n".join(tocan_clave))
+
+    creates = re.findall(r"CREATE TABLE IF NOT EXISTS\s+(\w+)", DDL)
+    repetidas = {t for t in creates if creates.count(t) > 1}
+    assert not repetidas, (
+        f"tablas con varios CREATE TABLE: {sorted(repetidas)}. El parser se queda con el "
+        f"ultimo; con varios hay que comprobar a mano cual esta vigente")
+
+
 def test_las_declaraciones_de_la_clave_coinciden_tabla_por_tabla():
     """Donde hay dos o mas declaraciones de la misma clave, tienen que ser la misma."""
     pks = _pk_por_tabla(DDL)
