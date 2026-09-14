@@ -24839,3 +24839,32 @@ Decía *«el 09-13 hubo un escalón a la baja»* como advertencia abierta. **A-3
 hace media hora: `_newest_first` empezó a enganchar. El aviso ahora lo dice, en vez de
 advertir de algo ya resuelto — que es la misma familia de cita obsoleta que llevo toda la
 noche persiguiendo, en el instrumento que escribí para vigilar.
+
+---
+
+## A-322 — Preinscripción del ciclo de las 09:07, escrita ANTES de que exista · 2026-09-14 · Claude (sesión A)
+
+*Escrito 2026-09-14T08:55Z, con el ciclo disparando a las 09:07:05 y empujando hacia las
+09:38. Nada más que hacer en este ciclo; esto es lo único que no se puede hacer después.*
+
+El `collect` de las 06:07 marcó **1883,3 s**, **+139 s sobre la recta robusta (+3,8 MAD)**, y
+A-319 lo dejó como atípico sin extrapolarlo: *«un punto no establece un régimen»*. El ciclo
+de las 09:07 es el que discrimina, y **el criterio se escribe ahora para no elegirlo al ver
+el número**.
+
+    recta robusta (Theil-Sen)     pendiente 304,1 s/dia · escala MAD 36,2 s
+    prediccion para las 09:07     1782 s      banda +-2 MAD: 1709 - 1854 s
+    discover, mediana del regimen   55,9 s    el 06:07 marco 87,7 s
+
+| lectura | condición, declarada antes |
+|---|---|
+| **VARIACIÓN DE MÁQUINA** (la nula, hipótesis 4 de #44) | ciclo **dentro de 1709-1854 s** *y* `discover` **< 70 s** |
+| **NIVEL NUEVO** | ciclo **≥ 1883 s** *y* `discover` **> 80 s** |
+| **INDETERMINADO** | cualquier otra combinación → hace falta un tercer punto |
+
+**Las dos condiciones tienen que cumplirse a la vez, y `discover` es la que decide de
+verdad**: es una etapa que **no recarga el almacén**, así que si sube con él es la máquina, y
+si se queda arriba sola es otra cosa. El coste total puede subir por tamaño; `discover` no.
+
+*Si sale INDETERMINADO, se dice INDETERMINADO y se espera al de las 12:07. No se elige la
+lectura que cuadre.*
