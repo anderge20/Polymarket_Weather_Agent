@@ -25239,3 +25239,97 @@ crontab del host, que es otra tarea. Queda anotado en #86, no tapado.
 **Tampoco toco** el multiplicador de atípicos, aunque A-328 midió que con n = 18 la excursión
 del 09-14 ya no se marca: cambiarlo ahora sería exactamente la ingeniería retrospectiva que
 el encargo prohíbe.
+
+---
+
+## A-330 — `READY_FOR_PROSPECTIVE_TEST` + `NEW_DEFECT`: #61 NO se cierra (ninguna mutación lo detecta), A-329 pasa las cinco, y la pendiente deslizante enseña lo que la acumulada tapaba · 2026-09-14 · Claude (sesión A)
+
+*Escrito 2026-09-14T17:10Z como auditor independiente. Artefacto completo en
+`ops/A-330_COLECTOR_PREPROSPECTIVE_AUDIT.md` (`6b934a1c…`). Cero cambios de configuración,
+cero PR, y **A-327 intacta byte a byte**.*
+
+### #61 · NO se cierra, y ahora hay prueba de que es peligroso
+
+    R1  cambiar solo RANURAS           -> no hay guard que pueda fallar: NADA en tests/
+                                          referencia al vigilante
+    R2  cambiar solo el crontab        -> 3 tests seleccionados, 3 PASAN
+    H1  cambiar solo HOLGURA           -> igual que R1, ningun test lo mira
+    H2  cambiar solo PMW_LOCK_WAIT     -> 13 tests seleccionados, 13 PASAN
+
+**Las cuatro mutaciones confirman la divergencia silenciosa.** Y hay un agravante que no
+había visto: `PMW_LOCK_WAIT` **no se define en ningún sitio** — es un default de shell
+`${PMW_LOCK_WAIT:-900}` repetido **tres veces** en `launcher.sh`, y **es una variable de
+entorno**: el host puede cambiar el comportamiento real sin tocar un fichero, y el vigilante
+seguiría calculando con 900.
+
+*Que los valores coincidan hoy es una coincidencia mantenida a mano, no una invariante.*
+
+### A-329 · las cinco casillas, en las dos direcciones
+
+    1 ranura recien iniciada        EN VUELO, exit 0
+    2 pasada del margen sin fila    ALARMA, exit 1, la nombra
+    3 dos antiguas ausentes         identifica LAS DOS
+    4 todas presentes               exit 0, 0 alarmas
+    5 presente pero incompleta      se comporta como AUSENTE y alarma
+
+**El contrato del caso 5 se buscó, no se inventó**: la unidad del vigilante no es «existe el
+fichero» sino **«existe una fila parseable cuyo id mapea a una ranura»**. Un shard vacío o
+ilegible no produce fila, así que su ranura queda sin cubrir. Estaba determinado por el
+diseño.
+
+### Ninguna lectura fallida produce verde
+
+    D1 almacen inexistente  exit 1   D2 vacio  exit 1   D3 gzip corrupto  exit 1 con traza
+    D4 shard vacio          exit 1 (2 alarmas)          D5b id corrupto antiguo  exit 1
+    D5 id corrupto EN VUELO exit 0  <- correcto: la ranura aun no es juzgable
+
+### DEFECTO NUEVO (menor, no bloqueante)
+
+Un shard **presente pero dañado** se reporta como **«TURNO PERDIDO»** —«el ciclo no corrió»—
+cuando la verdad puede ser «corrió y su registro está roto». **La detección acierta; el
+mensaje manda a buscar donde no es.** No lo corrijo: tocar el instrumento en vísperas de la
+prueba sería contaminarla.
+
+### La pendiente NO se estabiliza, y la ventana acumulada lo tapaba
+
+    DESLIZANTE de 8:  212,7 · 181,7 · 228,8 · 246,9 · 341,7 · 369,7 · 382,8 · 518,2 ·
+                      456,6 · 406,4 · 496,3 s/dia
+    ACUMULADA:        265,8 · 217,3 · 265,5 · 348,9 · 361,6
+
+**Las últimas cinco deslizantes están por encima de la acumulada.** La acumulada sube por
+construcción cuando los últimos puntos son altos; **la pregunta sólo la responde la
+deslizante**, y dice que la tasa local (~400-500 s/día) supera a la global (362). Las tres
+últimas rebotan (456 · 406 · 496), así que **no declaro aceleración**: declaro que no hay
+estabilización.
+
+> **Capacidad, no fecha: la pérdida de una ranura es plausible desde la tarde del
+> 2026-09-15**, centro el 09-16 de madrugada, cola hasta el 09-17. **Confianza BAJA** — baja
+> desde «baja-media» de A-328 justamente por esto.
+
+### Lo que queda preparado
+
+`ops/evalua_a327.py`: **no requiere editar ningún parámetro**, saca los 14 campos del
+identificador contra la ranura (A-326), y separa la Pregunta A (¿acertó?) de la B
+(¿sigue la tendencia?) y la C (¿cuándo se pierde una ranura?), sin responder B ni C.
+Probado en seco hoy: *«EL CICLO AUN NO EXISTE… NO es INDETERMINADA: es que todavía no ha
+ocurrido»*, exit 2.
+
+### Timezone — la única parte que sale limpia
+
+Cadena completa en UTC y **verificada**: `install.sh:85-92` comprueba `timedatectl` y **se
+niega a instalar** si el host no es `Etc/UTC`; el launcher sella con `date -u`;
+`new_session_id` usa `_utcnow()`; el vigilante parsea con el **mismo patrón** que producción.
+`Etc/UTC` no tiene DST. *Riesgo residual declarado: esa verificación corre sólo en la
+instalación.*
+
+### DECISIÓN
+
+> **`READY_FOR_PROSPECTIVE_TEST`** + **`NEW_DEFECT`** (el del mensaje, menor).
+
+Doy los dos rótulos a propósito: forzar uno escondería información. El que decide si se puede
+observar es `READY`. **No abro PR**: arreglar #61 de verdad significa leer el crontab y
+`PMW_LOCK_WAIT` del host en vez de duplicarlos, y eso toca configuración de producción en
+vísperas de la prueba.
+
+**Nada de esto autoriza L2, edge económico, paper ni real trading, ni cambio de estrategia,
+ciudad, modelo, umbral, escalera o settlement.**
