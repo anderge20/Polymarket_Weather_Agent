@@ -24972,3 +24972,56 @@ sube), y no es un factor único multiplicando todo el anfitrión (los cocientes 
 
 La predicción de A-323 sobre el `collect` de las 12:07 —espera de 250-400 s, marcada como
 AVISO— sigue en pie sin cambios.
+
+---
+
+## A-325 — El tercer punto REFUTA el «NIVEL NUEVO» de A-323, y mis dos predicciones de esta mañana fallaron por la misma razón · 2026-09-14 · Claude (sesión A)
+
+*Escrito 2026-09-14T12:25Z, leyendo el `decide 24` de las 11:40.*
+
+    ciclo      1845,7 s   <- por DEBAJO del umbral de nivel nuevo (1883) y DENTRO de la
+                             banda de variacion de maquina de A-322 (1709-1854)
+    discover      52,8 s   <- la mediana del regimen es 55,9; los dos elevados dieron 87,7 y 83,9
+    ms/fila       14,00    <- DENTRO de la banda de A-317 (12,79-14,08)
+
+**Las tres medidas vuelven a su sitio.** El escalón de A-323/A-324 no se sostiene: fue una
+excursión de dos ciclos, no un nivel nuevo.
+
+### Cómo me equivoqué, con precisión
+
+El criterio de A-322 estaba bien escrito y se aplicó sin retocarlo. **El error fue de
+potencia, no de honestidad:** exigía las dos condiciones **en un ciclo**, y yo lo apliqué a
+**dos** y llamé a eso «sostenido». En la misma entrada había escrito *«un punto no establece
+un régimen»* — y traté dos como si lo establecieran.
+
+> **Dos puntos consecutivos no son un régimen: son dos puntos consecutivos.** La palabra
+> «sostenido» necesitaba un número y no se lo puse. Si hubiera declarado *tres* ciclos, el
+> criterio habría aguantado el contraste; con dos, lo único que medí fue la duración de una
+> excursión.
+
+### Y la segunda predicción falló en la misma dirección
+
+A-323 predijo que el `collect` de las 12:07 esperaría **250-400 s** y cruzaría el umbral de
+AVISO. El `decide` acabó a las **12:10:51**, así que la espera real es de **~227 s** —por
+debajo de la banda y por debajo del aviso—. Falló **porque el ciclo del `decide` fue más
+rápido de lo que extrapolé**, que es exactamente la misma causa que la primera.
+
+**Dos predicciones, un solo error:** extrapolé desde dos ciclos elevados que resultaron ser
+transitorios. Las dos fallaron hacia el mismo lado y por el mismo motivo, y eso es más
+informativo que si hubieran fallado por separado.
+
+### Lo que queda en pie y lo que se revierte
+
+    holgura   2520 - 1846 = 674 s     <- vuelve a subir; la excursion no se la comio
+    nivel     el regimen sigue siendo el de A-320, con su pendiente
+    A-324     su MEDICION por etapas sigue siendo valida y util (discover x1,5 con
+              collect:books plano durante la excursion); lo que decae es el marco que
+              le puse, no los numeros
+
+**Lo que NO afirmo:** que tres puntos prueben que fue transitorio. Prueban que **no fue
+sostenido**, que es una afirmación más débil y es la única que los datos sostienen. La
+lectura más parsimoniosa es la hipótesis 4 de la tarea #44 —variación de máquina— operando
+durante unas horas en vez de un ciclo.
+
+*El plazo del colector vuelve a la estimación anterior a la excursión y el vigilante lo
+recalculará solo con el punto nuevo. No lo fijo a mano.*
