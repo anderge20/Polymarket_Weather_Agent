@@ -1,0 +1,26 @@
+## entrada A-327 en DECISIONS.md (inmutable)
+  lineas   37
+  sha256   a3a50b2a8a115ecb803527e947ea62e1c99b6d2dcc96c265dd22ea982a99ad5a
+
+## evalua_a327.py — el CRITERIO, escrito antes del dato
+  sha256   24600ba2ea3f53b4b84d99e358ec3db62e0018f35ce5af9e5744be31eccba6ee
+    PRED_DURACION = 2144.0
+    PRED_ESPERA = 524.0
+    AVISO, ALARMA = 300.0, 600.0
+    DECIDE = dt.datetime(2026, 9, 15, 2, 40, 0, tzinfo=dt.timezone.utc)
+    COLLECT = dt.datetime(2026, 9, 15, 3, 7, 0, tzinfo=dt.timezone.utc)
+
+## vigila_colector.py — el INSTRUMENTO
+  sha256   de08f738fd57e9fb90e6c102ceec2f9f0ceee2aa8e5a8c151d5db7496c499ee6
+
+## configuracion operacional de la que el instrumento DERIVA sus constantes
+  install.sh   69e365850bc0a6110fef7126ed9365fd08bf6db7e662515b360a6c6e6d2d2d15
+  launcher.sh  966069aa425fd8ecfd9bd2e725a9b51b837b25ccfad12c4b4643c3c9c026cc45
+
+## valores efectivos derivados AHORA
+    RANURAS      [(0, 7), (2, 40), (3, 7), (6, 7), (9, 7), (11, 40), (12, 7), (15, 7), (18, 7), (21, 7)]
+    ESPERA_MAX   900.0
+    HUECO        1620.0
+    HOLGURA      2520.0
+    AVISO/ALARMA 300.0/600.0
+    ERA_CRON     2026-09-09T21:07:05Z

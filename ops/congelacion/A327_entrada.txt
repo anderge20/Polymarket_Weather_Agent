@@ -1,0 +1,37 @@
+## A-327 — El ciclo llega a 1.970 s SIN ser atípico: esto ya es la tendencia. Predicción del primer AVISO, escrita antes · 2026-09-14 · Claude (sesión A)
+
+*Escrito 2026-09-14T15:55Z.*
+
+    09-14 15:07   ciclo 1970,2 s   almacen 27,5 MB   <- el mas alto hasta hoy
+    el vigilante NO lo marca como atipico: cae sobre la recta robusta
+
+    18 ciclos en 39,0 h · Theil-Sen +362 · minimos cuadrados +353 · dos puntos +374 s/dia
+    holgura 2520 - 1970 = 550 s   ->   2026-09-16 03:36Z
+
+**Los tres estimadores caben en 21 s/día.** A diferencia de la excursión de esta mañana —que
+los separaba de 333 a 417 y disparaba el detector de atípicos—, este punto **no es una
+excursión: es la recta**. La diferencia entre las dos cosas ya no es una impresión, la marca
+el instrumento.
+
+### Predicción, escrita ANTES de que exista el dato
+
+Con `espera ≈ ciclo − 1620` (A-326, verificada a 4 s) y la pendiente de 362 s/día:
+
+    decide 02:40 de manana    ciclo proyectado ~2.144 s
+    collect 03:07 siguiente   espera proyectada ~524 s
+
+| umbral del vigilante (declarado en A-314) | |
+|---|---|
+| AVISO 300 s | **CRUZA** — sería el primero de toda la era del cron |
+| ALARMA 600 s | no cruza, y se queda a 76 s |
+
+**Si el `collect` de las 03:07 de mañana no marca AVISO, la relación `espera ≈ ciclo − 1620`
+o la pendiente están mal**, y hay que rehacer las dos. Si lo marca, el vigilante habrá hecho
+por primera vez aquello para lo que se escribió: avisar **antes** de perder un turno, no
+después.
+
+*Máximo de espera hasta hoy: 239 s (12:07 de hoy). Antes de eso, 139 s. La serie no se ha
+saltado ningún escalón: 139 → 239 → ~524 proyectado.*
+
+---
+

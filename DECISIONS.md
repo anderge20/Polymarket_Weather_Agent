@@ -25416,3 +25416,80 @@ cron real, el `PMW_LOCK_WAIT` del host, la predicción de A-327, y Theil–Sen /
 hay sin cambiar ningún valor.
 
 **Estado:** `#61 BLOCKED` · `READY_FOR_PROSPECTIVE_TEST` · sistema CONGELADO.
+
+## A-332 — `#58 MERGED — VERIFIED`: 758 predichos y 758 medidos sobre el árbol real, A-327 intacta, sistema congelado · 2026-09-14 · Claude (sesión A)
+
+**Artefacto:** `ops/A-332_MERGE_58_FREEZE.md` (sha256 `1d2a61d9122bdc43…`).
+**Merge:** `22a77200e9f4aaf17d6cb3c82f681daa9c791168`.
+
+**A-112 al disparo (20:08:12Z, ventana abierta a las 20:07:21Z):** `isDraft=false`,
+`headRefOid = 1f8a8e38…` = SHA revisado = SHA que corrió la suite, `MERGEABLE/CLEAN`, árbol
+limpio, alcance `tests/` y nada más, y `origin/main` **sin moverse** de `1584045`.
+
+**A-119:** `EXPECTED_TESTS = 754 + 4 − 0 = 758`. El 754 **se midió** corriendo la suite
+entera sobre `1584045` a las 18:14Z, no se copió de la rama ni de la memoria — que es la
+diferencia entre predecir y recordar. El 4 salió de `--collect-only` sobre el fichero que
+añade el padre 2; los 0 borrados, del diff. Comprobado además que ningún test enumera
+`tests/`, así que la cuenta es aditiva.
+
+**Medido: 758 passed** sobre `HEAD = 22a7720`. Árbol de fusión `3cc72696…`, **idéntico** al
+que probé antes de fusionar. Padres: `1584045` y `1f8a8e3`. Commit de fusión, sin squash ni
+rebase.
+
+**A-327 UNCHANGED.** `ops/instantanea_a327.sh` produce el «antes» y el «después» con el
+mismo código — si los produjeran dos textos escritos a mano, el diff compararía mi memoria
+conmigo mismo. Cero diferencias en la entrada (`a3a50b2a…`), el evaluador (`24600ba2…`), el
+vigilante (`de08f738…`), los parámetros, la fecha objetivo y los derivados. El diff se tomó
+**después** de sincronizar `wt-main` a `origin/main`, así que la igualdad no viene de mirar
+un checkout viejo.
+
+**EL HOST, Y QUÉ ESTÁ VERIFICADO DE VERDAD.** `salud_pre_medicion.sh` sale SANO, pero sólo
+compara MI checkout con `origin/main`: eso no es evidencia del host. La evidencia existe y
+la escribe el host — `cycle_params` lleva **`code_commit`**, y los tres últimos ciclos traen
+`1584045826fa`, que era `origin/main`. Clasificación: **`HOST_SHA_VERIFICADO`** para «el
+host ejecutaba 1584045», **`HOST_SHA_NO_VERIFICABLE`** para «el host ejecutará 22a7720» —
+no se promueve una a la otra. La prueba llega sola en el `collect` de las 21:07Z: su
+`code_commit` debe decir `22a77200e9f4`.
+
+**LA TERCERA PUERTA DE #61.** El vigilante deriva de un CHECKOUT LOCAL y el host ejecuta
+`origin/main`. `wt-main` estaba 6 commits por detrás y sus `ops/hetzner/*` resultaron
+idénticos **por suerte, no por construcción**. No es duplicación (A-331) ni override de
+entorno (D-3): es una **ref rancia**, y es la única de las tres neutralizable sin tocar
+nada. Hecho: `wt-main` sincronizado y la comprobación puesta en el script de salud.
+
+**BANCOS, ahora código y no anécdota:** `ops/mutaciones_61.py` **7/7 como se predijo** (la
+predicción escrita dentro del banco) y `ops/regresion_a329.py` **10/10**, con D-4
+reproducido intacto. Regla nueva del banco: **toda mutación debe demostrar primero que
+muta** — muté `"session_id": "col_` con espacio, el JSON real no lo lleva, cero
+sustituciones, exit 0, y estuve a punto de anotar «D-4 ya no reproduce». Tercera vez en esta
+sesión que una mutación no muerde. Y el caso 4 «falló» porque congelé el `ahora` a mano:
+con el último ciclo a las 15:07 y ~7.000 s de margen, esa ranura ya estaba perdida y el
+instrumento tenía razón. Ahora el `ahora` **se deriva del banco**, y en la corrida
+post-merge se movió solo a 18:17Z.
+
+**#61 SIGUE BLOCKED.** #58 aporta las guardas del REPOSITORIO: detectan divergencia en el
+FICHERO. El host puede cambiar el `PMW_LOCK_WAIT` efectivo por entorno y eso no queda
+garantizado prospectivamente **antes de un timeout**. El parche (dos líneas, §6 de A-331) no
+se despliega: `launcher.sh:98-104` hace `git reset --hard origin/main` cada ciclo.
+
+**CORRECCIÓN DE UNA CIFRA MÍA:** escribí «35 campos» de `cycle_params` en A-331, en el test,
+en el commit y en el PR. Son **36**. La conclusión no cambia (ninguno es el valor efectivo
+del lock), pero una cifra citada que no cuadra con el dato es exactamente lo que llevo toda
+la sesión señalando en otros sitios. **No se corrige ahora**: tocar el fichero movería
+`headRefOid` y reiniciaría la ventana D16 la víspera de la medición.
+
+**H2b — DOS GARANTÍAS, NO UNA CONTRADICCIÓN.** Cambiar los tres defaults coherentemente
+**pasa** en el vigilante (fuente única: recalcula `HOLGURA = 3420`) y **falla** en la suite
+(la guarda fija 900). El encargo esperaba que pasara; no toqué el test para que encajara. La
+palabra que decide es *silencio*: el vigilante garantiza **coherencia interna**, la suite
+garantiza **invariancia del contrato operacional**, y un cambio coherente sigue siendo un
+cambio que debe aparecer en el diff de alguien. Decisión de gobernanza, no defecto.
+
+**FREEZE ABSOLUTO** hasta que `evalua_a327.py` devuelva `exit 0`. Única actividad permitida:
+`ops/salud_pre_medicion.sh`, read-only. **A-327 = PENDING**, no INDETERMINADA: pendiente e
+indeterminado no son lo mismo, y el evaluador los distingue con `exit 2` frente a `exit 1`.
+Objetivo exacto: `decide 2026-09-15 02:40Z → collect ~03:07Z`, sin sustituirlo por ningún
+otro ciclo.
+
+**Estado:** `#58 MERGED — VERIFIED` · `A-327 UNCHANGED` · `A-327 PENDING` · `#61 BLOCKED` ·
+`SYSTEM FROZEN`.
