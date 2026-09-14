@@ -24924,3 +24924,51 @@ de 300 s** que el vigilante lleva declarado desde A-314.
 **Predicción, escrita antes:** el `collect` de las 12:07 de hoy tendrá una espera derivada de
 entre 250 y 400 s, y el vigilante la marcará como AVISO. Si sale por debajo de 250, el ciclo
 del `decide` ha bajado; si sale por encima de 400, ha vuelto a subir.
+
+---
+
+## A-324 — Dónde está el escalón, por etapas: `discover` es el que más se multiplica, pero la carga es la que aporta los segundos · 2026-09-14 · Claude (sesión A)
+
+*Escrito 2026-09-14T10:25Z. Refinamiento de A-323 y **corrección de mi primera medición**.*
+
+### Primero, el error que cometí al medirlo
+
+Comparé la **mediana por etapa** de todos los ciclos anteriores contra los dos posteriores, y
+salió `load:markets ×1,33`, `load:outcomes ×1,32`, `load:orderbook ×1,25`. **Mal.** La serie
+«antes» es **creciente** —va de 1.265 s a 1.622 s—, así que su mediana está muy por debajo del
+último valor y el cociente **mezcla la tendencia con el escalón**. Es la misma confusión
+nivel/diferencia que A-317 y A-319, por tercera vez y en la dirección contraria.
+
+Hecho bien, contra el ciclo **inmediatamente anterior** (03:08) y normalizando por filas donde
+toca:
+
+    etapa                        03:08     06:07     09:07      (x/filas en load:*)
+    discover                      56,5   x1,55     x1,49        <- el unico grande
+    collect:books                 37,8   x1,08     x1,04        <- CONTROL: tambien API
+    load:markets                  75,1   x1,01     x1,11
+    load:outcomes                 63,2   x1,04     x1,17
+    load:orderbook_snapshots     966,6   x1,08     x1,07
+    load:price_history           517,6   x1,05     x1,05
+
+### Lo que discrimina, y lo que no
+
+**No es una ralentización general de la API de Polymarket.** `collect:books` también la
+llama y está plano (×1,04-1,08) mientras `discover` va a ×1,5. Dos etapas contra el mismo
+proveedor, una se multiplica y la otra no.
+
+**Y en segundos absolutos manda la carga, no `discover`:** del escalón total de +209 s
+(1.718,9 → 1.927,4), `discover` aporta **+27 s** y las etapas de carga **+180 s**, de los que
+las filas explican ~68 s y quedan **~112 s sin explicar por tamaño**.
+
+> **`discover` es el que más se multiplica; la carga es la que aporta los segundos.** Las dos
+> cosas son verdad y responden a preguntas distintas: el cociente dice dónde hay algo raro, el
+> absoluto dice qué mueve el plazo. Dar sólo una de las dos habría sido engañoso en cualquiera
+> de los dos sentidos.
+
+**Sigo sin saber la causa y sigo sin inventarla.** Lo que sí queda acotado: no es el tamaño
+del almacén (normalizado, la carga sube igual), no es la API entera (`collect:books` no
+sube), y no es un factor único multiplicando todo el anfitrión (los cocientes van de 1,04 a
+1,55).
+
+La predicción de A-323 sobre el `collect` de las 12:07 —espera de 250-400 s, marcada como
+AVISO— sigue en pie sin cambios.
