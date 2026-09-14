@@ -24560,3 +24560,64 @@ positivo —`discovery.ingest_event` sí lo hace— y deja la #68 con la severid
 defecto de la guarda es real y **no** tiene la consecuencia que le atribuí.
 
 *Y la pregunta que faltaba no era sobre el código: era **«¿cuál de los dos almacenes?»**.*
+
+---
+
+## A-317 — Tarea #44 CERRADA: el coste por fila es constante (13,54 ± 0,25 ms), la hipótesis superlineal cae, y el estadístico que la iba a decidir no podía decidir nada · 2026-09-14 · Claude (sesión A)
+
+*Escrito 2026-09-14T06:00Z. Sobre `stage_profile` y `store_rows_loaded`, campos que los
+ciclos ya escriben. Cero cambios. Umbrales de A-168/B-91 usados **tal cual**, sin retocar.*
+
+### El veredicto, contra el umbral declarado antes
+
+    NIVEL:   carga_s / filas, 25 ciclos, 2,4 dias, filas de 66.591 a 156.776
+
+        min 12,79   mediana 13,54   max 14,08   desv 0,25 ms/fila     (sigma/mediana = 1,8 %)
+
+**El coste por fila es constante.** La carga es exactamente lineal en filas, a lo largo de
+un rango de ×2,4 en el tamaño y atravesando la discontinuidad del 09-13.
+
+| hipótesis (A-168) | |
+|---|---|
+| **1 · coste superlineal** | **REFUTADA.** Es lineal con σ del 1,8 %. |
+| 2 · memoria/OOM | ya refutada en A-168 |
+| **3 · ruido de medición** | **CONFIRMADA** |
+| **4 · varianza de máquina (la nula)** | **NO SE RECHAZA.** El 21,8 no era especial. |
+
+### Y el estadístico que adopté no podía decidir
+
+El marginal —`d_carga / d_filas` entre ciclos consecutivos— sobre los mismos datos:
+
+    17,7 · 13,9 · 13,2 · 12,1 · 21,8 · -0,6 · 22,4 · 11,5 · 16,6 · 9,1 · 26,4 · 36,9 ·
+    -3,4 · 39,9 · -1,0 · -0,6 · 10,6 · 19,7 · 4,3 · 17,6 · 17,7 · 27,1 · 8,9
+
+**Cuatro valores NEGATIVOS.** Un coste marginal negativo no existe: es ruido dominando.
+El rango va de −3,4 a +39,9 ms/fila **sobre un régimen cuyo coste real es constante**, y las
+bandas declaradas (12-14 «lineal», ≥18 «régimen nuevo») clasifican el mismo régimen como las
+dos cosas, alternándose ciclo a ciclo.
+
+> **El denominador (Δfilas ≈ 1.800) es el 1,5 % del nivel, y el numerador arrastra el ruido
+> entero de una medición de ~1.500 s.** Diferenciar dos magnitudes grandes y ruidosas para
+> estimar un coste unitario pequeño destruye la señal que se quería medir.
+
+Es `criteria-that-are-not-criteria` otra vez, y con una vuelta de tuerca incómoda: **el
+marginal se adoptó en A-168 precisamente PARA sustituir a un umbral que no podía rechazar
+nada** (los 36 min de B-91). El reemplazo tenía el mismo defecto por otro motivo. *Un umbral
+se comprueba contra el ruido de su propio estimador antes de adoptarlo, no después.*
+
+### La unidad correcta es la FILA, no el byte
+
+    ms/fila   min 12,79   mediana 13,54   max  14,08   desv  0,25    <- constante
+    s/MB      min 69,33   mediana 76,33   max 130,16   desv 22,63    <- se parte por la mitad
+
+`s/MB` cae de ~130 a ~70 en la discontinuidad del 09-13. Dos denominadores plausibles y sólo
+uno es el que manda. *La unidad no viaja con el número: hay que elegirla y justificarla.*
+
+### Lo que esto NO dice
+
+**No contradice A-310.** Aquel plazo no descansa en superlinealidad: descansa en crecimiento
+**lineal** cruzando una frontera de planificación. Con 13,54 ms/fila y ~1.800 filas nuevas por
+ciclo, la carga crece ~24 s por ciclo — y eso, ocho ciclos al día, es la pendiente que agota
+la holgura del lock. **La hipótesis 1 de #44 predecía perder una ranura por coste superlineal;
+se pierde por coste lineal y calendario apretado, que es un mecanismo distinto con el mismo
+final.**
