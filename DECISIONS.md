@@ -24247,3 +24247,64 @@ ventana de 3 h) sino el hueco `decide`→`collect` más la espera del lock.
 dos cosas se decide unilateralmente a las tres de la mañana. Queda el plazo, medido y
 falsable: **si el 2026-09-17 no aparece un `lock_timeout` en los eventos del host o un hueco
 en los shards, la extrapolación lineal era mala y hay que rehacerla.**
+
+---
+
+## A-311 — Las dos predicciones se cumplieron, y la que era mía adelanta el plazo un día · 2026-09-14 · Claude (sesión A)
+
+*Escrito 2026-09-14T03:25Z. Lectura del shard `col_20260914T024006Z_c49d39`, el `decide 9`
+de las 02:40Z. Cero cambios.*
+
+### 1 · Tarea #66 — CONFIRMADA, y por el desenlace bueno
+
+    collect_only_reason   'no_paper_tau'      <- exactamente lo preinscrito
+    collect_only          True
+    tau_signal / tau_exec  None
+    code_commit           a7458dd             (= main tras el #55)
+    generator             None
+
+**Es el primer `decide` que puede traer el campo** —A-304 §C4 lo dejó escrito: los ocho
+anteriores corrieron con `code_commit` anterior a `8bc603f`, donde se añadió— **y lo trae.**
+Los otros dos desenlaces que declaré quedan descartados: no es `mode_collect` (las dos ramas
+de `run_cycle.sh` **no** se han confundido) y no está ausente (el `REF` del host no está
+viejo: `a7458dd` es el `main` de hace dos horas).
+
+**Refuerza P12 de R24**, y ahora con la evidencia correcta: A-304 §C1 ya había corregido que
+`mode_collect` en un ciclo de colección no prueba nada. `no_paper_tau` en el ciclo que
+**decidiría**, junto a `tau_signal = None`, sí.
+
+**Y confirma A-304 §C3 literalmente:**
+
+    forecasts 0.0 · signals 0.0 · paper 0.0 · observations 0.0 · settle 0.0
+
+La ruta de decisión **se ejecuta entera y cortocircuita en cada etapa**. No es que no se
+invoque. (`settle` aparece ya en el perfil: es lo que el #53 arregló.)
+
+### 2 · A-310 — CONFIRMADA, y era CONSERVADORA
+
+    predicho   ~1650 s  ->  empuje ~03:07:34Z
+    medido      1703 s  ->  empuje  03:08:28Z      (+53 s, +3,2 %)
+
+    load:orderbook_snapshots   932,0 -> 962,8 s
+    load:price_history         489,6 -> 502,8 s
+    almacen                     22,4 ->  22,9 MB
+
+**El ciclo es más lento de lo que extrapolé, no menos.** Con este punto añadido:
+
+    pendiente   287,5  ->  308,0 s/dia
+    holgura     2520 - 1703 = 817 s
+    plazo       817 / 308 = 2,65 dias   ->   2026-09-16 18:20Z
+
+> **El plazo de A-310 se adelanta del 17 al 16.** No retoco la extrapolación para que
+> cuadre: la rehago con el dato nuevo y digo que se movió, que es lo que distingue una
+> predicción de una excusa.
+
+Y el primer cruce ya está medido, no supuesto: el `collect` de las 03:07:05 tuvo que esperar
+el lock **~83 s** hasta que el `decide` lo soltó a las 03:08:28. La guarda hizo su trabajo.
+Le quedan 817 de sus 900 s.
+
+### 3 · Lo que se lleva
+
+Tres predicciones escritas antes de mirar —el campo del shard, el instante del empuje y el
+plazo— y las tres comprobables en el mismo fichero. **Ninguna hizo falta un instrumento
+nuevo: el ciclo ya escribía `collect_only_reason`, `recorded_at` y `stage_profile`.**
