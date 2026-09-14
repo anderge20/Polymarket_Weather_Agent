@@ -24024,3 +24024,64 @@ segunda pregunta encontró que no había nada que arreglar en los tests existent
 añadir el que faltaba.
 
 §34 no aplica: cero líneas fuera de `tests/`, ningún comportamiento de producción alterado.
+
+---
+
+## A-307 — Corrección de A-301 y barrido de los sellos: rompí el sha del documento que estaba auditando, dos horas después de escribir la regla · 2026-09-14 · Claude (sesión A)
+
+*Escrito 2026-09-14T02:00Z. Sólo corpus, cero código, cero PR.*
+
+### C1 · A-301 §E2 dice una cosa que es falsa
+
+Escribí: *«`SETTLEMENT_OPERATOR_CORE.sha256` no dice cuál de las dos cubre»*. **Lo dice, en
+su única línea, con el nombre del fichero al lado del hash.** Me quejé de una ambigüedad
+del reference layer **sin abrir el reference layer**. De E2 sobrevive sólo la mitad real:
+el título dice «v2 (final)» en un fichero llamado `.v3.md`.
+
+### C2 · Y el sello sí estaba roto — porque lo rompí yo
+
+    registrado   a6d92667...   = el sha de ANTES de mi enmienda de A-301
+    real         62f1cfd5...   = el sha DESPUES
+
+Enmendé el documento en A-301 y **no reemití su sello**. Dos horas antes, en la enmienda de
+trazabilidad de `PREREG_LEVEL1.md`, había escrito esto:
+
+> *«un sha citado que ya no corresponde a ningún fichero es peor que no citarlo: parece
+> verificable y no lo es.»*
+
+Y a continuación lo hice, un fichero más allá, sobre el documento que estaba auditando por
+estar desactualizado.
+
+### C3 · Barrido de TODOS los sellos del corpus — cuatro rancios, no uno
+
+No me quedé en el que me tropezó. Barridos los 30 y pico `*.sha256`:
+
+    PREREG_M2_FORECAST_ERROR.sha256   f0cef639 -> 1cde97c4
+    PREREG_PAPER_RUN.sha256           38915ef0 -> ad0e76f2
+    ROADMAP.sha256                    21ad15b6 -> c62e3afa
+    SETTLEMENT_OPERATOR_CORE.sha256   a6d92667 -> 62f1cfd5      <- el mio
+    ... reemitidos los cuatro. Reverificado: 0 rancios.
+
+**Y de los cuatro, sólo uno es opaco.** En tres, el sha nuevo YA estaba citado en el
+registro (`ad0e76f2` y `62f1cfd5` en `DECISIONS.md`, `9b4eb188` en los preregistros de
+Strategy A), así que la transición era reconstruible y sólo faltaba el sello. En
+**`PREREG_M2_FORECAST_ERROR`** el sha nuevo **no estaba en ningún sitio**: el documento
+cambió y nadie anotó a qué. Ése es el único que perdió información, y queda dicho.
+
+### C4 · El instrumento se equivocó, y la forma del error importa
+
+Mi primer barrido dijo **cinco**. El quinto era `MODELSEL_V5_REPORT.sha256`, que **no es un
+sello sino una BITÁCORA**: tres líneas, con `MODELSEL_V5_REPORT.md` dos veces —el sha viejo
+y el actual— y la corrección en medio. Su última entrada **sí** coincide.
+
+> **Un fichero `.sha256` puede ser un sello o una bitácora append-only, y un comprobador que
+> exige que TODAS las líneas coincidan declara rancia toda bitácora, por diseño.** La regla
+> correcta es *la última entrada de cada fichero es la que manda*.
+
+Y peor: mi primera versión del arreglo, escrita para sellos de una línea, **sobrescribió esa
+bitácora** con una línea inservible. Restaurada desde `git` y rehecha con la regla buena.
+El barrido v2 da **0 rancios** sobre los 30 y pico.
+
+*Tres correcciones de mis propias afirmaciones en las últimas dos horas —A-304, ésta, y la
+cifra inventada de A-299— y las tres aparecieron igual: al ir a usar lo que había escrito,
+no al releerlo.*
