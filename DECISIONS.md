@@ -24085,3 +24085,61 @@ El barrido v2 da **0 rancios** sobre los 30 y pico.
 *Tres correcciones de mis propias afirmaciones en las últimas dos horas —A-304, ésta, y la
 cifra inventada de A-299— y las tres aparecieron igual: al ir a usar lo que había escrito,
 no al releerlo.*
+
+---
+
+## A-308 — La clave de conflicto vive en tres sitios, las trece tablas coinciden hoy, y nada lo comprobaba · 2026-09-14 · Claude (sesión A)
+
+*Escrito 2026-09-14T02:35Z. PR #57, rama `fix/clave-unica-tres-sitios` (`2c49fec`).
+**Ventana D16: no se fusiona antes de las 2026-09-14T04:35Z.** Sólo tests, cero líneas de
+producción. `D0` abajo.*
+
+### El defecto de clase (tarea #61, A-242)
+
+| | dónde | quién lo usa |
+|---|---|---|
+| 1 | `PRIMARY KEY` del DDL, `database.py` | la base |
+| 2 | `store.CONFLICT_COLS[...]` | la recarga desde shards |
+| 3 | `observations.CONFLICT_COLS` (:399) | **la ingesta prospectiva** |
+
+El tercero era un literal en la llamada y hoy es una constante de módulo. **Darle un nombre
+no lo fusionó con el mapa**: sigue siendo una tercera declaración independiente. Y
+`store.upsert` **prefiere el argumento del llamante**, así que arreglar `store.CONFLICT_COLS`
+dejaría la ingesta intacta **y parecería completo** — que es exactamente lo que A-242 vio
+venir cuando yo proponía tocar uno de los tres.
+
+### Lo que se midió ANTES de escribir la guarda
+
+    tablas con >=2 declaraciones: 13      DISCREPANCIAS: 0
+
+**Las trece coinciden hoy.** El hallazgo no es una discrepancia: es que **nada se enteraría
+el día que la haya**. Una clave repartida en tres declaraciones con una regla de precedencia
+silenciosa es un defecto latente aunque las tres digan lo mismo.
+
+### Las dos guardas, y la trampa que se les puso a propósito
+
+1. **Genérica**: compara todas las declaraciones tabla por tabla. Y exige seguir encontrando
+   **≥ 13** tablas con dos o más declaraciones — *porque si el barrido dejara de
+   encontrarlas, la comparación pasaría vacía y eso es una prueba que sólo puede pasar*, el
+   defecto que este proyecto persigue desde `criteria-that-are-not-criteria`.
+2. **Nominal**, para `weather_observations`, con una aserción extra: **`source` sigue en la
+   clave**. Es lo que separa dos series de la misma estación; sin él, dos series colapsan en
+   una fila y **gana la de menor resolución** — que es el defecto B-141 al que esta clave
+   debe su forma.
+
+**Nada de `grep`**: el DDL se parsea y las llamadas se recorren por **AST** (regla D10, el
+mismo criterio que `test_frontera_nucleo.py`).
+
+### Verificadas por mutación, no afirmadas
+
+    quitando `source` del literal del llamante -> 2 failed, nombrando las tres declaraciones
+
+    750 -> 752, predicho antes de correr
+
+### Lo que esto NO arregla, y va dicho
+
+**Sigue habiendo tres sitios.** La guarda vigila que no diverjan; no los unifica. Unificarlos
+—que `observations.py` lea `store.CONFLICT_COLS` y que el mapa se derive del DDL— toca
+producción y toca la ruta de ingesta, así que es un cambio con su propio PR y su propia
+revisión. Lo que este PR compra es que la divergencia **se vea el día que ocurra**, en vez de
+descubrirse por una fila colapsada meses después.
