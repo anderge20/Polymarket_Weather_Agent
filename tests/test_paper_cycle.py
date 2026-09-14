@@ -653,10 +653,72 @@ def _settleable_market(con, *, band="17°C", outcome="Yes", token="t1",
 
 
 def _fake_stations(monkeypatch):
+    """El falso del registro de estaciones — que hasta hoy NO SE APLICABA.
+
+    `setitem(sys.modules, ...)` por si solo es inerte aqui, y el motivo es
+    deterministico, no de orden: `_station_tz` hace `from weather_agent import
+    stations`, que resuelve el ATRIBUTO del paquete —el submodulo ya importado por
+    las cabeceras de este fichero— y no consulta `sys.modules`. Asi que los doce
+    tests que llaman a este falso llevaban tiempo hablando con el registro REAL.
+
+    No era un agujero de correccion: pasaban porque EGLC existe de verdad y su huso
+    ES `Europe/London`, que es justo lo que el falso devuelve. Es ACOPLAMIENTO — si
+    el registro real cambiara el huso de EGLC o lo quitara, fallarian, y el falso
+    existe precisamente para que eso no importe. Medido por B (A-229) y vuelto a
+    medir al aplicarlo: el recuento no se mueve.
+
+    Se ponen LAS DOS cosas: el atributo del paquete, que es lo que produccion lee, y
+    la entrada de `sys.modules`, por si algun dia alguien importa por ruta completa.
+    Una guarda que no puede dispararse es indistinguible de una que nunca se
+    disparo; esta ya puede."""
     import sys, types
+    import weather_agent
     mod = types.ModuleType("weather_agent.stations")
     mod.timezone_of = lambda icao: "Europe/London"   # the real name (B's stations.py)
+    monkeypatch.setattr(weather_agent, "stations", mod)
     monkeypatch.setitem(sys.modules, "weather_agent.stations", mod)
+
+
+def test_una_observacion_al_BORDE_del_dia_local_decide_por_la_ZONA(con, monkeypatch):
+    """El unico test de este fichero que NOTA si la zona horaria esta mal.
+
+    POR QUE HACIA FALTA. Al arreglar `_fake_stations` para que por fin se aplicase,
+    lo comprobe como toca —mutando lo que devuelve— y **los 140 seguian verdes con
+    `Antarctica/Troll`**. El falso ya mordia (`_station_tz` devolvia la zona mutada)
+    y aun asi ninguna asercion cambiaba: todas las observaciones de los fixtures
+    caen a media tarde, y una lectura de las 14:00Z pertenece al mismo dia local en
+    casi cualquier huso. **Los tests de settle no tenian NINGUNA sensibilidad a la
+    zona**: si `_station_tz` empezara a devolver la equivocada, este fichero no se
+    enteraria.
+
+    LA UNICA OBSERVACION VA AL BORDE, que es donde la zona decide:
+
+        target_date            2026-09-10
+        observacion            2026-09-10 23:30Z
+        ventana en Europe/London (BST, +1)   2026-09-09 23:00Z -> 2026-09-10 23:00Z
+        -> 23:30Z cae FUERA: pertenece al dia local del 11, no al del 10
+
+    Con la zona correcta esto se NIEGA. Con `UTC` —o con cualquier huso <= +0:30—
+    la misma fila caeria dentro y liquidaria. La asercion es la negativa, y es la
+    negativa la que solo puede cumplirse si la zona llego hasta el nucleo."""
+    _with_b_substrate(con); _fake_stations(monkeypatch)
+    tid = _settleable_market(con, band="17°C", outcome="Yes", write_obs=False)
+    con.execute(
+        "INSERT INTO weather_observations (station, observation_time, tmax_observed, "
+        "observed_value, observed_unit, series, source, ingestion_timestamp, "
+        "dataset_version, record_version) VALUES (?,?,?,?,?,?,?,?,?,?)",
+        ["EGLC", datetime(2026, 9, 10, 23, 30, tzinfo=timezone.utc), 17.0, 17.0, "C",
+         obs_mod.SERIES_1C, "IEM", T0, "ds1", 1])
+
+    out = paper_cycle.stage_settle(_cycle(), con, dataset_version="ds1")
+    assert out["positions_open"] == 1, out
+    assert out["settled"] == 0, (
+        "23:30Z es el dia local SIGUIENTE en Europe/London; si esto liquida, la "
+        "ventana se calculo en UTC o en otro huso")
+    assert "no_observations_in_window" in out["refusals"], out
+    fila = con.execute("SELECT exit_time, settlement FROM paper_trades "
+                       "WHERE paper_trade_id = ?", [tid]).fetchone()
+    assert fila[0] is None and fila[1] is None
 
 
 def test_a_yes_token_on_the_winning_band_settles_to_one(con, monkeypatch):
