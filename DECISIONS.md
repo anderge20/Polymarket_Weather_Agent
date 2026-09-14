@@ -23959,3 +23959,68 @@ el defecto es del comprobador»* deja de ser prosa.
 **El arreglo de la guarda sigue sin hacerse** y no por olvido: lo gateó el usuario (tarea
 #68). §34 no aplicó porque esto observa código de liquidación sin tocarlo — juicio escrito
 en A-300 §4 para que fuera revisable, no decidido en silencio.
+
+---
+
+## A-306 — El falso de estaciones no se aplicaba; al aplicarlo, seguía sin decidir nada; y eso era el hallazgo · 2026-09-14 · Claude (sesión A)
+
+*Escrito 2026-09-14T01:35Z. PR #56, rama `fix/fake-stations-no-aplica` (`cc2016e`).
+**Ventana D16: no se fusiona antes de las 2026-09-14T03:35Z.** Sólo tests, cero líneas de
+producción. `D0` abajo · `D0-P = BLOCKED` · `L2 = BLOCKED`.*
+
+### 1 · La tarea #57, tal como B la dejó
+
+`_fake_stations` hacía `setitem(sys.modules, …)` y `_station_tz` hace `from weather_agent
+import stations`, que resuelve el **atributo del paquete** —el submódulo que las cabeceras
+ya importaron— y **no consulta `sys.modules`**. El desvío es determinista, no de orden.
+Doce tests hablaban con el registro **real**. B midió (A-229) que con el falso efectivo el
+fichero seguía verde: **acoplamiento, no error**. Parcheado el atributo del paquete **y**
+`sys.modules`.
+
+### 2 · Y aquí es donde el ciclo se ganó el turno
+
+Comprobé mi propio arreglo **mutando lo que el falso devuelve**, en vez de declararlo bueno:
+
+    _station_tz("EGLC") con el falso por atributo  ->  Antarctica/Troll   (SI muerde)
+    pytest tests/test_paper_cycle.py               ->  140 passed         (nada cambia)
+
+**El falso ya llegaba a producción y ninguna aserción dependía de él.** Todas las
+observaciones de los fixtures caen a media tarde, y una lectura de las 14:00Z pertenece al
+mismo día local en casi cualquier huso.
+
+> **Los tests de settle no tenían NINGUNA sensibilidad a la zona horaria.** Si `_station_tz`
+> empezara a devolver la equivocada, este fichero —el que cubre la liquidación entera— no se
+> enteraría. Arreglar el falso sin esto habría producido un fixture correcto, efectivo y
+> todavía inútil.
+
+### 3 · La observación al borde, que es donde la zona decide
+
+    target_date                     2026-09-10
+    observacion                     2026-09-10 23:30Z
+    ventana en Europe/London (BST)  2026-09-09 23:00Z -> 2026-09-10 23:00Z
+    -> 23:30Z cae FUERA: es el dia local del 11
+
+Con la zona correcta la liquidación **se niega** (`no_observations_in_window`); con `UTC`
+caería dentro y liquidaría. **Verificado por mutación, no afirmado:**
+
+    mutando a UTC   [OK] settle positions_open=1 settled=1   ->  1 failed
+    zona correcta                                            ->  1 passed
+
+**Por primera vez el falso decide un resultado.**
+
+### 4 · Recuentos, los dos predichos antes de correr
+
+    tests/test_paper_cycle.py   140 -> 141
+    suite completa              750 -> 751   (90,20 s)
+
+### Lo que se lleva escrito
+
+Es el mismo patrón que el gate de timezone de la Fase C destapó hace tres horas en
+`n075_poblacion` (A-298), y la regla ya está en la memoria de la sesión: **una prueba que
+afirma el valor correcto confirma los caminos a los que llega por casualidad; una que
+afirma que el valor SE MUEVE enumera los que leen la entrada.** Aquí la primera versión del
+arreglo pasaba las dos veces —con la zona buena y con `Antarctica/Troll`— y sólo la
+segunda pregunta encontró que no había nada que arreglar en los tests existentes: había que
+añadir el que faltaba.
+
+§34 no aplica: cero líneas fuera de `tests/`, ningún comportamiento de producción alterado.
