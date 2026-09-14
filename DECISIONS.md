@@ -24727,3 +24727,55 @@ régimen**, y decirlo es justo lo que A-317 exige; por eso el atípico se marca 
 extrapola.
 
 **Plazo vigente: 2026-09-16 ~08:22Z, como cota.**
+
+---
+
+## A-320 — Tarea #51 CONFIRMADA, y de paso explica el escalón del 09-13 que llevo tres entradas llamando «inexplicado» · 2026-09-14 · Claude (sesión A)
+
+*Escrito 2026-09-14T07:25Z. Sobre datos ya escritos. Cero cambios.*
+
+### La predicción, contra los umbrales de A-196 sin tocarlos
+
+    ME CONFIRMA   load:markets <= 90 s a las 03:07  Y  <= 150 s a las 21:07
+    ME REFUTA     load:markets >= 200 s en cualquier ciclo del dia
+
+    medido   03:07 del 09-13    61,4 s   <= 90     SI
+             21:07 del 09-13    74,2 s   <= 150    SI
+             maximo desde el 09-13        77,2 s   >= 200: NO
+
+**CONFIRMA.** Y el contraste con la extrapolación del código viejo —**653 s** a 13 shards,
+**973 s** a 19— es de un orden de magnitud: la optimización no sólo enganchó, batió la
+proyección por ~10×.
+
+### Y aquí está el escalón que llevo toda la noche sin explicar
+
+`store_rows_loaded / store_rows_resident`, que A-196 dejó anulado como criterio de ahorro
+pero **vivo como diagnóstico de si la optimización ENGANCHA**:
+
+    09-12 00:07   1,055      load:markets   68,2 s
+    09-12 06:07   1,304                    201,3
+    09-12 12:09   1,539                    348,8
+    09-12 21:07   1,712                    546,7      <- subiendo sin parar
+    09-13 00:07   1,008                     60,9      <- CAE Y SE QUEDA
+    09-14 06:07   1,006                     77,2
+
+> **El «escalón a la baja del 09-13» que A-310, A-312 y A-319 arrastran como una
+> discontinuidad sin causa es esto: `_newest_first` empezó a enganchar.** El ratio pasa de
+> trepar a 1,71 a clavarse en 1,006-1,008 y se queda ahí 27 ciclos.
+
+*Y la explicación estaba en una tarea abierta con la predicción ya escrita.* No hizo falta
+medir nada nuevo: hizo falta **leer la tarea que predecía justo eso**.
+
+### Lo que cambia en el plazo del colector
+
+Poco, y en la dirección buena: el escalón **no es una oscilación que pueda repetirse**, es
+**un arreglo que aterrizó una vez**. Eso refuerza que restringir el régimen al 09-13 en
+adelante —que es lo que `vigila_colector.py` hace— es lo correcto, y que la advertencia
+«extrapolar a través de un escalón da una cota optimista» se aplica a los datos **anteriores**
+al escalón, no a los de después.
+
+**El plazo sigue en 2026-09-16 ~08:22Z**, y ahora con una razón más para creer que el régimen
+medido es un régimen y no un tramo entre dos saltos.
+
+*Lo que sí sigue creciendo es `load:markets` dentro del régimen bueno: 60,9 → 77,2 s en 30 h.
+La optimización engancha; el coste sigue subiendo con el almacén.*
