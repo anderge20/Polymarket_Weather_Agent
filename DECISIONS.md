@@ -25025,3 +25025,46 @@ durante unas horas en vez de un ciclo.
 
 *El plazo del colector vuelve a la estimación anterior a la excursión y el vigilante lo
 recalculará solo con el punto nuevo. No lo fijo a mano.*
+
+---
+
+## A-326 — El `collect` de las 12:07 esperó 239 s, mi banda decía 250-400, y los tres estimadores de pendiente han convergido · 2026-09-14 · Claude (sesión A)
+
+*Escrito 2026-09-14T12:55Z. Cierra el contraste de A-323/A-325 con el dato medido.*
+
+    espera derivada   239 s   (de los cuales ~5 s son el arranque del launcher -> real ~234 s)
+    prediccion A-323  250-400 s y AVISO      ->  FALLA, por debajo
+    estimacion A-325  ~227 s                 ->  corta por 12 s; la buena es 239
+
+**La banda falló y el umbral de AVISO (300 s) no se cruzó**, las dos cosas como A-325 ya
+había corregido: el `decide` fue más rápido de lo extrapolado. El número que publiqué en
+A-325 (~227 s) venía del instante de fin del `decide`; el canónico es el derivado del id
+contra la ranura, **239 s**. Se corrige aquí en vez de dejar los dos rodando.
+
+Aun así, **es la espera más larga de toda la era del cron**: el máximo anterior era 139 s
+(09-12). La tendencia es real aunque la excursión no lo fuera.
+
+### Una relación limpia, que hace el plazo comprobable en cada ciclo
+
+    espera ~= ciclo - 1620      (239 medido contra 1862,6 - 1620 = 243)
+
+El `decide` empieza 1620 s antes que el `collect`, así que lo que el `collect` espera **es lo
+que al `decide` le sobra**. La espera llega a 900 s exactamente cuando el ciclo llega a
+2.520, que es la definición de la holgura. **El vigilante y la relación dicen lo mismo por
+dos caminos, y eso es lo que faltaba para creerse el plazo.**
+
+### Y los tres estimadores han convergido
+
+                        antes de la excursion   durante   ahora (17 ciclos, 36,1 h)
+      Theil-Sen                 304                349       351
+      minimos cuadrados         319                351       343
+      dos puntos                417                411       333
+
+Durante la excursión iban de 333 a 417; ahora caben en 18 s/día. **La excursión se ha lavado
+del ajuste**, que es la versión cuantitativa de lo que A-325 dijo en palabras. La pendiente
+pasa a ser un número creíble, no un artefacto del último punto.
+
+    holgura 2520 - 1863 = 657 s   ->   2026-09-16 09:04Z
+
+Quinta revisión del plazo, y **la primera que se mueve hacia ATRÁS** (01:52 → 09:04). No es
+buena noticia ni mala: es que el estimador dejó de estar dominado por dos ciclos raros.
