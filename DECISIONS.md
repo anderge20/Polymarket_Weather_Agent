@@ -25333,3 +25333,86 @@ vísperas de la prueba.
 
 **Nada de esto autoriza L2, edge económico, paper ni real trading, ni cambio de estrategia,
 ciudad, modelo, umbral, escalera o settlement.**
+
+## A-331 — `#61 BLOCKED`: la duplicación queda cerrada con fuente única y guardas que muerden, y la mitad que falta se deja abierta a propósito · 2026-09-14 · Claude (sesión A)
+
+**Encargo:** «RESOLVER #61 SIN CONTAMINAR A-327 Y CONGELAR EL SISTEMA HASTA LA PRUEBA
+PROSPECTIVA». **Artefacto:** `ops/A-331_CIERRE_61_SIN_CONTAMINAR_A327.md`
+(sha256 `296ed1419af80fda…`). **PR:** #58, `fix/61-config-fuente-unica`, sha `1f8a8e3`.
+
+**VEREDICTO: `#61 BLOCKED`.** Una sola etiqueta, como pide el §17. Y no está bloqueado por
+ignorancia: el parche está escrito entero en el §6 del artefacto, son **dos líneas**. Lo
+bloquea el propio encargo — §16 y §24 congelan la configuración operacional hasta la
+medición del 09-15, y la mitad que queda sólo se arregla tocando lo que el host ejecuta.
+
+**MITAD 1, CERRADA — fuente única.** `ops/vigila_colector.py` ya no copia literales:
+deriva `RANURAS` de las líneas de cron de `install.sh`, `ESPERA_MAX` del default de
+`launcher.sh`, y se niega a arrancar si los tres `PMW_LOCK_WAIT:-` del mismo fichero
+discrepan («*tiene defaults DISTINTOS*») o si el crontab no produce ninguna ranura. No
+elige el primero, ni el máximo, ni el más frecuente: cualquiera de las tres convierte una
+incoherencia en un número, y un número no se audita hacia atrás.
+
+`HOLGURA` sigue valiendo **2520** y la salida es **byte a byte** la de antes — hizo falta
+un `{HOLGURA:.0f}`, porque derivarlo lo volvió `float` y `2520` pasó a `2520.0`. Un dígito
+bastaba para que «byte a byte» fuera una afirmación falsa que yo mismo había escrito.
+
+**MITAD 1, CERRADA — guardas.** `tests/test_configuracion_operacional.py`, cuatro tests que
+no cambian ningún valor: fijan el que hay. Mutaciones que **fallan ahora y pasaban antes**:
+R2 (horario), H2a (valor del lock), H2b (uno de los tres diverge), M-TZ en tres formas
+(borrar la guarda, renombrar el binario, degradar `exit 1` a aviso). Control `4 passed`.
+Contra el vigilante: `M-RANURAS exit=1`, `M-PMW(uno) exit=1`, y **`M-PMW-todos exit=0`, que
+es lo correcto** — cambiar los tres a la vez es un cambio coherente de una fuente única, y
+una guarda que también lo prohibiera sería una constante con otro nombre.
+
+Suite completa **758 passed**, predicción `754 + 4 = 758` escrita antes de correrla.
+
+**MI TERCERA GUARDA CASI FUE INÚTIL.** Afirmaba `"timedatectl" in INSTALL`. Pasa — y sigue
+pasando después de renombrar el binario a `NOtimedatectl`, que es justo el cambio que
+debería morder. Un `in` de subcadena no es una aserción sobre lo que el script **ejecuta**.
+La versión final afirma la invocación (`timedatectl show -p Timezone`), la existencia del
+`|| { … }`, el `REFUSING` y el `exit 1` dentro de él — porque un aviso no es una negativa.
+
+**MITAD 2, ABIERTA A PROPÓSITO (D-3 / #87).** `launcher.sh` usa `${PMW_LOCK_WAIT:-900}` sin
+exportarlo. Las guardas leen el **fichero**; el host ejecuta un **proceso**. Un `export`
+cambia el comportamiento real en la ranura y nada lo nota.
+
+**CORRECCIÓN A MÍ MISMO.** Escribí —en el test, en el commit y en el PR— que el valor
+efectivo «no se registra en ningún sitio». **Falso.** `launcher.sh:88` emite
+`lock_timeout.waited_s` con el valor efectivo y `stage_host_events` lo lleva a un shard y a
+GitHub. Pero **sólo por la ruta de timeout**: por la ruta feliz no queda escrito en ninguna
+parte, y `cycle_params` no lo lleva entre sus 35 campos. Al corregirme, el defecto sale
+**peor**: el vigilante juzga todos los ciclos buenos con una `HOLGURA` calculada del
+fichero, y sólo conocería el valor verdadero en el primer salto — que es exactamente el
+evento que la holgura existe para anticipar. Se entera cuando ya no sirve. Es otra vez la
+regla que ya tenía escrita: **mirar el campo que ya se escribe antes de afirmar que no hay
+ninguno.**
+
+**POR QUÉ NO SE ARREGLA HOY, VERIFICADO Y NO SUPUESTO.** `launcher.sh:98-104` hace
+`git fetch origin` y `git reset --hard origin/$REF` con `REF=main` **al principio de cada
+ciclo**. Fusionar a `main` algo que el host *ejecuta* es desplegarlo, en la ranura
+siguiente, antes de la medición. Por eso el PR #58 toca **sólo `tests/`**.
+
+**ALTERNATIVA DESCARTADA.** El vigilante podría detectar la divergencia leyendo los
+`lock_timeout` de la serie, sin tocar producción. Descartada por la regla de oro: añade una
+ruta de negativa nueva al instrumento que mañana mide A-327, y si se dispara por un error
+mío de la víspera el vigilante no arranca **el día de la medición**. Cerrar la víspera un
+agujero que no ha disparado nunca (0 timeouts en 48 ciclos) es el intercambio que el §24
+prohíbe. Va a la lista de después del 09-15.
+
+**CRITERIOS DEL §17:** 1 ✅ (un solo sitio) · 2 ✅ (el cambio unilateral falla) · 3 ❌
+(`PMW_LOCK_WAIT` puede divergir por entorno) · 4 ✅ (`HOLGURA=2520`, salida idéntica) ·
+5 ✅ (sólo `tests/` se despliega). Cuatro de cinco → `BLOCKED`.
+
+**LA TENSIÓN DEL ENCARGO, DICHA EN VOZ ALTA.** El §17 exige el criterio 3 y el §16 prohíbe
+el único cambio que lo satisface. No hay que resolverla a favor de uno: es el encargo
+diciendo, con razón, que hay cosas que no se arreglan la víspera de una medición. La salida
+honesta no es desobedecer el §16 ni declarar cumplido el criterio 3 porque molesta — es
+`BLOCKED`, con fecha de desbloqueo y el parche ya escrito.
+
+**CONGELADO hasta que `ops/evalua_a327.py` devuelva `exit 0`:** el vigilante, el evaluador y
+sus constantes (2144 / 524 / 300 / 600), `install.sh`, `launcher.sh`, `paper_cycle.py`, el
+cron real, el `PMW_LOCK_WAIT` del host, la predicción de A-327, y Theil–Sen / MAD×1,4826 /
+3,5× / la ventana de 8. Se permite: documentos, `DECISIONS.md`, y tests que fijan lo que ya
+hay sin cambiar ningún valor.
+
+**Estado:** `#61 BLOCKED` · `READY_FOR_PROSPECTIVE_TEST` · sistema CONGELADO.

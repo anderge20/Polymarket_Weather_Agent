@@ -32,8 +32,12 @@ Ahora tambien se comprueba COBERTURA: se enumeran las ranuras esperadas desde `E
 se exige una fila por cada una. Una ranura sin fila es ALARMA.
 
 CUANDO SE JUZGA UNA RANURA, y por que asi. Una ranura recien disparada todavia no tiene
-shard: el ciclo dura ~33 min y el empuje llega despues. Se le da `HOLGURA + 2 x la duracion
-del ultimo ciclo` -- todo lo que el launcher podria esperar, mas dos ciclos completos. Es
+shard: el ciclo dura ~33 min y el empuje llega despues. Se le da `HOLGURA + 2 x el ciclo MAS
+LARGO de toda la serie` -- todo lo que el launcher podria esperar, mas dos ciclos completos.
+(El docstring decia "el ultimo ciclo" y el codigo siempre uso `max()`: hoy son 2.244,8 s del
+09-12 frente a los 1.970,2 del ultimo. Se corrige EL TEXTO, no el codigo: usar el ultimo
+ENCOGERIA el margen, y encoger el margen es cambiar el instrumento en visperas de la prueba
+prospectiva.) Es
 deliberadamente generoso: un vigilante que grita por una ranura en vuelo se deja de leer, y
 con el cron cada 3 h una ranura realmente perdida se detecta igual antes de la siguiente.
 El margen se deriva del dato, no se fija a mano, asi que se ajusta solo si el ciclo crece.
@@ -53,9 +57,65 @@ import statistics as st
 import sys
 
 PAPER = os.environ.get("PMW_PAPER", "/Users/mariaaleu/.claude/jobs/324ffe40/tmp/wt-paper")
-#: El cron de Hetzner, copiado del repositorio. Si cambia alli, cambia aqui: esta es la
-#: dependencia que la derivacion declara en vez de suponer.
-RANURAS = [(h, 7) for h in range(0, 24, 3)] + [(2, 40), (11, 40)]
+REPO = os.environ.get("PMW_REPO", "/Users/mariaaleu/.claude/jobs/324ffe40/tmp/wt-main")
+
+
+def _ranuras_del_crontab(ruta: str) -> list[tuple[int, int]]:
+    """Las ranuras, LEIDAS del bloque de cron que `install.sh` instala de verdad.
+
+    #61. Antes esto era una lista escrita a mano al lado del crontab, y A-330 demostro
+    por mutacion que cambiar uno sin el otro no lo detecta NADA: `7 */3` -> `9 */4` y los
+    tests seguian verdes. Ahora no hay dos representaciones que puedan divergir: hay UNA,
+    la del fichero que genera el crontab, y esta funcion la lee.
+
+    Formato aceptado: `M H * * *` con M entero y H entero o `*/N`. Cualquier otra cosa
+    LEVANTA en vez de degradar a una lista vacia -- una lista vacia haria que el vigilante
+    no esperase ninguna ranura y no pudiera dar ni una alarma de cobertura.
+    """
+    #: NO se delimita por los marcadores `>>> pmw paper mode >>>`: esas cadenas aparecen
+    #: DOS veces cada una -- en la definicion de las variables BEGIN/END y luego expandidas
+    #: dentro del heredoc -- y un `re.search` no codicioso casa el hueco vacio entre las dos
+    #: definiciones. Primera version escrita, primer fallo. Se reconocen las lineas por lo
+    #: que SON: una planificacion de cron que invoca al launcher.
+    with open(ruta) as f:
+        lineas = f.read().splitlines()
+    out: set[tuple[int, int]] = set()
+    for linea in lineas:
+        linea = linea.strip()
+        if not linea or linea.startswith("#") or "launcher.sh" not in linea:
+            continue
+        m = re.match(r"^(\d{1,2})\s+(\*/\d{1,2}|\d{1,2})\s+\*\s+\*\s+\*\s", linea)
+        if not m:
+            continue                      # `install -m 0755 ... launcher.sh` y similares
+        minuto, hora = int(m.group(1)), m.group(2)
+        if hora.startswith("*/"):
+            out.update((h, minuto) for h in range(0, 24, int(hora[2:])))
+        else:
+            out.add((int(hora), minuto))
+    if not out:
+        raise RuntimeError(f"{ruta}: el bloque de cron no declara ninguna ranura")
+    return sorted(out)
+
+
+def _espera_max_del_launcher(ruta: str) -> float:
+    """La espera maxima del lock, LEIDA de `launcher.sh`, que es quien la ejerce.
+
+    #61. Estaba escrita a mano en el vigilante (`+ 900`) y, en el launcher, repetida como
+    default de shell TRES veces. Aqui se exige que las tres coincidan: si alguien cambia
+    una sola, esto levanta en vez de seguir calculando con la vieja.
+    """
+    with open(ruta) as f:
+        vistos = re.findall(r"PMW_LOCK_WAIT:-(\d+)", f.read())
+    if not vistos:
+        raise RuntimeError(f"{ruta}: no encuentro el default de PMW_LOCK_WAIT")
+    if len(set(vistos)) != 1:
+        raise RuntimeError(f"{ruta}: PMW_LOCK_WAIT tiene defaults DISTINTOS: {sorted(set(vistos))}")
+    return float(vistos[0])
+
+
+#: Derivadas, no duplicadas. Si el crontab o el launcher cambian, esto cambia con ellos.
+RANURAS = _ranuras_del_crontab(os.path.join(REPO, "ops/hetzner/install.sh"))
+ESPERA_MAX = _espera_max_del_launcher(os.path.join(REPO, "ops/hetzner/launcher.sh"))
 AVISO, ALARMA = 300.0, 600.0
 #: EL CRON DE HETZNER EMPIEZA AQUI, y no es una fecha elegida: es el PRIMER ciclo alineado
 #: con una ranura (espera 5 s). Los cinco anteriores son ejecuciones MANUALES de la tarde
@@ -63,8 +123,30 @@ AVISO, ALARMA = 300.0, 600.0
 #: y emparejarlas con la ranura de las 18:07 daba esperas de 2.776 a 10.586 s. Un vigilante
 #: que grita cinco veces por algo que no es una colision es un vigilante que nadie lee.
 ERA_CRON = dt.datetime(2026, 9, 9, 21, 7, 5, tzinfo=dt.timezone.utc)
-#: Holgura entre el `decide 9` (02:40) y el `collect` siguiente (03:07), mas el lock.
-HOLGURA = (27 * 60) + 900
+def _hueco_decide_collect(ranuras) -> float:
+    """Segundos entre una ranura de `decide` y la siguiente de `collect`. DERIVADO.
+
+    Antes era `27 * 60`, una tercera escritura a mano del mismo hecho. El `decide` de las
+    02:40 y el `collect` de las 03:07 estan separados por lo que digan las ranuras, y eso
+    lo dice el crontab.
+    """
+    decides = [r for r in ranuras if r[1] != 7]          # las de collect van al minuto 7
+    if not decides:
+        raise RuntimeError("no hay ranura de decide en el crontab: no se puede derivar el hueco")
+    huecos = []
+    for h, mi in decides:
+        t = h * 3600 + mi * 60
+        sig = min((hh * 3600 + mm * 60 - t) % 86400 for hh, mm in ranuras
+                  if (hh, mm) != (h, mi) and mm == 7)
+        huecos.append(sig)
+    if len(set(huecos)) != 1:
+        raise RuntimeError(f"los decides no tienen el mismo hueco al siguiente collect: {huecos}")
+    return float(huecos[0])
+
+
+#: Holgura = hueco `decide`->`collect` + espera maxima del lock. Los dos DERIVADOS.
+HUECO = _hueco_decide_collect(RANURAS)
+HOLGURA = HUECO + ESPERA_MAX
 
 
 def ciclos():
@@ -178,7 +260,7 @@ def main(argv=None) -> int:
                   f"recta robusta ({r/sd:+.1f} MAD-sd)")
         if pend > 0:
             queda = (HOLGURA - u["dur"]) / pend
-            print(f"     holgura  {HOLGURA} - {u['dur']:.0f} = {HOLGURA - u['dur']:.0f} s"
+            print(f"     holgura  {HOLGURA:.0f} - {u['dur']:.0f} = {HOLGURA - u['dur']:.0f} s"
                   f"   ->   {queda:.2f} dias   ->   "
                   f"{(u['t'] + dt.timedelta(days=queda)):%Y-%m-%d %H:%MZ}")
             print(f"     AVISO: es COTA, no fecha -- la pendiente se estima con el mismo "
@@ -191,7 +273,7 @@ def main(argv=None) -> int:
     perdidas, en_vuelo = cobertura(cs, ahora)
     ult = max((c["dur"] for c in cs if c["dur"]), default=1800.0)
     print(f"\n  COBERTURA de ranuras (margen de juicio: {HOLGURA + 2 * ult:.0f} s = "
-          f"holgura + 2 ciclos de {ult:.0f} s)")
+          f"holgura {HOLGURA:.0f} + 2 x el ciclo mas largo visto, {ult:.0f} s)")
     print(f"     ranuras esperadas y juzgables sin fila: {len(perdidas)}"
           + ("   <<< ALARMA: TURNO PERDIDO" if perdidas else ""))
     for r in perdidas[-5:]:
