@@ -18,10 +18,26 @@ ESTO SUSTITUYE AL `gh run list --workflow=paper_collect.yml` DE LA ORDEN DE CICL
 lleva dias apuntando a un workflow desactivado: la ejecucion se mudo a Hetzner y un
 workflow que no corre nunca falla.
 
-Umbrales DECLARADOS AQUI, antes de mirar ninguno:
+Umbrales DECLARADOS, antes de mirar ninguno. NO se tocan (A-328 §8):
     espera > 300 s  ->  AVISO     (un tercio del presupuesto de 900 consumido)
     espera > 600 s  ->  ALARMA    (dos tercios)
-    espera ausente y hueco en las ranuras  ->  ALARMA (turno perdido)
+    RANURA SIN FILA ->  ALARMA    (turno perdido: es lo que no se recupera)
+
+EL PUNTO CIEGO QUE ESTO CIERRA (A-328 §15.1, verificado por la mutacion M5). La espera se
+DERIVA de `hora del id - ranura`. Si el ciclo nunca corrio no hay id, no hay fila y no hay
+espera que derivar: el vigilante devolvia **exit 0 y silencio** ante una ranura perdida.
+Detectaba ESPERAS, no AUSENCIAS -- y la ausencia es justo el suceso que no se recupera.
+
+Ahora tambien se comprueba COBERTURA: se enumeran las ranuras esperadas desde `ERA_CRON` y
+se exige una fila por cada una. Una ranura sin fila es ALARMA.
+
+CUANDO SE JUZGA UNA RANURA, y por que asi. Una ranura recien disparada todavia no tiene
+shard: el ciclo dura ~33 min y el empuje llega despues. Se le da `HOLGURA + 2 x la duracion
+del ultimo ciclo` -- todo lo que el launcher podria esperar, mas dos ciclos completos. Es
+deliberadamente generoso: un vigilante que grita por una ranura en vuelo se deja de leer, y
+con el cron cada 3 h una ranura realmente perdida se detecta igual antes de la siguiente.
+El margen se deriva del dato, no se fija a mano, asi que se ajusta solo si el ciclo crece.
+
 Sale 1 si hay ALARMA. No toca el host, no gasta cuota, solo lee `paper-state`.
 """
 from __future__ import annotations
@@ -75,6 +91,34 @@ def ciclos():
             })
     out.sort(key=lambda c: c["t"])
     return out
+
+
+def ranuras_esperadas(desde: dt.datetime, hasta: dt.datetime):
+    """Toda ranura de cron entre dos instantes, en orden."""
+    out = []
+    d = desde.date()
+    while d <= hasta.date():
+        for h, mi in sorted(RANURAS):
+            t = dt.datetime(d.year, d.month, d.day, h, mi, tzinfo=dt.timezone.utc)
+            if desde <= t <= hasta:
+                out.append(t)
+        d += dt.timedelta(days=1)
+    return sorted(out)
+
+
+def cobertura(cs, ahora):
+    """Ranuras esperadas y ya juzgables que NO tienen fila. Devuelve (perdidas, en_vuelo)."""
+    if not cs:
+        return [], []
+    vistas = {c["ranura"] for c in cs}
+    ult = max((c["dur"] for c in cs if c["dur"]), default=1800.0)
+    margen = dt.timedelta(seconds=HOLGURA + 2 * ult)
+    perdidas, en_vuelo = [], []
+    for r in ranuras_esperadas(cs[0]["ranura"], ahora):
+        if r in vistas:
+            continue
+        (perdidas if ahora - r > margen else en_vuelo).append(r)
+    return perdidas, en_vuelo
 
 
 def main(argv=None) -> int:
@@ -143,6 +187,19 @@ def main(argv=None) -> int:
                   f"empezo a enganchar, ratio 1,712 -> 1,008. Fue un arreglo que aterrizo "
                   f"una vez, no una oscilacion, asi que el regimen posterior es un regimen.)")
 
+    ahora = dt.datetime.now(dt.timezone.utc)
+    perdidas, en_vuelo = cobertura(cs, ahora)
+    ult = max((c["dur"] for c in cs if c["dur"]), default=1800.0)
+    print(f"\n  COBERTURA de ranuras (margen de juicio: {HOLGURA + 2 * ult:.0f} s = "
+          f"holgura + 2 ciclos de {ult:.0f} s)")
+    print(f"     ranuras esperadas y juzgables sin fila: {len(perdidas)}"
+          + ("   <<< ALARMA: TURNO PERDIDO" if perdidas else ""))
+    for r in perdidas[-5:]:
+        print(f"        PERDIDA  {r:%Y-%m-%d %H:%MZ}")
+    if en_vuelo:
+        print(f"     en vuelo (aun no juzgables): "
+              f"{', '.join(f'{r:%m-%d %H:%M}Z' for r in en_vuelo)}")
+
     aviso = [c for c in cs if AVISO < c["espera"] <= ALARMA]
     alarma = [c for c in cs if c["espera"] > ALARMA]
     print(f"\n  esperas > {AVISO:.0f} s: {len(aviso)}   ·   > {ALARMA:.0f} s: {len(alarma)}")
@@ -150,7 +207,7 @@ def main(argv=None) -> int:
         print(f"     ALARMA {c['t']:%Y-%m-%d %H:%M:%S}Z  ranura {c['ranura']:%H:%M}  "
               f"espero {c['espera']:.0f} s   ({c['sid']})")
     print("=" * 96)
-    return 1 if alarma else 0
+    return 1 if (alarma or perdidas) else 0
 
 
 if __name__ == "__main__":

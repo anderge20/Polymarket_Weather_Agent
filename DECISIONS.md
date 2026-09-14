@@ -25182,3 +25182,60 @@ BAJA-MEDIA.**
 
 **Nada de esto autoriza L2, paper trading ni cambio de estrategia, ciudad, modelo o umbral.**
 Siguiente observación: `decide 02:40` + `collect 03:07` del 09-15, empuje esperado ~03:40Z.
+
+---
+
+## A-329 — Cerrado el punto ciego: el vigilante ya ve la ranura perdida, y distingue «perdida» de «en vuelo» · 2026-09-14 · Claude (sesión A)
+
+*Escrito 2026-09-14T16:35Z. Sólo el guion de corpus `ops/vigila_colector.py`. Cero
+producción, cero PR, cero cuota. **Ningún parámetro congelado tocado**: `AVISO 300`,
+`ALARMA 600`, `HOLGURA 2520`, Theil-Sen, MAD × 1,4826 y el multiplicador 3,5 siguen como
+estaban (A-328 §8).*
+
+### Lo que faltaba
+
+A-328 §15.1 midió el agujero con la mutación M5: **borrando un shard, el vigilante devolvía
+exit 0 y silencio.** La espera se deriva de `hora del id − ranura`; si el ciclo nunca corrió
+no hay id, no hay fila y no hay nada que derivar. **Detectaba esperas, no ausencias** — y la
+ausencia es justo lo que no se recupera.
+
+### Lo añadido, y la decisión que había que tomar bien
+
+Se enumeran las ranuras de cron desde `ERA_CRON` y se exige **una fila por cada una**. Una
+ranura sin fila es **ALARMA** y sale con código 1.
+
+**La parte delicada es cuándo se juzga una ranura.** Una recién disparada todavía no tiene
+shard: el ciclo dura ~33 min y el empuje llega después. El margen es
+
+    HOLGURA + 2 x (duracion del ultimo ciclo)   =   2520 + 2 x 1970  =  6.460 s
+
+todo lo que el launcher podría esperar más dos ciclos completos. **Se deriva del dato, no se
+fija a mano**, así que se ajusta solo si el ciclo sigue creciendo. Es deliberadamente
+generoso: *un vigilante que grita por una ranura en vuelo se deja de leer* —la lección de
+A-314, donde cinco falsas alarmas del 09-09 hubo que quitar— y con el cron cada 3 h una
+ranura realmente perdida se detecta igual antes de la siguiente.
+
+### Verificado por mutación, no afirmado
+
+    M5a  borrar el shard de las 15:07 (a las 16:23, EN VUELO)
+         exit=0 · "en vuelo (aun no juzgables): 09-14 15:07Z"   <- NO falsea alarma
+    M5b  borrar el de las 06:07 (juzgable hace horas)
+         exit=1 · "ranuras ... sin fila: 1  <<< ALARMA: TURNO PERDIDO · PERDIDA 09-14 06:07Z"
+    M5c  borrar dos antiguos
+         exit=1 · las DOS nombradas, 09-13 18:07Z y 09-14 06:07Z
+    M0   control, sin borrar
+         exit=0 · 0 ranuras sin fila
+
+**Las dos direcciones comprobadas:** que alarme cuando debe **y** que no alarme cuando no
+debe. Sólo con la primera habría escrito un detector que grita siempre.
+
+### Lo que sigue sin cerrar, y no lo cierro
+
+`HOLGURA` sigue **duplicando a mano** `PMW_LOCK_WAIT`, que vive en `ops/hetzner/launcher.sh`,
+y `RANURAS` sigue duplicando el crontab. Es la clase de la tarea #61 —una constante en dos
+sitios sin nada que los compare— y arreglarlo de verdad significa leer el `launcher.sh` y el
+crontab del host, que es otra tarea. Queda anotado en #86, no tapado.
+
+**Tampoco toco** el multiplicador de atípicos, aunque A-328 midió que con n = 18 la excursión
+del 09-14 ya no se marca: cambiarlo ahora sería exactamente la ingeniería retrospectiva que
+el encargo prohíbe.
