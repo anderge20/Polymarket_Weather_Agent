@@ -32,6 +32,8 @@ sys.path.insert(0, os.path.join(REPO, "src"))
 from weather_agent import stations                           # noqa: E402
 from weather_agent.polymarket.resolution import parse_band   # noqa: E402
 
+#: SOLO para los guiones de Londres que la importan (`n075_metricas`, `d11_cadena_r`).
+#: NINGUNA funcion de este modulo la usa ya: la zona sale de `stations.timezone_of`.
 LON = ZoneInfo("Europe/London")
 DB = os.environ.get("PMW_DB", "/Users/mariaaleu/workspace/Polymarket_Weather_Agent/data/pmw.duckdb")
 
@@ -144,6 +146,7 @@ def poblacion(con, dsv, station="EGLC"):
         if ct is not None and (e["close"] is None or ct > e["close"]):
             e["close"] = ct
 
+    zona_estacion = ZoneInfo(stations.timezone_of(station))
     diag = Counter()
     por_fecha = {}
     for e in ev.values():
@@ -170,7 +173,15 @@ def poblacion(con, dsv, station="EGLC"):
             diag["fecha_sin_elegible"] += 1
             continue
         # close_time mas proximo POR ENCIMA de la fecha objetivo
-        corte = dt.datetime.combine(td + dt.timedelta(days=1), dt.time(0), LON).astimezone(dt.timezone.utc)
+        #: LA ZONA ES LA DE LA ESTACION, NO `LON`. Este es el HERMANO del defecto que
+        #: D11/A-285 arreglo doce lineas mas arriba, en `observaciones()`: alli la zona
+        #: estaba fija y aqui tambien, en la MISMA funcion de poblacion, y arreglar uno
+        #: dejo el otro en pie. La regla declarada (A-275) dice "por encima del final del
+        #: dia civil LOCAL"; con `LON` el corte de RKSI caia 8 h tarde (23:00Z en vez de
+        #: 15:00Z) y cambiaba que evento gana el desempate. En EGLC no cambia nada -- su
+        #: zona ES Europe/London -- que es otra vez la razon por la que era invisible.
+        corte = dt.datetime.combine(td + dt.timedelta(days=1), dt.time(0),
+                                    zona_estacion).astimezone(dt.timezone.utc)
         arriba = [e for e in cands if e["close"] is not None and e["close"] > corte]
         pool = arriba or cands
         elegidos[td] = min(pool, key=lambda e: (e["close"] is None, e["close"] or corte))
