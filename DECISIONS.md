@@ -24411,3 +24411,44 @@ por primera vez hace que el falso decida un resultado, verificada por mutación 
 direcciones.
 
 Cola: queda **#57** (`3d95fc7`), ventana hasta las **04:55Z**.
+
+---
+
+## A-314 — El vigilante del colector, escrito: sustituye al `gh run list` que lleva días sin poder fallar · 2026-09-14 · Claude (sesión A)
+
+*Escrito 2026-09-14T04:30Z. `ops/vigila_colector.py`. Sólo lee `paper-state`: cero acceso al
+host, cero cuota, cero cambios en producción.*
+
+El §C5 de A-312 lo dejó nombrado y aquí está. Deriva la espera de lock —`hora del id − ranura
+de cron`— porque **ningún campo la registra**: `session_id` y `cycle_started_at` se sellan al
+adquirir el lock, y `lock_timeout` sólo se emite al rendirse.
+
+    esperas > 300 s: 0   ·   > 600 s: 0
+    regimen desde 09-13: 13 ciclos en 27,0 h
+       ciclo 1362 -> 1719 s   pendiente +317 s/dia   almacen 17,0 -> 23,4 MB
+       holgura 2520 - 1719 = 801 s  ->  2,53 dias  ->  2026-09-16 15:50Z
+
+### Y esto reemplaza la comprobación 2 de la orden de ciclo
+
+`gh run list --workflow=paper_collect.yml` apunta a un workflow **desactivado** desde que la
+ejecución se mudó a Hetzner. Lleva días devolviendo verde por la peor razón posible: *un
+workflow que nunca corre nunca falla*. El vigilante mira donde la ejecución está de verdad.
+
+### Dos cosas que tuve que arreglar del propio vigilante antes de que sirviera
+
+**(1) Gritaba cinco veces por algo que no es una colisión.** Las cinco esperas de 2.776 a
+10.586 s del 2026-09-09 son ejecuciones **manuales** de la tarde de la migración desde
+Actions, y mi emparejamiento las atribuía todas a la ranura de las 18:07. El corte no es una
+fecha elegida: es **el primer ciclo alineado con una ranura**, `2026-09-09T21:07:05Z`, y las
+cinco anteriores se reconocen porque no hay 3 h entre ninguna. *Un vigilante que grita cinco
+veces por lo que no es se deja de leer, y entonces no avisa del que sí.*
+
+**(2) Mi propia comprobación del código de salida mentía.** Corrí `python3 vigila.py | tail`
+y leí `$?`: eso es el estado de `tail`, no del guión. Dijo `exit=0` con cinco alarmas dentro.
+Es la misma familia que todo lo de esta noche —*el instrumento apuntando a donde nada puede
+fallar*— en su versión de una línea de shell.
+
+**Con el corte puesto, la señal queda limpia:** línea base 4–7 s en 44 ciclos, y **sólo dos
+esperas reales en toda la era del cron**: 139 s el 09-12 y 94 s el 09-14. Las dos por debajo
+del umbral de aviso de 300 s, que es lo correcto: ninguna ha consumido un tercio del
+presupuesto de 900 s.
