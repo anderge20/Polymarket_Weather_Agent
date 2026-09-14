@@ -24308,3 +24308,79 @@ Le quedan 817 de sus 900 s.
 Tres predicciones escritas antes de mirar —el campo del shard, el instante del empuje y el
 plazo— y las tres comprobables en el mismo fichero. **Ninguna hizo falta un instrumento
 nuevo: el ciclo ya escribía `collect_only_reason`, `recorded_at` y `stage_profile`.**
+
+---
+
+## A-312 — La espera de lock no se registra en ningún campo, pero SÍ es derivable. Y el primer cruce no fue hoy: fue el 2026-09-12 · 2026-09-14 · Claude (sesión A)
+
+*Escrito 2026-09-14T03:55Z. Enmienda a A-310 y A-311. Sólo lectura, cero cambios.*
+
+### C1 · El campo que registraría la espera se sella DESPUÉS de la espera
+
+En A-311 escribí que *«el `collect` de las 03:07:05 esperó el lock ~83 s»*. Era una
+inferencia —correcta— pero la presenté como si estuviera medida. **No hay ningún campo que
+la registre**, y la razón es estructural:
+
+    session_id        col_20260914T030834Z_ab6bdf      <- 03:08:34, no 03:07:05
+    cycle_started_at  2026-09-14T03:08:34              <- "espera 1 s"
+
+El `session_id` y `cycle_started_at` se sellan **cuando el launcher ADQUIERE el lock**, no
+cuando el cron dispara. Un ciclo que espera 800 s lo registra todo como si hubiera arrancado
+puntual. Y `lock_timeout` sólo se emite cuando **se rinde**, a los 900 s.
+
+> **El indicador que avisaría de que nos acercamos al plazo de A-310 no existe como campo:
+> sólo existe su violación.**
+
+### C2 · Pero es derivable, y el cron está comprometido en el repo
+
+`hora del id − ranura de cron más cercana`. El cron (`7 */3` collect, `40 2` y `40 11`
+decide) vive en el repositorio, así que es la variante **benigna** de «una derivación se
+apoya en algo que no declara»: lo que se apoya está versionado.
+
+    49 ciclos. Linea base 5-6 s en 48 de ellos (arranque del launcher, no espera).
+
+    09-13 21:07:05Z   ranura 21:07   espera     5 s   ciclo 1622,4 s
+    09-14 00:07:05Z   ranura 00:07   espera     5 s   ciclo 1649,8 s
+    09-14 02:40:06Z   ranura 02:40   espera     6 s   ciclo 1701,8 s
+    09-14 03:08:34Z   ranura 03:07   espera    94 s   ciclo 1718,9 s   <-- ESPERO
+
+La señal es limpísima: **5-6 s de fondo, 94 s hoy.**
+
+### C3 · Y me equivoqué en cuál fue el primer cruce
+
+A-310 decía *«hoy ya se cruzó la primera línea»*. **Falso.** Hay otro, dos días antes:
+
+    2026-09-12 12:09:19Z   ranura 12:07   espero 139 s
+
+El `decide 24` de las 11:40 del 09-12 tardó **1747,4 s** —más que el de hoy— y el `collect`
+de las 12:07 esperó 139 s. **Ya había pasado, con más margen consumido que hoy, y nadie lo
+vio porque nada lo mira.**
+
+Después, el 09-13 el ciclo **bajó** de 1747 a ~1430 s (se normalizó `load:markets`), la
+colisión desapareció, y ese respiro se ha consumido en un día. *La curva no es monótona:
+tiene un escalón hacia abajo el 09-13 que compró ~24 h. Extrapolar en línea recta a través
+de un escalón es lo que hace que mi plazo sea una cota superior optimista, no una fecha.*
+
+*(Las cinco entradas del 2026-09-09 con esperas de 2.776 a 10.586 s no son colisiones de
+cron: son ejecuciones manuales de la migración desde Actions, varias en una tarde, que mi
+emparejamiento con la ranura de las 18:07 atribuye mal. Se dicen para que nadie las cuente
+como señal.)*
+
+### C4 · Lo que cambia en el plazo
+
+Tres puntos de hoy: 1649,8 → 1701,8 → 1718,9 s. Sobre el régimen completo (09-13 00:07 →
+09-14 03:08, 27,0 h): **+316,7 s/día**.
+
+    holgura 2520 - 1718,9 = 801 s   ->   2,53 dias   ->   2026-09-16 ~15:45Z
+
+Tercera revisión del mismo plazo (17 → 16 18:20 → 16 15:45) y **las tres veces hacia
+delante**. Lo digo así en vez de dar una fecha limpia: *la pendiente que uso la estimo con
+el mismo dato que quiero predecir, y cada punto nuevo la ha empeorado.*
+
+### C5 · Lo que SÍ se puede hacer sin tocar el host
+
+El vigilante existe y no está escrito: **`hora del id − ranura` sobre los shards de
+`cycle_params`**, que ya están en `paper-state`. Cero acceso al host, cero cuota, y avisa
+*antes* de perder un turno en vez de después. Queda propuesto en la tarea #84; no lo
+implemento en este ciclo porque el ciclo ya lleva dos PR en ventana y meter un tercero sin
+necesidad es ruido.
