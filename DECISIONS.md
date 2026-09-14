@@ -23855,3 +23855,68 @@ gana.
 **P4 ya se dio por cerrada una vez contra un FIXTURE** (A-60). Hoy la marco FALLA con el
 código presente y verificado (A-301): lo que falta no es el cableado, es **la evidencia de
 una ejecución real**. Es exactamente la distinción que A-60 tuvo que aprender a la fuerza.
+
+---
+
+## A-304 — Corrección de A-303 a los 25 minutos: mi evidencia para P12 no podía discriminar, y la de P3/P9/P11 decía menos de lo que los datos dicen · 2026-09-14 · Claude (sesión A)
+
+*Escrito 2026-09-14T00:55Z. Sólo lectura de shards. A-303 sigue en pie en el marcador
+(4 · 3 · 5); cambian **la evidencia de P12** y **el diagnóstico de P3/P9/P11**.*
+
+### C1 · La evidencia que di para P12 es una comprobación que sólo podía pasar
+
+Escribí: *«`PAPER_TAU` NO existe: los ciclos siguen escribiendo `collect_only_reason =
+no_paper_tau`»*. **Falso en la letra.** Los shards que miré dicen `mode_collect`, y dicen
+eso **porque son ciclos de colección**, que son collect-only por modo — existiera `tau` o
+no. Cité un campo que no puede distinguir el caso que quería demostrar.
+
+**La evidencia buena estaba en la misma tabla y es positiva, no negativa.** Los ocho ciclos
+`decide` (02:40 y 11:40) escriben:
+
+    tau_signal   None
+    tau_exec     None
+    collect_only True
+
+`tau_signal = None` en el ciclo que **decidiría** es evidencia directa de que no hay tau.
+`mode_collect` en un ciclo que **nunca decide** no es evidencia de nada. **P12 sigue
+pasando; la razón por la que pasa era otra.**
+
+### C2 · Y el prefijo me volvió a engañar, como ya estaba escrito
+
+Agrupé por el prefijo del `session_id` y concluí que no existían ciclos `decide`. Existen:
+`cycle_params__col_20260913T114006Z_b22057` **es** el decide de las 11:40. **El prefijo
+`col_` lo llevan los dos** — que es exactamente lo que la tarea #42 registró hace días:
+*«el prefijo `col_` no distingue nada»*. Lo comprobé contra el registro antes de publicarlo
+como hallazgo, y por eso no hay un hallazgo, hay una reincidencia. **La unidad que
+discrimina es la HORA DE DISPARO en el id (`T0240`, `T1140`), no el prefijo.**
+
+### C3 · «Nunca ha escrito nada» era menos preciso que lo que los datos dicen
+
+De A-303: *«la ruta de decisión NUNCA ha escrito nada en el host»*. El `stage_profile` de
+cada decide dice algo más fino:
+
+    ... "collect:books" 39.46 s · "venue_coverage" 0.03 · "forecasts" 0.0
+        "signals" 0.0 · "paper" 0.0 · "observations" 0.0 · "dump:..."
+
+**Las cuatro etapas de decisión SE EJECUTAN en cada ciclo y cada una tarda 0,0 s y no
+escribe.** No es «la ruta nunca se invocó»: es **«la ruta se invoca siempre y
+cortocircuita»**. Son dos diagnósticos distintos con dos remedios distintos, y el segundo es
+mejor noticia: el cableado se ejercita cada tres horas, lo que falta es que las etapas
+tengan algo que hacer.
+
+*Corolario que afecta al marcador:* lo que P11 exige no es «que la ruta corra» —corre— sino
+**que produzca una fila**. P11 sigue FALLA, por la razón correcta.
+
+### C4 · Y queda una predicción fechada mejor que la de la tarea #66
+
+La tarea #66 espera `collect_only_reason == "no_paper_tau"` en el decide de las 02:40.
+**Ningún decide lo trae todavía**, y ahora se ve por qué: el más reciente corrió con
+`code_commit = 32e8972`, **anterior** a `8bc603f`, que es donde se añadió el campo. Así que
+la predicción no está fallando: aún no ha podido ejecutarse.
+
+> **El decide de las 02:40Z de hoy es el primero que puede traerlo**, si el `REF` del host
+> ya apunta por encima de `8bc603f`. Si trae `no_paper_tau`, confirma #66 y refuerza P12.
+> Si trae el campo ausente, el `REF` del host está viejo — y eso es un hallazgo propio.
+
+*Lo que hizo falta para encontrar las cuatro cosas no fue una auditoría: fue leer un campo
+que ya estaba escrito en un fichero que ya tenía abierto.*
