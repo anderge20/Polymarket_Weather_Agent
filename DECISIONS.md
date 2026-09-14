@@ -24868,3 +24868,59 @@ si se queda arriba sola es otra cosa. El coste total puede subir por tamaño; `d
 
 *Si sale INDETERMINADO, se dice INDETERMINADO y se espera al de las 12:07. No se elige la
 lectura que cuadre.*
+
+---
+
+## A-323 — El criterio de A-322 dice **NIVEL NUEVO**, y lo dice por los dos lados a la vez · 2026-09-14 · Claude (sesión A)
+
+*Escrito 2026-09-14T09:55Z, leyendo el ciclo de las 09:07 contra el criterio escrito a las
+08:55, antes de que ese ciclo existiera.*
+
+    ciclo      1927,4 s    banda de variacion de maquina 1709-1854   ·   nivel nuevo >= 1883
+    discover      83,9 s   umbral < 70 (maquina)                     ·   > 80 (nivel nuevo)
+
+    VARIACION DE MAQUINA   ciclo NO · discover NO   ->  no se cumple
+    NIVEL NUEVO            ciclo SI · discover SI   ->  SE CUMPLE
+
+### El escalón es simultáneo en dos cantidades que no comparten causa de tamaño
+
+                       ms/fila          discover
+      hasta 03:08     13,54 - 13,82    52,9 - 56,5 s
+      desde 06:07     14,62 · 14,65    87,7 · 83,9 s
+
+`ms/fila` sale de la banda `12,79-14,08` que A-317 midió sobre 25 ciclos **dos veces
+seguidas** (+4,3 σ), y `discover` sube ~50 %. **`discover` no recarga el almacén**, así que
+el tamaño no puede explicar las dos: o es el anfitrión, o es algo compartido aguas abajo.
+**La causa no la sé y no la invento.**
+
+*Y conviene no confundir dos cosas que se parecen: el criterio distinguía **transitorio**
+(un ciclo que vuelve a la recta) de **sostenido** (dos que no vuelven). Dice que es
+sostenido. No dice que la causa no sea la máquina; dice que, sea cual sea, ya no es un
+parpadeo.*
+
+### Qué le pasa al plazo, y por qué es MENOS fiable que antes, no más
+
+    holgura   2520 - 1927 = 593 s      <- esto esta MEDIDO
+    pendiente Theil-Sen 349 s/dia      <- esto ahora MEZCLA DOS REGIMENES
+    plazo     2026-09-16 01:52Z        <- cuarta revision, otra vez hacia delante
+
+> **El número sólido es la holgura: 593 s.** La fecha depende de una pendiente que ya no es
+> de un solo régimen: la serie del 09-13 en adelante contiene el tramo viejo y dos ciclos del
+> nuevo. Si el cambio es un **escalón**, la pendiente mezclada exagera el ritmo; si es una
+> **pendiente más empinada**, lo subestima. **Con dos puntos no se distingue** — que es
+> exactamente lo que A-319 obligó a escribir y aquí se aplica contra mi propio resultado.
+
+**No reestimo la pendiente sobre los dos puntos nuevos.** Sería el error de A-317 y A-319 por
+tercera vez. Lo que toca es esperar a los ciclos de las 12:07 y 15:07 y entonces separar
+escalón de pendiente con cuatro puntos, no con dos.
+
+### Lo que sí cambia ya
+
+El ciclo (1927 s) supera la separación `decide`→`collect` (1620 s) en **307 s**, frente a los
+30 s de esta madrugada. La espera de lock del `collect` de las 12:07, después del `decide` de
+las 11:40, debería rondar los **~310 s** — y eso **cruza por primera vez el umbral de AVISO
+de 300 s** que el vigilante lleva declarado desde A-314.
+
+**Predicción, escrita antes:** el `collect` de las 12:07 de hoy tendrá una espera derivada de
+entre 250 y 400 s, y el vigilante la marcará como AVISO. Si sale por debajo de 250, el ciclo
+del `decide` ha bajado; si sale por encima de 400, ha vuelto a subir.
