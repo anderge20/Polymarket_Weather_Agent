@@ -24181,3 +24181,69 @@ otro, que seguiría diciendo que todo coincide.
 sin caso de prueba real, que es como se escriben las guardas inertes.*
 
     752 -> 753, predicho antes de correr
+
+---
+
+## A-310 — El ciclo crece +288 s/día y ya no cabe entre el `decide` y el `collect` siguiente. Con esta pendiente, el colector empieza a saltarse turnos hacia el **2026-09-17** · 2026-09-14 · Claude (sesión A)
+
+*Escrito 2026-09-14T03:05Z. Medido sobre `stage_profile`, un campo que los ciclos YA
+escriben. Cero peticiones, cero cambios. Toca el punto 2 del ciclo: el colector es lo único
+que no se recupera a posteriori.*
+
+### Lo medido, en el régimen actual (desde el 09-13 00:07Z, tras normalizarse `load:markets`)
+
+    11 ciclos en 24,0 h
+    ciclo completo    1362,3 -> 1649,8 s     +287,5 s/dia      (+4,8 min/dia)
+    load:orderbook     749,5 ->  932,0 s     +182,5 s/dia
+    load:price_history 402,4 ->  489,6 s      +87,3 s/dia
+    almacen             17,0 ->   22,4 MB      +5,4 MB/dia
+
+**El crecimiento no está en el trabajo: está en RECARGAR EL ALMACÉN.** `load:orderbook` +
+`load:price_history` son **270 de los 288 s/día**, el 94 %.
+
+### La restricción que muerde no es la ventana de 3 h
+
+Yo mismo calculé primero los umbrales contra la ventana de 3 h —media ventana el 09-27, sin
+caber el 10-15— y **son los umbrales equivocados**. El `decide 9` dispara a las **02:40:05**
+y el `collect` siguiente a las **03:07:05**: la separación real es de **1620 s**, no de
+10 800. El `launcher.sh` añade una espera de lock de `PMW_LOCK_WAIT = 900 s`.
+
+    holgura total      1620 + 900 = 2520 s
+    ciclo de hoy                    1650 s
+    holgura restante                 870 s   ->  870 / 287,5 = 3,0 dias
+
+> **Con la pendiente actual, hacia el 2026-09-17 el `collect` de las 03:07 agotará su espera
+> de 900 s y se SALTARÁ.** Y un turno de libro saltado no se recupera. Lo mismo para el par
+> `decide 11:40` → `collect 12:07`.
+
+**Hoy ya se cruzó la primera línea**: el ciclo (1650 s) supera la separación (1620 s), así
+que el `collect` de las 03:07 arrancará ~30 s tarde, esperando el lock. A las 03:03:25Z el
+`decide` de las 02:40 seguía sin empujar, que es exactamente lo que predice 1650 s
+(empujaría hacia las 03:07:34Z).
+
+### Y el comentario que dimensiona la guarda ya no dice la verdad
+
+`ops/hetzner/launcher.sh:55`:
+
+> *«a collect takes ~10 min against a 3 h spacing, so the overlap almost always clears»*
+
+**Un `collect` tarda 27,5 min, no 10.** El comentario era correcto cuando se escribió y hoy
+sostiene el dimensionado de `PMW_LOCK_WAIT`. Es la forma que esta sesión ya conoce: *una
+cita correcta que sostiene una afirmación falsa*, y la que decide si una guarda está bien
+dimensionada.
+
+*Justo es decir que el mismo comentario nombra el modo de fallo —«if a cycle truly hangs,
+every later slot skips and the schedule stops in silence»—; lo que ha caducado es la
+premisa, no el diseño.*
+
+### Lo que esto NO es
+
+**No es un hallazgo nuevo sobre la compactación.** La tarea #55 tiene el diseño cerrado con
+B y dice *«el plazo aguanta» como decisión de trabajo*. Lo que faltaba es **el plazo**:
+nadie había calculado cuándo deja de aguantar, y el número no es el que yo suponía (la
+ventana de 3 h) sino el hueco `decide`→`collect` más la espera del lock.
+
+**No toco nada.** El remedio vive en el host y en la compactación (#55), y ninguna de las
+dos cosas se decide unilateralmente a las tres de la mañana. Queda el plazo, medido y
+falsable: **si el 2026-09-17 no aparece un `lock_timeout` en los eventos del host o un hueco
+en los shards, la extrapolación lineal era mala y hay que rehacerla.**
