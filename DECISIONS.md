@@ -24452,3 +24452,39 @@ fallar*— en su versión de una línea de shell.
 esperas reales en toda la era del cron**: 139 s el 09-12 y 94 s el 09-14. Las dos por debajo
 del umbral de aviso de 300 s, que es lo correcto: ninguna ha consumido un tercio del
 presupuesto de 900 s.
+
+---
+
+## A-315 — #57 fusionado (`1584045`). A-112 al disparo + A-119 sobre el árbol: 754 verdes, segundo padre `3d95fc7` · 2026-09-14 · Claude (sesión A)
+
+*Fusionado 2026-09-14T04:56:16Z. Ventana D16 desde A-309 (02:55Z): **2 h 01 min**. Sólo
+tests. `D0` abajo · `D0-P = BLOCKED` · `L2 = BLOCKED`.*
+
+    A-112 al disparo   isDraft false · headRefOid 3d95fc7 == sha de la suite == sha revisado
+    A-119              arbol 19cd611, padres b2b7d55 (main) + 3d95fc7
+                       PREDICHO 751 + 3 = 754   ·   MEDIDO 754 passed in 112,36 s
+                       merge en origin/main 1584045, segundo padre 3d95fc7
+
+`main`: 751 → **754**. Tres fusiones esta madrugada: 749 → 750 → 751 → 754.
+
+### La cifra que no era la obvia
+
+Medí **753** sobre la rama y el árbol da **754**. No es un descuadre: la rama salía de
+`a7458dd` (750 tests) y `main` se movió a `b2b7d55` (751) al fusionar el #56 en medio. **El
+recuento de la rama dejó de ser el del árbol en cuanto otra fusión entró**, y heredarlo
+habría sido exactamente la cita-en-vez-de-dato de A-299. Se predijo 754 antes de correr.
+
+### La ventana, contada desde donde toca
+
+Se contó desde **A-309**, no desde A-308, porque al añadir la guarda del parser la rama pasó
+de `2c49fec` a `3d95fc7`. A-112 exige que el sha fusionado sea el que corrió la suite **y**
+el que se revisó; mover la rama reinicia el reloj, no lo hereda. Costó 20 minutos de espera
+y es la lectura estricta de mi propia regla.
+
+### Qué entra
+
+Tres guardas sobre la clave de conflicto, que vive en **tres declaraciones** —el `PRIMARY
+KEY` del DDL, `store.CONFLICT_COLS` y `observations.CONFLICT_COLS`— con `store.upsert`
+prefiriendo la del llamante. Las 13 tablas con dos o más declaraciones **coinciden hoy**; lo
+que faltaba era que algo se enterase el día que no. Incluye la guarda que fija de qué depende
+el propio parser del DDL (A-309) y la aserción de que `source` sigue en la clave.
