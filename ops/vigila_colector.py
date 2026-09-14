@@ -33,6 +33,7 @@ import gzip
 import json
 import os
 import re
+import statistics as st
 import sys
 
 PAPER = os.environ.get("PMW_PAPER", "/Users/mariaaleu/.claude/jobs/324ffe40/tmp/wt-paper")
@@ -99,20 +100,45 @@ def main(argv=None) -> int:
 
     d0 = dt.datetime.fromisoformat(a.desde).replace(tzinfo=dt.timezone.utc)
     reg = [c for c in cs if c["t"] >= d0 and c["dur"]]
-    if len(reg) >= 2:
+    if len(reg) >= 3:
         p, u = reg[0], reg[-1]
         h = (u["t"] - p["t"]).total_seconds() / 3600
-        pend = (u["dur"] - p["dur"]) / h * 24
+        x = [(c["t"] - p["t"]).total_seconds() / 86400 for c in reg]
+        y = [c["dur"] for c in reg]
+        #: THEIL-SEN, la mediana de TODAS las pendientes por pares, y no la de dos puntos.
+        #: La primera version de este guion usaba (ultimo - primero) y el 06:07 del 09-14
+        #: --un solo ciclo, +119 s sobre la recta, +3,7 sd-- le movio el plazo CATORCE HORAS.
+        #: Es el defecto que A-317 le encontro al estadistico marginal, aqui dentro: una
+        #: diferencia suelta de dos magnitudes ruidosas no mide una pendiente pequena. La
+        #: forma correcta de usar esas diferencias es tomar su MEDIANA.
+        pend = st.median([(y[j] - y[i]) / (x[j] - x[i])
+                          for i in range(len(x)) for j in range(i + 1, len(x)) if x[j] > x[i]])
+        mx, my = st.mean(x), st.mean(y)
+        b = sum((q - mx) * (w - my) for q, w in zip(x, y)) / sum((q - mx) ** 2 for q in x)
+        #: RESIDUOS CONTRA LA RECTA ROBUSTA, y escala por MAD -- no por desviacion tipica.
+        #: Con sigma clasica el atipico INFLA la escala con la que se le mide y se enmascara
+        #: solo: el 06:07 del 09-14 da +3,7 sd contra los residuos previos y solo 2,6 con la
+        #: sigma que el mismo engorda. Una escala robusta no tiene esa puerta trasera.
+        inter = st.median([w - pend * q for q, w in zip(x, y)])
+        res = [w - (inter + pend * q) for q, w in zip(x, y)]
+        mad = st.median([abs(r - st.median(res)) for r in res])
+        sd = (mad * 1.4826) or 1.0
         print(f"\n  regimen desde {a.desde}: {len(reg)} ciclos en {h:.1f} h")
-        print(f"     ciclo    {p['dur']:.0f} -> {u['dur']:.0f} s      pendiente {pend:+.0f} s/dia")
+        print(f"     ciclo    {p['dur']:.0f} -> {u['dur']:.0f} s")
+        print(f"     pendiente  Theil-Sen {pend:+.0f} s/dia   ·   minimos cuadrados {b:+.0f}"
+              f"   ·   dos puntos {(y[-1]-y[0])/x[-1]:+.0f}  (esta ultima NO se usa)")
         print(f"     almacen  {p['mb']:.1f} -> {u['mb']:.1f} MB")
+        fuera = [(c, r) for c, r in zip(reg, res) if abs(r) > 3.5 * sd]
+        for c, r in fuera:
+            print(f"     ATIPICO  {c['t']:%m-%d %H:%M}Z  {c['dur']:.0f} s, {r:+.0f} s sobre la "
+                  f"recta robusta ({r/sd:+.1f} MAD-sd)")
         if pend > 0:
             queda = (HOLGURA - u["dur"]) / pend
             print(f"     holgura  {HOLGURA} - {u['dur']:.0f} = {HOLGURA - u['dur']:.0f} s"
                   f"   ->   {queda:.2f} dias   ->   "
                   f"{(u['t'] + dt.timedelta(days=queda)):%Y-%m-%d %H:%MZ}")
-            print(f"     AVISO: la pendiente se estima con el mismo dato que predice, y el "
-                  f"09-13 hubo un escalon a la baja. Es cota, no fecha.")
+            print(f"     AVISO: es COTA, no fecha. La pendiente se estima con el mismo dato "
+                  f"que predice y el 09-13 hubo un escalon a la baja.")
 
     aviso = [c for c in cs if AVISO < c["espera"] <= ALARMA]
     alarma = [c for c in cs if c["espera"] > ALARMA]

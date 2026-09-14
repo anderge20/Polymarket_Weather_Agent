@@ -24673,3 +24673,57 @@ derecho, dejando atrás una preinscripción huérfana.
 reingesta— sin dejar escrito *por qué* una sola pasada de discovery decidió un universo
 recortado. Era el punto (a) y era de B. Queda en la tarea #38, donde ya vive lo que falta
 del universo.
+
+---
+
+## A-319 — Mi vigilante tenía el defecto que A-317 acababa de diagnosticar: un ciclo le movió el plazo catorce horas · 2026-09-14 · Claude (sesión A)
+
+*Escrito 2026-09-14T06:55Z. Corrección de `ops/vigila_colector.py` (A-314), dos ciclos
+después de escribirlo. Sólo lectura, cero cambios en producción.*
+
+### Lo que pasó
+
+El `collect` de las 06:07 tardó **1883,3 s**, +164 s sobre el de las 03:08. El vigilante
+estimaba la pendiente con **dos puntos** —primero y último del régimen— y con eso:
+
+    pendiente  317 -> 417 s/dia        plazo  2026-09-16 15:50Z -> 2026-09-15 18:46Z
+
+**Catorce horas de plazo movidas por un solo ciclo.** Es exactamente el defecto que A-317 le
+encontró al estadístico marginal de la tarea #44, hace una hora, **dentro del instrumento que
+escribí para sustituirlo**.
+
+### Los tres estimadores sobre los mismos 14 ciclos
+
+    dos puntos (el que usaba)     416,8 s/dia   ->   2026-09-15 18:46Z
+    minimos cuadrados             319,0 s/dia   ->   2026-09-16 06:00Z
+    Theil-Sen (mediana de pares)  304,1 s/dia   ->   2026-09-16 08:22Z    <- adoptado
+
+**Theil-Sen es la respuesta que A-317 pedía.** Aquella entrada dijo *«una diferencia suelta
+de dos magnitudes ruidosas no mide una pendiente pequeña»*. No dijo que las diferencias no
+sirvan: dijo que una sola no sirve. **La forma correcta de usarlas es tomar su mediana**, que
+es literalmente Theil-Sen.
+
+### Y el atípico se estaba enmascarando a sí mismo
+
+Con desviación típica clásica el 06:07 daba **+2,6 σ** y no saltaba el umbral de 3 — porque
+el propio atípico **engorda la σ con la que se le mide**. Contra los residuos previos daba
++3,7. Puesta una escala robusta (MAD × 1,4826), sale limpio:
+
+    ATIPICO  09-14 06:07Z  1883 s, +139 s sobre la recta robusta (+3,8 MAD-sd)
+
+*Pendiente robusta, escala robusta, umbral sobre la escala robusta. Mezclar una recta robusta
+con una σ clásica es dejar la puerta de atrás abierta.*
+
+### De dónde salen los 164 s, porque tampoco es todo carga
+
+    filas     118.042 -> 119.896   (+1.854)   -> a 13,54 ms/fila explican +25 s
+    carga       1622,6 -> 1752,6 s (+130,0)   -> quedan +105 s SIN explicar por filas
+    discover      56,5 ->   87,7 s ( +31,2)   -> +55 %, y no depende del tamano del almacen
+    ms/fila      13,75 ->   14,62             -> primera salida de la banda 12,79-14,08 de A-317
+
+Que `discover` —una etapa que no recarga el almacén— suba un 55 % apunta a **variación de
+máquina**, la hipótesis nula de #44, y no a un régimen nuevo. **Un punto no establece un
+régimen**, y decirlo es justo lo que A-317 exige; por eso el atípico se marca y no se
+extrapola.
+
+**Plazo vigente: 2026-09-16 ~08:22Z, como cota.**
