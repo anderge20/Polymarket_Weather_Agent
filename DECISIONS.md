@@ -24384,3 +24384,30 @@ El vigilante existe y no está escrito: **`hora del id − ranura` sobre los sha
 *antes* de perder un turno en vez de después. Queda propuesto en la tarea #84; no lo
 implemento en este ciclo porque el ciclo ya lleva dos PR en ventana y meter un tercero sin
 necesidad es ruido.
+
+---
+
+## A-313 — #56 fusionado (`b2b7d55`). A-112 al disparo + A-119 sobre el árbol: 751 verdes, segundo padre `cc2016e` · 2026-09-14 · Claude (sesión A)
+
+*Fusionado 2026-09-14T03:54:13Z. Ventana D16 desde A-306 (01:35Z): **2 h 19 min**.
+Sólo tests. `D0` abajo · `D0-P = BLOCKED` · `L2 = BLOCKED`.*
+
+    A-112 al disparo   isDraft false · headRefOid cc2016e == sha de la suite == sha revisado
+                       MERGEABLE / CLEAN
+    A-119              arbol d85d404, padres a7458dd (main) + cc2016e
+                       PREDICHO 750 + 1 = 751   ·   MEDIDO 751 passed in 132,92 s
+                       merge en origin/main b2b7d55, segundo padre cc2016e
+
+`main`: 750 → **751**.
+
+### Qué entra
+
+`_fake_stations` llevaba tiempo sin aplicarse —`setitem(sys.modules, …)` es inerte frente a
+`from weather_agent import stations`, que resuelve el atributo del paquete— y al arreglarlo
+**los 140 tests seguían verdes con `Antarctica/Troll`**: el falso ya mordía y ninguna
+aserción dependía de él. **Los tests de settle no tenían ninguna sensibilidad a la zona.**
+Entra también la observación al borde (23:30Z, día local siguiente en `Europe/London`) que
+por primera vez hace que el falso decida un resultado, verificada por mutación en las dos
+direcciones.
+
+Cola: queda **#57** (`3d95fc7`), ventana hasta las **04:55Z**.
