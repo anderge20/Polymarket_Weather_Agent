@@ -23790,3 +23790,68 @@ declarado arriba, y **sale 1 si alguna deja de coincidir**. Pasa hoy. Si algún 
 puntúa otra escalera, ese guion es donde se ve.
 
 Cierra la tarea #79.
+
+---
+
+## A-303 — R24: las doce precondiciones puntuadas por primera vez. 4 pasan, 3 a medias, 5 fallan — y **cinco de las doce son una sola puerta** · 2026-09-14 · Claude (sesión A)
+
+*Escrito 2026-09-14T00:30Z. Sólo lectura: shards de `paper-state`, DuckDB en `read_only`,
+repo y corpus. 0 peticiones. **No arranca nada y no decide nada:** §2 dice «P1–P4 no
+dependen de A» y «esta corrida no puede programarse por decisión unilateral».*
+
+`PREREG_PAPER_RUN.md` §2 declara doce precondiciones, cada una con su «comprobación
+mecánica», y **ninguna se había puntuado desde que se escribieron**. Un preregistro con
+doce puertas que nadie abre es la versión larga de *un criterio que nadie comprobó*:
+parece una barrera y es un adorno. Marcador reproducible en `r24/r24_precondiciones.py`.
+
+    PASA 4   ·   PARCIAL 3   ·   FALLA 5   de 12
+
+| | estado | lo que lo decide |
+|---|---|---|
+| P1 | PARCIAL | 5 columnas de cuantiles, **2.617 de 2.916** no nulas (89,7 %); falta acotar el universo de §3 y citar la entrada que cierra A-32 |
+| P2 | PASA | `tau_signal = 0,20`, walk-forward sobre la rejilla congelada, 239 de 271 decisiones |
+| P3 | **FALLA** | 0 shards de `weather_forecasts` |
+| P4 | **FALLA** | 0 posiciones, luego no existe la liquidación real que la cerraría |
+| P5 | **FALLA** | racha máxima **5 días** (09-09→09-13), 61.358 filas; faltan 2 |
+| P6 | PASA | `price_history`: 5 días, 43.204 filas, y está en `LEDGER_TABLES` |
+| P7 | PARCIAL | `replay_cycle.py` existe; que *reproduzca* no se puede verificar sin decisiones |
+| P8 | PARCIAL | artefactos presentes; falta citar la medida de inestabilidad **por lead** |
+| P9 | **FALLA** | 0 shards de `weather_observations` |
+| P10 | PASA | cerrada 2026-09-09 (A-61) — con el aviso de A-301 |
+| P11 | **FALLA** | 0 de `weather_forecasts`, `signals` y `paper_trades` |
+| P12 | PASA | `PAPER_TAU` sigue sin existir: los ciclos escriben `no_paper_tau` |
+
+### Lo que el marcador enseña y la tabla de §2 no: cinco puertas son una
+
+**P3, P4, P9 y P11 fallan por la misma causa, y P7 no se puede verificar por esa misma
+causa: la ruta de decisión NUNCA ha escrito nada en el host.** La medición de §2 es del
+**2026-09-09** (`weather_forecasts` 0, `signals` 0, `paper_trades` 0) y **cinco días
+después sigue exactamente igual**. Doce precondiciones presentadas como doce barreras
+independientes son, hoy, **ocho barreras y una repetida cinco veces**.
+
+Y **no es un círculo**, que era mi primera sospecha: P12 exige que el criterio se congele
+*antes* de que exista `PAPER_TAU`, y P3/P9 exigen que la ruta haya escrito — pero sus
+propias comprobaciones dicen **«un ciclo manual»**, no «un ciclo con tau». La salida existe
+y es una sola: **un ciclo manual en el host que ejercite la ruta de decisión cerraría P3,
+P9, P11, daría a P4 su liquidación real y a P7 su decisión que reproducir.**
+
+**No lo hago.** Escribe en el libro mayor del host y toca las precondiciones de una corrida
+que §2 prohíbe programar unilateralmente. Queda nombrado como **la única acción que
+desbloquea cinco de doce**, para que el usuario decida.
+
+### Y una predicción fechada, que es lo que falta en casi todas las demás
+
+P5 pide 7 días naturales continuos con ≥1 fila. Hay 5. **Si el colector no se cae, la
+fecha más temprana en que P5 puede pasar es el 2026-09-16.** Es falsable: si ese día no
+pasa, el colector se cayó y lo sabremos por esto.
+
+### Dos notas de honestidad
+
+**P2 cumple la letra y conviene decir lo que deja pasar.** R21 nombra `tau` y su
+procedimiento — la puerta se abre — y el **mismo informe declara Strategy A NO OPERABLE**.
+La precondición está bien escrita para lo que pregunta; no pregunta si lo que autoriza
+gana.
+
+**P4 ya se dio por cerrada una vez contra un FIXTURE** (A-60). Hoy la marco FALLA con el
+código presente y verificado (A-301): lo que falta no es el cableado, es **la evidencia de
+una ejecución real**. Es exactamente la distinción que A-60 tuvo que aprender a la fuerza.

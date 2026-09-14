@@ -1,0 +1,61 @@
+====================================================================================================
+R24 · MARCADOR DE PRECONDICIONES · 2026-09-14T00:24Z
+====================================================================================================
+
+[PARC.] P1   M2 produce cuantiles fiables; bloqueantes de A-32 cerrados
+          5 columnas de cuantiles, 2617 de 2916 filas no nulas (89.7%). La MITAD mecanica que falta:
+          el universo de §3 no esta acotado aqui, y la entrada de DECISIONS que declare cerrados los
+          bloqueantes de A-32 hay que citarla
+
+[PASA ] P2   tau fijado por calibracion fuera de muestra (R21)
+          R21_REPORT.md nombra `tau_signal = 0,20`, elegido por walk-forward sobre la rejilla
+          congelada de §3, en 239 de 271 decisiones. CUMPLE LA LETRA — y el mismo informe declara
+          Strategy A NO OPERABLE, asi que lo que esta puerta deja pasar ya se midio perdiendo
+
+[FALLA] P3   etapa `forecasts` escribe
+          shards de `weather_forecasts` en paper-state: 0 dias, 0 filas
+
+[FALLA] P4   liquidacion cableada con la etiqueta REAL (no un fixture)
+          A-60 ya la reabrio una vez por haberla dado por cerrada contra un fixture. Hoy no hay ni una
+          posicion: 0 shards de `paper_trades`, asi que no existe la ejecucion real que la cerraria.
+          El codigo esta (A-301), la EVIDENCIA no
+
+[FALLA] P5   colector con >= 7 dias naturales continuos, >= 1 fila cada uno
+          racha maxima 5 dias (2026-09-09 -> 2026-09-13), 61358 filas. Faltan 2 dias: si el colector
+          no se cae, la fecha mas temprana en que P5 puede pasar es 2026-09-16
+
+[PASA ] P6   `price_history` poblada por el propio ciclo, y en LEDGER_TABLES
+          5 dias, 43204 filas, 7584-11810 por dia · en LEDGER_TABLES: True
+
+[PARC.] P7   existe `scripts/replay_cycle.py` y REPRODUCE
+          el fichero existe (12942 bytes). La segunda mitad —que reproduzca una decision registrada—
+          NO se ha vuelto a verificar hoy, y no puede verificarse mientras no haya ninguna decision
+          registrada (ver P11)
+
+[PARC.] P8   el artefacto de cuantiles existe y su INESTABILIDAD esta medida por lead
+          artefactos presentes: M2_ERROR_QUANTILES.json, M2_MANIFEST.sha256. Lo que la precondicion
+          exige ADEMAS —la medida del movimiento de los cuantiles entre reajustes PARA LOS DOS LEADS y
+          la base declarada de `max_age_hours`— hay que citarla con su entrada; no la doy por hecha
+
+[FALLA] P9   la etiqueta la ingiere el ciclo
+          shards de `weather_observations` en paper-state: 0 dias, 0 filas
+
+[PASA ] P10  correspondencia de series declarada para la poblacion que operara
+          CERRADA 2026-09-09 por evidencia del audit (A-61). AVISO de A-301: el mapa vive en
+          `scripts/paper_cycle.py`, fuera de la libreria (#71), y `IEM_ASOS_TMPF_0.1F` no tiene
+          entrada
+
+[FALLA] P11  la ruta de decision COMPLETA ha corrido al menos una vez EN EL HOST
+          sin un solo shard de: weather_forecasts, signals, paper_trades. La medicion de §2 es del
+          2026-09-09 (0/0/0) y hoy, 5 dias despues, sigue igual
+
+[PASA ] P12  el criterio de lectura del PnL, congelado ANTES de que exista PAPER_TAU
+          `PAPER_TAU` NO existe: los ciclos siguen escribiendo `collect_only_reason = no_paper_tau` (5
+          dias de `cycle_params`). El orden se puede cumplir porque la variable aun no se ha puesto;
+          la evidencia final es el sha y la fecha de la enmienda de §0, anteriores a la creacion de la
+          variable
+
+====================================================================================================
+  PASA 4   ·   PARCIAL 3   ·   FALLA 5   de 12
+  LA CORRIDA NO EMPIEZA. §2: «ninguna es opcional» y «P1-P4 no dependen de A».
+====================================================================================================
