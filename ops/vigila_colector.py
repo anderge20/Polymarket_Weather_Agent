@@ -137,8 +137,11 @@ def main(argv=None) -> int:
             print(f"     holgura  {HOLGURA} - {u['dur']:.0f} = {HOLGURA - u['dur']:.0f} s"
                   f"   ->   {queda:.2f} dias   ->   "
                   f"{(u['t'] + dt.timedelta(days=queda)):%Y-%m-%d %H:%MZ}")
-            print(f"     AVISO: es COTA, no fecha. La pendiente se estima con el mismo dato "
-                  f"que predice y el 09-13 hubo un escalon a la baja.")
+            print(f"     AVISO: es COTA, no fecha -- la pendiente se estima con el mismo "
+                  f"dato que predice.")
+            print(f"     (el escalon del 09-13 YA ESTA EXPLICADO, A-320: `_newest_first` "
+                  f"empezo a enganchar, ratio 1,712 -> 1,008. Fue un arreglo que aterrizo "
+                  f"una vez, no una oscilacion, asi que el regimen posterior es un regimen.)")
 
     aviso = [c for c in cs if AVISO < c["espera"] <= ALARMA]
     alarma = [c for c in cs if c["espera"] > ALARMA]

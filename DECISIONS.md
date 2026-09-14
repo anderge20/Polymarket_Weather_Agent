@@ -24779,3 +24779,63 @@ medido es un régimen y no un tramo entre dos saltos.
 
 *Lo que sí sigue creciendo es `load:markets` dentro del régimen bueno: 60,9 → 77,2 s en 30 h.
 La optimización engancha; el coste sigue subiendo con el almacén.*
+
+---
+
+## A-321 — La quinta condición, ejecutada sobre filas de PRODUCCIÓN: el operador acepta 2.112 mercados vivos, y la frontera siguiente no se puede alcanzar porque no hay ni una observación · 2026-09-14 · Claude (sesión A)
+
+*Escrito 2026-09-14T08:00Z. Sólo lectura de shards y de la DuckDB. Cero cambios.*
+
+D09-3 especificó cinco condiciones para `READY`, y la quinta —la única que no se satisface
+por accidente— es *«ejecutar la frontera siguiente sobre una fila real y exigir que no se
+niegue»*. Hasta hoy **nadie la había ejecutado**: los tests usan fixtures y el ciclo nunca ha
+tenido una posición.
+
+### Frontera 1 · fila de mercado → operador. EJECUTADA, sobre 3.696 filas del shard vivo
+
+    ACEPTADAS   1.958  NOAA_TEMPCOL_C_PROXY_IEM
+                   99  WU_DAILYOBS_C_PROXY_IEM
+                   55  HKO_ABSMAX_INTERVAL_FLOOR
+                -----  2.112 de 3.696   (57,1 %)
+
+    NEGADAS     1.100  sin measurement_rule_code   -> filas RANCIAS (A-316), no defecto
+                  484  series_filter_unverified    -> `P_NOAA_HourlyData`, la clase 9 que
+                                                      la tabla de habilitacion marca
+                                                      FAIL_CLOSED por componente bloqueante
+
+**Las dos negativas son correctas y están explicadas.** El núcleo congelado acepta filas de
+producción: no es una promesa del `docstring`, es una ejecución.
+
+### Frontera 2 · operador → `settle`. NO SE PUEDE ALCANZAR, y ahora se sabe por qué
+
+    observaciones en el almacen del CICLO      0 shards de weather_observations  (P9 = FALLA)
+    observaciones en el almacen de ANALISIS    49 estaciones, ventana abr-ago del backfill
+    mercados vivos                            objetivo en septiembre
+    INTERSECCION                              0 mercados
+
+**Cero.** No es que `settle` se niegue: es que **no existe una sola observación para la fecha
+objetivo de ningún mercado vivo**, en ninguno de los dos almacenes.
+
+### Lo que esto añade a A-303
+
+A-303 dijo que P3, P4, P9 y P11 fallan por la misma causa —la ruta de decisión no escribe—.
+Ahora se puede decir con la cadena delante:
+
+    mercado con terna     SI   2.112 filas vivas, verificado ejecutando el operador
+    operador              SI   tres operadores instanciados y seleccionados sobre filas reales
+    observacion           NO   `stage_observations` corre en 0,0 s y no escribe
+    posicion              NO   `paper` corre en 0,0 s y no escribe
+
+> **Tres de los cuatro insumos de la liquidación están o son alcanzables; los dos que faltan
+> los produce la misma etapa que se ejecuta y cortocircuita.** La cadena no está rota por
+> abajo: está vacía por arriba.
+
+*Y la quinta condición queda medio satisfecha, con la mitad nombrada: la primera frontera
+ejecutada sobre filas reales, la segunda inalcanzable por falta de insumo, no por negativa.*
+
+### Y de paso, el aviso de mi propio vigilante estaba rancio
+
+Decía *«el 09-13 hubo un escalón a la baja»* como advertencia abierta. **A-320 lo explicó**
+hace media hora: `_newest_first` empezó a enganchar. El aviso ahora lo dice, en vez de
+advertir de algo ya resuelto — que es la misma familia de cita obsoleta que llevo toda la
+noche persiguiendo, en el instrumento que escribí para vigilar.
