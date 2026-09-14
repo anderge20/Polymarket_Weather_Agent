@@ -23920,3 +23920,42 @@ la predicción no está fallando: aún no ha podido ejecutarse.
 
 *Lo que hizo falta para encontrar las cuatro cosas no fue una auditoría: fue leer un campo
 que ya estaba escrito en un fichero que ya tenía abierto.*
+
+---
+
+## A-305 — #55 fusionado (`a7458dd`). A-112 al disparo + A-119 sobre el árbol: 750 verdes, segundo padre `7b2e326` · 2026-09-14 · Claude (sesión A)
+
+*Fusionado 2026-09-14T01:23:38Z. Ventana D16 desde A-300 (2026-09-13T23:05Z): **2 h 18 min**,
+por encima del mínimo de 2 h. `D0` abajo · `D0-P = BLOCKED` · `L2 = BLOCKED`.*
+
+### A-112 — las tres resoluciones, reverificadas EN EL MOMENTO de fusionar
+
+    isDraft                          false
+    headRefOid                       7b2e326b16b60dd904885c84c09ab5ca2d29d5bf
+    == el sha con el que corrio la suite     SI
+    == el sha que revise                     SI
+    mergeable                        MERGEABLE / CLEAN
+
+### A-119 — la suite sobre el ÁRBOL DE FUSIÓN, no sobre la rama
+
+    arbol local 7174d9d  padres  a401301 (main) + 7b2e326 (el sha verificado)
+    PREDICHO antes de correr:  749 + 1 = 750
+    MEDIDO:                    750 passed in 127.33s
+    merge en origin/main a7458dd  padres  a401301 7b2e326   <- segundo padre = el verificado
+
+**El recuento se predijo antes de correrlo y coincidió.** `main`: 749 → **750**.
+
+### Qué entra
+
+Sólo tests, cero líneas de producción. (1) `test_settle_reports_ready_on_a_complete_substrate`
+→ `..._once_the_COLUMNS_are_declared`, porque `_with_b_substrate` declara columnas y no
+inserta ni una fila: el nombre prometía lo que el fixture nunca puso. (2)
+`test_la_guarda_dice_LISTO_con_la_terna_ENTERAMENTE_NULA`, que monta el estado exacto de las
+85.878 filas de producción y conduce el mecanismo entero: la guarda devuelve `[]`,
+`stage_settle` liquida 0 con `refusals == {"no_measurement_rule_code": 1}` y la posición
+sigue abierta. La invariante *«si el comprobador devuelve vacío y la ruta se niega después,
+el defecto es del comprobador»* deja de ser prosa.
+
+**El arreglo de la guarda sigue sin hacerse** y no por olvido: lo gateó el usuario (tarea
+#68). §34 no aplicó porque esto observa código de liquidación sin tocarlo — juicio escrito
+en A-300 §4 para que fuera revisable, no decidido en silencio.
