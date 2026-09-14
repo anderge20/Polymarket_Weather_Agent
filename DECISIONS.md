@@ -24621,3 +24621,55 @@ ciclo, la carga crece ~24 s por ciclo — y eso, ocho ciclos al día, es la pend
 la holgura del lock. **La hipótesis 1 de #44 predecía perder una ranura por coste superlineal;
 se pierde por coste lineal y calendario apretado, que es un mecanismo distinto con el mismo
 final.**
+
+---
+
+## A-318 — Tarea #60 cerrada: la reingesta triplicó el universo y la reejecución se hizo entera, pero su dimensionado preinscrito ya no es comprobable · 2026-09-14 · Claude (sesión A)
+
+*Escrito 2026-09-14T06:25Z. Sólo lectura. Cero cambios.*
+
+#60 (A-244) dejó cuatro pendientes. Estado real:
+
+| | |
+|---|---|
+| **(a)** B entrega el mecanismo de discovery | **NUNCA ENTREGADO**, y su sesión ya no existe (#81) |
+| **(b)** reingesta | **HECHA**: `markets_v2`, 79.735 mercados, 52 estaciones |
+| **(c)** las cinco comprobaciones de integridad del §6 | **HECHAS** en NIVEL 0.75 (A-278) |
+| **(d)** reejecución del criterio sin tocarlo | **HECHA**: L1.1→L1.8, Fases A/B/C y el conjunto |
+
+El veredicto que #60 dejaba vigente —«D, INCONCLUSO»— está **superado**: L1.8 dio
+`INCONCLUSIVE`, y de ahí salieron Fase A, B, C y el análisis conjunto hasta
+`POOLED CONFIRMED` en lead 9 (A-299).
+
+### El efecto de la reingesta, medido
+
+    EGLC, ventana 2026-04-08 -> 2026-08-23, regla A-275
+      backfill_2b_v1    40 eventos elegibles   escaleras {11: 40}
+      markets_v2       135 eventos elegibles   escaleras {11: 135}      x3,4
+
+**0 fuera de la escalera de 11 en las dos versiones**, que es la parte de la predicción de
+#60 que sí se sostiene.
+
+### Y la parte que ya no se puede comprobar
+
+#60 preinscribió *«n pasa de 19 a 118 eventos con escalera completa de 11 bandas»*. Medido
+hoy: **40 → 135**. No es que la predicción fallara: es que **la POBLACIÓN cambió de
+definición entre medias.** A-275 —posterior— fijó que elegible es *resolved + partición
+completa + exactamente una ganadora*, con **deduplicación por `(station, target_date)`** y
+desempate por `close_time`. Los 19 y los 118 se contaron con otra regla.
+
+> **Un dimensionado preinscrito deja de ser comprobable si la regla de población se
+> redefine después**, aunque la redefinición sea legítima y esté declarada. No es que el
+> número sea falso: es que ya no hay forma de contrastarlo, y eso hay que decirlo en vez de
+> presentar 40 → 135 como si respondiera a 19 → 118.
+
+Es primo de *«la ventana a la que recortas una serie es un parámetro libre que nadie
+declara»*: aquí el parámetro libre fue **la regla de elegibilidad**, y se movió con todo el
+derecho, dejando atrás una preinscripción huérfana.
+
+### Lo que queda abierto y no lo cierro
+
+**El mecanismo causal del truncamiento sigue sin documentar.** Se arregló el dato —la
+reingesta— sin dejar escrito *por qué* una sola pasada de discovery decidió un universo
+recortado. Era el punto (a) y era de B. Queda en la tarea #38, donde ya vive lo que falta
+del universo.
