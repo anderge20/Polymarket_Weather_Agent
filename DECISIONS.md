@@ -24488,3 +24488,75 @@ KEY` del DDL, `store.CONFLICT_COLS` y `observations.CONFLICT_COLS`— con `store
 prefiriendo la del llamante. Las 13 tablas con dos o más declaraciones **coinciden hoy**; lo
 que faltaba era que algo se enterase el día que no. Incluye la guarda que fija de qué depende
 el propio parser del DDL (A-309) y la aserción de que `source` sigue en la clave.
+
+---
+
+## A-316 — Perseguí un defecto por cuatro hipótesis y lo que quedó fue lo contrario: el almacén del ciclo SÍ lleva la terna, y #68 se midió contra el almacén equivocado · 2026-09-14 · Claude (sesión A)
+
+*Escrito 2026-09-14T05:30Z. Sólo lectura de shards y de la DuckDB de análisis. Cero cambios,
+cero PR. `D0` abajo.*
+
+### El hallazgo, que es una corrección de severidad hacia abajo
+
+    almacen de ANALISIS (backfill_markets)      markets_v2      79.735 filas   terna 0 / 0
+                                                backfill_2b_v1   6.143 filas   terna 0 / 0
+                                                                 85.878         <- el numero de #68
+
+    almacen del CICLO (discovery.ingest_event)  shard del 03:08   3.311 filas
+                                                contract_source        3.311 / 3.311
+                                                measurement_rule_code  2.211 / 3.311
+                                                unit, rounding_rule    3.311 / 3.311
+
+> **`stage_settle` lee el almacén del CICLO, no el de análisis.** Las 85.878 filas sin terna
+> de la tarea #68 son **enteras del almacén de análisis**, y la severidad que le atribuí —el
+> falso OK de la guarda implicando que no se liquidaría nada— **se midió contra un almacén
+> que esa etapa no lee**.
+
+La guarda sigue estando mal (pregunta si la columna está declarada, nunca si tiene valor) y
+el arreglo sigue gateado por el usuario. Lo que cambia es que **el sustrato vivo está sano**.
+
+### Las cuatro hipótesis, y cómo cayó cada una
+
+**H1 · «la misma prosa se codifica en unas filas y no en otras».** Cierto de entrada:
+1.045 filas NOAA con `measurement_rule_code` NULL y prosa **byte a byte idéntica** a las
+1.606 que sí lo tienen. Parecía un clasificador inconsistente.
+
+**H2 · «serán ciudades fuera del registro».** REFUTADA: *todas* las ciudades aparecen en los
+dos grupos, con ratio exactamente 22 sin / 44 con por ciudad. `solo sin code: []`,
+`solo con code: []`.
+
+**H3 · «será el eje de la fecha objetivo o del estado de resolución».** REFUTADA: `end_date`
+y `uma_resolution_status` son `None` en todo el shard; no separan nada.
+
+**H4 · «es el eje del TIEMPO DE DESCUBRIMIENTO».** **CONFIRMADA, y separa perfecto:**
+
+    discovered_at 2026-09-09   con code     0   sin code  1100
+    discovered_at 2026-09-11   con code  1100   sin code     0
+    discovered_at 2026-09-12   con code   561   sin code     0
+    discovered_at 2026-09-13   con code   550   sin code     0
+
+    max(sin code) = 2026-09-09 15:17:00   <   min(con code) = 2026-09-11 21:22:29
+
+Las 1.100 sin código son **filas rancias**: descubiertas antes de que el campo se escribiera,
+cerradas desde entonces, y nada las revisita porque el upsert sólo toca lo que la pasada de
+descubrimiento ve hoy. **No es un clasificador inconsistente: es un corte de versión.**
+
+*Tercera vez esta noche que un «misma entrada, salida distinta» resulta ser un eje de
+versión y no una inconsistencia: `dataset_version` en la Fase C, `code_commit` en el decide,
+y ahora `discovered_at`.*
+
+### El residuo, y también es correcto
+
+Quedaban **44 filas con código y SIN estación**. Son **todas Hong Kong**, todas `HKO`, y Hong
+Kong no tiene estación en ninguna fila. Eso **es lo que el núcleo exige**:
+`SETTLEMENT_OPERATOR_CORE` §2 dice *«estación no nula sii `window_kind ==
+LOCAL_CIVIL_DAY`»*, y `P_HKO_AbsDailyMax` es `SOURCE_DAILY_ROW`. Un mercado de Hong Kong con
+código y sin estación está **exactamente bien**.
+
+### Lo que se lleva
+
+**La ruta viva escribe la terna; la del backfill no.** Eso confirma la tarea #74 por su lado
+positivo —`discovery.ingest_event` sí lo hace— y deja la #68 con la severidad corregida: el
+defecto de la guarda es real y **no** tiene la consecuencia que le atribuí.
+
+*Y la pregunta que faltaba no era sobre el código: era **«¿cuál de los dos almacenes?»**.*
