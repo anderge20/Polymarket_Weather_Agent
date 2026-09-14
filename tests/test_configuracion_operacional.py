@@ -9,10 +9,10 @@ Estos tests son las guardas que faltaban. No cambian ningun valor: FIJAN el que 
 que un cambio tenga que ser deliberado y quede en el diff de alguien.
 
 QUE NO CUBREN, y se dice aqui para que nadie lo lea como mas de lo que es: si el host
-exporta `PMW_LOCK_WAIT` en el entorno, el comportamiento real cambia y NADA de esto se
-entera -- el valor efectivo no se registra en ningun sitio. Es un defecto DISTINTO (D-3 de
-A-330) y su arreglo toca `launcher.sh`, que no se toca antes de la prueba prospectiva.
-El ultimo test de este fichero lo deja clavado en vez de dejarlo implicito.
+exporta `PMW_LOCK_WAIT` en el entorno, el comportamiento real cambia y estas guardas no se
+enteran -- leen el FICHERO, no el proceso. Es un defecto DISTINTO (D-3 de A-330) y su
+arreglo toca `launcher.sh`, que no se toca antes de la prueba prospectiva. El ultimo test
+de este fichero lo deja clavado en vez de dejarlo implicito.
 """
 from __future__ import annotations
 
@@ -100,10 +100,19 @@ def test_el_host_se_declara_UTC_y_la_instalacion_se_niega_si_no():
 def test_CARACTERIZACION_el_override_de_entorno_no_deja_rastro():
     """DEFECTO VIVO D-3 (A-330). Cuando se arregle, este test cambia a proposito.
 
-    `launcher.sh` usa `${PMW_LOCK_WAIT:-900}` sin exportarlo, y el ciclo no registra el
-    valor efectivo en `cycle_params`. Consecuencia: un `export PMW_LOCK_WAIT=1800` en el
-    host cambia el comportamiento REAL -- cuanto espera el lock antes de saltarse una
-    ranura -- y ni la suite, ni los shards, ni el vigilante se enteran.
+    `launcher.sh` usa `${PMW_LOCK_WAIT:-900}` sin exportarlo y el ciclo no registra el valor
+    efectivo en `cycle_params` (35 campos, ninguno es este). Un `export PMW_LOCK_WAIT=1800`
+    en el host cambia el comportamiento REAL -- cuanto espera el lock antes de saltarse una
+    ranura -- y ni la suite ni el vigilante se enteran.
+
+    PRECISION QUE ME COSTO UNA CORRECCION, porque la version anterior de esta nota decia
+    "no se registra en ningun sitio" y ESO ES FALSO: `launcher.sh:88` escribe
+    `lock_timeout.waited_s` con el valor efectivo, y `stage_host_events` lo arrastra a un
+    shard. Pero SOLO por la ruta de timeout. Por la ruta feliz -- el lock se coge, el ciclo
+    corre -- no queda en ningun sitio. El efecto util es peor que "invisible": el vigilante
+    calcula la HOLGURA con el default del fichero y juzga con ella TODOS los ciclos buenos,
+    y solo aprenderia el valor verdadero del primer salto, que es exactamente el evento que
+    la holgura existe para anticipar. Se entera cuando ya no sirve.
 
     El arreglo es de una linea en cada sitio (exportarlo en `launcher.sh`, leerlo en
     `cycle_params` igual que se lee `PMW_GENERATOR`), y NO se hace ahora: tocaria el codigo
