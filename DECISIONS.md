@@ -25105,3 +25105,80 @@ después.
 
 *Máximo de espera hasta hoy: 239 s (12:07 de hoy). Antes de eso, 139 s. La serie no se ha
 saltado ningún escalón: 139 → 239 → ~524 proyectado.*
+
+---
+
+## A-328 — Validación prospectiva del colector: la predicción NO es evaluable todavía, el vigilante es ciego a la ranura perdida, y `discover` nunca fue variable de régimen · 2026-09-14 · Claude (sesión A)
+
+*Escrito 2026-09-14T16:30Z como auditor independiente. Artefacto completo en
+`ops/A-328_COLECTOR_PREDICCION.md` (`35bfeae4…`). Cero cambios en producción, cero PR, y
+ningún umbral, pendiente, ventana ni definición tocados.*
+
+### PREDICCIÓN — no evaluable, y no se sustituye por otra
+
+El ciclo que A-327 predijo es el `decide 02:40` del **09-15**; hoy es 09-14. **No se puntúa
+con el `collect` de las 12:07 de hoy**, que ya se midió en A-326: usarlo sería mover el
+objetivo después de lanzar. **No es `INDETERMINADO`** —ese caso es para instrumentación que
+produce un valor no comparable—: aquí el instrumento está sano y el dato no ha ocurrido.
+
+### DIAGNÓSTICO — y corrige a A-323
+
+    variable        Theil-Sen     OLS   2 puntos   (por dia)
+      duracion         361,58  352,72     374,09
+      filas          21.139,75          21.493,08
+      load:markets       18,63   19,70      19,64    <- tendencia limpia, +52 % en dos dias
+      ms/fila             0,38    0,43       0,64    <- deriva pequena pero positiva
+      discover            1,57    9,78       1,40    <- PLANO en robusto
+      collect:books      −0,18   −0,33       0,94    <- control, plano
+
+> **`discover` no es una variable de régimen y yo la usé como si lo fuera** (A-323, una de
+> las dos condiciones del «nivel nuevo»). La serie completa enseña que **también bajó a la
+> mitad** —27,9 · 29,4 · 28,6 s— el 09-13 entre las 11:40 y las 15:07, y no lo vi. Oscila en
+> las dos direcciones y su pendiente robusta es ≈ 0. La divergencia Theil-Sen 1,57 contra OLS
+> 9,78 **es la firma de una serie con atípicos, no de una tendencia**.
+
+Hay **una sola tendencia sostenida** y es de tamaño. `ms/fila` deriva +0,38/día: **refina**
+A-317 (que la midió constante en una ventana donde la deriva cabía en el ruido), no la
+contradice.
+
+### EL PUNTO CIEGO, verificado por mutación
+
+Cinco mutaciones sobre copia de los 70 shards reales:
+
+    M1 duracion 1970->2400   holgura 550->120 s, plazo 09-16 03:36 -> 09-14 22:53   OK
+    M2 discover 58->900      NADA cambia -> el vigilante NO lee discover
+    M3 espera -> 301 s       AVISO, exit 0                                          OK
+    M3b espera -> 299 s      sin aviso -> frontera exacta, sin off-by-one            OK
+    M4 espera -> 601 s       ALARMA, exit=1                                         OK
+    M5 BORRAR el shard       exit=0, silencio                                    <- CIEGO
+
+> **El vigilante detecta ESPERAS, no AUSENCIAS.** Una ranura perdida no deja fila: no hay
+> espera que derivar y el informe sale verde. **El único suceso que el instrumento existe
+> para anticipar es el que no puede ver.**
+
+Y dos hallazgos más de la auditoría: **`HOLGURA` duplica a mano `PMW_LOCK_WAIT`** (que vive
+en `launcher.sh`) y `RANURAS` duplica el crontab — la misma clase de la tarea #61, una
+constante en dos sitios sin nada que los compare. Además, con n = 18 el detector marca **0
+atípicos**, incluida la excursión que con n = 15 destacaba: **ha entrado en la escala que
+debía detectarla.** No toco el multiplicador —está prohibido y sería ingeniería
+retrospectiva—; queda anotado.
+
+### PLAZO — baja-media confianza, con rango
+
+    holgura 2520 − 1970 = 550 s
+    Theil-Sen 361,6 -> 2026-09-16 03:36Z · OLS 352,7 -> 04:31Z · dos puntos 374,1 -> 02:23Z
+    rango entre estimadores   09-16 02:23Z .. 04:31Z
+    sensibilidad quitando UN ciclo             09-16 09:04Z
+
+El rango entre estimadores (2 h) es engañosamente estrecho: la sensibilidad real es de 5-6 h y
+**la pendiente ha crecido con cada ventana nueva** (217 → 265 → 349 → 362 s/día). **Confianza
+BAJA-MEDIA.**
+
+### DECISIÓN OPERATIVA
+
+> **`GAP OPERATIVO`.** No existe procedimiento escrito para AVISO, ALARMA, ranura perdida ni
+> solapamiento. Lo único es la **emisión** del evento `lock_timeout` en `launcher.sh:88`: un
+> registro, no una acción. **No lo invento retrospectivamente.**
+
+**Nada de esto autoriza L2, paper trading ni cambio de estrategia, ciudad, modelo o umbral.**
+Siguiente observación: `decide 02:40` + `collect 03:07` del 09-15, empuje esperado ~03:40Z.
