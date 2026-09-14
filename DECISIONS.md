@@ -24143,3 +24143,41 @@ mismo criterio que `test_frontera_nucleo.py`).
 producción y toca la ruta de ingesta, así que es un cambio con su propio PR y su propia
 revisión. Lo que este PR compra es que la divergencia **se vea el día que ocurra**, en vez de
 descubrirse por una fila colapsada meses después.
+
+---
+
+## A-309 — Refutación hostil de mi propia guarda: el parser del DDL se apoyaba en algo que no declaraba · 2026-09-14 · Claude (sesión A)
+
+*Escrito 2026-09-14T02:55Z. Enmienda a A-308 ANTES de que venza su ventana. PR #57 pasa de
+`2c49fec` a **`3d95fc7`**: el sha que se fusione tiene que ser éste, no el anterior (A-112).
+**La ventana D16 se recuenta desde AQUÍ: no antes de las 2026-09-14T04:55Z.**
+Sólo tests. `D0` abajo.*
+
+### La pregunta que me hice sobre lo que acababa de escribir
+
+`_pk_por_tabla` lee los `CREATE TABLE` y se queda con **el último** de cada tabla.
+¿Y si una migración cambiara una clave con `ALTER TABLE`?
+
+    ALTER TABLE que toque PRIMARY KEY / CONSTRAINT / UNIQUE ........ 0
+    tablas con mas de un CREATE TABLE .............................. 0
+
+**Funciona. Y funcionaba apoyado en dos hechos que la guarda no declaraba en ningún sitio.**
+El día que alguien añada esa migración, el parser compararía contra un `CREATE TABLE` rancio
+y **la guarda pasaría estando ciega**: diría que las tres declaraciones coinciden mientras la
+clave real cambió por otra vía. Una guarda que no puede fallar es indistinguible de una que
+no ha fallado todavía — y ésta habría dejado de poder fallar sin que nada avisara.
+
+Es la misma forma que `context-that-does-not-travel` describe: *una derivación carga con una
+dependencia que no puede declarar*. La diferencia es que aquí la escribí yo hace veinte
+minutos.
+
+### Remedio: fijar la suposición, no ampliar el parser
+
+`test_el_parser_del_DDL_declara_de_que_depende` afirma los dos hechos. Si dejan de ser
+verdad, falla **el test que dice dónde mirar** —«el parser se ha quedado ciego»— y no el
+otro, que seguiría diciendo que todo coincide.
+
+*No amplío el parser para entender `ALTER TABLE`: hoy no hay ninguno, así que sería código
+sin caso de prueba real, que es como se escriben las guardas inertes.*
+
+    752 -> 753, predicho antes de correr
