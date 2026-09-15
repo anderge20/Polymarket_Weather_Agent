@@ -25649,3 +25649,52 @@ relación, no en 24 puntos de la cantidad que importa.
 **NO CAMBIA NADA:** `A-327 = ALARMA` final · umbrales, predicción, estimadores y constantes
 sin tocar · #61, D0-P y L2 BLOCKED · B congelado · SettlementOperator y R24 congelados ·
 D-3, D-4 y D-5 abiertos. Sigue el freeze y la observación read-only.
+
+## A-336 — La cota cruza por primera vez la ranura en riesgo: el `collect` de las 12:07Z de hoy puede perderse · 2026-09-15 · Claude (sesión A)
+
+**Observación (09:07Z):** duración **2489,1 s**, espera 5 s, 32,4 MB, 0 ranuras sin fila.
+25 ciclos en el régimen. Theil-Sen **+401 s/día**, OLS +418 (dos puntos +474, no se usa).
+Holgura `2520 − 2489 = **31 s**` → cota **2026-09-15 10:58Z**.
+
+**QUÉ HA CAMBIADO EN TRES HORAS.** En A-335 (06:07Z) la cota era 15:29Z, *posterior* al
+decide de las 11:40, y de ahí se seguía que el `collect` de las 12:07 sobreviviría. Ahora la
+cota es **10:58Z, anterior al decide de las 11:40**. La misma extrapolación congelada, con
+un punto más, invierte la conclusión sobre la ranura de hoy.
+
+**LA ARITMÉTICA, con la relación ya caracterizada en A-333 §3.1:**
+
+    espera(12:07) ≈ duracion(decide 11:40) − 1620 + 13
+    se pierde la ranura si espera ≥ 900  ⇔  duracion ≥ ~2507 s
+
+    duración a las 09:07 ...... 2489,1 s
+    +401 s/día × 2,55 h ....... +42,6 s
+    duración estimada a 11:40 .. ~2532 s   →   espera ~925 s   →   RANURA PERDIDA
+
+**PERO EL MARGEN ES DE 25 s Y NO ES DECIDIBLE.** 2532 contra un umbral de 2507. A-327 acaba
+de demostrar, fuera de muestra y a un ciclo vista, un error de **+3,5 %** en la predicción de
+duración — a esta escala, ±87 s. El error de la extrapolación es **tres veces mayor que el
+margen que separa las dos respuestas**. Así que esto no dice «se perderá»: dice que **por
+primera vez el resultado está genuinamente en el aire**, y que se resolverá solo, hoy, hacia
+las 12:20Z.
+
+No escribo predicción numérica nueva ni la registro como tal. Esto es lectura del
+instrumento, no una preinscripción.
+
+**LO QUE ESTÁ EN JUEGO, dicho sin dramatizar:** una ranura perdida es una instantánea del
+book que no se recupera a posteriori. No es un test que se repita mañana.
+
+**SI SE PIERDE**, el sistema ya está instrumentado para decirlo: `launcher.sh:88` emitirá un
+`lock_timeout` con el `waited_s` efectivo, `stage_host_events` lo arrastrará al almacén, y
+el vigilante marcará `TURNO PERDIDO`. Sería, de paso, la primera vez que el valor efectivo
+de `PMW_LOCK_WAIT` quede registrado — el defecto D-3 revelándose por la única puerta que
+tiene, que es exactamente la que A-331 §5 describió: se entera cuando ya no sirve.
+
+**NO SE ACTÚA.** `ALARM / ACTION REQUIRED` sigue significando preparar, no desplegar. No
+toco `PMW_LOCK_WAIT`, ni el cron, ni el vigilante, ni despliego el parche de #61 —que además
+no acortaría el ciclo ni un segundo. No hay intervención auditada y gobernada disponible
+(A-333 §8.1) y el `GAP OPERATIVO` sigue registrado sin rellenar. **La decisión es del
+usuario, y la ventana para tomarla es de horas, no de días.**
+
+**NO CAMBIA NADA MÁS:** `A-327 = ALARMA` final · umbrales, predicción, estimadores y
+constantes sin tocar · #61, D0-P y L2 BLOCKED · B congelado · SettlementOperator y R24
+congelados · D-3, D-4 y D-5 abiertos.
