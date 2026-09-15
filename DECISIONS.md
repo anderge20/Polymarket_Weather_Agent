@@ -25852,3 +25852,51 @@ por omisión**, que es el estado actual.
 
 **D-6 = `OPEN / DETECTION CORRECT, PRESENTATION INCORRECT`.** La fecha que imprime el
 vigilante con holgura negativa **no se ha usado para nada** en esta decisión.
+
+## A-340 — Corrección: mi «mayor excursión a la baja» estaba mal medida, y la nueva es el doble · 2026-09-15 · Claude (sesión A)
+
+**Observación (18:07Z):** duración **2308,4 s**, espera 6 s, 36,4 MB, 0 ranuras sin fila.
+`holgura = 2520 − 2308 = **+212 s**` — vuelve a ser positiva. 29 ciclos, Theil-Sen
+**+414 s/día**.
+
+**CORRECCIÓN DE A-338/A-339.** Escribí que «la mayor excursión a la baja observada en el
+régimen es −104 s» y que salvar la ranura exigiría «~1,5 veces la mayor excursión jamás
+observada». **Las dos cosas son falsas.** Los 28 saltos entre ciclos consecutivos del
+régimen:
+
+    [67,3  −4,6  82,4  −6,4  −33,1  22,2  37,8  31,4  63,0  27,4  52,0  17,2  164,4
+     44,1  −81,7  16,8  107,6  −9,1  162,9  −157,6  253,1  18,2  129,2  122,2  −103,6
+     53,7  173,7  −304,4]
+
+La mayor bajada **antes de hoy** era **−157,6 s**, no −104. Cogí el máximo de la ventana que
+tenía delante —los ciclos de hoy— en vez de calcularlo sobre el régimen entero. Es
+exactamente el defecto que llevo toda la corrida señalando en otros sitios: **la ventana a
+la que recortas una serie es un parámetro libre que nadie declara.** Con el número correcto,
+lo que hacía falta era ~1 vez la mayor bajada observada, no 1,5.
+
+**Y ACABA DE OCURRIR UNA DE −304,4 s**, casi el doble de la mayor anterior.
+
+**QUÉ QUEDA EN PIE DE A-338 Y QUÉ NO.**
+
+- **NO queda en pie** la frase «el nivel actual ya cruza el umbral». El último ciclo medido
+  son 2308,4 s, **199 s por debajo** de los ~2507. Un decide comparable al último observado
+  **no** agotaría el presupuesto. Los 2612,8 de las 15:07 se parecen ahora más a una
+  excursión alta que a un nivel nuevo — y declarar nivel nuevo con un punto era justo lo que
+  las reglas prohibían.
+- **SÍ queda en pie** la tendencia: Theil-Sen +414 s/día sobre 29 puntos, y el umbral está a
+  212 s. A +414 s/día eso son ~0,5 días.
+- **SÍ queda en pie**, y reforzado, el resto del análisis: el umbral 2506–2508 s derivado de
+  los ocho pares reales; que el 86,6 % del ciclo son `load:orderbook_snapshots` +
+  `load:price_history`; que la causa es el `:memory:` heredado del runner de Actions; que
+  `--db` persistente no ahorra la lectura; y que **no existe mitigación auditada**.
+
+**LO QUE CAMBIA EN LA DECISIÓN: la justificación, no la recomendación.** Sigue siendo
+**OPCIÓN A**, pero ya no porque «el nivel ya cruza» — sino porque **la dispersión (±300 s)
+es mayor que la distancia al umbral (212 s)**, así que el decide de las 02:40 puede caer a
+cualquiera de los dos lados y **no hay forma honesta de estrechar eso esta noche**. Un
+cambio de emergencia decidido sobre una magnitud cuyo ruido supera a su margen es una
+decisión tomada sobre el ruido.
+
+**No escribo predicción.** Y no recalibro nada: ni pendiente, ni umbrales, ni la relación.
+`#61`, `D0-P` y `L2` siguen BLOCKED; B congelado; SettlementOperator y R24 congelados; D-3,
+D-4, D-5 y D-6 abiertos; `GAP OPERATIVO` sin rellenar. Nada tocado.
