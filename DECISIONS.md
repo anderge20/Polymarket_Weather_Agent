@@ -25575,3 +25575,37 @@ un dato añadido, ni una población redefinida.
 **LO QUE ESTA PRUEBA DEMUESTRA:** que una predicción prospectiva con criterio congelado,
 instrumento verificado y cero intervención **puede fallar y registrarse como fallo**. Ese es
 el valor, y se habría perdido entero moviendo un umbral doce segundos.
+
+## A-334 — `salud_pre_medicion.sh` devuelve NO SANO, y el motivo es la ALARMA ya registrada: defecto de MI script, no del sistema · 2026-09-15 · Claude (sesión A)
+
+**Registrado y NO corregido**, que es lo que manda la regla de gobernanza para un FAIL del
+chequeo de salud: registrar el motivo y detenerse.
+
+**QUÉ PASA.** Tras A-333, `ops/salud_pre_medicion.sh` sale `NO SANO` (exit 1). Las cuatro
+comprobaciones de configuración siguen en OK (`install.sh` y `launcher.sh` == `origin/main`,
+`HOLGURA=2520 HUECO=1620 ESPERA_MAX=900 AVISO=300 ALARMA=600`, las 10 ranuras contratadas) y
+el evaluador funciona. Lo único que falla es la línea del vigilante, y falla **porque el
+vigilante sale con exit 1 cuando hay una alarma** — la de A-327, espera 612 s, ya medida,
+clasificada y registrada.
+
+**EL DEFECTO ES MÍO Y ES DE LA MISMA FAMILIA QUE D-4.** El script trata el exit 1 del
+vigilante como «el instrumento no ha podido correr», cuando el vigilante usa ese mismo
+código para decir «he corrido perfectamente y he encontrado una alarma». **Detección
+correcta, diagnóstico engañoso.** Escribí el chequeo antes de que existiera ninguna alarma,
+así que la única forma que conocía de que el vigilante saliera con 1 era que fallara.
+Consecuencia: a partir de ahora el chequeo dirá `NO SANO` de forma permanente por un motivo
+benigno, y el mensaje —«arreglar ANTES del dato»— manda a buscar al sitio equivocado.
+
+**POR QUÉ NO SE ARREGLA AHORA**, más allá de que la regla lo prohíba: separar «el vigilante
+no arranca» de «el vigilante ha visto una alarma» es exactamente la distinción entre salud
+del instrumento y señal del sistema que A-333 §6 insiste en no confundir — y tocar el
+acompañante del instrumento justo después de que el instrumento produzca una señal incómoda
+es la forma más fácil de contaminar lo que quede por medir. Se arregla cuando se levante el
+freeze, y entonces con un test que lo demuestre.
+
+**MIENTRAS TANTO, CÓMO LEERLO:** `NO SANO` cuyo único `[MAL]` sea la línea del vigilante con
+`<<< ALARMA` significa **sistema en ALARMA conocida, salud del instrumento intacta**. Si
+apareciera un `[MAL]` en cualquiera de las otras cuatro líneas, eso sí sería nuevo.
+
+**KNOWN_NONBLOCKING_DEFECT** (D-5), junto a D-3 (override de entorno de `PMW_LOCK_WAIT`) y
+D-4 (mensaje del shard dañado). Ninguno impide observar el próximo ciclo contratado.
