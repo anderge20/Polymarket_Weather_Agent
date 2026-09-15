@@ -25732,3 +25732,52 @@ desplegar. `A-327 = ALARMA` final · umbrales, predicción, estimadores y consta
 · #61, D0-P y L2 BLOCKED · B congelado · SettlementOperator y R24 congelados · D-3, D-4 y
 D-5 abiertos · `GAP OPERATIVO` registrado sin rellenar. Próxima ranura en riesgo real: el
 `collect` de las **03:07Z del 09-16**.
+
+## A-338 — La holgura pasa a NEGATIVA: el nivel actual, sin tendencia, ya cruza el umbral de pérdida · 2026-09-15 · Claude (sesión A)
+
+**Observación (15:07Z):** duración **2612,8 s**, espera 6 s, 35,8 MB, 0 ranuras sin fila.
+`holgura = 2520 − 2613 = **−93 s**`.
+
+**QUÉ CAMBIA, Y POR QUÉ NO ES «MÁS DE LO MISMO».** Hasta ahora la pérdida de una ranura era
+una *proyección*: había que extrapolar una pendiente para llegar al umbral. Ya no. Con la
+relación caracterizada en A-333 §3.1:
+
+    espera(03:07) ≈ duracion(decide 02:40) − 1620 + 13
+    se pierde la ranura si duracion >= ~2507 s
+
+    duracion medida AHORA ... 2612,8 s   ->   ya supera el umbral en ~106 s
+
+**El nivel actual, sin añadir un solo segundo de tendencia, basta para perder la ranura de
+las 03:07Z del 09-16.** La extrapolación deja de ser el argumento; pasa a ser un agravante.
+
+**LO QUE PODRÍA SALVARLA, dicho con honestidad.** La serie no es monótona y su dispersión no
+es pequeña: hoy 1966,3 (00:07) · 2219,4 (02:40) · 2237,6 (03:17) · 2366,8 (06:07) · 2489,1
+(09:07) · **2385,4 (11:40)** · 2439,2 (12:19) · 2612,8 (15:07). Entre 09:07 y 11:40 bajó
+104 s. Una excursión a la baja de ese tamaño, sostenida hasta las 02:40, dejaría la duración
+en ~2509 — **justo en el umbral**. Es posible; no es lo que dice el centro de la
+distribución. Y a esto hay que sumarle ~11,5 h de tendencia (~+190 s a +401 s/día).
+
+**NO ESCRIBO PREDICCIÓN NUMÉRICA NI LA REGISTRO COMO TAL.** Sigue siendo lectura del
+instrumento. Pero la lectura ya no es «está en el aire»: es «el nivel medido ya cruza, y
+haría falta una excursión a la baja mayor que cualquiera observada en el régimen para que no
+cruce».
+
+**DEFECTO DE PRESENTACIÓN, ANOTADO Y NO CORREGIDO.** Con holgura negativa el vigilante
+imprime `-0.22 dias -> 2026-09-15 09:53Z`: una fecha **en el pasado**. La fórmula supone
+holgura positiva y nadie la escribió pensando en este caso. La detección es correcta —el
+número negativo está bien— pero la fecha derivada es basura. **KNOWN_NONBLOCKING_DEFECT
+(D-6)**, hermano de D-4 y D-5: mismo patrón, detección buena y presentación engañosa. No se
+toca: el freeze sigue y no se arregla un instrumento el día que está midiendo.
+
+**NO SE ACTÚA.** `ALARM / ACTION REQUIRED` = preparar, no desplegar. No hay intervención
+auditada y gobernada (A-333 §8.1): el parche de #61 no acorta el ciclo, subir
+`PMW_LOCK_WAIT` está prohibido y trata el síntoma, y las palancas de capacidad (#55, #30) no
+tienen tests ni revisor (§34 bloqueado por #81). `GAP OPERATIVO` registrado, sin rellenar.
+
+**LA DECISIÓN ES DEL USUARIO Y LA VENTANA SE CIERRA ESTA NOCHE.** Una ranura perdida es una
+instantánea del book que no se recupera. Si se pierde, quedará registrada: `launcher.sh:88`
+emitirá `lock_timeout` con el `waited_s` efectivo y el vigilante dirá `TURNO PERDIDO`.
+
+**NO CAMBIA NADA MÁS:** `A-327 = ALARMA` final · umbrales, predicción, estimadores y
+constantes sin tocar · #61, D0-P y L2 BLOCKED · B congelado · SettlementOperator y R24
+congelados · D-3, D-4, D-5 y ahora D-6 abiertos.
