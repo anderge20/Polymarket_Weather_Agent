@@ -25698,3 +25698,37 @@ usuario, y la ventana para tomarla es de horas, no de días.**
 **NO CAMBIA NADA MÁS:** `A-327 = ALARMA` final · umbrales, predicción, estimadores y
 constantes sin tocar · #61, D0-P y L2 BLOCKED · B congelado · SettlementOperator y R24
 congelados · D-3, D-4 y D-5 abiertos.
+
+## A-337 — La ranura de las 12:07 se salva por ~122 s, y la cota falla por segunda vez — ahora del lado seguro · 2026-09-15 · Claude (sesión A)
+
+**Resuelve la pregunta abierta en A-336.** El `decide` de las 11:40Z duró **2385,4 s**
+(11:40:05,5 → 12:19:50,9Z) contra un umbral de pérdida de ~2507 s. El lock quedó libre a
+las 12:19:50,9 y el presupuesto de 900 s expiraba a las **12:22:00**: **la ranura de las
+12:07 NO se pierde**, por un margen de **~122 s**. Espera derivada ~778 s — **segunda
+ALARMA** (>600), pero sin pérdida.
+
+**LA COTA VUELVE A FALLAR, Y AHORA HACIA EL OTRO LADO.** A-336 extrapolaba ~2532 s para el
+decide de las 11:40; salieron **2385,4** — **−147 s (−5,8 %)**. Con A-327 (+3,5 %) van dos
+observaciones fuera de muestra de la misma extrapolación, **con signos opuestos**. Y la
+serie no es monótona: 2366,8 (06:07) → 2489,1 (09:07) → 2385,4 (11:40).
+
+**LO QUE ESTO DICE, Y LO QUE NO.** La dispersión entre ciclos consecutivos es del **mismo
+orden que el margen** que separa «se pierde» de «no se pierde». Por eso A-336 dijo que el
+resultado estaba en el aire y **no lo registró como predicción**: no era falsa modestia, era
+la única lectura sostenible de una cota cuyo error empírico (±3-6 %) triplica el margen que
+tiene que resolver. **No se recalibra nada**: ni la pendiente, ni los umbrales, ni la
+relación. Dos puntos fuera de muestra con signos opuestos son, si acaso, evidencia de que la
+cota es una cota — que es justo lo que el vigilante imprime en cada corrida.
+
+**UN ERROR MÍO, ATRAPADO POR INCOHERENCIA.** Al leer el shard usé `t_end` como fin del
+ciclo. No lo es: `t_end` es el **fin de la ventana de mercado** (`2026-09-16T12:00:00` para
+un lead-24), y la duración sale de `recorded_at − cycle_started_at`, que es lo que usa
+`evalua_a327.py`. Lo delató que 1194 s no cuadraban con `max(at_s) = 2385,43`. Un campo
+llamado `t_end` que no termina lo que uno cree que termina: **la unidad no viaja con el
+número**, otra vez.
+
+**NO SE ACTÚA Y NO CAMBIA NADA:** `ALARM / ACTION REQUIRED` sigue significando preparar, no
+desplegar. `A-327 = ALARMA` final · umbrales, predicción, estimadores y constantes sin tocar
+· #61, D0-P y L2 BLOCKED · B congelado · SettlementOperator y R24 congelados · D-3, D-4 y
+D-5 abiertos · `GAP OPERATIVO` registrado sin rellenar. Próxima ranura en riesgo real: el
+`collect` de las **03:07Z del 09-16**.
