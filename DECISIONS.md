@@ -25609,3 +25609,43 @@ apareciera un `[MAL]` en cualquiera de las otras cuatro líneas, eso sí sería 
 
 **KNOWN_NONBLOCKING_DEFECT** (D-5), junto a D-3 (override de entorno de `PMW_LOCK_WAIT`) y
 D-4 (mensaje del shard dañado). Ninguno impide observar el próximo ciclo contratado.
+
+## A-335 — Sólo dos ranuras del día pueden perderse, y ayer nombré la equivocada · 2026-09-15 · Claude (sesión A)
+
+**Punto de observación fijado en A-333 §10: el ciclo de las 06:07Z.** Aterrizó limpio —
+espera 5 s, duración **2366,8 s**, 31,3 MB, 0 ranuras sin fila. Con él, 24 ciclos en el
+régimen: Theil-Sen **+392 s/día** (era +384), OLS +398, dos puntos +446 (no se usa). Holgura
+`2520 − 2367 = 153 s` → 0,39 días → cota **2026-09-15 15:29Z**.
+
+**CORRECCIÓN DE UNA INFERENCIA MÍA.** En el informe C de A-333 escribí que la cota situaba
+el riesgo «en el collect de las 21:07Z». **Es falso, y de una forma que importa**: el de las
+21:07 no puede perderse nunca.
+
+Una ranura sólo se pierde si la espera alcanza los 900 s del `PMW_LOCK_WAIT`, y la espera
+sólo crece cuando el ciclo anterior aún retiene el lock. Con el cron contratado
+(`7 */3` collect, `40 2` y `40 11` decide), **eso sólo ocurre en los dos collect que van
+1620 s después de un decide: 03:07 y 12:07.** Medido sobre los 55 ciclos desde `ERA_CRON`:
+
+    ranuras POST-DECIDE (03:07, 12:07)  n=11   esperas 4, 5, 5, 5, 5, 5, 5, 94, 139, 239, 612
+    el resto                            n=44   esperas entre 4 y 7 s, SIEMPRE
+
+Los otros ocho collect del día no compiten con nadie por el lock. Extrapolé una cota sobre
+la **duración** —24 puntos, bien medida— y la aterricé en una ranura que la relación no
+alcanza. La cota es correcta; el sitio donde la puse, no.
+
+**CONSECUENCIA OPERATIVA:** el próximo candidato real es el **collect de las 12:07Z de hoy**,
+y después el de las **03:07Z del 09-16**. Como la cota (15:29Z) cae *después* de las 12:07,
+la extrapolación congelada implica que la de las 12:07 debería sobrevivir y la primera en
+riesgo genuino sería la de mañana. **No escribo predicción numérica nueva** — A-333 §10 dejó
+dicho que se observaría sin escribirla, y hacerlo ahora, después de ver la tendencia, le
+quitaría a la observación lo único que la hace valer.
+
+**Y UNA CUESTIÓN DE POTENCIA que conviene no olvidar:** la magnitud que decide la pérdida
+—la espera en ranura post-decide— tiene **11 observaciones, y sólo 4 en escalada**. La serie
+de 24 puntos es de *duración*. Lo que une ambas es la relación `espera ≈ ciclo − 1620`, cuyo
+residuo A-333 §3.1 acaba de explicar mecánicamente. La extrapolación se apoya en esa
+relación, no en 24 puntos de la cantidad que importa.
+
+**NO CAMBIA NADA:** `A-327 = ALARMA` final · umbrales, predicción, estimadores y constantes
+sin tocar · #61, D0-P y L2 BLOCKED · B congelado · SettlementOperator y R24 congelados ·
+D-3, D-4 y D-5 abiertos. Sigue el freeze y la observación read-only.
