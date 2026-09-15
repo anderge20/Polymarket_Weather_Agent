@@ -25781,3 +25781,74 @@ emitirá `lock_timeout` con el `waited_s` efectivo y el vigilante dirá `TURNO P
 **NO CAMBIA NADA MÁS:** `A-327 = ALARMA` final · umbrales, predicción, estimadores y
 constantes sin tocar · #61, D0-P y L2 BLOCKED · B congelado · SettlementOperator y R24
 congelados · D-3, D-4, D-5 y ahora D-6 abiertos.
+
+## A-339 — `NO EXISTE MITIGACIÓN AUDITADA DISPONIBLE`, y el 91 % «sin explicar» resultó ser dos cargas · 2026-09-15 · Claude (sesión A)
+
+**Artefacto:** `ops/A-338_DECISION_CONTINGENCIA.md` (sha256 `a9408a46f5d235ab…`).
+**Nada ejecutado.**
+
+**UMBRAL DERIVADO, NO RECORDADO.** Con los ocho pares `decide → collect` reales del régimen,
+usando sólo `cycle_started_at` y `recorded_at`:
+`pérdida ⟺ duracion(decide) ≥ ESPERA_MAX + HUECO − offset − traspaso`. Medidos:
+`offset ∈ [5,41; 6,77]` s y `traspaso ∈ [6,75; 7,51]` s — este último sólo existe como
+magnitud en los **cinco** casos en que el decide invade la ranura; cuando no la invade el
+hueco es **ocio**, no traspaso, y confundirlos sería medir otra cosa. Resultado:
+**umbral = 2506–2508 s**, con 2 s de incertidumbre total.
+
+**HECHO / CONDICIÓN / INCERTIDUMBRE.** El último ciclo medido duró **2612,8 s**, 105 s **por
+encima** del umbral. Para NO perder la ranura, el decide de las 02:40 debe quedar por debajo
+de ~2507, es decir crecer menos de 122 s respecto del de las 11:40 — cuando el crecimiento
+entre los dos últimos decides (9 h) fue de **+166 s**. No basta con que la tendencia se
+aplane: tiene que invertirse. La mayor excursión a la baja del régimen es −104 s; haría
+falta ~1,5 veces eso, sostenido. **La pendiente no es el argumento; el nivel ya medido lo
+es.**
+
+**EL 91 % «MEDIDO PERO NO EXPLICADO» ERA UN ERROR MÍO.** No estaba sin explicar: yo sólo
+había listado tres etapas de las **treinta y dos**. El perfil completo del ciclo de las
+15:07: `load:orderbook_snapshots` **1495,8 s (57,2 %)** · `load:price_history` **768,7 s
+(29,4 %)** · `load:markets` 126,4 · `load:outcomes` 106,0 · `discover` 66,9 ·
+`collect:books` 45,8 · las otras 26 etapas juntas 3,2 s. **Dos cargas son el 86,6 % del
+ciclo; el trabajo útil es el 4,4 %.**
+
+**LA CAUSA ESTÁ ESCRITA EN EL PROPIO CÓDIGO.** `paper_cycle.py:2386` abre
+`db.connect(args.db or ":memory:")` y el host **no pasa `--db`**, así que cada ciclo
+reconstruye toda la base en RAM desde todos los shards. El docstring de `store.load_shards`
+lo dice: *«It is also the HOT path… every cycle rebuilds the entire store from scratch…
+and the store only grows»*. Y la razón original también: *«an Actions runner starts with an
+empty disk»*. **Ese host ya no existe** — desde el 09-09 corre en un Hetzner con disco
+persistente. Un diseño correcto que sobrevivió a su máquina; el mismo patrón que D-4, D-5 y
+D-6.
+
+**Y `--db` PERSISTENTE NO ES LA PALANCA QUE PARECE.** Es la primera idea al leer lo anterior
+y es incorrecta: `load_shards` es idempotente, pero idempotente **no es gratis** — sigue
+**leyendo todos los shards**. Ahorraría el `upsert`, no la lectura, y la lectura es el coste.
+Su firma acepta `paths`, así que un llamante podría pasar sólo los shards nuevos, pero
+**nadie calcula ese conjunto hoy**. Detectar esto es lo que separa la auditoría de la
+corazonada: la opción existe en el argparse, es tentadora y no resuelve el problema.
+
+**PALANCAS: ninguna auditada.** #61 **queda explícitamente fuera** — su parche no acorta el
+ciclo ni un segundo; presentarlo como mitigación de capacidad sería confundir el defecto
+abierto con el problema nuevo. Subir `PMW_LOCK_WAIT` **no es mitigación de capacidad**: no
+hace que el collect llegue antes, convierte una pérdida explícita y registrada en una espera
+larga y silenciosa — cambia la contabilidad del fallo, no el fallo. El cron es aritméticamente
+eficaz pero mover el decide cambia `t_asof` y por tanto **qué pronóstico decide** (materia de
+R24), y requiere autorización explícita. #55 apunta a la zona correcta pero no tiene
+benchmark, test ni revisor (§34 bloqueado por #81) — **no doy cifra de ahorro sin evidencia**.
+#30 es de datos, no de coste.
+
+**RECOMENDACIÓN: OPCIÓN A, no intervenir.** No por inercia: (1) no hay nada auditado que
+desplegar, sólo código por escribir sobre la ruta caliente sin revisor; (2) el coste de la
+pérdida es **una** instantánea del book, el de un despliegue fallido de noche es **el
+horario entero**; (3) la pérdida es informativa — confirmaría la geometría con un dato,
+revelaría el `PMW_LOCK_WAIT` efectivo (D-3) y ejercitaría por primera vez la ruta de
+`lock_timeout`, hoy sólo probada en tests.
+
+**LA DECISIÓN ES DE ANDER.** Opción A (observar) u Opción C (cambio de emergencia, descrito
+y no ejecutado) con autorización explícita. Sin respuesta antes de las 02:40Z se aplica **A
+por omisión**, que es el estado actual.
+
+**Para después del freeze y con revisión:** atacar `load:orderbook_snapshots` +
+`load:price_history` por carga incremental. Ahí está el 86,6 %.
+
+**D-6 = `OPEN / DETECTION CORRECT, PRESENTATION INCORRECT`.** La fecha que imprime el
+vigilante con holgura negativa **no se ha usado para nada** en esta decisión.
