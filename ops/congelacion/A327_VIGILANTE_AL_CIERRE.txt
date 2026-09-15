@@ -1,0 +1,27 @@
+================================================================================================
+VIGILANTE DEL COLECTOR · 2026-09-15T04:51:00Z · 54 ciclos
+================================================================================================
+  id                     ranura   espera_s   ciclo_s     MB  razon
+  09-14 11:40:05Z      11:40          5    1845.7   25.9  no_paper_tau    
+  09-14 12:10:59Z      12:07        239    1862.6   26.9  mode_collect    
+  09-14 15:07:05Z      15:07          5    1970.2   27.5  mode_collect    
+  09-14 18:07:05Z      18:07          5    1961.0   28.5  mode_collect    
+  09-14 21:07:05Z      21:07          5    2123.9   29.0  mode_collect    
+  09-15 00:07:05Z      00:07          5    1966.3   29.6  mode_collect    
+  09-15 02:40:05Z      02:40          5    2219.4   30.2  no_paper_tau    
+  09-15 03:17:12Z      03:07        612    2237.6   30.7  mode_collect      <<< ALARMA
+
+  regimen desde 2026-09-13: 23 ciclos en 51.2 h
+     ciclo    1362 -> 2238 s
+     pendiente  Theil-Sen +384 s/dia   ·   minimos cuadrados +380   ·   dos puntos +411  (esta ultima NO se usa)
+     almacen  17.0 -> 30.7 MB
+     holgura  2520 - 2238 = 282 s   ->   0.74 dias   ->   2026-09-15 20:56Z
+     AVISO: es COTA, no fecha -- la pendiente se estima con el mismo dato que predice.
+     (el escalon del 09-13 YA ESTA EXPLICADO, A-320: `_newest_first` empezo a enganchar, ratio 1,712 -> 1,008. Fue un arreglo que aterrizo una vez, no una oscilacion, asi que el regimen posterior es un regimen.)
+
+  COBERTURA de ranuras (margen de juicio: 7010 s = holgura 2520 + 2 x el ciclo mas largo visto, 2245 s)
+     ranuras esperadas y juzgables sin fila: 0
+
+  esperas > 300 s: 0   ·   > 600 s: 1
+     ALARMA 2026-09-15 03:17:12Z  ranura 03:07  espero 612 s   (col_20260915T031712Z_c29972)
+================================================================================================

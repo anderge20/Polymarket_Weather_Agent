@@ -1,0 +1,30 @@
+============================================================================================
+EVALUACION DE A-327 · 2026-09-15T04:21:11Z
+============================================================================================
+  prediccion CONGELADA:  duracion ~2144 s · espera ~524 s
+  criterio: 300 <= espera < 600 CONFIRMADA · < 300 FALLIDA · >= 600 ALARMA
+
+  DECIDE   col_20260915T024005Z_20b26f
+     shard cycle_params__col_20260915T024005Z_20b26f__0000.ndjson.gz
+     duracion 2219.4 s · discover 63.66 · load:markets 97.0 · collect:books 39.85
+     filas 136762 · 30.2 MB · ms/fila 16.23
+     commit 22a77200e9f4 · razon 'no_paper_tau' · inicio 2026-09-15T02:40:05.971863+00:00 · fin 2026-09-15T03:17:05.368487+00:00
+
+  COLLECT  col_20260915T031712Z_c29972
+     shard cycle_params__col_20260915T031712Z_c29972__0000.ndjson.gz · ranura 03:07Z
+     ESPERA DERIVADA (id - ranura) = 612 s
+     duracion 2237.6 s · commit 22a77200e9f4
+
+  --- PREGUNTA A: ¿acerto A-327 sobre ESTE ciclo? ---
+     espera   predicha     524 · real     612 · error +88 s (16.8%)
+     duracion predicha    2144 · real  2219.4 · error +75 s (3.5%)
+     cruza 300: SI · cruza 600: SI
+
+     VEREDICTO SOBRE A-327: ALARMA
+     (la relacion espera ≈ ciclo − 1620 tiene sesgo medido +12,4 s sobre n=3;
+      NO se incorpora a esta puntuacion, solo a predicciones futuras)
+
+  PREGUNTA B (tendencia) y PREGUNTA C (cuando se pierde una ranura) NO se
+  responden aqui: se responden con `vigila_colector.py`, y no se usa A para
+  declarar B ni B para declarar C.
+============================================================================================

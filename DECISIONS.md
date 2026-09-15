@@ -25493,3 +25493,85 @@ otro ciclo.
 
 **Estado:** `#58 MERGED — VERIFIED` · `A-327 UNCHANGED` · `A-327 PENDING` · `#61 BLOCKED` ·
 `SYSTEM FROZEN`.
+
+## A-333 — A-327 = `ALARMA`: la predicción falló por 12 s sobre el umbral, y el sesgo de +12,4 s resultó ser estructural · 2026-09-15 · Claude (sesión A)
+
+**Artefacto:** `ops/A-333_RESULTADO_A327.md` (sha256 `85099bc8cfc031b9…`).
+
+**RESULTADO.** Espera predicha ~524 s, real **612 s** (+88 s, +16,8 %). Duración predicha
+~2144 s, real **2219,4 s** (+75,4 s, +3,5 %). Cruza 300: sí, como se predijo. Cruza 600:
+**sí**, y se predijo que no. **`A-327 = ALARMA`, y la predicción NO acertó.** No es
+`INDETERMINADA`: la medición es válida y completa; INDETERMINADA está reservada a un
+defecto objetivo de medición, no a un resultado incómodo.
+
+La predicción de **duración** fue buena; la de **espera** falló, y el error cayó a caballo
+del umbral. Con la clase decidida en 600, 88 s sobre ~550 bastan para cambiarla.
+
+**INSTRUMENTO.** `code_commit` de los dos ciclos = `22a77200e9f4…` (el SHA de fusión) →
+`HOST_SHA_VERIFICADO`, por evidencia que escribe el host. `evalua_a327.py` con sha256
+`24600ba2ea3f…`, idéntico al congelado en A-332. Ranura preinscrita, shard legible, 0
+duplicados, 0 ranuras sin fila, cero intervención antes del dato.
+
+**LA «DISCREPANCIA» 2219,4 / 2237,6 NO EXISTÍA: son dos ciclos distintos.** 2219,4 es el
+`decide` de las 02:40 (`no_paper_tau`, 136.762 filas, 32 etapas); 2237,6 es el `collect` de
+las 03:07 (`mode_collect`, 138.502 filas, 31 etapas). Mismo campo (`max(at_s)`,
+`excludes=params`), mismo método, distinto ciclo. A-327 predice el **decide**, porque es
+quien retiene el lock. No se corrige A-327 ni el análisis de capacidad: ninguno estaba mal.
+Fabricar una reconciliación habría sido peor que decirlo.
+
+**Y AL AUDITARLO, EL SESGO DE +12,4 s DEJÓ DE SER RUIDO.** Exacto al microsegundo:
+`612,412717 = 5,971863 (espera propia del decide) + 2219,396624 (duración) + 7,044230
+(traspaso del lock) − 1620`. El residuo de `espera ≈ ciclo − 1620` **es** la suma de dos
+latencias identificables: 13,02 s, o 12,60 con la espera truncada al segundo que usa el
+instrumento, contra los +12,4 medidos sobre n=3. Es **estructural, no estadístico** — y es
+diagnóstico, no recalibración: no se toca la relación, ni el evaluador, ni la predicción.
+
+**CAPACIDAD (23 ciclos, 51,2 h).** duración ×1,643 · filas ×1,471 · ms/fila ×1,116 ·
+almacén ×1,807. La descomposición cierra: `1,471 × 1,116 = 1,642` vs 1,643 → **78 % volumen
+· 22 % coste unitario**, y eso es una **factorización matemática, no una atribución
+causal**. Theil-Sen +384 s/día, OLS +380 (dos puntos +411, NO se usa).
+
+**COSTE UNITARIO = `INCONCLUSIVE`** para cambio de régimen: los diez últimos (15,39) superan
+a los trece primeros (14,51) y los dos máximos de la serie son los dos últimos, pero **dos
+puntos no son un régimen**. Regla escrita antes, aplicada ahora.
+
+**MEDIDO PERO NO EXPLICADO:** las etapas desglosadas suman 203 s, el **9 %** del ciclo. El
+**91 % restante no se explica** y no se le pone nombre — ni «overhead», ni «I/O», ni
+«lock». Nombrarlo sería inventar una causa que encaja.
+
+**DOS CAUTELAS DE UNIDAD:** `store_total_bytes` es el almacén entero y `store_rows_loaded`
+son las filas de este ciclo — no son la misma población y **no se dividen**. Y «ms/fila» es
+duración total sobre filas cargadas: un coste **compuesto**.
+
+**ESTADO OPERATIVO = `ALARM / ACTION REQUIRED`**, con ranura perdida = **no**. Espera 612 s
+contra `PMW_LOCK_WAIT` 900: quedan **288 s**. La `ALARMA` se cruza en 600; una ranura se
+pierde en 900. Son estados distintos.
+
+**PROYECCIÓN.** Holgura 282 s a +384 s/día → ~0,73 días, en torno al **2026-09-15
+20:56Z**. Se formula como «bajo extrapolación lineal, la holgura se agotaría alrededor
+de…», nunca como «la ranura de las 21:07 se perderá». **No hay intervalo válido y no se
+inventa**: el instrumento no lo implementa, y hacerlo ahora sería modificarlo justo después
+de que produzca una señal incómoda. El acuerdo Theil-Sen/OLS no es un intervalo — mismo
+dato, misma hipótesis. La única evidencia fuera de muestra es A-327: a un ciclo vista erró
++3,5 %, y ese error bastó para cruzar una clase.
+
+**DECISIÓN: preparar, no desplegar.** Se buscó una intervención auditada y gobernada
+ejecutable sin contaminar, y **no existe**. El parche de #61 está auditado pero **no es una
+mitigación de capacidad** — hace observable el `PMW_LOCK_WAIT`, no acorta el ciclo. Subir
+`PMW_LOCK_WAIT` está prohibido, cambiaría la `HOLGURA` del instrumento y trata el síntoma.
+Las palancas reales (#55 compactación, #30 backfill) son análisis, no intervenciones con
+tests, y la revisión del §34 sigue bloqueada porque el revisor era B (#81).
+
+**`GAP OPERATIVO` REGISTRADO, NO RELLENADO.** No hay runbook para «el colector entra en
+ALARMA» y no lo invento: un procedimiento escrito bajo la presión de la primera alarma es
+un procedimiento sin auditar con aspecto de procedimiento.
+
+**NO CAMBIA NADA:** A-327 = ALARMA final · umbrales 300/600 · predicción 524/2144 ·
+Theil-Sen, MAD, 3,5×, ventana de 8 · 1620/2520/900 · definición de espera y ranura objetivo
+· los dos instrumentos · **#61 BLOCKED** · **D0-P BLOCKED** · **L2 BLOCKED** · B congelado ·
+SettlementOperator y R24 congelados · D-4 abierto sin corregir. Ni un outlier eliminado, ni
+un dato añadido, ni una población redefinida.
+
+**LO QUE ESTA PRUEBA DEMUESTRA:** que una predicción prospectiva con criterio congelado,
+instrumento verificado y cero intervención **puede fallar y registrarse como fallo**. Ese es
+el valor, y se habría perdido entero moviendo un umbral doce segundos.
