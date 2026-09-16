@@ -25900,3 +25900,53 @@ decisión tomada sobre el ruido.
 **No escribo predicción.** Y no recalibro nada: ni pendiente, ni umbrales, ni la relación.
 `#61`, `D0-P` y `L2` siguen BLOCKED; B congelado; SettlementOperator y R24 congelados; D-3,
 D-4, D-5 y D-6 abiertos; `GAP OPERATIVO` sin rellenar. Nada tocado.
+
+## A-341 — Ciclo 02:40/03:07 del 09-16: `ALARMA`, ranura NO perdida, y el supuesto crítico sin probar · 2026-09-16 · Claude (sesión A)
+
+**Protocolo pre-registrado ejecutado sin desviación.** Reglas escritas antes del dato; ni una
+tocada después.
+
+| test | resultado |
+|---|---|
+| T1 duración decide | **2254,1 s** (`recorded_at 03:17:40,061 − cycle_started_at 02:40:05,973`; nunca `t_end`) |
+| T2 umbral congelado | `[2505,7 ; 2507,8]` → **NO CRUZA**, margen **251,6 s** |
+| T3 wait | **647,378 s** · `offset` **5,97** DENTRO (n=8 y n=37) · `handoff` **7,32** DENTRO de `[6,75;7,51]` |
+| T4 lock | `PMW_LOCK_WAIT` 900 (derivado) · margen **253 s** · **sin `lock_timeout`** |
+| T5 código | `code_commit = 22a77200e9f4…` ✔ |
+| T6 cobertura | shard presente y legible (36 campos, 31 etapas), ciclo terminado, `collect:books` presente, **0 duplicados** |
+| **clasificación** | **`ALARMA`** (647 ≥ 600) — la tercera |
+| **ranura perdida** | **NO** |
+
+**LOCALIZACIÓN POR LA JERARQUÍA CORREGIDA (RT-4).** El `session_id` no lleva identidad de
+ranura —el prefijo es `col_` en los 63 ciclos, decides y collects indistinguibles—, así que
+la ranura se derivó de la rejilla del cron y el **modo del minuto de la ranura** (40 =
+decide, 07 = collect), con `collect_only_reason` corroborando. Buscar `*T0307*` habría
+fallado: el collect arrancó a las **03:17:47Z**. `HUECO` y `ESPERA_MAX` se derivaron del
+crontab, no se escribieron (RT-3).
+
+**EL SUPUESTO CRÍTICO NO LLEGÓ A PROBARSE, Y ESO ES EL RESULTADO.** RT-6 pre-registró que
+`handoff ≈ 7 s` sería extrapolación **sólo si** la duración superaba los 2385,4 s del mayor
+invasor previo. Salió 2254,1: **dentro del soporte**. El 7,32 s observado es por tanto
+**compatible pero no informativo** sobre lo que preocupaba — la invariancia de `handoff` a
+mayor carga **sigue sin probar**. Se registra como no-resultado, no como confirmación. n
+pasa de 5 a 6; el rango no se mueve.
+
+**EL CONTROL DE INTEGRIDAD NO ES EVIDENCIA.** `offset + duración + handoff − HUECO` dio
+647,378360 frente a 647,378360 observados. Eso es la identidad telescópica de A-341/§A.0:
+cero por construcción. Sirve para descartar incoherencia entre campos (sin salto de DST, sin
+desfase de relojes), nada más.
+
+**LO QUE ESTO NO DICE.** No dice que el riesgo haya desaparecido; no dice que haya nivel
+estable; no dice que 2612,8 fuera un outlier —eso exigiría una definición estadística previa
+de outlier que no existe—; y no autoriza tocar nada. Tres ALARMAS en dos días con cero
+ranuras perdidas es exactamente lo que es: el sistema entra en zona de aviso y sigue
+cubriendo.
+
+**NO CAMBIA NADA:** umbral `[2505,7 ; 2507,8]` sin recalibrar · 300/600 sin tocar · `HUECO`
+1620 · `PMW_LOCK_WAIT` 900 · Theil-Sen, MAD, 3,5×, ventana de 8 · cron · #61, D0-P y L2
+**BLOCKED** · B congelado en `c03e2d0` · SettlementOperator y R24 congelados · D-3, D-4, D-5
+y D-6 abiertos · `GAP OPERATIVO` sin rellenar · decisión **NO INTERVENIR**.
+
+**Pendiente, y sólo ahora desbloqueado:** la auditoría de capacidad que separe qué fracción
+del 86,6 % es I/O, parsing, descompresión, transformación, upsert, consulta y memoria. Sin
+esa separación medida, ninguna estimación de ahorro sería otra cosa que una intuición.
