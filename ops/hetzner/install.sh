@@ -71,13 +71,13 @@ $BEGIN
 #
 # PMW_LOCK_WAIT=4800 -- MITIGACION TEMPORAL DE B5, NO UN ARREGLO DE RENDIMIENTO.
 # El ciclo tarda 6 641 s medidos (col_20261005T180705Z_e88fee) porque reconstruye
-# el almacen entero en cada vuelta: 6 543 s de 6 641 son etapas `load:*`. Con los
-# 900 s por defecto, el collect de :07 que cae sobre un `decide` en marcha espera
+# el almacen entero en cada vuelta: 6 543 s de 6 641 son etapas load:*. Con los
+# 900 s por defecto, el collect de :07 que cae sobre un decide en marcha espera
 # 900 s, se rinde y se salta -- medido los dias 3 y 4 de octubre: faltan 03:07 y
 # 12:07 los dos dias, 6 de 8 ventanas.
 #
 # DE DONDE SALE 4800, que no es copiar un numero redondo:
-#   * Hace falta cubrir el solape medido: un `decide` de 02:40 que dura 6 641 s
+#   * Hace falta cubrir el solape medido: un decide de 02:40 que dura 6 641 s
 #     acaba ~04:30:41, asi que el collect de 03:07 necesita esperar 4 781 s.
 #   * El limite sin cascada seria 10 800 - 6 641 = 4 159 s: por encima, el que
 #     espera acaba dentro de la ventana siguiente. LOS DOS NO CABEN, y eso es
@@ -86,12 +86,12 @@ $BEGIN
 #   * La cascada que eso produce esta ACOTADA a una ventana y se despeja sola: el
 #     siguiente slot espera ~641 s y corre, y el hueco de 3 h absorbe el resto.
 #   * Y no puede ser indefinida, porque el plazo del ciclo lo impide: el que
-#     sostiene el lock muere a los 9 000 s (`DEADLINE_S_DEFAULT`) y el que espera
+#     sostiene el lock muere a los 9 000 s (DEADLINE_S_DEFAULT) y el que espera
 #     nunca espera mas de 4 800 s. Las dos partes acotadas. SIN el plazo, subir
 #     esta espera seria peligroso; con el, es seguro.
 #
-# La atribucion no cambia: si aun asi se agota, `launcher.sh` sigue encolando su
-# evento `lock_timeout` con `holder_age_s`, que es lo que distingue una ranura
+# La atribucion no cambia: si aun asi se agota, launcher.sh sigue encolando su
+# evento lock_timeout con holder_age_s, que es lo que distingue una ranura
 # perdida de un host que nunca disparo. El flock tampoco cambia.
 #
 # ESTO NO RESUELVE EL CRECIMIENTO. El almacen suma ~260 s de carga al dia, asi que
