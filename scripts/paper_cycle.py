@@ -82,6 +82,56 @@ STATE_TABLES = CATALOGUE_TABLES + LEDGER_TABLES
 
 OK, SKIPPED, STOPPED = "OK", "SKIPPED", "STOPPED"
 
+#: B5. PLAZO PROPIO DEL CICLO, en segundos. No es un timeout por funcion ni un
+#: tope arbitrario: es la distancia hasta la ventana de `decide` mas cercana,
+#: menos el desmontaje.
+#:
+#: COMO SALE EL NUMERO, porque un valor elegido a ojo no protege nada:
+#:   * `collect` dispara cada 3 h (10 800 s) en :07; `decide` a las 02:40 y 11:40.
+#:   * La separacion mas estrecha NO es la de collect: es collect 00:07 -> decide
+#:     9 a 02:40, y collect 09:07 -> decide 24 a 11:40. Ambas 9 180 s. Un collect
+#:     que las invada hace que el `decide` espere y se salte, y una ventana de
+#:     decision perdida pesa mas que una de recoleccion.
+#:   * Desmontaje medido en el ciclo col_20261005T180705Z_e88fee: `dump` + `params`
+#:     = 8,04 s; mas el push y las operaciones git del lanzador. Se reserva 120 s.
+#:     => cota superior 9 180 - 120 = 9 060 s.
+#:   * Cota inferior: la duracion observada, 6 641,04 s. Un plazo por debajo
+#:     abortaria ciclos sanos.
+#: De ahi 9 000 s: 35 % de margen sobre lo observado y por debajo de las dos cotas.
+#:
+#: Y LO QUE ESTE NUMERO NO ARREGLA. El almacen crece ~19 200 filas/dia y el coste
+#: por fila es constante (~13,56 ms, A-317), o sea ~260 s mas de carga cada dia.
+#: Desde 6 641 s, un ciclo sano alcanza 9 000 s en unos 9 dias. Entonces empezara
+#: a abortar aqui, y eso es deliberado: el plazo hace VISIBLE el crecimiento en
+#: vez de dejarlo consumir el calendario en silencio. El arreglo es la tarea #55
+#: (carga incremental), que NO esta hecha.
+DEADLINE_S_DEFAULT = 9000.0
+
+
+class DeadlineExceeded(Exception):
+    """El plazo del ciclo se agoto en un punto donde abortar no pierde nada.
+
+    SOLO SE LANZA ANTES DE `stage_collect`. Polymarket no publica el libro L2
+    historico, asi que la captura de `stage_collect` es lo unico irrecuperable
+    del proyecto, y solo `stage_dump` la persiste. Abortar entre las dos tirarian
+    un dia de libros para ganar unos minutos de calendario. Por eso el plazo
+    corta antes de capturar; si se agota despues, se registra el exceso y el
+    ciclo llega a su volcado.
+    """
+
+
+def check_deadline(cy: "Cycle", *, next_stage: str) -> None:
+    """Corta el ciclo si el plazo se agoto. No toca ninguna etapa existente."""
+    if not cy.over_deadline():
+        return
+    cy.stage("deadline", STOPPED,
+             reason="DEADLINE_SLOT",
+             active_stage=next_stage,
+             elapsed_s_total=round(cy.elapsed_s(), 2),
+             deadline_s=cy.deadline_s)
+    raise DeadlineExceeded(next_stage)
+
+
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
@@ -178,11 +228,24 @@ def decision_time(target_date: date, lead_hours: float, now: datetime) -> dict:
 class Cycle:
     """Accumulates per-stage results so the job log shows one auditable summary."""
 
-    def __init__(self, **meta):
-        self.meta = meta
+    def __init__(self, *, deadline_s: float | None = None, **meta):
+        # `deadline_s` entra en `meta` para que el resumen lo lleve SIEMPRE, tambien
+        # cuando el ciclo termina bien: un plazo que solo aparece cuando salta no
+        # permite comprobar con que plazo corrio el ciclo que no salto.
+        self.deadline_s = deadline_s
+        self.meta = {**meta, "deadline_s": deadline_s}
         self.stages: list[dict] = []
         self.started_at = _utcnow()
         self._last_stage_at: datetime | None = None
+
+    def elapsed_s(self) -> float:
+        """Segundos desde el arranque del ciclo. `Cycle.stage` ya guarda el
+        `elapsed_s` ENTRE etapas; este es el acumulado, que es el que el plazo
+        mide."""
+        return (_utcnow() - self.started_at).total_seconds()
+
+    def over_deadline(self) -> bool:
+        return self.deadline_s is not None and self.elapsed_s() > self.deadline_s
 
     def stage(self, name: str, status: str, **detail) -> dict:
         # WHEN EACH STAGE HAPPENED, because an aggregate localises nothing.
@@ -2319,6 +2382,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--market-sum-max", type=float, default=1.15)
     p.add_argument("--horizon-days", type=int, default=2,
                    help="Discovery window past the target date.")
+    p.add_argument("--deadline-s", type=float, default=DEADLINE_S_DEFAULT,
+                   help="B5. Plazo del ciclo en segundos. Al agotarse ANTES de "
+                        "capturar libros, el ciclo termina STOPPED con motivo "
+                        "DEADLINE_SLOT. Nunca corta entre la captura y su volcado: "
+                        "el libro L2 no se puede recuperar. 0 o negativo lo "
+                        "desactiva. Ver DEADLINE_S_DEFAULT para el calculo.")
     p.add_argument("--chunk-size", type=int, default=collector.DEFAULT_CHUNK_SIZE)
     p.add_argument("--max-pages", type=int, default=20)
     p.add_argument("--collect-only", action="store_true",
@@ -2373,7 +2442,9 @@ def main(argv: list[str] | None = None) -> int:
     # logged up front. `prediction_time` is NOT settled here — see below.
     plan = decision_time(target_date, args.lead_hours, _utcnow())
 
-    cy = Cycle(session_id=session_id, dataset_version=args.dataset_version,
+    deadline_s = args.deadline_s if args.deadline_s and args.deadline_s > 0 else None
+    cy = Cycle(deadline_s=deadline_s,
+               session_id=session_id, dataset_version=args.dataset_version,
                target_date=str(target_date), model=args.model,
                collect_only=bool(args.collect_only),
                t_end=_iso(plan["t_end"]), t_asof=_iso(plan["t_asof"]),
@@ -2414,6 +2485,12 @@ def main(argv: list[str] | None = None) -> int:
             con.close()
             return _finish(cy, args)
 
+        # PUNTO DE CONTROL 1. Aqui ya se han pagado las etapas `load:*`, que son el
+        # 98,5 % del ciclo medido (6 543 s de 6 641). Si el plazo se agoto
+        # cargando, no se descubre ni se captura: nada irrecuperable existe
+        # todavia y el ciclo habria invadido la ventana siguiente de todos modos.
+        check_deadline(cy, next_stage="discover")
+
         stage_discover(cy, con, dataset_version=args.dataset_version,
                        target_date=target_date, horizon_days=args.horizon_days,
                        session=http, max_pages=args.max_pages)
@@ -2424,9 +2501,25 @@ def main(argv: list[str] | None = None) -> int:
                  markets=len({r["market_id"] for r in universe}),
                  events=len({r["event_id"] for r in universe}))
 
+        # PUNTO DE CONTROL 2, Y EL ULTIMO. Despues de esta linea empieza la captura
+        # del libro, que solo `stage_dump` persiste y que no se puede rehacer: a
+        # partir de aqui el plazo ya no aborta, solo anota.
+        check_deadline(cy, next_stage="collect:books")
+
         stage_collect(cy, con, dataset_version=args.dataset_version,
                       session_id=session_id, universe=universe, session=http,
                       chunk_size=args.chunk_size)
+
+        if cy.over_deadline():
+            # EL PLAZO SE AGOTO DESPUES DE CAPTURAR. No se aborta -- ver
+            # `DeadlineExceeded` --, pero el ciclo NO puede reportarse como un
+            # exito: este STOPPED pone `stopped: True` en el resumen, que es lo
+            # que distingue «termino por plazo» de «termino bien».
+            cy.stage("deadline:overrun", STOPPED,
+                     reason="DEADLINE_SLOT_AFTER_CAPTURE",
+                     active_stage="post_collect",
+                     elapsed_s_total=round(cy.elapsed_s(), 2),
+                     deadline_s=cy.deadline_s)
 
         # THE DECISION INSTANT IS SETTLED HERE, after collection, never at cycle
         # start: everything a decision consumes must already exist at
@@ -2661,6 +2754,12 @@ def main(argv: list[str] | None = None) -> int:
         stage_params(cy, root=args.store_root, session_id=session_id, args=args,
                      quantile_provenance=quantile_provenance,
                      timing=timing, dataset_version=args.dataset_version)
+    except DeadlineExceeded:
+        # Ya quedo registrada la etapa `deadline` STOPPED con su motivo, su etapa
+        # activa, el acumulado y el plazo. No se vuelca: el corte ocurre antes de
+        # capturar, asi que no hay nada en RAM que perder. El flock se libera al
+        # salir del proceso, como en cualquier otra terminacion.
+        pass
     finally:
         con.close()
 
